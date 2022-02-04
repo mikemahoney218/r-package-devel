@@ -7294,3 +7294,407 @@ wrote:
 	[[alternative HTML version deleted]]
 
 
+From @|mon@urb@nek @end|ng |rom R-project@org  Wed Feb  2 03:57:24 2022
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Wed, 2 Feb 2022 15:57:24 +1300
+Subject: [R-pkg-devel] 
+ New 'extptr.as.ref' argument in identical() causing check failures
+In-Reply-To: <CAOHs3k0k8e8npjJPv-p-fTMbKyhSyCT_DQpbWm89185yfuWPWQ@mail.gmail.com>
+References: <CAOHs3k2+ho4pnhepyAEHSdtivkSD8g9K64BHAk_eLE07uYqTmQ@mail.gmail.com>
+ <04E8D81E-6815-49ED-AC37-B5D207AB4070@R-project.org>
+ <CAOHs3k0k8e8npjJPv-p-fTMbKyhSyCT_DQpbWm89185yfuWPWQ@mail.gmail.com>
+Message-ID: <9136D82D-675B-4F9B-A391-0017D0EB94CC@R-project.org>
+
+
+
+> On Feb 2, 2022, at 3:01 PM, Andrew Plowright <plowright.andrew at gmail.com> wrote:
+> 
+> Hi Simon,
+> 
+> Thanks for your reply. I guess I could use == instead. What I want is a method for checking if two S4 class objects are the same. I thought that == was strictly meant for atomic and list types?
+> 
+
+
+identical() already checks that two objects S4 are the same - so if that's what you want, then you don't need to do anything, R provides.
+
+I assumed you want to decide if two objects are semantically equal even if the two objects are not identical, but can still be equal - let's say because you include some additional information in the object that you want to skip when deciding equivalence. In that case == is the way to go. If your object does not have vector semantics, then you just return a scalar, e.g. let's take an example from a class you're familiar with:
+
+WGS84 and EPSG: 4326 are the same CRS:
+
+> st_crs("WGS84") == st_crs(4326)
+[1] TRUE
+
+but the objects are not necessarily identical:
+
+> identical(st_crs("WGS84"), st_crs(4326))
+[1] FALSE
+
+Cheers,
+Simon
+
+
+
+> Andrew
+> 
+> On Tue, Feb 1, 2022 at 4:45 PM Simon Urbanek <simon.urbanek at r-project.org> wrote:
+> Andrew,
+> 
+> you should not re-define identical, it is not a semantic operation and does NOT test equality. Did you mean to write a `==` method instead?
+> 
+> Cheers,
+> Simon
+> 
+> 
+> 
+> > On Feb 2, 2022, at 9:20 AM, Andrew Plowright <plowright.andrew at gmail.com> wrote:
+> > 
+> > Hello, I have an 'identical()' method in my library
+> > 
+> > https://github.com/andrew-plowright/TileManager/blob/0f213a6bcce4bc4b6d0f5e6672660409e09c22c5/R/tileScheme-methods.R#L198
+> > 
+> > I recently started getting a warning message regarding a new
+> > 'extptr.as.ref' argument that was added to R-devel in December. When
+> > running devtools::check_rhub() I get:
+> > 
+> > ```
+> > * checking for code/documentation mismatches ... WARNING
+> > identical
+> >                 TRUE, ignore.bytecode = TRUE, ignore.environment =
+> >                 FALSE, ignore.srcref = TRUE, extptr.as.ref = FALSE)
+> >  Code: function(x, y, num.eq = TRUE, single.NA = TRUE, attrib.as.set =
+> > Codoc mismatches from documentation object 'identical':
+> >  Docs: function(x, y, num.eq = TRUE, single.NA = TRUE, attrib.as.set =
+> >                 TRUE, ignore.bytecode = TRUE, ignore.environment =
+> >                 FALSE, ignore.srcref = TRUE)
+> >  Argument names in code not in docs:
+> >    extptr.as.ref
+> > ```
+> > 
+> > I tried adding the 'extptr.as.ref' argument to my documentation, but now I
+> > get a new warning:
+> > 
+> > ```
+> >  Documented arguments not in \usage in documentation object 'identical':
+> > 
+> >    'extptr.as.ref'
+> >  Functions with \usage entries need to have the appropriate \alias
+> >  entries, and all their arguments documented.
+> >  The \usage entries must correspond to syntactically valid R code.
+> >  See chapter 'Writing R documentation files' in the 'Writing R
+> >  Extensions' manual.
+> > ```
+> > 
+> > So it seems that a warning is being generated both with or without the
+> > extptr.as.ref in my documentation. Any help would be appreciated, thanks!
+> > 
+> > Andrew
+> > 
+> >       [[alternative HTML version deleted]]
+> > 
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> > 
+> 
+
+
+From p|owr|ght@@ndrew @end|ng |rom gm@||@com  Wed Feb  2 06:16:49 2022
+From: p|owr|ght@@ndrew @end|ng |rom gm@||@com (Andrew Plowright)
+Date: Tue, 1 Feb 2022 21:16:49 -0800
+Subject: [R-pkg-devel] 
+ New 'extptr.as.ref' argument in identical() causing check failures
+In-Reply-To: <9136D82D-675B-4F9B-A391-0017D0EB94CC@R-project.org>
+References: <CAOHs3k2+ho4pnhepyAEHSdtivkSD8g9K64BHAk_eLE07uYqTmQ@mail.gmail.com>
+ <04E8D81E-6815-49ED-AC37-B5D207AB4070@R-project.org>
+ <CAOHs3k0k8e8npjJPv-p-fTMbKyhSyCT_DQpbWm89185yfuWPWQ@mail.gmail.com>
+ <9136D82D-675B-4F9B-A391-0017D0EB94CC@R-project.org>
+Message-ID: <CAOHs3k2kNUA4NomLxtGckx4UR-QsCS1yQXDO9YXmuTVqaM-R7Q@mail.gmail.com>
+
+Great example, that makes perfect sense.
+
+I'll just drop the identical method. Easy fix!
+
+Thanks,
+Andrew
+
+On Tue, Feb 1, 2022 at 6:57 PM Simon Urbanek <simon.urbanek at r-project.org>
+wrote:
+
+>
+>
+> > On Feb 2, 2022, at 3:01 PM, Andrew Plowright <plowright.andrew at gmail.com>
+> wrote:
+> >
+> > Hi Simon,
+> >
+> > Thanks for your reply. I guess I could use == instead. What I want is a
+> method for checking if two S4 class objects are the same. I thought that ==
+> was strictly meant for atomic and list types?
+> >
+>
+>
+> identical() already checks that two objects S4 are the same - so if that's
+> what you want, then you don't need to do anything, R provides.
+>
+> I assumed you want to decide if two objects are semantically equal even if
+> the two objects are not identical, but can still be equal - let's say
+> because you include some additional information in the object that you want
+> to skip when deciding equivalence. In that case == is the way to go. If
+> your object does not have vector semantics, then you just return a scalar,
+> e.g. let's take an example from a class you're familiar with:
+>
+> WGS84 and EPSG: 4326 are the same CRS:
+>
+> > st_crs("WGS84") == st_crs(4326)
+> [1] TRUE
+>
+> but the objects are not necessarily identical:
+>
+> > identical(st_crs("WGS84"), st_crs(4326))
+> [1] FALSE
+>
+> Cheers,
+> Simon
+>
+>
+>
+> > Andrew
+> >
+> > On Tue, Feb 1, 2022 at 4:45 PM Simon Urbanek <
+> simon.urbanek at r-project.org> wrote:
+> > Andrew,
+> >
+> > you should not re-define identical, it is not a semantic operation and
+> does NOT test equality. Did you mean to write a `==` method instead?
+> >
+> > Cheers,
+> > Simon
+> >
+> >
+> >
+> > > On Feb 2, 2022, at 9:20 AM, Andrew Plowright <
+> plowright.andrew at gmail.com> wrote:
+> > >
+> > > Hello, I have an 'identical()' method in my library
+> > >
+> > >
+> https://github.com/andrew-plowright/TileManager/blob/0f213a6bcce4bc4b6d0f5e6672660409e09c22c5/R/tileScheme-methods.R#L198
+> > >
+> > > I recently started getting a warning message regarding a new
+> > > 'extptr.as.ref' argument that was added to R-devel in December. When
+> > > running devtools::check_rhub() I get:
+> > >
+> > > ```
+> > > * checking for code/documentation mismatches ... WARNING
+> > > identical
+> > >                 TRUE, ignore.bytecode = TRUE, ignore.environment =
+> > >                 FALSE, ignore.srcref = TRUE, extptr.as.ref = FALSE)
+> > >  Code: function(x, y, num.eq = TRUE, single.NA = TRUE, attrib.as.set =
+> > > Codoc mismatches from documentation object 'identical':
+> > >  Docs: function(x, y, num.eq = TRUE, single.NA = TRUE, attrib.as.set =
+> > >                 TRUE, ignore.bytecode = TRUE, ignore.environment =
+> > >                 FALSE, ignore.srcref = TRUE)
+> > >  Argument names in code not in docs:
+> > >    extptr.as.ref
+> > > ```
+> > >
+> > > I tried adding the 'extptr.as.ref' argument to my documentation, but
+> now I
+> > > get a new warning:
+> > >
+> > > ```
+> > >  Documented arguments not in \usage in documentation object
+> 'identical':
+> > >
+> > >    'extptr.as.ref'
+> > >  Functions with \usage entries need to have the appropriate \alias
+> > >  entries, and all their arguments documented.
+> > >  The \usage entries must correspond to syntactically valid R code.
+> > >  See chapter 'Writing R documentation files' in the 'Writing R
+> > >  Extensions' manual.
+> > > ```
+> > >
+> > > So it seems that a warning is being generated both with or without the
+> > > extptr.as.ref in my documentation. Any help would be appreciated,
+> thanks!
+> > >
+> > > Andrew
+> > >
+> > >       [[alternative HTML version deleted]]
+> > >
+> > > ______________________________________________
+> > > R-package-devel at r-project.org mailing list
+> > > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> > >
+> >
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From v|ncentv@nhee@ @end|ng |rom gm@||@com  Wed Feb  2 10:46:57 2022
+From: v|ncentv@nhee@ @end|ng |rom gm@||@com (Vincent van Hees)
+Date: Wed, 2 Feb 2022 10:46:57 +0100
+Subject: [R-pkg-devel] invalid file URI: 5%B
+Message-ID: <CALnEB1479uRJXGStbsConOiRmCoBCVrYTM=2qORo8+1NwLbTPw@mail.gmail.com>
+
+Hello,
+I received the following response from CRAN after submitting my package:
+
+Thanks, we see:
+Found the following (possibly) invalid file URI:
+  URI: %5B
+    From: inst/doc/GGIR.html
+Please fix and resubmit.
+
+Link to win-builder log:
+https://win-builder.r-project.org/incoming_pretest/GGIR_2.6-0_20220201_151400/Windows/00check.log
+
+May I assume that this relates to a link inside my package vignette?
+
+My vignette has many links of various types. How can I find out which one
+is the problematic one? For example, does %5B provide an indication of the
+location in the code or does it tell me the type of link (internal link to
+file, internal link to vignette section, or external url)?
+
+My vignette code is here:
+https://github.com/wadpac/GGIR/blob/master/vignettes/GGIR.Rmd
+
+Any help will be much appreciated,
+Vincent
+
+	[[alternative HTML version deleted]]
+
+
+From e@ @end|ng |rom enr|co@chum@nn@net  Wed Feb  2 10:56:12 2022
+From: e@ @end|ng |rom enr|co@chum@nn@net (Enrico Schumann)
+Date: Wed, 02 Feb 2022 10:56:12 +0100
+Subject: [R-pkg-devel] invalid file URI: 5%B
+In-Reply-To: <CALnEB1479uRJXGStbsConOiRmCoBCVrYTM=2qORo8+1NwLbTPw@mail.gmail.com>
+ (Vincent van Hees's message of "Wed, 2 Feb 2022 10:46:57 +0100")
+References: <CALnEB1479uRJXGStbsConOiRmCoBCVrYTM=2qORo8+1NwLbTPw@mail.gmail.com>
+Message-ID: <87sft18udf.fsf@enricoschumann.net>
+
+On Wed, 02 Feb 2022, Vincent van Hees writes:
+
+> Hello,
+> I received the following response from CRAN after submitting my package:
+>
+> Thanks, we see:
+> Found the following (possibly) invalid file URI:
+>   URI: %5B
+>     From: inst/doc/GGIR.html
+> Please fix and resubmit.
+>
+> Link to win-builder log:
+> https://win-builder.r-project.org/incoming_pretest/GGIR_2.6-0_20220201_151400/Windows/00check.log
+>
+> May I assume that this relates to a link inside my package vignette?
+>
+> My vignette has many links of various types. How can I find out which one
+> is the problematic one? For example, does %5B provide an indication of the
+> location in the code or does it tell me the type of link (internal link to
+> file, internal link to vignette section, or external url)?
+>
+> My vignette code is here:
+> https://github.com/wadpac/GGIR/blob/master/vignettes/GGIR.Rmd
+>
+> Any help will be much appreciated,
+> Vincent
+>
+
+URLencode("[", reserved = TRUE)
+## [1] "%5B"
+
+Do you have any links with brackets?
+
+
+-- 
+Enrico Schumann
+Lucerne, Switzerland
+http://enricoschumann.net
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Feb  2 11:07:29 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 2 Feb 2022 13:07:29 +0300
+Subject: [R-pkg-devel] invalid file URI: 5%B
+In-Reply-To: <CALnEB1479uRJXGStbsConOiRmCoBCVrYTM=2qORo8+1NwLbTPw@mail.gmail.com>
+References: <CALnEB1479uRJXGStbsConOiRmCoBCVrYTM=2qORo8+1NwLbTPw@mail.gmail.com>
+Message-ID: <20220202130729.65fd18d9@Tarkus>
+
+On Wed, 2 Feb 2022 10:46:57 +0100
+Vincent van Hees <vincentvanhees at gmail.com> wrote:
+
+> May I assume that this relates to a link inside my package vignette?
+
+That's true.
+
+> My vignette has many links of various types. How can I find out which
+> one is the problematic one?
+
+Take a look at inst/doc/GGIR.html in the R CMD build output and search
+for "%5B".
+
+> For example, does %5B provide an indication of the location in the
+> code or does it tell me the type of link (internal link to file,
+> internal link to vignette section, or external url)?
+
+Unfortunately, there's no indication of the location. According to the
+code of R CMD check (src/library/tools/R/QC.R in the R source code),
+"%5B" is the whole link. Apparently, a square bracket got wrongly
+interpreted as a link destination somewhere inside your document. Most
+likely, the link on line 1158 has an unnecessary "[":
+https://github.com/wadpac/GGIR/blob/master/vignettes/GGIR.Rmd#L1158
+
+-- 
+Best regards,
+Ivan
+
+
+From v|ncentv@nhee@ @end|ng |rom gm@||@com  Wed Feb  2 11:54:35 2022
+From: v|ncentv@nhee@ @end|ng |rom gm@||@com (Vincent van Hees)
+Date: Wed, 2 Feb 2022 11:54:35 +0100
+Subject: [R-pkg-devel] invalid file URI: 5%B
+In-Reply-To: <20220202130729.65fd18d9@Tarkus>
+References: <CALnEB1479uRJXGStbsConOiRmCoBCVrYTM=2qORo8+1NwLbTPw@mail.gmail.com>
+ <20220202130729.65fd18d9@Tarkus>
+Message-ID: <CALnEB15xKi3W3DU9VRf8UOAduE+WcUuM1mb5w5VJZOZQZQNdYg@mail.gmail.com>
+
+That fixed the issue. Thanks a lot Ivan and Enrico!
+
+On Wed, 2 Feb 2022 at 11:07, Ivan Krylov <krylov.r00t at gmail.com> wrote:
+
+> On Wed, 2 Feb 2022 10:46:57 +0100
+> Vincent van Hees <vincentvanhees at gmail.com> wrote:
+>
+> > May I assume that this relates to a link inside my package vignette?
+>
+> That's true.
+>
+> > My vignette has many links of various types. How can I find out which
+> > one is the problematic one?
+>
+> Take a look at inst/doc/GGIR.html in the R CMD build output and search
+> for "%5B".
+>
+> > For example, does %5B provide an indication of the location in the
+> > code or does it tell me the type of link (internal link to file,
+> > internal link to vignette section, or external url)?
+>
+> Unfortunately, there's no indication of the location. According to the
+> code of R CMD check (src/library/tools/R/QC.R in the R source code),
+> "%5B" is the whole link. Apparently, a square bracket got wrongly
+> interpreted as a link destination somewhere inside your document. Most
+> likely, the link on line 1158 has an unnecessary "[":
+> https://github.com/wadpac/GGIR/blob/master/vignettes/GGIR.Rmd#L1158
+>
+> --
+> Best regards,
+> Ivan
+>
+
+	[[alternative HTML version deleted]]
+
+
