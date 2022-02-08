@@ -7698,3 +7698,216 @@ On Wed, 2 Feb 2022 at 11:07, Ivan Krylov <krylov.r00t at gmail.com> wrote:
 	[[alternative HTML version deleted]]
 
 
+From r@turner @end|ng |rom @uck|@nd@@c@nz  Sun Feb  6 04:32:05 2022
+From: r@turner @end|ng |rom @uck|@nd@@c@nz (Rolf Turner)
+Date: Sun, 6 Feb 2022 16:32:05 +1300
+Subject: [R-pkg-devel] Stack smashing detected (dynamically loaded Fortran).
+Message-ID: <20220206163205.7d4121e3@rolf-Latitude-E7470>
+
+
+In the past when I've got the "stack smashing detected" error, it turned
+out to be due to that fact that I'd omitted an argument in a call to a
+Fortran subroutine, or had in some similar way buggered up an argument
+list.
+
+In this instance, I've been tearing my hair out all day and can find no
+discrepancies between argument lists in calls and in the code of
+subroutines called.
+
+The output that I get from valgrind (see the attached file "smash.txt")
+does not enlighten me.  Perhaps someone cleverer than I can extract
+useful information from it.  Or perhaps someone can suggest some other
+means of discerning what is going wrong.
+
+Should anyone have the inclination and patience to delve further, I have
+made a tarball of (a somewhat stripped down version of) the problematic
+code and put it up on my web page.  To get to it, go to
+
+    https://www.stat.auckland.ac.nz/~rolf/
+
+scroll down to the bottom and click on "Smash".
+
+If you feel motivated to do so, download the tarball, extract the
+contents ("tar xvf smash.tar.gz"), execute "R -d valgrind" in the
+directory into which you downloaded smash.tar.gz, and then execute
+source("demo.R").
+
+If you amend the Fortran code you will of course need to rebuild the
+shared library object:  R CMD SHLIB -o demo.so *.f
+
+The Fortran code is pretty opaque since I actually wrote the code in
+ratfor and then compiled it into Fortran.  If you have ratfor on your
+system you could amend the *.r files (included in the tarball) and then
+execute "makefor" (also in the tarball) to build the Fortran code.
+    
+I'd be grateful for any insight that anyone can provide.
+
+cheers,
+
+Rolf Turner
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Phone: +64-9-373-7599 ext. 88276
+
+-------------- next part --------------
+An embedded and charset-unspecified text was scrubbed...
+Name: smash.txt
+URL: <https://stat.ethz.ch/pipermail/r-package-devel/attachments/20220206/13526cac/attachment.txt>
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sun Feb  6 10:45:15 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sun, 6 Feb 2022 12:45:15 +0300
+Subject: [R-pkg-devel] 
+ Stack smashing detected (dynamically loaded Fortran).
+In-Reply-To: <20220206163205.7d4121e3@rolf-Latitude-E7470>
+References: <20220206163205.7d4121e3@rolf-Latitude-E7470>
+Message-ID: <20220206124515.1257c6b4@Tarkus>
+
+On Sun, 6 Feb 2022 16:32:05 +1300
+Rolf Turner <r.turner at auckland.ac.nz> wrote:
+
+> The output that I get from valgrind (see the attached file
+> "smash.txt") does not enlighten me.
+
+For whatever reason, Valgrind doesn't see the error. I think it's the
+compiler-provided stack canary that complains.
+
+I've been able to get a slightly more informative error from
+AddressSanitizer, by putting the following in ~/.R/Makevars:
+
+FFLAGS=-g -Og -fsanitize=address
+FCFLAGS=-g -Og -fsanitize=address
+
+(you'll probably want to comment that out once you're done)
+
+then building demo.so like this:
+
+R CMD SHLIB -o demo.so *.f -fsanitize=address
+
+*and* starting R like this (GNU/Linux-specific):
+
+LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libasan.so.5 R
+
+(The ASan version could be different on your machine.)
+
+This gives us a line number (stack overflow in prephi.f:50). Somehow,
+d2u is only of size 8 bytes (one double?) and is being overflown by
+accessing its second index, despite it being declared as containing
+`kstate` doubles and `k` being limited by `kstate`.
+
+Here's how we can combine GDB and AddressSanitizer in dynamically
+loaded code in R without recompililng R itself with ASan support:
+
+R -d gdb
+set environment LD_PRELOAD /usr/lib/x86_64-linux-gnu/libasan.so.5
+set environment ASAN_OPTIONS abort_on_error=1
+run
+
+(GDB stops when ASan raises SIGABRT and lets us explore the program at
+the time of the crash.)
+
+Here I realised that d2u is a parameter, not a local variable. I
+climbed two frames up into the getgl subroutine and found out that d2u
+is defined as real(kind=8), without a dimension. This must be the
+reason for the stack corruption. Same goes for d2zeta.
+
+Unfortunately, demo.so keeps crashing R, seemingly because of memory
+corruption (e.g. the function name turns out to be overwritten when
+producing the error message 'array overflow in .Fortran("%s")'), but
+only with certain combinations of build options, and ASan isn't helping
+any more. An ASan build of R would probably help.
+
+-- 
+Best regards,
+Ivan
+
+-------------- next part --------------
+An embedded and charset-unspecified text was scrubbed...
+Name: asan_crash.txt
+URL: <https://stat.ethz.ch/pipermail/r-package-devel/attachments/20220206/047d26f2/attachment.txt>
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sun Feb  6 11:25:48 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sun, 6 Feb 2022 13:25:48 +0300
+Subject: [R-pkg-devel] 
+ Stack smashing detected (dynamically loaded Fortran).
+In-Reply-To: <20220206124515.1257c6b4@Tarkus>
+References: <20220206163205.7d4121e3@rolf-Latitude-E7470>
+ <20220206124515.1257c6b4@Tarkus>
+Message-ID: <20220206132548.0c9b08c8@Tarkus>
+
+On Sun, 6 Feb 2022 12:45:15 +0300
+Ivan Krylov <krylov.r00t at gmail.com> wrote:
+
+> Unfortunately, demo.so keeps crashing R, seemingly because of memory
+> corruption (e.g. the function name turns out to be overwritten when
+> producing the error message 'array overflow in .Fortran("%s")')
+
+I installed debugging symbols for R, set a watchpoint on the local
+symName in function do_dotCode, one call frame above subroutine getgl,
+and it hit:
+
+Thread 1 "R" hit Watchpoint 3: symName
+
+0x00007ffff24bb6a3 in derivf (fy=..., ndistr=4, zeta=..., sigma=...,
+size=1, y=1, ymiss=0, dmat=..., kstate=2, npar=10, nphi=8, nyv=5,
+nxc=1, d1f=..., d2f=..., d1zeta=..., d2zeta=..., d1u=..., d2u=...,
+nd=1, epars=..., den=...) at derivf.f:59
+ 59            d2f(j,k,l) = epars(iy,j)*(a-b+c)/den(j)**2
+
+d2f is declared to have dimensions (kstate,npar,npar) in derivf.f, but
+is only a real(kind=8) in its caller, getgl.f. Setting the correct
+dimensions in getgl.f seems to fix the crash.
+
+-- 
+Best regards,
+Ivan
+
+
+From r@turner @end|ng |rom @uck|@nd@@c@nz  Sun Feb  6 21:00:58 2022
+From: r@turner @end|ng |rom @uck|@nd@@c@nz (Rolf Turner)
+Date: Mon, 7 Feb 2022 09:00:58 +1300
+Subject: [R-pkg-devel] 
+ Stack smashing detected (dynamically loaded Fortran).
+In-Reply-To: <20220206132548.0c9b08c8@Tarkus>
+References: <20220206163205.7d4121e3@rolf-Latitude-E7470>
+ <20220206124515.1257c6b4@Tarkus> <20220206132548.0c9b08c8@Tarkus>
+Message-ID: <20220207090058.637e9e27@rolf-Latitude-E7470>
+
+
+On Sun, 6 Feb 2022 13:25:48 +0300
+Ivan Krylov <krylov.r00t at gmail.com> wrote:
+
+<SNIP>
+
+> d2f is declared to have dimensions (kstate,npar,npar) in derivf.f, but
+> is only a real(kind=8) in its caller, getgl.f. Setting the correct
+> dimensions in getgl.f seems to fix the crash.
+
+Aaaarrrghhhh!  Yes, that must be it. (And likewise with d2u, d2zeta,
+...).  I was trying to use derivf to handle settings in which I only
+wanted first derivatives as well as ones in which I wanted both first
+and second derivatives.  And I buggered it up. As me high school mates
+used to tell me, if I had a brain, I'd be sitting on the floor playing
+with it!
+
+Thanks Ivan for your diligent, well organised and clever tracking down
+of the problem.  I shall retain your email with the illustration of
+using "AddressSanitizer" etc., for future reference.
+
+Thanks again.  I owe you, big-time!
+
+cheers,
+
+Rolf
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Phone: +64-9-373-7599 ext. 88276
+
+
