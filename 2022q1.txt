@@ -8035,3 +8035,261 @@ something ?stuck? at win-builder?
 	[[alternative HTML version deleted]]
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Feb  9 10:45:05 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 9 Feb 2022 12:45:05 +0300
+Subject: [R-pkg-devel] using a class from a suggested package
+In-Reply-To: <CAJuCY5xz1OKKRG6eMyHZcEorpVVGwVYKoeeex2FoAt=BUEzqQQ@mail.gmail.com>
+References: <CAJuCY5xz1OKKRG6eMyHZcEorpVVGwVYKoeeex2FoAt=BUEzqQQ@mail.gmail.com>
+Message-ID: <20220209124505.352ebbee@arachnoid>
+
+On Mon, 7 Feb 2022 15:55:18 +0100
+Thierry Onkelinx <thierry.onkelinx at inbo.be> wrote:
+
+> My package A defines an S4 method for the "inla" S3 class. The INLA
+> package defines this class. That package has a huge source, making
+> the build fail on r-universe.dev. The solution is to not
+> importClassesFrom(INLA, inla) but use setOldClass("inla"). Then I can
+> list INLA under Suggests instead of Imports. So far so good.
+
+This is a really complicated situation to be in.
+
+On the one hand, the only documented way to use S4 classes from another
+package is NAMESPACE and importClassesFrom(), which leads to stronger
+dependencies than you would like. On the other hand, you're likely to
+get warnings if more than one loaded namespace define S4 classes with
+the same name, to it's a good idea to avoid calling setOldClass('inla')
+in the A package if INLA can be loaded.
+
+Could it be an option to define the "maybeInla" class in the A package,
+initially as "NULL", and then extend it at runtime using getClassDef?
+
+setClassUnion('maybeInla', 'NULL')
+
+.onLoad <- function(...) {
+# ...
+ if (requireNamespace('INLA', quietly = TRUE)) {
+  setIs(getClassDef('inla', package = 'INLA'), 'maybeInla')
+ }
+# ...
+}
+
+If INLA can't be loaded, then there's (ostensibly) no way to create
+"inla" objects in the current session, and "NULL" is as good a
+definition as it would get. Then B could import the maybeInla class
+from A.
+
+-- 
+Best regards,
+Ivan
+
+
+From th|erry@onke||nx @end|ng |rom |nbo@be  Wed Feb  9 12:25:14 2022
+From: th|erry@onke||nx @end|ng |rom |nbo@be (Thierry Onkelinx)
+Date: Wed, 9 Feb 2022 12:25:14 +0100
+Subject: [R-pkg-devel] using a class from a suggested package
+In-Reply-To: <20220209124505.352ebbee@arachnoid>
+References: <CAJuCY5xz1OKKRG6eMyHZcEorpVVGwVYKoeeex2FoAt=BUEzqQQ@mail.gmail.com>
+ <20220209124505.352ebbee@arachnoid>
+Message-ID: <CAJuCY5zVJBC8wd85-wXyrK9QcKXOvR3AoOhUsJSVR3RKnNL2aQ@mail.gmail.com>
+
+Dear Ivan,
+
+Thanks for the suggestion. Something strange is happening. When I run
+getClassDef("inla", package = "INLA") is a fresh session I get.
+
+Virtual Class "inla" [package "INLA"]
+
+Slots:
+
+Name:   .S3Class
+Class: character
+
+Extends: "oldClass"
+
+However when package A is loaded first, I get. Since package B imports
+package A, the namespace of A is loaded when building B.
+
+Virtual Class "inla" [package "A"]
+
+Slots:
+
+Name:   .S3Class
+Class: character
+
+Extends: "oldClass"
+Building package B with the code below yields Warning: class "inla" is
+defined (with package slot ?A?) but no metadata object found to revise
+superClass information---not imported?  Making a copy in package ?B?
+
+setClassUnion("maybeInla", "NULL")
+#' @importFrom methods getClassDef setIs
+.onLoad <- function(...) {
+  if (requireNamespace("INLA", quietly = TRUE)) {
+    setIs("inla", "maybeInla", classDef = getClassDef("inla", package =
+"INLA"))
+  }
+}
+Best regards,
+
+ir. Thierry Onkelinx
+Statisticus / Statistician
+
+Vlaamse Overheid / Government of Flanders
+INSTITUUT VOOR NATUUR- EN BOSONDERZOEK / RESEARCH INSTITUTE FOR NATURE AND
+FOREST
+Team Biometrie & Kwaliteitszorg / Team Biometrics & Quality Assurance
+thierry.onkelinx at inbo.be
+Havenlaan 88 bus 73, 1000 Brussel
+www.inbo.be
+
+///////////////////////////////////////////////////////////////////////////////////////////
+To call in the statistician after the experiment is done may be no more
+than asking him to perform a post-mortem examination: he may be able to say
+what the experiment died of. ~ Sir Ronald Aylmer Fisher
+The plural of anecdote is not data. ~ Roger Brinner
+The combination of some data and an aching desire for an answer does not
+ensure that a reasonable answer can be extracted from a given body of data.
+~ John Tukey
+///////////////////////////////////////////////////////////////////////////////////////////
+
+<https://www.inbo.be>
+
+
+Op wo 9 feb. 2022 om 10:45 schreef Ivan Krylov <krylov.r00t at gmail.com>:
+
+> On Mon, 7 Feb 2022 15:55:18 +0100
+> Thierry Onkelinx <thierry.onkelinx at inbo.be> wrote:
+>
+> > My package A defines an S4 method for the "inla" S3 class. The INLA
+> > package defines this class. That package has a huge source, making
+> > the build fail on r-universe.dev. The solution is to not
+> > importClassesFrom(INLA, inla) but use setOldClass("inla"). Then I can
+> > list INLA under Suggests instead of Imports. So far so good.
+>
+> This is a really complicated situation to be in.
+>
+> On the one hand, the only documented way to use S4 classes from another
+> package is NAMESPACE and importClassesFrom(), which leads to stronger
+> dependencies than you would like. On the other hand, you're likely to
+> get warnings if more than one loaded namespace define S4 classes with
+> the same name, to it's a good idea to avoid calling setOldClass('inla')
+> in the A package if INLA can be loaded.
+>
+> Could it be an option to define the "maybeInla" class in the A package,
+> initially as "NULL", and then extend it at runtime using getClassDef?
+>
+> setClassUnion('maybeInla', 'NULL')
+>
+> .onLoad <- function(...) {
+> # ...
+>  if (requireNamespace('INLA', quietly = TRUE)) {
+>   setIs(getClassDef('inla', package = 'INLA'), 'maybeInla')
+>  }
+> # ...
+> }
+>
+> If INLA can't be loaded, then there's (ostensibly) no way to create
+> "inla" objects in the current session, and "NULL" is as good a
+> definition as it would get. Then B could import the maybeInla class
+> from A.
+>
+> --
+> Best regards,
+> Ivan
+>
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Feb  9 14:05:55 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 9 Feb 2022 16:05:55 +0300
+Subject: [R-pkg-devel] using a class from a suggested package
+In-Reply-To: <CAJuCY5zVJBC8wd85-wXyrK9QcKXOvR3AoOhUsJSVR3RKnNL2aQ@mail.gmail.com>
+References: <CAJuCY5xz1OKKRG6eMyHZcEorpVVGwVYKoeeex2FoAt=BUEzqQQ@mail.gmail.com>
+ <20220209124505.352ebbee@arachnoid>
+ <CAJuCY5zVJBC8wd85-wXyrK9QcKXOvR3AoOhUsJSVR3RKnNL2aQ@mail.gmail.com>
+Message-ID: <20220209160555.50183736@arachnoid>
+
+On Wed, 9 Feb 2022 12:25:14 +0100
+Thierry Onkelinx <thierry.onkelinx at inbo.be> wrote:
+
+> However when package A is loaded first, I get
+
+> Virtual Class "inla" [package "A"]
+
+Since you own both packages A and B, how much work would it be to
+export maybeInla from package A instead of importing inla in package B?
+I'm afraid you won't avoid the warning if package A creates its own
+inla and you load package INLA in the same process.
+
+-- 
+Best regards,
+Ivan
+
+
+From th|erry@onke||nx @end|ng |rom |nbo@be  Wed Feb  9 16:43:37 2022
+From: th|erry@onke||nx @end|ng |rom |nbo@be (Thierry Onkelinx)
+Date: Wed, 9 Feb 2022 16:43:37 +0100
+Subject: [R-pkg-devel] using a class from a suggested package
+In-Reply-To: <20220209160555.50183736@arachnoid>
+References: <CAJuCY5xz1OKKRG6eMyHZcEorpVVGwVYKoeeex2FoAt=BUEzqQQ@mail.gmail.com>
+ <20220209124505.352ebbee@arachnoid>
+ <CAJuCY5zVJBC8wd85-wXyrK9QcKXOvR3AoOhUsJSVR3RKnNL2aQ@mail.gmail.com>
+ <20220209160555.50183736@arachnoid>
+Message-ID: <CAJuCY5yg9JWH3jFQm=-nt73UPj1ODpXobUdGs2yWFdmLv9iQyw@mail.gmail.com>
+
+Dear Ivan,
+
+Defining "maybeInla" in package A and importing that in package B solved
+the problem. Thanks for your assistance.
+
+Best regards,
+
+ir. Thierry Onkelinx
+Statisticus / Statistician
+
+Vlaamse Overheid / Government of Flanders
+INSTITUUT VOOR NATUUR- EN BOSONDERZOEK / RESEARCH INSTITUTE FOR NATURE AND
+FOREST
+Team Biometrie & Kwaliteitszorg / Team Biometrics & Quality Assurance
+thierry.onkelinx at inbo.be
+Havenlaan 88 bus 73, 1000 Brussel
+www.inbo.be
+
+///////////////////////////////////////////////////////////////////////////////////////////
+To call in the statistician after the experiment is done may be no more
+than asking him to perform a post-mortem examination: he may be able to say
+what the experiment died of. ~ Sir Ronald Aylmer Fisher
+The plural of anecdote is not data. ~ Roger Brinner
+The combination of some data and an aching desire for an answer does not
+ensure that a reasonable answer can be extracted from a given body of data.
+~ John Tukey
+///////////////////////////////////////////////////////////////////////////////////////////
+
+<https://www.inbo.be>
+
+
+Op wo 9 feb. 2022 om 14:05 schreef Ivan Krylov <krylov.r00t at gmail.com>:
+
+> On Wed, 9 Feb 2022 12:25:14 +0100
+> Thierry Onkelinx <thierry.onkelinx at inbo.be> wrote:
+>
+> > However when package A is loaded first, I get
+>
+> > Virtual Class "inla" [package "A"]
+>
+> Since you own both packages A and B, how much work would it be to
+> export maybeInla from package A instead of importing inla in package B?
+> I'm afraid you won't avoid the warning if package A creates its own
+> inla and you load package INLA in the same process.
+>
+> --
+> Best regards,
+> Ivan
+>
+
+	[[alternative HTML version deleted]]
+
+
