@@ -8293,3 +8293,327 @@ Op wo 9 feb. 2022 om 14:05 schreef Ivan Krylov <krylov.r00t at gmail.com>:
 	[[alternative HTML version deleted]]
 
 
+From murr@y@e||ord @end|ng |rom ot@go@@c@nz  Fri Feb 11 23:22:10 2022
+From: murr@y@e||ord @end|ng |rom ot@go@@c@nz (Murray Efford)
+Date: Fri, 11 Feb 2022 22:22:10 +0000
+Subject: [R-pkg-devel] shapefile .dbf recognised as executable
+Message-ID: <SY4PR01MB5658FBF4675400CF6DC6E63CAC309@SY4PR01MB5658.ausprd01.prod.outlook.com>
+
+I have long distributed a small spatial ESRI shapefile as demonstration data in the extdata directory of 'secr'. It comprises the three files OVforest.shp, OVforest.dbf and OVforest.shx. I wanted to make minor changes (adding a coordinate reference system, dropping an attribute). I find that after merely reading (sf::st_read("OVforest.shp") and re-writing the same (sf::st_write("OVforest.shp")) the .dbf file is recognised by R CMD check as executable and raises a Warning (on GNU/Linux, but not in Windows).
+
+No doubt this can be blamed on specifics of the driver used by sf::st_write, but I have been unable to find any settings that might change the behaviour.
+
+I would like to know: Is this a false positive, and if not, How can I remove the executable component(s)? Can I apply the test used by R CMD check outside of R CMD check? 
+
+Murray
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Feb 11 23:44:12 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 11 Feb 2022 17:44:12 -0500
+Subject: [R-pkg-devel] shapefile .dbf recognised as executable
+In-Reply-To: <SY4PR01MB5658FBF4675400CF6DC6E63CAC309@SY4PR01MB5658.ausprd01.prod.outlook.com>
+References: <SY4PR01MB5658FBF4675400CF6DC6E63CAC309@SY4PR01MB5658.ausprd01.prod.outlook.com>
+Message-ID: <4b0e638c-162e-a6de-203a-3bfe90460808@gmail.com>
+
+On 11/02/2022 5:22 p.m., Murray Efford wrote:
+> I have long distributed a small spatial ESRI shapefile as demonstration data in the extdata directory of 'secr'. It comprises the three files OVforest.shp, OVforest.dbf and OVforest.shx. I wanted to make minor changes (adding a coordinate reference system, dropping an attribute). I find that after merely reading (sf::st_read("OVforest.shp") and re-writing the same (sf::st_write("OVforest.shp")) the .dbf file is recognised by R CMD check as executable and raises a Warning (on GNU/Linux, but not in Windows).
+> 
+> No doubt this can be blamed on specifics of the driver used by sf::st_write, but I have been unable to find any settings that might change the behaviour.
+> 
+> I would like to know: Is this a false positive, and if not, How can I remove the executable component(s)? Can I apply the test used by R CMD check outside of R CMD check?
+
+It's not easy to run just that test, but you can see it if you look here:
+
+https://github.com/wch/r-source/blob/988077a792e628677bd5884b351fe08b2c17b8c8/src/library/tools/R/check.R#L4866-L4941
+
+The basic idea is that it uses the "file" command.  There are some known 
+false positives.
+
+If you are on Linux, try running "file OVforest.dbf" and see what it says.
+
+Duncan Murdoch
+
+
+From murr@y@e||ord @end|ng |rom ot@go@@c@nz  Sat Feb 12 00:33:40 2022
+From: murr@y@e||ord @end|ng |rom ot@go@@c@nz (Murray Efford)
+Date: Fri, 11 Feb 2022 23:33:40 +0000
+Subject: [R-pkg-devel] shapefile .dbf recognised as executable
+In-Reply-To: <4b0e638c-162e-a6de-203a-3bfe90460808@gmail.com>
+References: <SY4PR01MB5658FBF4675400CF6DC6E63CAC309@SY4PR01MB5658.ausprd01.prod.outlook.com>
+ <4b0e638c-162e-a6de-203a-3bfe90460808@gmail.com>
+Message-ID: <SY4PR01MB5658328F16504375B5092DBEAC309@SY4PR01MB5658.ausprd01.prod.outlook.com>
+
+Many thanks for your guidance. Indeed there is a radical change:
+
+$ file OVforest.dbf
+OVforest.dbf: FoxBase+/dBase III DBF, 3 records * 22, update-date 95-7-26, at offset 97 1st record "beech        beech    leftnonbeech nonbeech rightnonbeechnonbeech"
+
+$ file OVforest2.dbf
+OVforest2.dbf: amd 29k coff prebar executable
+
+I don't recognize the file descriptors (amd, coff, prebar). I guess I need to call in help from the GIS people...
+
+Murray
+
+________________________________________
+From: Duncan Murdoch <murdoch.duncan at gmail.com>
+Sent: 12 February 2022 11:44
+To: Murray Efford; R-package-devel at r-project.org
+Subject: Re: [R-pkg-devel] shapefile .dbf recognised as executable
+
+On 11/02/2022 5:22 p.m., Murray Efford wrote:
+> I have long distributed a small spatial ESRI shapefile as demonstration data in the extdata directory of 'secr'. It comprises the three files OVforest.shp, OVforest.dbf and OVforest.shx. I wanted to make minor changes (adding a coordinate reference system, dropping an attribute). I find that after merely reading (sf::st_read("OVforest.shp") and re-writing the same (sf::st_write("OVforest.shp")) the .dbf file is recognised by R CMD check as executable and raises a Warning (on GNU/Linux, but not in Windows).
+>
+> No doubt this can be blamed on specifics of the driver used by sf::st_write, but I have been unable to find any settings that might change the behaviour.
+>
+> I would like to know: Is this a false positive, and if not, How can I remove the executable component(s)? Can I apply the test used by R CMD check outside of R CMD check?
+
+It's not easy to run just that test, but you can see it if you look here:
+
+https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fgithub.com%2Fwch%2Fr-source%2Fblob%2F988077a792e628677bd5884b351fe08b2c17b8c8%2Fsrc%2Flibrary%2Ftools%2FR%2Fcheck.R%23L4866-L4941&amp;data=04%7C01%7Cmurray.efford%40otago.ac.nz%7Ce242631c41c342f47d8908d9edb008b8%7C0225efc578fe4928b1579ef24809e9ba%7C0%7C0%7C637802163497599994%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000&amp;sdata=Z77T09j1sONATxupZGSmkayrpjt3Ra1g%2FS6vxQq8CJs%3D&amp;reserved=0
+
+The basic idea is that it uses the "file" command.  There are some known
+false positives.
+
+If you are on Linux, try running "file OVforest.dbf" and see what it says.
+
+Duncan Murdoch
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Sat Feb 12 00:38:48 2022
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Sat, 12 Feb 2022 12:38:48 +1300
+Subject: [R-pkg-devel] shapefile .dbf recognised as executable
+In-Reply-To: <SY4PR01MB5658328F16504375B5092DBEAC309@SY4PR01MB5658.ausprd01.prod.outlook.com>
+References: <SY4PR01MB5658FBF4675400CF6DC6E63CAC309@SY4PR01MB5658.ausprd01.prod.outlook.com>
+ <4b0e638c-162e-a6de-203a-3bfe90460808@gmail.com>
+ <SY4PR01MB5658328F16504375B5092DBEAC309@SY4PR01MB5658.ausprd01.prod.outlook.com>
+Message-ID: <46A0A0A7-C3B3-4F5B-8351-6B8D04422E19@R-project.org>
+
+FWIW this seems to be a known issue (for some definition of known):
+
+https://bugs.astron.com/view.php?id=316
+
+A fix is to set your date when writing the DBF file to year 2021 instead of 2022 (which also explains why it worked last year ;)).
+
+Cheers,
+Simon
+
+
+
+
+
+> On Feb 12, 2022, at 12:33 PM, Murray Efford <murray.efford at otago.ac.nz> wrote:
+> 
+> Many thanks for your guidance. Indeed there is a radical change:
+> 
+> $ file OVforest.dbf
+> OVforest.dbf: FoxBase+/dBase III DBF, 3 records * 22, update-date 95-7-26, at offset 97 1st record "beech        beech    leftnonbeech nonbeech rightnonbeechnonbeech"
+> 
+> $ file OVforest2.dbf
+> OVforest2.dbf: amd 29k coff prebar executable
+> 
+> I don't recognize the file descriptors (amd, coff, prebar). I guess I need to call in help from the GIS people...
+> 
+> Murray
+> 
+> ________________________________________
+> From: Duncan Murdoch <murdoch.duncan at gmail.com>
+> Sent: 12 February 2022 11:44
+> To: Murray Efford; R-package-devel at r-project.org
+> Subject: Re: [R-pkg-devel] shapefile .dbf recognised as executable
+> 
+> On 11/02/2022 5:22 p.m., Murray Efford wrote:
+>> I have long distributed a small spatial ESRI shapefile as demonstration data in the extdata directory of 'secr'. It comprises the three files OVforest.shp, OVforest.dbf and OVforest.shx. I wanted to make minor changes (adding a coordinate reference system, dropping an attribute). I find that after merely reading (sf::st_read("OVforest.shp") and re-writing the same (sf::st_write("OVforest.shp")) the .dbf file is recognised by R CMD check as executable and raises a Warning (on GNU/Linux, but not in Windows).
+>> 
+>> No doubt this can be blamed on specifics of the driver used by sf::st_write, but I have been unable to find any settings that might change the behaviour.
+>> 
+>> I would like to know: Is this a false positive, and if not, How can I remove the executable component(s)? Can I apply the test used by R CMD check outside of R CMD check?
+> 
+> It's not easy to run just that test, but you can see it if you look here:
+> 
+> https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fgithub.com%2Fwch%2Fr-source%2Fblob%2F988077a792e628677bd5884b351fe08b2c17b8c8%2Fsrc%2Flibrary%2Ftools%2FR%2Fcheck.R%23L4866-L4941&amp;data=04%7C01%7Cmurray.efford%40otago.ac.nz%7Ce242631c41c342f47d8908d9edb008b8%7C0225efc578fe4928b1579ef24809e9ba%7C0%7C0%7C637802163497599994%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000&amp;sdata=Z77T09j1sONATxupZGSmkayrpjt3Ra1g%2FS6vxQq8CJs%3D&amp;reserved=0
+> 
+> The basic idea is that it uses the "file" command.  There are some known
+> false positives.
+> 
+> If you are on Linux, try running "file OVforest.dbf" and see what it says.
+> 
+> Duncan Murdoch
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Sat Feb 12 00:58:28 2022
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Sat, 12 Feb 2022 12:58:28 +1300
+Subject: [R-pkg-devel] shapefile .dbf recognised as executable
+In-Reply-To: <46A0A0A7-C3B3-4F5B-8351-6B8D04422E19@R-project.org>
+References: <SY4PR01MB5658FBF4675400CF6DC6E63CAC309@SY4PR01MB5658.ausprd01.prod.outlook.com>
+ <4b0e638c-162e-a6de-203a-3bfe90460808@gmail.com>
+ <SY4PR01MB5658328F16504375B5092DBEAC309@SY4PR01MB5658.ausprd01.prod.outlook.com>
+ <46A0A0A7-C3B3-4F5B-8351-6B8D04422E19@R-project.org>
+Message-ID: <BF0395CF-DF50-4472-B2A6-00BB270C59EB@R-project.org>
+
+Also if you just want to "fix" the file, you can simply change the second byte using R:
+
+fn = "myfile.dbf"
+sz = file.info(fn)$size
+r = readBin(fn, raw(), sz)
+r[2] = as.raw(121) ## make it 2021 instead of 2022
+writeBin(r, fn)
+
+
+
+> On Feb 12, 2022, at 12:38 PM, Simon Urbanek <simon.urbanek at R-project.org> wrote:
+> 
+> FWIW this seems to be a known issue (for some definition of known):
+> 
+> https://bugs.astron.com/view.php?id=316
+> 
+> A fix is to set your date when writing the DBF file to year 2021 instead of 2022 (which also explains why it worked last year ;)).
+> 
+> Cheers,
+> Simon
+> 
+> 
+> 
+> 
+> 
+>> On Feb 12, 2022, at 12:33 PM, Murray Efford <murray.efford at otago.ac.nz> wrote:
+>> 
+>> Many thanks for your guidance. Indeed there is a radical change:
+>> 
+>> $ file OVforest.dbf
+>> OVforest.dbf: FoxBase+/dBase III DBF, 3 records * 22, update-date 95-7-26, at offset 97 1st record "beech        beech    leftnonbeech nonbeech rightnonbeechnonbeech"
+>> 
+>> $ file OVforest2.dbf
+>> OVforest2.dbf: amd 29k coff prebar executable
+>> 
+>> I don't recognize the file descriptors (amd, coff, prebar). I guess I need to call in help from the GIS people...
+>> 
+>> Murray
+>> 
+>> ________________________________________
+>> From: Duncan Murdoch <murdoch.duncan at gmail.com>
+>> Sent: 12 February 2022 11:44
+>> To: Murray Efford; R-package-devel at r-project.org
+>> Subject: Re: [R-pkg-devel] shapefile .dbf recognised as executable
+>> 
+>> On 11/02/2022 5:22 p.m., Murray Efford wrote:
+>>> I have long distributed a small spatial ESRI shapefile as demonstration data in the extdata directory of 'secr'. It comprises the three files OVforest.shp, OVforest.dbf and OVforest.shx. I wanted to make minor changes (adding a coordinate reference system, dropping an attribute). I find that after merely reading (sf::st_read("OVforest.shp") and re-writing the same (sf::st_write("OVforest.shp")) the .dbf file is recognised by R CMD check as executable and raises a Warning (on GNU/Linux, but not in Windows).
+>>> 
+>>> No doubt this can be blamed on specifics of the driver used by sf::st_write, but I have been unable to find any settings that might change the behaviour.
+>>> 
+>>> I would like to know: Is this a false positive, and if not, How can I remove the executable component(s)? Can I apply the test used by R CMD check outside of R CMD check?
+>> 
+>> It's not easy to run just that test, but you can see it if you look here:
+>> 
+>> https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fgithub.com%2Fwch%2Fr-source%2Fblob%2F988077a792e628677bd5884b351fe08b2c17b8c8%2Fsrc%2Flibrary%2Ftools%2FR%2Fcheck.R%23L4866-L4941&amp;data=04%7C01%7Cmurray.efford%40otago.ac.nz%7Ce242631c41c342f47d8908d9edb008b8%7C0225efc578fe4928b1579ef24809e9ba%7C0%7C0%7C637802163497599994%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000&amp;sdata=Z77T09j1sONATxupZGSmkayrpjt3Ra1g%2FS6vxQq8CJs%3D&amp;reserved=0
+>> 
+>> The basic idea is that it uses the "file" command.  There are some known
+>> false positives.
+>> 
+>> If you are on Linux, try running "file OVforest.dbf" and see what it says.
+>> 
+>> Duncan Murdoch
+>> 
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>> 
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From murr@y@e||ord @end|ng |rom ot@go@@c@nz  Sat Feb 12 01:41:04 2022
+From: murr@y@e||ord @end|ng |rom ot@go@@c@nz (Murray Efford)
+Date: Sat, 12 Feb 2022 00:41:04 +0000
+Subject: [R-pkg-devel] shapefile .dbf recognised as executable
+In-Reply-To: <46A0A0A7-C3B3-4F5B-8351-6B8D04422E19@R-project.org>
+References: <SY4PR01MB5658FBF4675400CF6DC6E63CAC309@SY4PR01MB5658.ausprd01.prod.outlook.com>
+ <4b0e638c-162e-a6de-203a-3bfe90460808@gmail.com>
+ <SY4PR01MB5658328F16504375B5092DBEAC309@SY4PR01MB5658.ausprd01.prod.outlook.com>
+ <46A0A0A7-C3B3-4F5B-8351-6B8D04422E19@R-project.org>
+Message-ID: <SY4PR01MB5658C193B4C72CB1FF2924BEAC319@SY4PR01MB5658.ausprd01.prod.outlook.com>
+
+Amazing. Who would have thought? This works:
+
+OVforest <- sf::st_read("OVforest.shp")
+sf::st_write(OVforest, "OVforest3.shp", layer_options = "DBF_DATE_LAST_UPDATE=2021-12-31")
+
+$ file OVforest3.dbf
+OVforest3.dbf: FoxBase+/dBase III DBF, 3 records * 12, update-date 121-12-31, codepage ID=0x57, at offset 65 1st record "          0           1           2\032"
+
+Murray
+
+________________________________________
+From: Simon Urbanek <simon.urbanek at R-project.org>
+Sent: 12 February 2022 12:38
+To: Murray Efford
+Cc: Duncan Murdoch; R-package-devel at r-project.org
+Subject: Re: [R-pkg-devel] shapefile .dbf recognised as executable
+
+FWIW this seems to be a known issue (for some definition of known):
+
+https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fbugs.astron.com%2Fview.php%3Fid%3D316&amp;data=04%7C01%7Cmurray.efford%40otago.ac.nz%7Cf4c62a1b8f424575c75608d9edb7aa72%7C0225efc578fe4928b1579ef24809e9ba%7C0%7C0%7C637802195379474238%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000&amp;sdata=EGkZIRKQNcdcqXqHJaN7i%2FhCbaJn8r%2FosFUTrPE39ts%3D&amp;reserved=0
+
+A fix is to set your date when writing the DBF file to year 2021 instead of 2022 (which also explains why it worked last year ;)).
+
+Cheers,
+Simon
+
+
+
+
+
+> On Feb 12, 2022, at 12:33 PM, Murray Efford <murray.efford at otago.ac.nz> wrote:
+>
+> Many thanks for your guidance. Indeed there is a radical change:
+>
+> $ file OVforest.dbf
+> OVforest.dbf: FoxBase+/dBase III DBF, 3 records * 22, update-date 95-7-26, at offset 97 1st record "beech        beech    leftnonbeech nonbeech rightnonbeechnonbeech"
+>
+> $ file OVforest2.dbf
+> OVforest2.dbf: amd 29k coff prebar executable
+>
+> I don't recognize the file descriptors (amd, coff, prebar). I guess I need to call in help from the GIS people...
+>
+> Murray
+>
+> ________________________________________
+> From: Duncan Murdoch <murdoch.duncan at gmail.com>
+> Sent: 12 February 2022 11:44
+> To: Murray Efford; R-package-devel at r-project.org
+> Subject: Re: [R-pkg-devel] shapefile .dbf recognised as executable
+>
+> On 11/02/2022 5:22 p.m., Murray Efford wrote:
+>> I have long distributed a small spatial ESRI shapefile as demonstration data in the extdata directory of 'secr'. It comprises the three files OVforest.shp, OVforest.dbf and OVforest.shx. I wanted to make minor changes (adding a coordinate reference system, dropping an attribute). I find that after merely reading (sf::st_read("OVforest.shp") and re-writing the same (sf::st_write("OVforest.shp")) the .dbf file is recognised by R CMD check as executable and raises a Warning (on GNU/Linux, but not in Windows).
+>>
+>> No doubt this can be blamed on specifics of the driver used by sf::st_write, but I have been unable to find any settings that might change the behaviour.
+>>
+>> I would like to know: Is this a false positive, and if not, How can I remove the executable component(s)? Can I apply the test used by R CMD check outside of R CMD check?
+>
+> It's not easy to run just that test, but you can see it if you look here:
+>
+> https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fgithub.com%2Fwch%2Fr-source%2Fblob%2F988077a792e628677bd5884b351fe08b2c17b8c8%2Fsrc%2Flibrary%2Ftools%2FR%2Fcheck.R%23L4866-L4941&amp;data=04%7C01%7Cmurray.efford%40otago.ac.nz%7Cf4c62a1b8f424575c75608d9edb7aa72%7C0225efc578fe4928b1579ef24809e9ba%7C0%7C0%7C637802195379474238%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000&amp;sdata=1SkmfSqsvOpA%2Brs3DNCU86VJi6YXuGcSDxLIpjsQ720%3D&amp;reserved=0
+>
+> The basic idea is that it uses the "file" command.  There are some known
+> false positives.
+>
+> If you are on Linux, try running "file OVforest.dbf" and see what it says.
+>
+> Duncan Murdoch
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-package-devel&amp;data=04%7C01%7Cmurray.efford%40otago.ac.nz%7Cf4c62a1b8f424575c75608d9edb7aa72%7C0225efc578fe4928b1579ef24809e9ba%7C0%7C0%7C637802195379474238%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000&amp;sdata=q9urWht4opl4qfGzLCKDSD8VzDbxo8dquJm14jsxhxc%3D&amp;reserved=0
+>
+
+
