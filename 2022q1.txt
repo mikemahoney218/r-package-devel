@@ -9774,3 +9774,339 @@ Duncan Murdoch
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From @ergue|@@oko| @end|ng |rom gm@||@com  Thu Feb 17 10:04:54 2022
+From: @ergue|@@oko| @end|ng |rom gm@||@com (Sokol Serguei)
+Date: Thu, 17 Feb 2022 10:04:54 +0100
+Subject: [R-pkg-devel] 
+ (How) can you use R file i/o within Fortran code in an R package?
+In-Reply-To: <e3c49560-8167-5b8d-3fca-faa272afe207@bristol.ac.uk>
+References: <44ce75ba-fce5-93c7-6244-09897a1fb97e@bristol.ac.uk>
+ <e3c49560-8167-5b8d-3fca-faa272afe207@bristol.ac.uk>
+Message-ID: <74f8a4d3-60e8-adb8-c222-05eaa67452bc@gmail.com>
+
+Le 16/02/2022 ? 16:53, Peter Green a ?crit?:
+> I am developing a package based around several thousand lines of 
+> legacy Fortran code front-ended with a fairly minimal R function to 
+> format input and results. In its basic form it is on CRAN, but now I 
+> want to extend it in a way that will generate copious output over the 
+> course of the running time of the Fortran code, and I would prefer if 
+> possible to write this output to (several) files rather than return it 
+> through arguments to .Fortran.
+>
+> I have a version using Fortran open, write and close (naturally 
+> avoiding stderr and stdout), which runs perfectly on several 
+> platforms, but generates a NOTE in R-hub and Winbuilder:
+>
+> > * checking compiled code ... NOTE
+> > File ?Nmix/libs/Nmix.so?:
+> >?? Found ?_gfortran_st_close?, possibly from ?close? (Fortran)
+> >???? Object: ?Nmix-sub3z.o?
+> >?? Found ?_gfortran_st_open?, possibly from ?open? (Fortran)
+> >???? Object: ?Nmix-sub3z.o?
+> >?? Found ?_gfortran_st_write?, possibly from ?write? (Fortran), ?print?
+> >???? (Fortran)
+> >???? Object: ?Nmix-sub3z.o?
+> >
+> > Compiled code should not call entry points which might terminate R nor
+> > write to stdout/stderr instead of to the console, nor use Fortran I/O
+> > nor system RNGs.
+> that will presumably cause it to fail submission to CRAN, for reasons 
+> I understand.
+>
+> Is there a way that I can use R file i/o from within the Fortran code, 
+> possibly mediated through a C or C++ wrapper? As I am not fluent in 
+> these languages or all the concepts involved, if it is possible a 
+> recipe or template would be most appreciated. To fix ideas, (how) can 
+> I write 100000 integers, separated by white space, to a text file?
+
+I don't have an example in hand, just few pointers which could be useful.
+First, how to print from Rcpp 
+https://teuder.github.io/rcpp4everyone_en/060_printing_massages.html
+This example use NumericVector type for an entry parameter which you 
+won't need. Use just classical C types (double, int, ...) and pointers 
+on them. You don't need either '//[Rcpp::export]' as you wont call this 
+function from R but from Fortran.
+Second, how to call C from Fortran, e.g. 
+https://riptutorial.com/fortran/example/7149/calling-c-from-fortran
+The fact that your printing function will be in .cpp file does not 
+matter. C interface will work if you limit your parameters to C types.
+
+Hoping it helps,
+Best,
+Serguei.
+
+>
+> My apologies if this is a well-known question already answered, 
+> possibly in the negative, but my search through the archives failed to 
+> find anything. Thank you.
+>
+> Peter Green
+>
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From p@o @end|ng |rom qgg@@u@dk  Thu Feb 17 10:19:02 2022
+From: p@o @end|ng |rom qgg@@u@dk (=?Windows-1252?Q?Peter_S=F8rensen?=)
+Date: Thu, 17 Feb 2022 09:19:02 +0000
+Subject: [R-pkg-devel] 
+ (How) can you use R file i/o within Fortran code in an R package?
+In-Reply-To: <74f8a4d3-60e8-adb8-c222-05eaa67452bc@gmail.com>
+References: <44ce75ba-fce5-93c7-6244-09897a1fb97e@bristol.ac.uk>
+ <e3c49560-8167-5b8d-3fca-faa272afe207@bristol.ac.uk>
+ <74f8a4d3-60e8-adb8-c222-05eaa67452bc@gmail.com>
+Message-ID: <AM0PR01MB42902DB02DB8B4A1DE74FBA5FC369@AM0PR01MB4290.eurprd01.prod.exchangelabs.com>
+
+I have created a fortran interface to a few c functions (fopen, fwrite, fread, fseek) via iso_c_binding that is used in my fortran code. The code can be found here: qgg/bigreml.f90 at master ? psoerensen/qgg (github.com)<https://github.com/psoerensen/qgg/blob/master/src/bigreml.f90>
+Perhaps this is useful in some way.
+Kind regards
+Peter
+________________________________
+Fra: R-package-devel <r-package-devel-bounces at r-project.org> p? vegne af Sokol Serguei <serguei.sokol at gmail.com>
+Sendt: 17. februar 2022 10:04
+Til: Peter Green <mapjg at bristol.ac.uk>; r-package-devel at r-project.org <r-package-devel at r-project.org>
+Emne: Re: [R-pkg-devel] (How) can you use R file i/o within Fortran code in an R package?
+
+Le 16/02/2022 ? 16:53, Peter Green a ?crit :
+> I am developing a package based around several thousand lines of
+> legacy Fortran code front-ended with a fairly minimal R function to
+> format input and results. In its basic form it is on CRAN, but now I
+> want to extend it in a way that will generate copious output over the
+> course of the running time of the Fortran code, and I would prefer if
+> possible to write this output to (several) files rather than return it
+> through arguments to .Fortran.
+>
+> I have a version using Fortran open, write and close (naturally
+> avoiding stderr and stdout), which runs perfectly on several
+> platforms, but generates a NOTE in R-hub and Winbuilder:
+>
+> > * checking compiled code ... NOTE
+> > File ?Nmix/libs/Nmix.so?:
+> >   Found ?_gfortran_st_close?, possibly from ?close? (Fortran)
+> >     Object: ?Nmix-sub3z.o?
+> >   Found ?_gfortran_st_open?, possibly from ?open? (Fortran)
+> >     Object: ?Nmix-sub3z.o?
+> >   Found ?_gfortran_st_write?, possibly from ?write? (Fortran), ?print?
+> >     (Fortran)
+> >     Object: ?Nmix-sub3z.o?
+> >
+> > Compiled code should not call entry points which might terminate R nor
+> > write to stdout/stderr instead of to the console, nor use Fortran I/O
+> > nor system RNGs.
+> that will presumably cause it to fail submission to CRAN, for reasons
+> I understand.
+>
+> Is there a way that I can use R file i/o from within the Fortran code,
+> possibly mediated through a C or C++ wrapper? As I am not fluent in
+> these languages or all the concepts involved, if it is possible a
+> recipe or template would be most appreciated. To fix ideas, (how) can
+> I write 100000 integers, separated by white space, to a text file?
+
+I don't have an example in hand, just few pointers which could be useful.
+First, how to print from Rcpp
+https://teuder.github.io/rcpp4everyone_en/060_printing_massages.html
+This example use NumericVector type for an entry parameter which you
+won't need. Use just classical C types (double, int, ...) and pointers
+on them. You don't need either '//[Rcpp::export]' as you wont call this
+function from R but from Fortran.
+Second, how to call C from Fortran, e.g.
+https://riptutorial.com/fortran/example/7149/calling-c-from-fortran
+The fact that your printing function will be in .cpp file does not
+matter. C interface will work if you limit your parameters to C types.
+
+Hoping it helps,
+Best,
+Serguei.
+
+>
+> My apologies if this is a well-known question already answered,
+> possibly in the negative, but my search through the archives failed to
+> find anything. Thank you.
+>
+> Peter Green
+>
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+	[[alternative HTML version deleted]]
+
+
+From n@r@@ @end|ng |rom @t@n|ord@edu  Thu Feb 17 20:41:10 2022
+From: n@r@@ @end|ng |rom @t@n|ord@edu (Balasubramanian Narasimhan)
+Date: Thu, 17 Feb 2022 11:41:10 -0800
+Subject: [R-pkg-devel] 
+ (How) can you use R file i/o within Fortran code in an R package?
+In-Reply-To: <e3c49560-8167-5b8d-3fca-faa272afe207@bristol.ac.uk>
+References: <44ce75ba-fce5-93c7-6244-09897a1fb97e@bristol.ac.uk>
+ <e3c49560-8167-5b8d-3fca-faa272afe207@bristol.ac.uk>
+Message-ID: <51582920-75a2-28bb-8ad4-e04731db08d2@stanford.edu>
+
+An example and test package:
+
+https://bnaras.github.io/ftest/articles/frcall.html
+
+-Naras
+
+On 2/16/22 7:53 AM, Peter Green wrote:
+> I am developing a package based around several thousand lines of 
+> legacy Fortran code front-ended with a fairly minimal R function to 
+> format input and results. In its basic form it is on CRAN, but now I 
+> want to extend it in a way that will generate copious output over the 
+> course of the running time of the Fortran code, and I would prefer if 
+> possible to write this output to (several) files rather than return it 
+> through arguments to .Fortran.
+>
+> I have a version using Fortran open, write and close (naturally 
+> avoiding stderr and stdout), which runs perfectly on several 
+> platforms, but generates a NOTE in R-hub and Winbuilder:
+>
+> > * checking compiled code ... NOTE
+> > File ?Nmix/libs/Nmix.so?:
+> >?? Found ?_gfortran_st_close?, possibly from ?close? (Fortran)
+> >???? Object: ?Nmix-sub3z.o?
+> >?? Found ?_gfortran_st_open?, possibly from ?open? (Fortran)
+> >???? Object: ?Nmix-sub3z.o?
+> >?? Found ?_gfortran_st_write?, possibly from ?write? (Fortran), ?print?
+> >???? (Fortran)
+> >???? Object: ?Nmix-sub3z.o?
+> >
+> > Compiled code should not call entry points which might terminate R nor
+> > write to stdout/stderr instead of to the console, nor use Fortran I/O
+> > nor system RNGs.
+> that will presumably cause it to fail submission to CRAN, for reasons 
+> I understand.
+>
+> Is there a way that I can use R file i/o from within the Fortran code, 
+> possibly mediated through a C or C++ wrapper? As I am not fluent in 
+> these languages or all the concepts involved, if it is possible a 
+> recipe or template would be most appreciated. To fix ideas, (how) can 
+> I write 100000 integers, separated by white space, to a text file?
+>
+> My apologies if this is a well-known question already answered, 
+> possibly in the negative, but my search through the archives failed to 
+> find anything. Thank you.
+>
+> Peter Green
+>
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From D@n@Ke||ey @end|ng |rom D@|@C@  Thu Feb 17 21:53:50 2022
+From: D@n@Ke||ey @end|ng |rom D@|@C@ (Daniel Kelley)
+Date: Thu, 17 Feb 2022 20:53:50 +0000
+Subject: [R-pkg-devel] should I increase the version number when
+ resubmitting a package that failed incoming tests?
+Message-ID: <15D4797A-4942-4AD8-A926-CA920C26A0F8@dal.ca>
+
+I tried submitting oce_1.6-0 and it was rejected (owing to a broken link, according to reference 1 below; see reference 2 for the email I got from the CRAN system).  The email suggested I fix the package and resubmit.
+
+My question is: should I retain the same version number, or should I bump the number?  Since it did not "get into" the CRAN system, I'm thinking that I am supposed to use the same version number, but I don't want to make a mistake and get rejected again (e.g. for too many tries within a certain time interval).
+
+Thanks, in advance, to anyone who can suggest what I ought to do.
+
+Dan Kelley, Department of Oceanography, Dalhousie University, Canada.
+
+# References
+
+1. https://win-builder.r-project.org/incoming_pretest/oce_1.6-0_20220217_201627/Windows/00check.log
+2. https://github.com/dankelley/oce/issues/1918#issuecomment-1043363009
+
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Feb 17 22:03:54 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 18 Feb 2022 00:03:54 +0300
+Subject: [R-pkg-devel] should I increase the version number when
+ resubmitting a package that failed incoming tests?
+In-Reply-To: <15D4797A-4942-4AD8-A926-CA920C26A0F8@dal.ca>
+References: <15D4797A-4942-4AD8-A926-CA920C26A0F8@dal.ca>
+Message-ID: <20220218000354.06b71d6c@Tarkus>
+
+On Thu, 17 Feb 2022 20:53:50 +0000
+Daniel Kelley <Dan.Kelley at Dal.Ca> wrote:
+
+> My question is: should I retain the same version number, or should I
+> bump the number?
+
+CRAN policy currently says:
+
+"Increasing the version number at each submission reduces confusion so
+is preferred even when a previous submission was not accepted."
+
+<https://cran.r-project.org/web/packages/policies.html#Re_002dsubmission>
+
+I don't think you'd be penalised for incrementing a version, anyway,
+and there doesn't seem to be a formal cool-down period for
+resubmissions. It's reasonable to reupload once you're confident you've
+addressed all 
+
+-- 
+Best regards,
+Ivan
+
+
+From m|n@h@|| @end|ng |rom um|ch@edu  Fri Feb 18 01:04:27 2022
+From: m|n@h@|| @end|ng |rom um|ch@edu (Greg Minshall)
+Date: Thu, 17 Feb 2022 16:04:27 -0800
+Subject: [R-pkg-devel] should I increase the version number when
+ resubmitting a package that failed incoming tests?
+In-Reply-To: <15D4797A-4942-4AD8-A926-CA920C26A0F8@dal.ca>
+References: <15D4797A-4942-4AD8-A926-CA920C26A0F8@dal.ca>
+Message-ID: <1900332.1645142667@apollo2.minshall.org>
+
+Daniel,
+
+Ivan gave you good pointers from the R perspective.  and, in general
+(i.e., even outside the R context), i would say that a "version number"
+of a given package, ideally, should represent a unique set of
+files/contents.  so, re-submitting, maybe you'd bump to oce_1.6-1, or
+some such.
+
+cheers, Greg
+
+
+From ge|bjeremy22 @end|ng |rom gm@||@com  Fri Feb 18 02:00:40 2022
+From: ge|bjeremy22 @end|ng |rom gm@||@com (=?UTF-8?B?asOpcsOpbXkgR2VsYg==?=)
+Date: Thu, 17 Feb 2022 20:00:40 -0500
+Subject: [R-pkg-devel] CRAN warning prepare_Rd: rgeos: versions of GEOS
+Message-ID: <CACSk529+OvNMKuXP734MWMGEb0JytpBtUd1rAA4yo32d7q40tQ@mail.gmail.com>
+
+Dear all,
+
+I encounter a new warning with debian OS (only this one) when submitting a
+package to CRAN:
+
+* checking Rd files ... [4s/4s] WARNING
+prepare_Rd: rgeos: versions of GEOS runtime 3.10.2-CAPI-1.16.0
+and GEOS at installation 3.10.1-CAPI-1.16.0differ
+
+(
+https://win-builder.r-project.org/incoming_pretest/spNetwork_0.2.2_20220218_012321/Debian/00check.log
+)
+
+I tried two things and the warning remains:
+    - increasing rgeos version requirement
+    - uninstalling R-devel, reinstalling and rebuilding package
+
+I can not find help online on that matter. Does someone know how to deal
+with this warning?
+
+Thank you in advance!
+--
+
+	[[alternative HTML version deleted]]
+
+
