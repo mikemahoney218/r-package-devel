@@ -12130,3 +12130,685 @@ https://stat.ethz.ch/mailman/listinfo/r-package-devel
 	[[alternative HTML version deleted]]
 
 
+From m@tthew@k@y @end|ng |rom gm@||@com  Wed Mar  2 21:08:39 2022
+From: m@tthew@k@y @end|ng |rom gm@||@com (Matthew Kay)
+Date: Wed, 2 Mar 2022 14:08:39 -0600
+Subject: [R-pkg-devel] False negatives for CRAN url check on DOIs due to
+ Cloudflare anti-DDoS
+Message-ID: <CADHJc0H_dcjCH6NEnu5O2grEQavcr5z5TW3iEK7m_b8FJ628VQ@mail.gmail.com>
+
+Hi,
+
+I have recently noticed an increasing number of false negatives with the
+CRAN url check on DOIs. The essence of the problem is that certain DOIs
+will load fine in the browser, but return a 503 error to `curl -I -L` and
+therefore trigger a NOTE on CMD CHECK.
+
+Two example DOIs I have run into already, which used to pass fine without
+NOTEs (and still load fine in a browser):
+
+https://doi.org/10.1111/1467-985X.00120
+https://doi.org/10.1177/096228029200100102
+
+Here are the headers of the (final, after redirects) 503 response via curl:
+
+HTTP/1.1 503 Service Temporarily Unavailable
+> Date: Wed, 02 Mar 2022 19:19:39 GMT
+> Content-Type: text/html; charset=UTF-8
+> Connection: close
+> X-Frame-Options: SAMEORIGIN
+> Permissions-Policy:
+> accelerometer=(),autoplay=(),camera=(),clipboard-read=(),clipboard-write=(),fullscreen=(),geoloca
+>
+> tion=(),gyroscope=(),hid=(),interest-cohort=(),magnetometer=(),microphone=(),payment=(),publickey-credentials-get=(),
+> screen-wake-lock=(),serial=(),sync-xhr=(),usb=()
+> Cache-Control: private, max-age=0, no-store, no-cache, must-revalidate,
+> post-check=0, pre-check=0
+> Expires: Thu, 01 Jan 1970 00:00:01 GMT
+> Expect-CT: max-age=604800, report-uri="
+> https://report-uri.cloudflare.com/cdn-cgi/beacon/expect-ct"
+> Set-Cookie:
+> __cf_bm=3sNb43ySbB.qquj3NGAjnfBHzV_o5LYBOHjCtdj.HXo-1646248779-0-Aa4oCF746nYwQXhKGA2xJIJ5jvxJXbsPXtflcSqS
+> q+AjMfQYuLyNSo3fFeCBGKEdS2rIjyDW0HkT40tB1OuDxZ2sWnUZG+y/4dpZsY54IWU4;
+> path=/; expires=Wed, 02-Mar-22 19:49:39 GMT; do
+> main=.onlinelibrary.wiley.com; HttpOnly; Secure; SameSite=None
+> Strict-Transport-Security: max-age=15552000
+> Server: cloudflare
+> CF-RAY: 6e5c7c376d11c518-ORD
+
+
+We can see the response is coming from Cloudflare, which runs an anti-DDoS
+service. More discussion on that here
+<https://superuser.com/questions/888507/problems-with-wget-to-a-cloudflare-hosted-site-503-service-unavailable>,
+but the upshot seems to be that without a JavaScript enabled browser this
+probably is not a solvable problem.
+
+Anecdotally, this seems like a problem that could get worse: a few months
+ago I had one false negative DOI in a package submission, more recently
+(about a week ago) I had two. I have heard from other authors encountering
+this problem lately as well.
+
+Strategically, this disincentivizes package authors from accurately citing
+sources in order to avoid spurious NOTEs (without which, a whitelisted
+package can bypass human inspection and get to CRAN faster).
+
+Perhaps a solution might be to use a dedicated API to check DOIs. CrossRef
+offers one such, though it only works for CrossRef DOIs:
+https://api.crossref.org/swagger-ui/index.html
+
+For example, applying the API to one of the failing DOIs from above returns
+200 OK:
+
+curl -I -L https://api.crossref.org/works/10.1177/096228029200100102/agency
+
+Another option might be to just look at the first response to the DOI
+request (i.e., not to follow redirects; just curl -I not curl -I -L). I
+*think* this should return 302 on valid DOIs and 404 on invalid DOIs. For
+example, this returns 302 Found:
+
+curl -I https://doi.org/10.1111/1467-985X.00120
+
+And this non-existent DOI returns 404:
+
+curl -I https://doi.org/10.1111/1467-985X.XXXXXX
+
+So perhaps just using curl -I to check DOI urls would solve the problem?
+
+Thanks,
+
+---Matt
+
+
+-- 
+As an adherent of Email Friday
+<https://mjskay.medium.com/the-doctrine-of-email-friday-add7f8332d80>, if
+your email is not urgent I likely won't reply until the next Friday.
+--
+Matthew Kay
+Assistant Professor
+Northwestern University Computer Science and Communication Studies
+mjskay at northwestern.edu
+http://www.mjskay.com/
+
+	[[alternative HTML version deleted]]
+
+
+From j|n||68 @end|ng |rom gm@||@com  Thu Mar  3 05:41:13 2022
+From: j|n||68 @end|ng |rom gm@||@com (Jin Li)
+Date: Thu, 3 Mar 2022 15:41:13 +1100
+Subject: [R-pkg-devel] Warning from dependencies: 'fields::fastTpsMLE'
+In-Reply-To: <20220302175806.39403596@Tarkus>
+References: <CAGu_3ZLL0n4doDf9Rk-FeFVqkbEzJ=84UykdOpu0_i35dce3cQ@mail.gmail.com>
+ <20220302175806.39403596@Tarkus>
+Message-ID: <CAGu_3ZLG=dx8Z1QGux05dfcZ-G2wfJy4jTWo1w76ovQCCU9mXA@mail.gmail.com>
+
+Thanks a lot Ivan. An old version (09/10/2020) was used.
+Best,
+Jin
+
+On Thu, Mar 3, 2022 at 1:58 AM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+
+> On Wed, 2 Mar 2022 15:04:51 +1100
+> Jin Li <jinli68 at gmail.com> wrote:
+>
+> > Missing or unexported object: 'fields::fastTpsMLE'
+>
+> The current CRAN version of fields doesn't seem to have "fastTpsMLE" in
+> its documentation:
+> https://cran.r-project.org/web/packages/fields/fields.pdf
+>
+> I also can't seem to find fastTpsMLE in the GitHub repo of the package:
+> https://github.com/dnychka/fieldsRPackage/search?q=fastTpsMLE
+>
+> Which version of fields do you have installed?
+>
+> --
+> Best regards,
+> Ivan
+>
+
+
+-- 
+Jin
+------------------------------------------
+Jin Li, PhD
+Founder, Data2action, Australia
+https://www.researchgate.net/profile/Jin_Li32
+https://scholar.google.com/citations?user=Jeot53EAAAAJ&hl=en
+
+	[[alternative HTML version deleted]]
+
+
+From j|n||68 @end|ng |rom gm@||@com  Thu Mar  3 05:53:32 2022
+From: j|n||68 @end|ng |rom gm@||@com (Jin Li)
+Date: Thu, 3 Mar 2022 15:53:32 +1100
+Subject: [R-pkg-devel] Warning from dependencies: 'fields::fastTpsMLE'
+In-Reply-To: <MWHPR01MB22371084A8A53F07809F813FD3039@MWHPR01MB2237.prod.exchangelabs.com>
+References: <CAGu_3ZLL0n4doDf9Rk-FeFVqkbEzJ=84UykdOpu0_i35dce3cQ@mail.gmail.com>
+ <20220302175806.39403596@Tarkus>
+ <MWHPR01MB22371084A8A53F07809F813FD3039@MWHPR01MB2237.prod.exchangelabs.com>
+Message-ID: <CAGu_3ZJB8V75vcGP5+yB1=rqejsfk+ocdBYK4fp0k1qF4vrA1g@mail.gmail.com>
+
+Many thanks, Michael.
+
+The `fastTpsMLE` was used to estimate `lambda` for `Tps` as below:
+
+library(fields); library(spm); data(petrel)
+x=petrel[, c(1,2)]; y=petrel[, 5]; theta = 3
+
+lambda <- fields::fastTpsMLE(x, y, theta = theta)$lambda.best
+lambda
+[1] 0.9875504
+
+I have just updated the `fields` package. However, `lambda` is not reported
+by `fastTps`. But I need an estimate of `lamda` for `Tps`. Is there a
+solution for this?
+
+Best,
+Jin
+
+On Thu, Mar 3, 2022 at 2:35 AM Michael Barr <mike at bikeactuary.com> wrote:
+
+> fastTpsMLE is not in the current version of fields - latest version I see
+> with it is 11.x. 12.x onward you use fastTps() and can specify REML=TRUE
+> for the estimator. You are probably using 12.x and looking at older
+> documentation. A quick glance at the older source for fastTpsMLE and I
+> think that they were actually using REML in practice (holding some
+> parameters fixed, optimizing others).
+> ------------------------------
+> *From:* R-package-devel <r-package-devel-bounces at r-project.org> on behalf
+> of Ivan Krylov <krylov.r00t at gmail.com>
+> *Sent:* Wednesday, March 2, 2022 9:58 AM
+> *To:* Jin Li <jinli68 at gmail.com>
+> *Cc:* r-package-devel at r-project.org <r-package-devel at r-project.org>
+> *Subject:* Re: [R-pkg-devel] Warning from dependencies:
+> 'fields::fastTpsMLE'
+>
+> On Wed, 2 Mar 2022 15:04:51 +1100
+> Jin Li <jinli68 at gmail.com> wrote:
+>
+> > Missing or unexported object: 'fields::fastTpsMLE'
+>
+> The current CRAN version of fields doesn't seem to have "fastTpsMLE" in
+> its documentation:
+> https://cran.r-project.org/web/packages/fields/fields.pdf
+>
+> I also can't seem to find fastTpsMLE in the GitHub repo of the package:
+> https://github.com/dnychka/fieldsRPackage/search?q=fastTpsMLE
+>
+> Which version of fields do you have installed?
+>
+> --
+> Best regards,
+> Ivan
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+-- 
+Jin
+------------------------------------------
+Jin Li, PhD
+Founder, Data2action, Australia
+https://www.researchgate.net/profile/Jin_Li32
+https://scholar.google.com/citations?user=Jeot53EAAAAJ&hl=en
+
+	[[alternative HTML version deleted]]
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Thu Mar  3 08:53:44 2022
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Thu, 3 Mar 2022 08:53:44 +0100
+Subject: [R-pkg-devel] False positives for CRAN url check on DOIs due to
+ Cloudflare anti-DDoS
+In-Reply-To: <CADHJc0H_dcjCH6NEnu5O2grEQavcr5z5TW3iEK7m_b8FJ628VQ@mail.gmail.com>
+References: <CADHJc0H_dcjCH6NEnu5O2grEQavcr5z5TW3iEK7m_b8FJ628VQ@mail.gmail.com>
+Message-ID: <25120.29704.13117.95788@stat.math.ethz.ch>
+
+[changed subject:  s/negative/positive/ ! ]
+>>>>> Matthew Kay 
+>>>>>     on Wed, 2 Mar 2022 14:08:39 -0600 writes:
+
+    > Hi,
+
+    > I have recently noticed an increasing number of false
+    > negatives with the CRAN url check on DOIs. The essence of
+    > the problem is that certain DOIs will load fine in the
+    > browser, but return a 503 error to `curl -I -L` and
+    > therefore trigger a NOTE on CMD CHECK.
+
+    > Two example DOIs I have run into already, which used to
+    > pass fine without NOTEs (and still load fine in a
+    > browser):
+
+    > https://doi.org/10.1111/1467-985X.00120
+    > https://doi.org/10.1177/096228029200100102
+
+This occurrence of false *positives* (not "negatives"), short
+FPs, in url checks has been happening for a long time (more than
+a year) and is a bit unfortunate.
+As you allude to, it's from webservers where the maintainers do not want
+non-interactive "mass download" or web scraping etc to happen.
+
+I agree that it's particularly unpleasant in the case of DOIs;
+OTOH, we can live with it, and I think the CRAN and Bioconductor
+teams are well aware of the issue.
+
+I also don't think it's worth starting a "fight" with the webservice
+(trying to camouflage our url checking as coming from an
+ interactive web browser),  but maybe we (R Core in conjunction
+with the CRAN team) should introduce special 'URLNOTE' for the
+URL checks, and be aware that these maybe FP.
+
+Martin
+
+    > Here are the headers of the (final, after redirects) 503
+    > response via curl:
+
+    > HTTP/1.1 503 Service Temporarily Unavailable
+    >> Date: Wed, 02 Mar 2022 19:19:39 GMT Content-Type:
+    >> text/html; charset=UTF-8 Connection: close
+    >> X-Frame-Options: SAMEORIGIN Permissions-Policy:
+    >> accelerometer=(),autoplay=(),camera=(),clipboard-read=(),clipboard-write=(),fullscreen=(),geoloca
+    >> 
+    >> tion=(),gyroscope=(),hid=(),interest-cohort=(),magnetometer=(),microphone=(),payment=(),publickey-credentials-get=(),
+    >> screen-wake-lock=(),serial=(),sync-xhr=(),usb=()
+    >> Cache-Control: private, max-age=0, no-store, no-cache,
+    >> must-revalidate, post-check=0, pre-check=0 Expires: Thu,
+    >> 01 Jan 1970 00:00:01 GMT Expect-CT: max-age=604800,
+    >> report-uri="
+    >> https://report-uri.cloudflare.com/cdn-cgi/beacon/expect-ct"
+    >> Set-Cookie:
+    >> __cf_bm=3sNb43ySbB.qquj3NGAjnfBHzV_o5LYBOHjCtdj.HXo-1646248779-0-Aa4oCF746nYwQXhKGA2xJIJ5jvxJXbsPXtflcSqS
+    >> q+AjMfQYuLyNSo3fFeCBGKEdS2rIjyDW0HkT40tB1OuDxZ2sWnUZG+y/4dpZsY54IWU4;
+    >> path=/; expires=Wed, 02-Mar-22 19:49:39 GMT; do
+    >> main=.onlinelibrary.wiley.com; HttpOnly; Secure;
+    >> SameSite=None Strict-Transport-Security: max-age=15552000
+    >> Server: cloudflare CF-RAY: 6e5c7c376d11c518-ORD
+
+
+    > We can see the response is coming from Cloudflare, which
+    > runs an anti-DDoS service. More discussion on that here
+    > <https://superuser.com/questions/888507/problems-with-wget-to-a-cloudflare-hosted-site-503-service-unavailable>,
+    > but the upshot seems to be that without a JavaScript
+    > enabled browser this probably is not a solvable problem.
+
+    > Anecdotally, this seems like a problem that could get
+    > worse: a few months ago I had one false negative DOI in a
+    > package submission, more recently (about a week ago) I had
+    > two. I have heard from other authors encountering this
+    > problem lately as well.
+
+    > Strategically, this disincentivizes package authors from
+    > accurately citing sources in order to avoid spurious NOTEs
+    > (without which, a whitelisted package can bypass human
+    > inspection and get to CRAN faster).
+
+    > Perhaps a solution might be to use a dedicated API to
+    > check DOIs. CrossRef offers one such, though it only works
+    > for CrossRef DOIs:
+    > https://api.crossref.org/swagger-ui/index.html
+
+    > For example, applying the API to one of the failing DOIs
+    > from above returns 200 OK:
+
+    > curl -I -L
+    > https://api.crossref.org/works/10.1177/096228029200100102/agency
+
+    > Another option might be to just look at the first response
+    > to the DOI request (i.e., not to follow redirects; just
+    > curl -I not curl -I -L). I *think* this should return 302
+    > on valid DOIs and 404 on invalid DOIs. For example, this
+    > returns 302 Found:
+
+    > curl -I https://doi.org/10.1111/1467-985X.00120
+
+    > And this non-existent DOI returns 404:
+
+    > curl -I https://doi.org/10.1111/1467-985X.XXXXXX
+
+    > So perhaps just using curl -I to check DOI urls would
+    > solve the problem?
+
+    > Thanks,
+
+    > ---Matt
+
+
+    > -- 
+    > As an adherent of Email Friday
+    > <https://mjskay.medium.com/the-doctrine-of-email-friday-add7f8332d80>,
+    > if your email is not urgent I likely won't reply until the
+    > next Friday.
+    > --
+    > Matthew Kay Assistant Professor Northwestern University
+    > Computer Science and Communication Studies
+    > mjskay at northwestern.edu http://www.mjskay.com/
+
+    > 	[[alternative HTML version deleted]]
+
+    > ______________________________________________
+    > R-package-devel at r-project.org mailing list
+    > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From C@L|oyd @end|ng |rom mb@@edu  Wed Mar  2 22:49:32 2022
+From: C@L|oyd @end|ng |rom mb@@edu (Chris Lloyd)
+Date: Wed, 2 Mar 2022 21:49:32 +0000
+Subject: [R-pkg-devel] assistance needed
+In-Reply-To: <ME2PR01MB355584857EDF1E850AF25E68E33D9@ME2PR01MB3555.ausprd01.prod.outlook.com>
+References: <ME2PR01MB355584857EDF1E850AF25E68E33D9@ME2PR01MB3555.ausprd01.prod.outlook.com>
+Message-ID: <ME2PR01MB3555A0E6897D5E96403A255BE3039@ME2PR01MB3555.ausprd01.prod.outlook.com>
+
+I need to employ someone to massage my code into an R-package that is completely acceptable on CRAN. It gets rejected even though there are 0 errors or warnings when I check locally. I also have a more complex package that involves downloading data from an external site. (Unrelated to package development, I also want my lecture notes in word converted through Bookdown).
+
+If nobody on this list is interested, or knows someone who might be appropriate, perhaps someone could suggest a good site to advertise? I tried Upworks but there did not seem to be any applicants with promising backgrounds.
+
+Thanks
+
+Chris J. Lloyd
+Professor of Business Statistics
+Melbourne Business School
+200 Leicester Street, Carlton, Victoria 3053 Australia
+T:  +61 3 9349 8228
+E:  c.lloyd at mbs.edu<mailto:c.lloyd at mbs.edu>  |  www.mbs.edu<http://www.mbs.edu/>
+
+----------------------------------------------------------------------
+Notice from Melbourne Business School Ltd
+
+The information contained in this e-mail is confidential...{{dropped:15}}
+
+
+From m@tthew@k@y @end|ng |rom gm@||@com  Thu Mar  3 09:35:09 2022
+From: m@tthew@k@y @end|ng |rom gm@||@com (Matthew Kay)
+Date: Thu, 3 Mar 2022 02:35:09 -0600
+Subject: [R-pkg-devel] False positives for CRAN url check on DOIs due to
+ Cloudflare anti-DDoS
+In-Reply-To: <25120.29704.13117.95788@stat.math.ethz.ch>
+References: <CADHJc0H_dcjCH6NEnu5O2grEQavcr5z5TW3iEK7m_b8FJ628VQ@mail.gmail.com>
+ <25120.29704.13117.95788@stat.math.ethz.ch>
+Message-ID: <CADHJc0FBwKiCOGwTb+YgrWQ--ck6=yRGoSZHGPSFySjW5rOpaQ@mail.gmail.com>
+
+On Thu, Mar 3, 2022, 1:53 AM Martin Maechler <maechler at stat.math.ethz.ch>
+wrote:
+
+>
+>
+> This occurrence of false *positives* (not "negatives"),
+
+
+Ah, I took the glass-half-full view that the purpose of the check is to
+verify URLs are correct rather than detect incorrect ones ;).
+
+short
+> FPs, in url checks has been happening for a long time (more than
+> a year) and is a bit unfortunate.
+> As you allude to, it's from webservers where the maintainers do not want
+> non-interactive "mass download" or web scraping etc to happen.
+>
+> I agree that it's particularly unpleasant in the case of DOIs;
+> OTOH, we can live with it, and I think the CRAN and Bioconductor
+> teams are well aware of the issue.
+>
+
+Glad they're aware of it.
+
+
+> I also don't think it's worth starting a "fight" with the webservice
+> (trying to camouflage our url checking as coming from an
+>  interactive web browser),  but maybe we (R Core in conjunction
+> with the CRAN team) should introduce special 'URLNOTE' for the
+> URL checks, and be aware that these maybe FP.
+>
+
+Thanks, something like this would be helpful. I do wonder if you considered
+my other suggestion later in the message - that is, to not follow redirects
+in the URL checks just for DOIs (i.e. to use curl -I for DOIs)? It is my
+understanding DOI checks are already a special case compared to normal
+URLs, and I think this solution would be more robust for DOIs than the
+current approach. It also would be lower burden for CRAN reviewers and
+package authors alike by eliminating the need for human review in some
+cases.
+
+Best,
+
+---Matt
+
+
+
+> Martin
+>
+>     > Here are the headers of the (final, after redirects) 503
+>     > response via curl:
+>
+>     > HTTP/1.1 503 Service Temporarily Unavailable
+>     >> Date: Wed, 02 Mar 2022 19:19:39 GMT Content-Type:
+>     >> text/html; charset=UTF-8 Connection: close
+>     >> X-Frame-Options: SAMEORIGIN Permissions-Policy:
+>     >>
+> accelerometer=(),autoplay=(),camera=(),clipboard-read=(),clipboard-write=(),fullscreen=(),geoloca
+>     >>
+>     >>
+> tion=(),gyroscope=(),hid=(),interest-cohort=(),magnetometer=(),microphone=(),payment=(),publickey-credentials-get=(),
+>     >> screen-wake-lock=(),serial=(),sync-xhr=(),usb=()
+>     >> Cache-Control: private, max-age=0, no-store, no-cache,
+>     >> must-revalidate, post-check=0, pre-check=0 Expires: Thu,
+>     >> 01 Jan 1970 00:00:01 GMT Expect-CT: max-age=604800,
+>     >> report-uri="
+>     >> https://report-uri.cloudflare.com/cdn-cgi/beacon/expect-ct"
+>     >> Set-Cookie:
+>     >>
+> __cf_bm=3sNb43ySbB.qquj3NGAjnfBHzV_o5LYBOHjCtdj.HXo-1646248779-0-Aa4oCF746nYwQXhKGA2xJIJ5jvxJXbsPXtflcSqS
+>     >>
+> q+AjMfQYuLyNSo3fFeCBGKEdS2rIjyDW0HkT40tB1OuDxZ2sWnUZG+y/4dpZsY54IWU4;
+>     >> path=/; expires=Wed, 02-Mar-22 19:49:39 GMT; do
+>     >> main=.onlinelibrary.wiley.com; HttpOnly; Secure;
+>     >> SameSite=None Strict-Transport-Security: max-age=15552000
+>     >> Server: cloudflare CF-RAY: 6e5c7c376d11c518-ORD
+>
+>
+>     > We can see the response is coming from Cloudflare, which
+>     > runs an anti-DDoS service. More discussion on that here
+>     > <
+> https://superuser.com/questions/888507/problems-with-wget-to-a-cloudflare-hosted-site-503-service-unavailable
+> >,
+>     > but the upshot seems to be that without a JavaScript
+>     > enabled browser this probably is not a solvable problem.
+>
+>     > Anecdotally, this seems like a problem that could get
+>     > worse: a few months ago I had one false negative DOI in a
+>     > package submission, more recently (about a week ago) I had
+>     > two. I have heard from other authors encountering this
+>     > problem lately as well.
+>
+>     > Strategically, this disincentivizes package authors from
+>     > accurately citing sources in order to avoid spurious NOTEs
+>     > (without which, a whitelisted package can bypass human
+>     > inspection and get to CRAN faster).
+>
+>     > Perhaps a solution might be to use a dedicated API to
+>     > check DOIs. CrossRef offers one such, though it only works
+>     > for CrossRef DOIs:
+>     > https://api.crossref.org/swagger-ui/index.html
+>
+>     > For example, applying the API to one of the failing DOIs
+>     > from above returns 200 OK:
+>
+>     > curl -I -L
+>     > https://api.crossref.org/works/10.1177/096228029200100102/agency
+>
+>     > Another option might be to just look at the first response
+>     > to the DOI request (i.e., not to follow redirects; just
+>     > curl -I not curl -I -L). I *think* this should return 302
+>     > on valid DOIs and 404 on invalid DOIs. For example, this
+>     > returns 302 Found:
+>
+>     > curl -I https://doi.org/10.1111/1467-985X.00120
+>
+>     > And this non-existent DOI returns 404:
+>
+>     > curl -I https://doi.org/10.1111/1467-985X.XXXXXX
+>
+>     > So perhaps just using curl -I to check DOI urls would
+>     > solve the problem?
+>
+>     > Thanks,
+>
+>     > ---Matt
+>
+>
+>     > --
+>     > As an adherent of Email Friday
+>     > <https://mjskay.medium.com/the-doctrine-of-email-friday-add7f8332d80
+> >,
+>     > if your email is not urgent I likely won't reply until the
+>     > next Friday.
+>     > --
+>     > Matthew Kay Assistant Professor Northwestern University
+>     > Computer Science and Communication Studies
+>     > mjskay at northwestern.edu http://www.mjskay.com/
+>
+>     >   [[alternative HTML version deleted]]
+>
+>     > ______________________________________________
+>     > R-package-devel at r-project.org mailing list
+>     > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From v|ncentv@nhee@ @end|ng |rom gm@||@com  Thu Mar  3 13:32:08 2022
+From: v|ncentv@nhee@ @end|ng |rom gm@||@com (Vincent van Hees)
+Date: Thu, 3 Mar 2022 13:32:08 +0100
+Subject: [R-pkg-devel] assistance needed
+In-Reply-To: <ME2PR01MB3555A0E6897D5E96403A255BE3039@ME2PR01MB3555.ausprd01.prod.outlook.com>
+References: <ME2PR01MB355584857EDF1E850AF25E68E33D9@ME2PR01MB3555.ausprd01.prod.outlook.com>
+ <ME2PR01MB3555A0E6897D5E96403A255BE3039@ME2PR01MB3555.ausprd01.prod.outlook.com>
+Message-ID: <CALnEB17hp4S=Sq23qmxVn+XhrnFu_ojoDNHNjtgY5LfNK5uu9A@mail.gmail.com>
+
+Does your code already live somewhere online? If yes, can you share a link?
+If not, a more elaborate summary of what the code does and what the error
+messages are would be great.
+
+I am a freelancer myself, but I do not know whether R-pkg-devel list
+maintainers are happy for us to offer/find consultancy projects via this
+list?
+So, I would also be interested to know what people here consider the
+preferred platform for finding and offering consultancy work relating to R
+package development?
+
+Vincent
+https://www.accelting.com/
+
+On Thu, 3 Mar 2022 at 09:12, Chris Lloyd <C.Lloyd at mbs.edu> wrote:
+
+> I need to employ someone to massage my code into an R-package that is
+> completely acceptable on CRAN. It gets rejected even though there are 0
+> errors or warnings when I check locally. I also have a more complex package
+> that involves downloading data from an external site. (Unrelated to package
+> development, I also want my lecture notes in word converted through
+> Bookdown).
+>
+> If nobody on this list is interested, or knows someone who might be
+> appropriate, perhaps someone could suggest a good site to advertise? I
+> tried Upworks but there did not seem to be any applicants with promising
+> backgrounds.
+>
+> Thanks
+>
+> Chris J. Lloyd
+> Professor of Business Statistics
+> Melbourne Business School
+> 200 Leicester Street, Carlton, Victoria 3053 Australia
+> T:  +61 3 9349 8228
+> E:  c.lloyd at mbs.edu<mailto:c.lloyd at mbs.edu>  |  www.mbs.edu<
+> http://www.mbs.edu/>
+>
+> ----------------------------------------------------------------------
+> Notice from Melbourne Business School Ltd
+>
+> The information contained in this e-mail is confidenti...{{dropped:10}}
+
+
+From sps@@derso@ m@iii@g oii gm@ii@com  Thu Mar  3 13:39:47 2022
+From: sps@@derso@ m@iii@g oii gm@ii@com (sps@@derso@ m@iii@g oii gm@ii@com)
+Date: Thu, 3 Mar 2022 07:39:47 -0500
+Subject: [R-pkg-devel] assistance needed
+In-Reply-To: <CALnEB17hp4S=Sq23qmxVn+XhrnFu_ojoDNHNjtgY5LfNK5uu9A@mail.gmail.com>
+References: <CALnEB17hp4S=Sq23qmxVn+XhrnFu_ojoDNHNjtgY5LfNK5uu9A@mail.gmail.com>
+Message-ID: <7CF1EA0E-2004-4A44-A40E-D65D852A3B2A@gmail.com>
+
+I would say maybe the R group on LinkedIn would be maybe more appropriate. 
+
+Not sure that lecture notes and a book are appropriate for a package though, those would be better maybe on GitHub 
+
+Sent from my iPhone
+www.spsanderson.com
+
+> On Mar 3, 2022, at 7:33 AM, Vincent van Hees <vincentvanhees at gmail.com> wrote:
+> 
+> ?Does your code already live somewhere online? If yes, can you share a link?
+> If not, a more elaborate summary of what the code does and what the error
+> messages are would be great.
+> 
+> I am a freelancer myself, but I do not know whether R-pkg-devel list
+> maintainers are happy for us to offer/find consultancy projects via this
+> list?
+> So, I would also be interested to know what people here consider the
+> preferred platform for finding and offering consultancy work relating to R
+> package development?
+> 
+> Vincent
+> https://www.accelting.com/
+> 
+>> On Thu, 3 Mar 2022 at 09:12, Chris Lloyd <C.Lloyd at mbs.edu> wrote:
+>> 
+>> I need to employ someone to massage my code into an R-package that is
+>> completely acceptable on CRAN. It gets rejected even though there are 0
+>> errors or warnings when I check locally. I also have a more complex package
+>> that involves downloading data from an external site. (Unrelated to package
+>> development, I also want my lecture notes in word converted through
+>> Bookdown).
+>> 
+>> If nobody on this list is interested, or knows someone who might be
+>> appropriate, perhaps someone could suggest a good site to advertise? I
+>> tried Upworks but there did not seem to be any applicants with promising
+>> backgrounds.
+>> 
+>> Thanks
+>> 
+>> Chris J. Lloyd
+>> Professor of Business Statistics
+>> Melbourne Business School
+>> 200 Leicester Street, Carlton, Victoria 3053 Australia
+>> T:  +61 3 9349 8228
+>> E:  c.lloyd at mbs.edu<mailto:c.lloyd at mbs.edu>  |  www.mbs.edu<
+>> http://www.mbs.edu/>
+>> 
+>> ----------------------------------------------------------------------
+>> Notice from Melbourne Business School Ltd
+>> 
+>> The information contained in this e-mail is confident...{{dropped:6}}
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Thu Mar  3 16:27:39 2022
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Thu, 3 Mar 2022 16:27:39 +0100
+Subject: [R-pkg-devel] CRAN incoming checks / winbuilder will be down Fri
+ 5pm to Sat 5pm CET
+Message-ID: <e046f89b-91e6-6ade-f163-47e33fc39abb@statistik.tu-dortmund.de>
+
+Dear package maintainers,
+
+CRAN incoming checks / winbuilder will be down Fri 5pm to Sat 5pm CET as 
+there is need to shut down some CRAN hardware for maintainance work in 
+the building.
+
+Best,
+Uwe Ligges
+
+
