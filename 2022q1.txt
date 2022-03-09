@@ -13455,3 +13455,180 @@ Simon
 > 
 
 
+From @|ex|o@ @end|ng |rom 4d@c@pe@com  Sun Mar  6 01:54:08 2022
+From: @|ex|o@ @end|ng |rom 4d@c@pe@com (alexios galanos)
+Date: Sat, 5 Mar 2022 16:54:08 -0800
+Subject: [R-pkg-devel] table lacks "summary" attribute
+Message-ID: <a391d173-0f40-08ad-3ee6-63aab893d7b8@4dscape.com>
+
+Hi,
+
+I'm running a check of my rmgarch package against R development 
+(unstable) (2022-03-04 r81849) -- "Unsuffered Consequences"
+and getting a lot of NOTES around a lack of a summary attribute:
+
+example:
+
+* checking HTML version of manual ... NOTE
+Found the following problems:
+DCCfilter-class.Rd:7:1: Warning: <table> lacks "summary" attribute
+
+Any pointers/documentation on this?
+
+Thanks,
+
+Alexios
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Mon Mar  7 10:45:30 2022
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Mon, 7 Mar 2022 10:45:30 +0100
+Subject: [R-pkg-devel] cmake, Windows
+In-Reply-To: <E5866827-EA36-40F3-AA09-39CA4D966347@R-project.org>
+References: <1N0X8u-1oMiEg2f5A-00wWI9@mail.gmx.net>
+ <92781C58-7A10-45F9-AF69-7427DD1A9A04@R-project.org>
+ <E5866827-EA36-40F3-AA09-39CA4D966347@R-project.org>
+Message-ID: <03145bdf-22e5-6ed9-35d0-dd3f2facdfd9@gmail.com>
+
+On 3/6/22 21:46, Simon Urbanek wrote:
+> BTW: one option I forgot to mention would be to add SWI-Prolog to the toolchain instead so you don't need to build it. However, I don't know how tied you are to the development branch that you're using. There is also the official SWI release Windows binary which may be another option, but I didn't look at the details if that fits your bill. I would suggest setting up the UCRT environment locally and testing the different options so you can decide which is the best path forward.
+
+Right, primarily the package should use an existing installation of SWI 
+Prolog in the system. This is also required by the CRAN repository 
+policy, see "Using external C/C++/Fortran libraries.").
+
+So if SWI Prolog official release for Windows has the necessary headers 
+and DLLs, your R package could link to them. One example of R package 
+doing this is rjags, dynamically linking to JAGS (though when there is a 
+plain C interface, it is preferable as it is easier to maintain, see 
+WRE). This would be the simplest option and you could use dynamically 
+linked SWI Prolog.
+
+Adding a complete language runtime into an R package feels a bit odd to 
+me, but in principle is possible. If Rtools42 libraries included a 
+static library of SWI Prolog, your package could link to that. Rtools42 
+doesn't include it, but in principle it could be added (Rtools42 
+libraries themselves are built on Linux and indeed cmake is available 
+there, some of those use it), I could help with that. This wouldn't work 
+well if you needed to use dynamic linking.
+
+Building SWI Prolog from source included in the R package should not be 
+needed and it won't be any easier than adding it to Rtools42. Rtools42 
+currently doesn't have cmake ready for use (adding it is trivial via 
+pacman, but some work and documentation would be needed to make it find 
+the libraries).
+
+Best
+Tomas
+
+>
+> Cheers,
+> Simon
+>
+>
+>> On Mar 7, 2022, at 9:05 AM, Simon Urbanek <simon.urbanek at R-project.org> wrote:
+>>
+>> Matthias,
+>>
+>> that, that is helpful. So we are talking about UCRT here. The toolchain from https://github.com/kalibera/ucrt3 appears to not include the cmake binary. I suspect the reason is that since it is based on MXE, the cmake binary used for the toolchain is native (Linux) and not the Windows binary. I think there are two options: either use the CMake officially released binary or have the toolchain supply cmake.exe. I'd defer to Tomas who is maintaining the UCRT toolchain to advise which is the better option.
+>>
+>> Cheers,
+>> Simon
+>>
+>>
+>>
+>>> On Mar 6, 2022, at 12:37 PM, matthias-gondan <matthias-gondan at gmx.de> wrote:
+>>>
+>>> Thanks Simon,
+>>>
+>>> I'll remove the paths and report the results. I'll also check Dirks suggestion (the other response).
+>>>
+>>> For what it's worth, the error message was simply "cmake not found"; when I added the path it was "/ucrt64/bin/cmake not found"
+>>>
+>>> https://win-builder.r-project.org/incoming_pretest/rolog_0.9_20220305_172741/Windows/00install.out
+>>>
+>>> Best wishes,
+>>>
+>>> Matthias
+>>>
+>>> -------- Urspr?ngliche Nachricht --------
+>>> Von: Simon Urbanek <simon.urbanek at R-project.org>
+>>> Datum: 05.03.22 23:19 (GMT+01:00)
+>>> An: matthias-gondan <matthias-gondan at gmx.de>
+>>> Cc: r-package-devel at r-project.org
+>>> Betreff: Re: [R-pkg-devel] cmake, Windows
+>>>
+>>> Matthias,
+>>>
+>>> You didn't supply any output, so we can only guess. From what I can see in your package you are hard-coding incorrect paths to compilers and tools in your Makevars.{win|ucrt}. Please make sure you use R's compilers - never hard-code paths to tools, you need to use R's settings since the toolchain can be installed in any location.
+>>>
+>>> Cheers,
+>>> Simon
+>>>
+>>>
+>>>> On Mar 6, 2022, at 6:17 AM, matthias-gondan <matthias-gondan at gmx.de> wrote:
+>>>>
+>>>> Dear package developers, I have submitted a source package to CRAN, and it is rejected because installation fails on Windows.https://github.com/mgondan/rologThe compilation needs cmake, which is available on RTools4+.Is there any chance that cmake is included on the build system? If not, does anyone know a good solution for this problem?Best regards,Matthias
+>>>> [[alternative HTML version deleted]]
+>>>>
+>>>> ______________________________________________
+>>>> R-package-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Mon Mar  7 10:59:33 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Mon, 7 Mar 2022 12:59:33 +0300
+Subject: [R-pkg-devel] table lacks "summary" attribute
+In-Reply-To: <a391d173-0f40-08ad-3ee6-63aab893d7b8@4dscape.com>
+References: <a391d173-0f40-08ad-3ee6-63aab893d7b8@4dscape.com>
+Message-ID: <20220307125933.3f989d11@Tarkus>
+
+On Sat, 5 Mar 2022 16:54:08 -0800
+alexios galanos <alexios at 4dscape.com> wrote:
+
+> * checking HTML version of manual ... NOTE
+> Found the following problems:
+> DCCfilter-class.Rd:7:1: Warning: <table> lacks "summary" attribute
+> 
+> Any pointers/documentation on this?
+
+This seems to be the new check for HTML documentation validity as part
+of accessibility enhancements in R. As far as I'm aware, HTML5 doesn't
+_require_ tables to have summaries, nor does Rd provide a way to
+specify them. This could be a bug in Tidy-html5, except it's been
+apparently fixed in 2016: https://github.com/htacg/tidy-html5/issues/377
+
+-- 
+Best regards,
+Ivan
+
+
+From edd @end|ng |rom deb|@n@org  Tue Mar  8 00:00:37 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Mon, 7 Mar 2022 17:00:37 -0600
+Subject: [R-pkg-devel] Failing Valgrind Passing R CMD check
+In-Reply-To: <8589a824-b476-ef16-64aa-1f8f7def7b79@gmail.com>
+References: <25124.59579.987161.996173@rob.eddelbuettel.com>
+ <8589a824-b476-ef16-64aa-1f8f7def7b79@gmail.com>
+Message-ID: <25126.36501.155170.488660@rob.eddelbuettel.com>
+
+
+On 6 March 2022 at 15:00, Duncan Murdoch wrote:
+| What does simpleCall.R do?
+
+I supplied sources so you could have check -- but it's not relevant. It was a
+four-element vector leaking 4 x 8 bytes "by design". But make it a 4 million
+element vector and you leak 32 mb. 
+
+| I took a quick look but didn't spot where (if?) R analyzes the valgrind 
+| output.
+
+That was my point. If R supports valgrind, why does it ignore its findings?
+
+Dirk
+
+-- 
+https://dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
