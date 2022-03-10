@@ -13632,3 +13632,660 @@ Dirk
 https://dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Mar  8 11:09:54 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 8 Mar 2022 05:09:54 -0500
+Subject: [R-pkg-devel] Failing Valgrind Passing R CMD check
+In-Reply-To: <25126.36501.155170.488660@rob.eddelbuettel.com>
+References: <25124.59579.987161.996173@rob.eddelbuettel.com>
+ <8589a824-b476-ef16-64aa-1f8f7def7b79@gmail.com>
+ <25126.36501.155170.488660@rob.eddelbuettel.com>
+Message-ID: <d61ffdb2-47e1-b1eb-888f-3bcbae31d3ae@gmail.com>
+
+On 07/03/2022 6:00 p.m., Dirk Eddelbuettel wrote:
+> 
+> On 6 March 2022 at 15:00, Duncan Murdoch wrote:
+> | What does simpleCall.R do?
+> 
+> I supplied sources so you could have check -- but it's not relevant. It was a
+> four-element vector leaking 4 x 8 bytes "by design". But make it a 4 million
+> element vector and you leak 32 mb.
+> 
+> | I took a quick look but didn't spot where (if?) R analyzes the valgrind
+> | output.
+> 
+> That was my point. If R supports valgrind, why does it ignore its findings?
+> 
+
+Sorry, I missed the link to the full package, but I did try to answer 
+your question: maybe trivial losses are ignored.  Your example would be 
+more definitive if it really did lose 32 MB.
+
+It's also possible that only some losses are reported (which would be a 
+bug, I think).  Your package had the loss in test code, but not in 
+example code.
+
+I'd make the changes myself to see, but I don't have valgrind installed, 
+and don't have a Linux system handy right now.
+
+Duncan Murdoch
+
+
+From edd @end|ng |rom deb|@n@org  Tue Mar  8 15:32:24 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 8 Mar 2022 08:32:24 -0600
+Subject: [R-pkg-devel] Failing Valgrind Passing R CMD check
+In-Reply-To: <d61ffdb2-47e1-b1eb-888f-3bcbae31d3ae@gmail.com>
+References: <25124.59579.987161.996173@rob.eddelbuettel.com>
+ <8589a824-b476-ef16-64aa-1f8f7def7b79@gmail.com>
+ <25126.36501.155170.488660@rob.eddelbuettel.com>
+ <d61ffdb2-47e1-b1eb-888f-3bcbae31d3ae@gmail.com>
+Message-ID: <25127.26872.159340.805579@rob.eddelbuettel.com>
+
+
+On 8 March 2022 at 05:09, Duncan Murdoch wrote:
+| Sorry, I missed the link to the full package, but I did try to answer 
+| your question: maybe trivial losses are ignored.  Your example would be 
+| more definitive if it really did lose 32 MB.
+
+As you probably realize you could call the same function one million times
+and you would have your 32mb loss. Or, if it really is important to you, send
+a PR to the demo repo to make the vector bigger.
+ 
+| It's also possible that only some losses are reported (which would be a 
+| bug, I think).  Your package had the loss in test code, but not in 
+| example code.
+
+Ditto. Add one line to the source file, re-run roxygenize. Or do it by hand
+in the Rd (and the source) file(s).
+
+Both changes are orthogonal to them problem at hand.
+
+| I'd make the changes myself to see, but I don't have valgrind installed, 
+| and don't have a Linux system handy right now.
+
+Bummer.
+
+My motivation for sending patches to R's bugzilla is a little dampened by the
+fact that the last one I sent (and put some effort in) is still lingering ten
+months later. Oh well.
+
+We could cooperate in the sense that you 'just' need valgrind output files,
+and we could (fairly simply) create those via CI at the repo.
+
+Dirk
+
+-- 
+https://dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Mar  8 16:46:13 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 8 Mar 2022 18:46:13 +0300
+Subject: [R-pkg-devel] Failing Valgrind Passing R CMD check
+In-Reply-To: <25124.59579.987161.996173@rob.eddelbuettel.com>
+References: <25124.59579.987161.996173@rob.eddelbuettel.com>
+Message-ID: <20220308184613.7dd27e77@Tarkus>
+
+On Sun, 6 Mar 2022 11:00:43 -0600
+Dirk Eddelbuettel <edd at debian.org> wrote:
+
+> ==1485886== LEAK SUMMARY:
+> ==1485886==    definitely lost: 32 bytes in 1 blocks
+
+> ==1485886== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0
+> from 0)
+
+R CMD check only looks at the exit code of the process.
+
+Valgrind crashes the process on invalid memory access, but doesn't
+consider leaks to be errors, unless you turn on --leak-check=full, and
+even then still returns the exit code of the child process by default,
+i.e. zero:
+
+$ cat leak.c 
+#include <stdlib.h>
+
+int main(void) {
+        malloc(42);
+        return 0;
+}
+$ cc -o leak -g -O0 leak.c
+$ valgrind ./leak; echo exitcode=$?
+...
+==14675==    definitely lost: 42 bytes in 1 blocks
+...
+==14675== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+exitcode=0
+$ valgrind --leak-check=full ./leak; echo exitcode=$?
+...
+
+==14688==    definitely lost: 42 bytes in 1 blocks
+...
+==14688== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 0 from 0)
+exitcode=0
+$ valgrind --leak-check=full --error-exitcode=42 ./leak; \
+ echo exitcode=$?
+...
+==14729==    definitely lost: 42 bytes in 1 blocks
+...
+==14729== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 0 from 0)
+exitcode=42
+
+R CMD check could be patched to run 
+R -d 'valgrind --leak-check=full --error-exitcode=255' instead of just
+R -d valgrind to produce warnings on Valgrind-detected leaks.
+
+The problem with this approach is the need for Valgrind suppression
+files. I've run an interactive example of a pure R package under R -d
+'valgrind --leak-check=full --error-exitcode=255' (a relatively fresh
+SVN build) and got "definitely lost: 15,744 bytes in 41 blocks", mostly
+in plot-related code, allocations originating in Pango and GObject.
+
+-- 
+Best regards,
+Ivan
+
+
+From edd @end|ng |rom deb|@n@org  Tue Mar  8 17:23:43 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 8 Mar 2022 10:23:43 -0600
+Subject: [R-pkg-devel] Failing Valgrind Passing R CMD check
+In-Reply-To: <20220308184613.7dd27e77@Tarkus>
+References: <25124.59579.987161.996173@rob.eddelbuettel.com>
+ <20220308184613.7dd27e77@Tarkus>
+Message-ID: <25127.33551.613976.547674@rob.eddelbuettel.com>
+
+
+On 8 March 2022 at 18:46, Ivan Krylov wrote:
+| On Sun, 6 Mar 2022 11:00:43 -0600
+| Dirk Eddelbuettel <edd at debian.org> wrote:
+| 
+| > ==1485886== LEAK SUMMARY:
+| > ==1485886==    definitely lost: 32 bytes in 1 blocks
+| 
+| > ==1485886== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0
+| > from 0)
+| 
+| R CMD check only looks at the exit code of the process.
+| 
+| Valgrind crashes the process on invalid memory access, but doesn't
+| consider leaks to be errors, unless you turn on --leak-check=full, and
+
+That is a related problem I did not stress. We can pass debugger arguments to
+the debugger used (here: valgrind) when we call R, but we cannot for R CMD check.
+That should be added.
+
+| even then still returns the exit code of the child process by default,
+| i.e. zero:
+| 
+| $ cat leak.c 
+| #include <stdlib.h>
+| 
+| int main(void) {
+|         malloc(42);
+|         return 0;
+| }
+| $ cc -o leak -g -O0 leak.c
+| $ valgrind ./leak; echo exitcode=$?
+| ...
+| ==14675==    definitely lost: 42 bytes in 1 blocks
+| ...
+| ==14675== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+| exitcode=0
+| $ valgrind --leak-check=full ./leak; echo exitcode=$?
+| ...
+| 
+| ==14688==    definitely lost: 42 bytes in 1 blocks
+| ...
+| ==14688== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 0 from 0)
+| exitcode=0
+| $ valgrind --leak-check=full --error-exitcode=42 ./leak; \
+|  echo exitcode=$?
+| ...
+| ==14729==    definitely lost: 42 bytes in 1 blocks
+| ...
+| ==14729== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 0 from 0)
+| exitcode=42
+| 
+| R CMD check could be patched to run 
+| R -d 'valgrind --leak-check=full --error-exitcode=255' instead of just
+| R -d valgrind to produce warnings on Valgrind-detected leaks.
+| 
+| The problem with this approach is the need for Valgrind suppression
+| files. I've run an interactive example of a pure R package under R -d
+| 'valgrind --leak-check=full --error-exitcode=255' (a relatively fresh
+| SVN build) and got "definitely lost: 15,744 bytes in 41 blocks", mostly
+| in plot-related code, allocations originating in Pango and GObject.
+
+I have setup a CI setting using valgrind via R CMD check (and hence lacking
+'--leak-check=full' though one could add a wrapper...) and it is a little
+frustrating to not have it fail.
+
+But of course it looks like it is a missing feature and we all could work
+towards adding it.  All always that would require cooperation by R Core.
+
+Dirk
+
+-- 
+https://dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From m|ke @end|ng |rom b|ke@ctu@ry@com  Tue Mar  8 17:37:44 2022
+From: m|ke @end|ng |rom b|ke@ctu@ry@com (Michael Barr)
+Date: Tue, 8 Mar 2022 16:37:44 +0000
+Subject: [R-pkg-devel] Package accepted, then an error to fix by 3/22
+Message-ID: <MWHPR01MB22377598BBC01442A0DA8751D3099@MWHPR01MB2237.prod.exchangelabs.com>
+
+Hi - had my first package accepted yesterday and published on CRAN. Immediately after, I get an auto email from Prof Ripley stating there is an error to be corrected or else the package  will be archived. See the relevant message from check results link below.
+
+>From Google it appears to be related to a graphic in my vignette though not entirely certain of that. I have precisely one image in my vignette; I?ve passed all the checks locally and for the CRAN submission, so I am stumped how to go about reproducing this error or fixing it. Looking for advice.
+
+Thanks
+Mike
+
+
+   ! Dimension too large.
+    \lsthk at InitVarsEOL ->\ifdim \lst at currlwidth
+     >\lst at maxwidth \global \lst at maxw...
+    l.857 ...nt  pharmacologic  approaches.    "
+
+    Error: processing vignette 'repoRter_nih.Rmd' failed with diagnostics:
+    LaTeX failed to compile /data/gannet/ripley/R/packages/tests-clang/repoRter.nih.Rcheck/vign_test/repoRter.nih/vignettes/repoRter_nih.tex. See https://yihui.org/tinytex/r/#debugging for debugging tips. See repoRter_nih.log for more info.
+    --- failed re-building ?repoRter_nih.Rmd?
+
+    SUMMARY: processing the following file failed:
+     ?repoRter_nih.Rmd?
+
+    Error: Vignette re-building failed.
+    Execution halted
+Flavor: r-devel-linux-x86_64-fedora-clang<https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-fedora-clang/repoRter.nih-00check.html>
+
+
+<https://cran.r-project.org/web/checks/check_results_repoRter.nih.html>
+
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From @eb@meyer @end|ng |rom |@u@de  Tue Mar  8 18:01:41 2022
+From: @eb@meyer @end|ng |rom |@u@de (Sebastian Meyer)
+Date: Tue, 8 Mar 2022 18:01:41 +0100
+Subject: [R-pkg-devel] Failing Valgrind Passing R CMD check
+In-Reply-To: <25127.33551.613976.547674@rob.eddelbuettel.com>
+References: <25124.59579.987161.996173@rob.eddelbuettel.com>
+ <20220308184613.7dd27e77@Tarkus>
+ <25127.33551.613976.547674@rob.eddelbuettel.com>
+Message-ID: <273a622f-f51b-1bd9-f271-c4499ed7a4d7@fau.de>
+
+Am 08.03.22 um 17:23 schrieb Dirk Eddelbuettel:
+> 
+> On 8 March 2022 at 18:46, Ivan Krylov wrote:
+> | On Sun, 6 Mar 2022 11:00:43 -0600
+> | Dirk Eddelbuettel <edd at debian.org> wrote:
+> |
+> | > ==1485886== LEAK SUMMARY:
+> | > ==1485886==    definitely lost: 32 bytes in 1 blocks
+> |
+> | > ==1485886== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0
+> | > from 0)
+> |
+> | R CMD check only looks at the exit code of the process.
+> |
+> | Valgrind crashes the process on invalid memory access, but doesn't
+> | consider leaks to be errors, unless you turn on --leak-check=full, and
+> 
+> That is a related problem I did not stress. We can pass debugger arguments to
+> the debugger used (here: valgrind) when we call R, but we cannot for R CMD check.
+> That should be added.
+
+Not an expert here, but that does seem to be possible, according to WRE 
+(Section 4.3.2):
+
+> It is possible to run all the examples, tests and vignettes covered by R CMD check under valgrind by using the option --use-valgrind. If you do this you will need to select the valgrind options some other way, for example by having a ~/.valgrindrc file containing
+> 
+> --leak-check=full
+> --track-origins=yes
+> 
+> or setting the environment variable VALGRIND_OPTS. As from R 4.2.0, --use-valgrind also uses valgrind when re-building the vignettes. 
+
+Best,
+
+	Sebastian
+
+> 
+> | even then still returns the exit code of the child process by default,
+> | i.e. zero:
+> |
+> | $ cat leak.c
+> | #include <stdlib.h>
+> |
+> | int main(void) {
+> |         malloc(42);
+> |         return 0;
+> | }
+> | $ cc -o leak -g -O0 leak.c
+> | $ valgrind ./leak; echo exitcode=$?
+> | ...
+> | ==14675==    definitely lost: 42 bytes in 1 blocks
+> | ...
+> | ==14675== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+> | exitcode=0
+> | $ valgrind --leak-check=full ./leak; echo exitcode=$?
+> | ...
+> |
+> | ==14688==    definitely lost: 42 bytes in 1 blocks
+> | ...
+> | ==14688== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 0 from 0)
+> | exitcode=0
+> | $ valgrind --leak-check=full --error-exitcode=42 ./leak; \
+> |  echo exitcode=$?
+> | ...
+> | ==14729==    definitely lost: 42 bytes in 1 blocks
+> | ...
+> | ==14729== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 0 from 0)
+> | exitcode=42
+> |
+> | R CMD check could be patched to run
+> | R -d 'valgrind --leak-check=full --error-exitcode=255' instead of just
+> | R -d valgrind to produce warnings on Valgrind-detected leaks.
+> |
+> | The problem with this approach is the need for Valgrind suppression
+> | files. I've run an interactive example of a pure R package under R -d
+> | 'valgrind --leak-check=full --error-exitcode=255' (a relatively fresh
+> | SVN build) and got "definitely lost: 15,744 bytes in 41 blocks", mostly
+> | in plot-related code, allocations originating in Pango and GObject.
+> 
+> I have setup a CI setting using valgrind via R CMD check (and hence lacking
+> '--leak-check=full' though one could add a wrapper...) and it is a little
+> frustrating to not have it fail.
+> 
+> But of course it looks like it is a missing feature and we all could work
+> towards adding it.  All always that would require cooperation by R Core.
+> 
+> Dirk
+>
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Wed Mar  9 00:06:09 2022
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Wed, 9 Mar 2022 12:06:09 +1300
+Subject: [R-pkg-devel] Package accepted, then an error to fix by 3/22
+In-Reply-To: <MWHPR01MB22377598BBC01442A0DA8751D3099@MWHPR01MB2237.prod.exchangelabs.com>
+References: <MWHPR01MB22377598BBC01442A0DA8751D3099@MWHPR01MB2237.prod.exchangelabs.com>
+Message-ID: <555D5D80-10C2-4B63-89E7-13A7ABC3531C@R-project.org>
+
+Michael,
+
+I can replicate the problem on macOS so this is not system-specific - did you actually try to re-build the vignette? As can be seen from the output the problem is is the following line:
+
+one_rec %>% pull(abstract_text) %>% print                                                                         
+
+because it is an extremely long output line (4712 characters) that exceeds the LaTeX limit. The actual content is quite messy so I wouldn't try to output the whole content, but if you really want to, you may need to wrap it first since R output is not soft-wrapped.
+
+Cheers,
+Simon
+
+
+
+> On Mar 9, 2022, at 5:37 AM, Michael Barr <mike at bikeactuary.com> wrote:
+> 
+> Hi - had my first package accepted yesterday and published on CRAN. Immediately after, I get an auto email from Prof Ripley stating there is an error to be corrected or else the package  will be archived. See the relevant message from check results link below.
+> 
+> From Google it appears to be related to a graphic in my vignette though not entirely certain of that. I have precisely one image in my vignette; I?ve passed all the checks locally and for the CRAN submission, so I am stumped how to go about reproducing this error or fixing it. Looking for advice.
+> 
+> Thanks
+> Mike
+> 
+> 
+>   ! Dimension too large.
+>    \lsthk at InitVarsEOL ->\ifdim \lst at currlwidth
+>> \lst at maxwidth \global \lst at maxw...
+>    l.857 ...nt  pharmacologic  approaches.    "
+> 
+>    Error: processing vignette 'repoRter_nih.Rmd' failed with diagnostics:
+>    LaTeX failed to compile /data/gannet/ripley/R/packages/tests-clang/repoRter.nih.Rcheck/vign_test/repoRter.nih/vignettes/repoRter_nih.tex. See https://yihui.org/tinytex/r/#debugging for debugging tips. See repoRter_nih.log for more info.
+>    --- failed re-building ?repoRter_nih.Rmd?
+> 
+>    SUMMARY: processing the following file failed:
+>     ?repoRter_nih.Rmd?
+> 
+>    Error: Vignette re-building failed.
+>    Execution halted
+> Flavor: r-devel-linux-x86_64-fedora-clang<https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-fedora-clang/repoRter.nih-00check.html>
+> 
+> 
+> <https://cran.r-project.org/web/checks/check_results_repoRter.nih.html>
+> 
+> 
+> 
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From edd @end|ng |rom deb|@n@org  Wed Mar  9 01:24:07 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 8 Mar 2022 18:24:07 -0600
+Subject: [R-pkg-devel] Failing Valgrind Passing R CMD check
+In-Reply-To: <273a622f-f51b-1bd9-f271-c4499ed7a4d7@fau.de>
+References: <25124.59579.987161.996173@rob.eddelbuettel.com>
+ <20220308184613.7dd27e77@Tarkus>
+ <25127.33551.613976.547674@rob.eddelbuettel.com>
+ <273a622f-f51b-1bd9-f271-c4499ed7a4d7@fau.de>
+Message-ID: <25127.62375.577332.268454@rob.eddelbuettel.com>
+
+
+On 8 March 2022 at 18:01, Sebastian Meyer wrote:
+| Not an expert here, but that does seem to be possible, according to WRE 
+| (Section 4.3.2):
+| 
+| > It is possible to run all the examples, tests and vignettes covered by R CMD check under valgrind by using the option --use-valgrind. If you do this you will need to select the valgrind options some other way, for example by having a ~/.valgrindrc file containing
+| > 
+| > --leak-check=full
+| > --track-origins=yes
+| > 
+| > or setting the environment variable VALGRIND_OPTS. As from R 4.2.0, --use-valgrind also uses valgrind when re-building the vignettes. 
+
+Oh, a most excellent find, thank you.
+
+I completely missed that towards the end of Section 4.3.2 in WRE.
+
+Dirk
+
+-- 
+https://dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From m|ke @end|ng |rom b|ke@ctu@ry@com  Wed Mar  9 01:29:03 2022
+From: m|ke @end|ng |rom b|ke@ctu@ry@com (Michael Barr)
+Date: Wed, 9 Mar 2022 00:29:03 +0000
+Subject: [R-pkg-devel] Package accepted, then an error to fix by 3/22
+In-Reply-To: <555D5D80-10C2-4B63-89E7-13A7ABC3531C@R-project.org>
+References: <MWHPR01MB22377598BBC01442A0DA8751D3099@MWHPR01MB2237.prod.exchangelabs.com>
+ <555D5D80-10C2-4B63-89E7-13A7ABC3531C@R-project.org>
+Message-ID: <MWHPR01MB2237B9790B0E426943261C32D30A9@MWHPR01MB2237.prod.exchangelabs.com>
+
+Hi - thanks for the reply. Yes I built this vignette probably over 150 times through the course of working out other NOTES, via rhub::check_for_cran, devtools::check, devtools::build_vignette, R CMD CHECK, some other devtools function which checks for win devel the exact name of which escapes me atm?
+
+Also this made it past the CRAN submission process, newbies pipeline == higher touch as I understand.
+
+I?m curious why I make it past so many different checks prior to publishing. Not surprised it is latex related though. I will look up the character limit for latex to fix this.
+
+One follow up question - after I make this correction, would the expectation be to increment the version for a patch (0.1.1) when I submit to cran?
+
+Thanks
+Mike
+________________________________
+From: Simon Urbanek <simon.urbanek at R-project.org>
+Sent: Tuesday, March 8, 2022 6:06 PM
+To: Michael Barr <mike at bikeactuary.com>
+Cc: r-package-devel at r-project.org <R-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Package accepted, then an error to fix by 3/22
+
+Michael,
+
+I can replicate the problem on macOS so this is not system-specific - did you actually try to re-build the vignette? As can be seen from the output the problem is is the following line:
+
+one_rec %>% pull(abstract_text) %>% print
+
+because it is an extremely long output line (4712 characters) that exceeds the LaTeX limit. The actual content is quite messy so I wouldn't try to output the whole content, but if you really want to, you may need to wrap it first since R output is not soft-wrapped.
+
+Cheers,
+Simon
+
+
+
+> On Mar 9, 2022, at 5:37 AM, Michael Barr <mike at bikeactuary.com> wrote:
+>
+> Hi - had my first package accepted yesterday and published on CRAN. Immediately after, I get an auto email from Prof Ripley stating there is an error to be corrected or else the package  will be archived. See the relevant message from check results link below.
+>
+> From Google it appears to be related to a graphic in my vignette though not entirely certain of that. I have precisely one image in my vignette; I?ve passed all the checks locally and for the CRAN submission, so I am stumped how to go about reproducing this error or fixing it. Looking for advice.
+>
+> Thanks
+> Mike
+>
+>
+>   ! Dimension too large.
+>    \lsthk at InitVarsEOL ->\ifdim \lst at currlwidth
+>> \lst at maxwidth \global \lst at maxw...
+>    l.857 ...nt  pharmacologic  approaches.    "
+>
+>    Error: processing vignette 'repoRter_nih.Rmd' failed with diagnostics:
+>    LaTeX failed to compile /data/gannet/ripley/R/packages/tests-clang/repoRter.nih.Rcheck/vign_test/repoRter.nih/vignettes/repoRter_nih.tex. See https://yihui.org/tinytex/r/#debugging for debugging tips. See repoRter_nih.log for more info.
+>    --- failed re-building ?repoRter_nih.Rmd?
+>
+>    SUMMARY: processing the following file failed:
+>     ?repoRter_nih.Rmd?
+>
+>    Error: Vignette re-building failed.
+>    Execution halted
+> Flavor: r-devel-linux-x86_64-fedora-clang<https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-fedora-clang/repoRter.nih-00check.html>
+>
+>
+> <https://cran.r-project.org/web/checks/check_results_repoRter.nih.html>
+>
+>
+>
+>
+>
+>        [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+	[[alternative HTML version deleted]]
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Wed Mar  9 01:54:52 2022
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Wed, 9 Mar 2022 13:54:52 +1300
+Subject: [R-pkg-devel] Package accepted, then an error to fix by 3/22
+In-Reply-To: <MWHPR01MB2237B9790B0E426943261C32D30A9@MWHPR01MB2237.prod.exchangelabs.com>
+References: <MWHPR01MB22377598BBC01442A0DA8751D3099@MWHPR01MB2237.prod.exchangelabs.com>
+ <555D5D80-10C2-4B63-89E7-13A7ABC3531C@R-project.org>
+ <MWHPR01MB2237B9790B0E426943261C32D30A9@MWHPR01MB2237.prod.exchangelabs.com>
+Message-ID: <758F741E-CDC6-4933-9923-33FEC8174CF4@R-project.org>
+
+Michael,
+
+responses inline.
+
+
+> On Mar 9, 2022, at 1:29 PM, Michael Barr <mike at bikeactuary.com> wrote:
+> 
+> Hi - thanks for the reply. Yes I built this vignette probably over 150 times through the course of working out other NOTES, via rhub::check_for_cran, devtools::check, devtools::build_vignette, R CMD CHECK, some other devtools function which checks for win devel the exact name of which escapes me atm?
+> 
+> Also this made it past the CRAN submission process, newbies pipeline == higher touch as I understand. 
+> 
+> I?m curious why I make it past so many different checks prior to publishing.
+
+
+I would suspect it's because the results in your vignette are not fixed, but rely on web queries, so it just so happens that the first entry that you print changed in the NIH database and now triggers the problem. This issue has not been picked up because presumably the previous result was shorter.
+
+
+
+> Not surprised it is latex related though. I will look up the character limit for latex to fix this.
+> 
+> One follow up question - after I make this correction, would the expectation be to increment the version for a patch (0.1.1) when I submit to cran?
+> 
+
+
+Yes, you have to increase the version number on each submission.
+
+Cheers,
+Simon
+
+
+
+> Thanks
+> Mike
+> From: Simon Urbanek <simon.urbanek at R-project.org>
+> Sent: Tuesday, March 8, 2022 6:06 PM
+> To: Michael Barr <mike at bikeactuary.com>
+> Cc: r-package-devel at r-project.org <R-package-devel at r-project.org>
+> Subject: Re: [R-pkg-devel] Package accepted, then an error to fix by 3/22
+>  
+> Michael,
+> 
+> I can replicate the problem on macOS so this is not system-specific - did you actually try to re-build the vignette? As can be seen from the output the problem is is the following line:
+> 
+> one_rec %>% pull(abstract_text) %>% print                                                                         
+> 
+> because it is an extremely long output line (4712 characters) that exceeds the LaTeX limit. The actual content is quite messy so I wouldn't try to output the whole content, but if you really want to, you may need to wrap it first since R output is not soft-wrapped.
+> 
+> Cheers,
+> Simon
+> 
+> 
+> 
+> > On Mar 9, 2022, at 5:37 AM, Michael Barr <mike at bikeactuary.com> wrote:
+> > 
+> > Hi - had my first package accepted yesterday and published on CRAN. Immediately after, I get an auto email from Prof Ripley stating there is an error to be corrected or else the package  will be archived. See the relevant message from check results link below.
+> > 
+> > From Google it appears to be related to a graphic in my vignette though not entirely certain of that. I have precisely one image in my vignette; I?ve passed all the checks locally and for the CRAN submission, so I am stumped how to go about reproducing this error or fixing it. Looking for advice.
+> > 
+> > Thanks
+> > Mike
+> > 
+> > 
+> >   ! Dimension too large.
+> >    \lsthk at InitVarsEOL ->\ifdim \lst at currlwidth
+> >> \lst at maxwidth \global \lst at maxw...
+> >    l.857 ...nt  pharmacologic  approaches.    "
+> > 
+> >    Error: processing vignette 'repoRter_nih.Rmd' failed with diagnostics:
+> >    LaTeX failed to compile /data/gannet/ripley/R/packages/tests-clang/repoRter.nih.Rcheck/vign_test/repoRter.nih/vignettes/repoRter_nih.tex. See https://yihui.org/tinytex/r/#debugging for debugging tips. See repoRter_nih.log for more info.
+> >    --- failed re-building ?repoRter_nih.Rmd?
+> > 
+> >    SUMMARY: processing the following file failed:
+> >     ?repoRter_nih.Rmd?
+> > 
+> >    Error: Vignette re-building failed.
+> >    Execution halted
+> > Flavor: r-devel-linux-x86_64-fedora-clang<https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-fedora-clang/repoRter.nih-00check.html>
+> > 
+> > 
+> > <https://cran.r-project.org/web/checks/check_results_repoRter.nih.html>
+> > 
+> > 
+> > 
+> > 
+> > 
+> >        [[alternative HTML version deleted]]
+> > 
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
