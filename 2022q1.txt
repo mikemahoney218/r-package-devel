@@ -14289,3 +14289,144 @@ Simon
 > 
 
 
+From pro|jcn@@h @end|ng |rom gm@||@com  Wed Mar  9 18:15:28 2022
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Wed, 9 Mar 2022 09:15:28 -0800
+Subject: [R-pkg-devel] Failing Valgrind Passing R CMD check
+In-Reply-To: <25127.62375.577332.268454@rob.eddelbuettel.com>
+References: <25124.59579.987161.996173@rob.eddelbuettel.com>
+ <20220308184613.7dd27e77@Tarkus>
+ <25127.33551.613976.547674@rob.eddelbuettel.com>
+ <273a622f-f51b-1bd9-f271-c4499ed7a4d7@fau.de>
+ <25127.62375.577332.268454@rob.eddelbuettel.com>
+Message-ID: <f8689475-24da-ec55-4b46-f18367d6283c@gmail.com>
+
+I've not used valgrind before, but by request have installed it and
+run R CMD check with and without --use-valgrind on the lbfgsb3c package
+that Matt Fidler maintains and I contributed to. Using my own rmaiib.pl
+to clear out what did NOT change between the two (ReMove from A If In
+B -- a tool that strips dirtree A of content that byte-for-byte matches
+that in B on basis of file size, not names), I then compared what was
+left using meld. As far as I can tell, there are no valgrind complaints,
+so nothing that should trip a "check" message here. Or am I missing
+something? I'll be happy to rerun with changes if requested. Below is
+output from inxi detailing my linux setup
+
+System:
+   Host: HP21 Kernel: 5.13.0-27-generic x86_64 bits: 64 Desktop: MATE 1.26.0
+   Distro: Linux Mint 20.3 Una
+Machine:
+   Type: Laptop System: HP product: HP Laptop 14-fq1xxx v: N/A
+   serial: <superuser/root required>
+   Mobo: HP model: 887C v: 59.08 serial: <superuser/root required> UEFI: AMI
+   v: F.03 date: 03/09/2021
+CPU:
+   Topology: 8-Core model: AMD Ryzen 7 5700U with Radeon Graphics bits: 64
+   type: MT MCP L2 cache: 4096 KiB
+   Speed: 1929 MHz min/max: 1400/1800 MHz Core speeds (MHz): 1: 1690 2: 1603
+   3: 1397 4: 1397 5: 1397 6: 1394 7: 1397 8: 1397 9: 4342 10: 3677 11: 1721
+   12: 1930 13: 1930 14: 1427 15: 1397 16: 1397
+Drives:
+   Local Storage: total: 1.16 TiB used: 469.07 GiB (39.6%)
+   ID-1: /dev/nvme0n1 vendor: Samsung model: MZVLQ1T0HALB-000H1
+   size: 953.87 GiB
+   ID-2: /dev/sda type: USB model: Multiple Card Reader size: 231.81 GiB
+Info:
+   Processes: 344 Uptime: 30m Memory: 14.98 GiB used: 2.00 GiB (13.4%)
+   Shell: bash inxi: 3.0.38
+
+Here is the typical extra material at the end of a check of a test in the pkg,
+in this case the cyq test (Chebyquad function minimized with lbfgsb3c).
+
+> ==4111== 
+> ==4111== HEAP SUMMARY:
+> ==4111==     in use at exit: 61,844,734 bytes in 9,151 blocks
+> ==4111==   total heap usage: 28,318 allocs, 19,167 frees, 122,346,551 bytes allocated
+> ==4111== 
+> ==4111== LEAK SUMMARY:
+> ==4111==    definitely lost: 0 bytes in 0 blocks
+> ==4111==    indirectly lost: 0 bytes in 0 blocks
+> ==4111==      possibly lost: 0 bytes in 0 blocks
+> ==4111==    still reachable: 61,844,734 bytes in 9,151 blocks
+> ==4111==         suppressed: 0 bytes in 0 blocks
+> ==4111== Rerun with --leak-check=full to see details of leaked memory
+> ==4111== 
+> ==4111== For lists of detected and suppressed errors, rerun with: -s
+> ==4111== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+
+Cheers,
+
+John Nash
+
+
+
+On 2022-03-08 16:24, Dirk Eddelbuettel wrote:
+> 
+> On 8 March 2022 at 18:01, Sebastian Meyer wrote:
+> | Not an expert here, but that does seem to be possible, according to WRE
+> | (Section 4.3.2):
+> |
+> | > It is possible to run all the examples, tests and vignettes covered by R CMD check under valgrind by using the option --use-valgrind. If you do this you will need to select the valgrind options some other way, for example by having a ~/.valgrindrc file containing
+> | >
+> | > --leak-check=full
+> | > --track-origins=yes
+> | >
+> | > or setting the environment variable VALGRIND_OPTS. As from R 4.2.0, --use-valgrind also uses valgrind when re-building the vignettes.
+> 
+> Oh, a most excellent find, thank you.
+> 
+> I completely missed that towards the end of Section 4.3.2 in WRE.
+> 
+> Dirk
+>
+
+
+From bbo|ker @end|ng |rom gm@||@com  Thu Mar 10 01:38:59 2022
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Wed, 9 Mar 2022 19:38:59 -0500
+Subject: [R-pkg-devel] crowdsourcing/help with
+Message-ID: <d45ef5fc-653c-5ed1-db49-a2a4a7cac0a0@gmail.com>
+
+
+   We (the glmmTMB developers) are having a hard-to-reproduce problem on 
+Windows.  When run on CRAN's check platform or win-builder with r-devel, 
+the code fails on the first example, when trying to reconstruct a 'TMB' 
+object (TMB is a C++-based package we depend on). The problem is that we 
+can't find a Windows system *other* than win-builder on which it fails 
+-- it works on r-hub, and with 2 or 3 other Windows 10/11 systems we've 
+tried it on.
+
+   I suspect this has to do with an incompatibility in the binary stack 
+- there is a dependency chain Matrix ? TMB ? glmmTMB, and we know that 
+weird stuff can happen if the stack is incompatible (e.g. TMB was built 
+with an older version of Matrix than is currently installed), but 
+haven't managed to put together a stack that fails.
+
+   If anyone with a Windows system handy would be willing to try this 
+out and see if it works that would be *super* handy (especially if you 
+can get it to fail!)
+
+   You can read all about it here:
+
+https://github.com/glmmTMB/glmmTMB/issues/787
+
+    If you just want to grab the tarball so you can run R CMD check on 
+it, try:
+
+r <- remotes::remote_download(github_remote("glmmTMB/glmmTMB/glmmTMB"))
+file.rename(r, "my_glmmtmb_tarball.tar.gz")
+
+    If you do manage to get it to fail, it would be great to see 
+detailed output from
+
+library(glmmTMB)
+up2date(readRDS(system.file("example_files","salamander1.rds",package="glmmTMB")))
+
+   Any other debugging/diagnostic suggestions are of course welcome.
+   (If this fails we will probably have to put "skip if on Windows" 
+logic around most of our examples and tests.)
+
+   cheers
+     Ben Bolker
+
+
