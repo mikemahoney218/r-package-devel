@@ -14430,3 +14430,384 @@ logic around most of our examples and tests.)
      Ben Bolker
 
 
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Thu Mar 10 09:19:42 2022
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Thu, 10 Mar 2022 09:19:42 +0100
+Subject: [R-pkg-devel] crowdsourcing/help with
+In-Reply-To: <d45ef5fc-653c-5ed1-db49-a2a4a7cac0a0@gmail.com>
+References: <d45ef5fc-653c-5ed1-db49-a2a4a7cac0a0@gmail.com>
+Message-ID: <73e459ef-5c09-9a38-31a1-54ed23a3abf0@gmail.com>
+
+
+On 3/10/22 01:38, Ben Bolker wrote:
+>
+> ? We (the glmmTMB developers) are having a hard-to-reproduce problem 
+> on Windows.? When run on CRAN's check platform or win-builder with 
+> r-devel, the code fails on the first example, when trying to 
+> reconstruct a 'TMB' object (TMB is a C++-based package we depend on). 
+> The problem is that we can't find a Windows system *other* than 
+> win-builder on which it fails -- it works on r-hub, and with 2 or 3 
+> other Windows 10/11 systems we've tried it on.
+>
+> ? I suspect this has to do with an incompatibility in the binary stack 
+> - there is a dependency chain Matrix ? TMB ? glmmTMB, and we know that 
+> weird stuff can happen if the stack is incompatible (e.g. TMB was 
+> built with an older version of Matrix than is currently installed), 
+> but haven't managed to put together a stack that fails.
+>
+> ? If anyone with a Windows system handy would be willing to try this 
+> out and see if it works that would be *super* handy (especially if you 
+> can get it to fail!)
+>
+> ? You can read all about it here:
+>
+> https://github.com/glmmTMB/glmmTMB/issues/787
+>
+> ?? If you just want to grab the tarball so you can run R CMD check on 
+> it, try:
+>
+> r <- remotes::remote_download(github_remote("glmmTMB/glmmTMB/glmmTMB"))
+> file.rename(r, "my_glmmtmb_tarball.tar.gz")
+>
+> ?? If you do manage to get it to fail, it would be great to see 
+> detailed output from
+>
+> library(glmmTMB)
+> up2date(readRDS(system.file("example_files","salamander1.rds",package="glmmTMB"))) 
+>
+>
+> ? Any other debugging/diagnostic suggestions are of course welcome.
+> ? (If this fails we will probably have to put "skip if on Windows" 
+> logic around most of our examples and tests.)
+
+As you have a machine where it fails, which is winbuilder, could you 
+perhaps instrument your package to print the information you need to 
+debug the issue, and re-submit it? Also, to get more specific advice, 
+perhaps you could paste the actual output or a link to it.
+
+Best
+Tomas
+
+>
+> ? cheers
+> ??? Ben Bolker
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From bbo|ker @end|ng |rom gm@||@com  Thu Mar 10 15:51:01 2022
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Thu, 10 Mar 2022 09:51:01 -0500
+Subject: [R-pkg-devel] crowdsourcing/help with
+In-Reply-To: <73e459ef-5c09-9a38-31a1-54ed23a3abf0@gmail.com>
+References: <d45ef5fc-653c-5ed1-db49-a2a4a7cac0a0@gmail.com>
+ <73e459ef-5c09-9a38-31a1-54ed23a3abf0@gmail.com>
+Message-ID: <b422f5f0-78a5-2631-f5f2-719b17e19daf@gmail.com>
+
+   The win-builder output is here: 
+https://win-builder.r-project.org/ce55MsIkho3o/00check.log
+
+   Key points:
+
+  the Anova.glmmTMB example fails, but this is the only output provided:
+
+ >
+ > ### ** Examples
+ >
+ > warp.lm <- glmmTMB(breaks ~ wool * tension, data = warpbreaks)
+ > salamander1 <- 
+up2date(readRDS(system.file("example_files","salamander1.rds",package="glmmTMB")))
+
+  (I was wrong that examples fail immediately: 
+https://win-builder.r-project.org/ce55MsIkho3o/examples_and_tests/glmmTMB-Ex.Rout 
+shows that some examples do succeed)
+
+    I will try to make a test-A.R that runs first that *only* runs 
+up2date (which is pretty much just a call to TMB::MakeADFun).  I might 
+try a call to library(TMB), which might (?) throw an informative warning 
+about a Matrix/TMB binary mismatch ...
+
+   thanks
+   Ben
+
+
+
+On 3/10/22 3:19 AM, Tomas Kalibera wrote:
+> 
+> On 3/10/22 01:38, Ben Bolker wrote:
+>>
+>> ? We (the glmmTMB developers) are having a hard-to-reproduce problem 
+>> on Windows.? When run on CRAN's check platform or win-builder with 
+>> r-devel, the code fails on the first example, when trying to 
+>> reconstruct a 'TMB' object (TMB is a C++-based package we depend on). 
+>> The problem is that we can't find a Windows system *other* than 
+>> win-builder on which it fails -- it works on r-hub, and with 2 or 3 
+>> other Windows 10/11 systems we've tried it on.
+>>
+>> ? I suspect this has to do with an incompatibility in the binary stack 
+>> - there is a dependency chain Matrix ? TMB ? glmmTMB, and we know that 
+>> weird stuff can happen if the stack is incompatible (e.g. TMB was 
+>> built with an older version of Matrix than is currently installed), 
+>> but haven't managed to put together a stack that fails.
+>>
+>> ? If anyone with a Windows system handy would be willing to try this 
+>> out and see if it works that would be *super* handy (especially if you 
+>> can get it to fail!)
+>>
+>> ? You can read all about it here:
+>>
+>> https://github.com/glmmTMB/glmmTMB/issues/787
+>>
+>> ?? If you just want to grab the tarball so you can run R CMD check on 
+>> it, try:
+>>
+>> r <- remotes::remote_download(github_remote("glmmTMB/glmmTMB/glmmTMB"))
+>> file.rename(r, "my_glmmtmb_tarball.tar.gz")
+>>
+>> ?? If you do manage to get it to fail, it would be great to see 
+>> detailed output from
+>>
+>> library(glmmTMB)
+>> up2date(readRDS(system.file("example_files","salamander1.rds",package="glmmTMB"))) 
+>>
+>>
+>> ? Any other debugging/diagnostic suggestions are of course welcome.
+>> ? (If this fails we will probably have to put "skip if on Windows" 
+>> logic around most of our examples and tests.)
+> 
+> As you have a machine where it fails, which is winbuilder, could you 
+> perhaps instrument your package to print the information you need to 
+> debug the issue, and re-submit it? Also, to get more specific advice, 
+> perhaps you could paste the actual output or a link to it.
+> 
+> Best
+> Tomas
+> 
+>>
+>> ? cheers
+>> ??? Ben Bolker
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+(Acting) Graduate chair, Mathematics & Statistics
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Thu Mar 10 16:04:00 2022
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Thu, 10 Mar 2022 07:04:00 -0800
+Subject: [R-pkg-devel] crowdsourcing/help with
+In-Reply-To: <b422f5f0-78a5-2631-f5f2-719b17e19daf@gmail.com>
+References: <d45ef5fc-653c-5ed1-db49-a2a4a7cac0a0@gmail.com>
+ <73e459ef-5c09-9a38-31a1-54ed23a3abf0@gmail.com>
+ <b422f5f0-78a5-2631-f5f2-719b17e19daf@gmail.com>
+Message-ID: <CAFDcVCQLGRAEZZyLYzA=e_JWozcERRh6dJ9QV8oU_WiT62CWSQ@mail.gmail.com>
+
+FWIW, you might want to do
+
+loadNamespace("TMB")
+library("TMB")
+
+as loadNamespace() may give more informative error messages, cf.
+https://github.com/HenrikBengtsson/Wishlist-for-R/issues/26.
+
+Henrik
+
+
+On Thu, Mar 10, 2022, 06:51 Ben Bolker <bbolker at gmail.com> wrote:
+
+>    The win-builder output is here:
+> https://win-builder.r-project.org/ce55MsIkho3o/00check.log
+>
+>    Key points:
+>
+>   the Anova.glmmTMB example fails, but this is the only output provided:
+>
+>  >
+>  > ### ** Examples
+>  >
+>  > warp.lm <- glmmTMB(breaks ~ wool * tension, data = warpbreaks)
+>  > salamander1 <-
+>
+> up2date(readRDS(system.file("example_files","salamander1.rds",package="glmmTMB")))
+>
+>   (I was wrong that examples fail immediately:
+>
+> https://win-builder.r-project.org/ce55MsIkho3o/examples_and_tests/glmmTMB-Ex.Rout
+> shows that some examples do succeed)
+>
+>     I will try to make a test-A.R that runs first that *only* runs
+> up2date (which is pretty much just a call to TMB::MakeADFun).  I might
+> try a call to library(TMB), which might (?) throw an informative warning
+> about a Matrix/TMB binary mismatch ...
+>
+>    thanks
+>    Ben
+>
+>
+>
+> On 3/10/22 3:19 AM, Tomas Kalibera wrote:
+> >
+> > On 3/10/22 01:38, Ben Bolker wrote:
+> >>
+> >>   We (the glmmTMB developers) are having a hard-to-reproduce problem
+> >> on Windows.  When run on CRAN's check platform or win-builder with
+> >> r-devel, the code fails on the first example, when trying to
+> >> reconstruct a 'TMB' object (TMB is a C++-based package we depend on).
+> >> The problem is that we can't find a Windows system *other* than
+> >> win-builder on which it fails -- it works on r-hub, and with 2 or 3
+> >> other Windows 10/11 systems we've tried it on.
+> >>
+> >>   I suspect this has to do with an incompatibility in the binary stack
+> >> - there is a dependency chain Matrix ? TMB ? glmmTMB, and we know that
+> >> weird stuff can happen if the stack is incompatible (e.g. TMB was
+> >> built with an older version of Matrix than is currently installed),
+> >> but haven't managed to put together a stack that fails.
+> >>
+> >>   If anyone with a Windows system handy would be willing to try this
+> >> out and see if it works that would be *super* handy (especially if you
+> >> can get it to fail!)
+> >>
+> >>   You can read all about it here:
+> >>
+> >> https://github.com/glmmTMB/glmmTMB/issues/787
+> >>
+> >>    If you just want to grab the tarball so you can run R CMD check on
+> >> it, try:
+> >>
+> >> r <- remotes::remote_download(github_remote("glmmTMB/glmmTMB/glmmTMB"))
+> >> file.rename(r, "my_glmmtmb_tarball.tar.gz")
+> >>
+> >>    If you do manage to get it to fail, it would be great to see
+> >> detailed output from
+> >>
+> >> library(glmmTMB)
+> >>
+> up2date(readRDS(system.file("example_files","salamander1.rds",package="glmmTMB")))
+>
+> >>
+> >>
+> >>   Any other debugging/diagnostic suggestions are of course welcome.
+> >>   (If this fails we will probably have to put "skip if on Windows"
+> >> logic around most of our examples and tests.)
+> >
+> > As you have a machine where it fails, which is winbuilder, could you
+> > perhaps instrument your package to print the information you need to
+> > debug the issue, and re-submit it? Also, to get more specific advice,
+> > perhaps you could paste the actual output or a link to it.
+> >
+> > Best
+> > Tomas
+> >
+> >>
+> >>   cheers
+> >>     Ben Bolker
+> >>
+> >> ______________________________________________
+> >> R-package-devel at r-project.org mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+> --
+> Dr. Benjamin Bolker
+> Professor, Mathematics & Statistics and Biology, McMaster University
+> Director, School of Computational Science and Engineering
+> (Acting) Graduate chair, Mathematics & Statistics
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From m|ke @end|ng |rom b|ke@ctu@ry@com  Thu Mar 10 16:28:57 2022
+From: m|ke @end|ng |rom b|ke@ctu@ry@com (Michael Barr)
+Date: Thu, 10 Mar 2022 15:28:57 +0000
+Subject: [R-pkg-devel] Package accepted, then an error to fix by 3/22
+In-Reply-To: <16A7F0C4-17AF-432D-BD7F-48587E06955D@R-project.org>
+References: <MWHPR01MB22377598BBC01442A0DA8751D3099@MWHPR01MB2237.prod.exchangelabs.com>
+ <555D5D80-10C2-4B63-89E7-13A7ABC3531C@R-project.org>
+ <MWHPR01MB2237B9790B0E426943261C32D30A9@MWHPR01MB2237.prod.exchangelabs.com>
+ <758F741E-CDC6-4933-9923-33FEC8174CF4@R-project.org>
+ <16A7F0C4-17AF-432D-BD7F-48587E06955D@R-project.org>
+Message-ID: <MWHPR01MB223783CC1428726D5A26994DD30B9@MWHPR01MB2237.prod.exchangelabs.com>
+
+Thanks Simon - that definitely was a possible explanation. However I?ve ruled it out as the explanation - the same record comes through in one_rec since I last ran during initial development. I and fairly confident that the explanation must involve a discrepancy between the check process for a submission (and prior to submission) and the auto check after acceptance.
+
+I don?t know how I raise this issue for investigation so I?m just adding back to the list in case anyone has an interest.
+
+Thanks
+Mike
+
+
+________________________________
+From: Simon Urbanek <simon.urbanek at R-project.org>
+Sent: Tuesday, March 8, 2022 8:00 PM
+To: Michael Barr <mike at bikeactuary.com>
+Subject: Re: [R-pkg-devel] Package accepted, then an error to fix by 3/22
+
+
+
+> On Mar 9, 2022, at 1:54 PM, Simon Urbanek <simon.urbanek at R-project.org> wrote:
+>
+> Michael,
+>
+> responses inline.
+>
+>
+>> On Mar 9, 2022, at 1:29 PM, Michael Barr <mike at bikeactuary.com> wrote:
+>>
+>> Hi - thanks for the reply. Yes I built this vignette probably over 150 times through the course of working out other NOTES, via rhub::check_for_cran, devtools::check, devtools::build_vignette, R CMD CHECK, some other devtools function which checks for win devel the exact name of which escapes me atm?
+>>
+>> Also this made it past the CRAN submission process, newbies pipeline == higher touch as I understand.
+>>
+>> I?m curious why I make it past so many different checks prior to publishing.
+>
+>
+> I would suspect it's because the results in your vignette are not fixed, but rely on web queries, so it just so happens that the first entry that you print changed in the NIH database and now triggers the problem. This issue has not been picked up because presumably the previous result was shorter.
+>
+>
+>
+>> Not surprised it is latex related though. I will look up the character limit for latex to fix this.
+>>
+
+
+I forgot to add that this has rally nothing to do with latex limits - it's simply a bug in the example that tries to produce an insanely long line - I don't think it makes any sense to try to print an abstract as one line. I would suggest either use str() just to illustrate the idea or if you really want to print it, you have to split it into lines and use cat()  [or let knitr soft-wrap the output].
+
+Cheers,
+Simon
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From m|ke @end|ng |rom b|ke@ctu@ry@com  Thu Mar 10 22:00:09 2022
+From: m|ke @end|ng |rom b|ke@ctu@ry@com (Michael Barr)
+Date: Thu, 10 Mar 2022 21:00:09 +0000
+Subject: [R-pkg-devel] R-bloggers and vignettes
+Message-ID: <MWHPR01MB22373DFF705EDC6999D5BCC6D30B9@MWHPR01MB2237.prod.exchangelabs.com>
+
+Hi again -
+
+Hope this is not misplaced, but I have a question related more to publishing a release note on r-bloggers. My site is already fed into r-bloggers and I've put a couple posts there. But with my first package I'm wondering if it is bad form to blog the entire vignette on your own site (and by extension on r-bloggers) when it is rather long with many examples. Is there any convention here, for example:
+
+- publish just the first x% of the vignette, with a read more link to the full write up posted elsewhere (either the CRAN hosted or somewhere else on your own blog)
+- write a separate, more condensed version that gets across the main points (say with less examples)
+- publish the whole thing and it's fine
+
+Just looking for thoughts on what others like or expect to see. Thanks
+
+Mike
+
+	[[alternative HTML version deleted]]
+
+
