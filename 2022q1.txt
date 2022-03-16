@@ -14941,3 +14941,124 @@ Dirk
 https://dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon Mar 14 11:32:24 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 14 Mar 2022 06:32:24 -0400
+Subject: [R-pkg-devel] debugging remote vignette build failure
+In-Reply-To: <4453ba22-73bc-e298-e334-bc5c264b9b13@gmail.com>
+References: <4453ba22-73bc-e298-e334-bc5c264b9b13@gmail.com>
+Message-ID: <c15d6b47-cbea-7b3d-29e8-277ebfd69d32@gmail.com>
+
+On 13/03/2022 8:11 p.m., Ben Bolker wrote:
+>     After switching some vignette elements of the form
+> 
+> https://doi.org/10.1214/09-AOAS306
+> 
+> to
+> 
+> \doi{10.1214/09-AOAS306}
+> 
+>     in the glmmTMB package,
+> 
+> GitHub Actions under Ubuntu 20.04 is throwing an error of the form
+> 
+> Running 'texi2dvi' on 'glmmTMB.tex' failed.
+> LaTeX errors:
+> ! Undefined control sequence.
+> l.172 doi:\nobreakspace{}\Rhref
+>   
+> {[https://doi.org/10.32614/RJ-2017-066}{10.326...](https://doi.org/10.32614/RJ-2017-066%7D%7B10.326...)
+> The control sequence at the end of the top line
+> of your error message was never \def'ed. If you have
+> 
+> 
+>      This does **not** happen with rhub::check_on_ubuntu, which tests
+> with R-release under Ubuntu Linux 20.04.1 LTS
+> 
+>      It would be nice to fix our GH Actions workflow.  Has anyone seen
+> this before/have suggestions for where to start looking for problems?
+
+Are you sure this is coming from a vignette?  It looks like it would be 
+from an Rd file or DESCRIPTION:
+
+The \Rhref macro is defined in Rd.sty.  There's a LaTeX \doi macro in 
+jss.cls, but it doesn't use \Rhref.  On the other hand, the automatic 
+conversion of the DESCRIPTION file uses it in the 
+tools:::.DESCRIPTION_to_latex function.
+
+Duncan Murdoch
+
+
+From @eb@meyer @end|ng |rom |@u@de  Mon Mar 14 14:54:10 2022
+From: @eb@meyer @end|ng |rom |@u@de (Sebastian Meyer)
+Date: Mon, 14 Mar 2022 14:54:10 +0100
+Subject: [R-pkg-devel] debugging remote vignette build failure
+In-Reply-To: <c15d6b47-cbea-7b3d-29e8-277ebfd69d32@gmail.com>
+References: <4453ba22-73bc-e298-e334-bc5c264b9b13@gmail.com>
+ <c15d6b47-cbea-7b3d-29e8-277ebfd69d32@gmail.com>
+Message-ID: <a20f03cd-f023-ced4-324e-4d276e0253f2@fau.de>
+
+Am 14.03.22 um 11:32 schrieb Duncan Murdoch:
+> On 13/03/2022 8:11 p.m., Ben Bolker wrote:
+>> ??? After switching some vignette elements of the form
+>>
+>> https://doi.org/10.1214/09-AOAS306
+>>
+>> to
+>>
+>> \doi{10.1214/09-AOAS306}
+>>
+>> ??? in the glmmTMB package,
+>>
+>> GitHub Actions under Ubuntu 20.04 is throwing an error of the form
+>>
+>> Running 'texi2dvi' on 'glmmTMB.tex' failed.
+>> LaTeX errors:
+>> ! Undefined control sequence.
+>> l.172 doi:\nobreakspace{}\Rhref
+>> {[https://doi.org/10.32614/RJ-2017-066}{10.326...](https://doi.org/10.32614/RJ-2017-066%7D%7B10.326...) 
+>>
+>> The control sequence at the end of the top line
+>> of your error message was never \def'ed. If you have
+>>
+>>
+>> ???? This does **not** happen with rhub::check_on_ubuntu, which tests
+>> with R-release under Ubuntu Linux 20.04.1 LTS
+>>
+>> ???? It would be nice to fix our GH Actions workflow.? Has anyone seen
+>> this before/have suggestions for where to start looking for problems?
+> 
+> Are you sure this is coming from a vignette?? It looks like it would be 
+> from an Rd file or DESCRIPTION:
+> 
+> The \Rhref macro is defined in Rd.sty.? There's a LaTeX \doi macro in 
+> jss.cls, but it doesn't use \Rhref.? On the other hand, the automatic 
+> conversion of the DESCRIPTION file uses it in the 
+> tools:::.DESCRIPTION_to_latex function.
+> 
+
+I think this comes from the glmmTMB vignette doing
+
+> print(citation("glmmTMB"),style="latex")
+
+which produces LaTeX code via Rd2latex(). This uses Rd's \Rhref, 
+wrapping either \href from hyperref.sty, or, as a fallback, \url from 
+url.sty. In addition, the default tools::bibstyle() will also output the 
+volume number in \bold, another LaTeX command from Rd.sty.
+
+I can see the vignette already accounts for \bold via
+
+> %% need this for output of citation() below ...
+> \newcommand{\bold}[1]{\textbf{#1}}
+
+To fix the missing \Rhref definition you could similarly do
+
+\NewCommandCopy\Rhref\href
+
+after including hyperref (\NewCommandCopy needs LaTeX >= 2020-10-01).
+
+Best,
+
+	Sebastian
+
+
