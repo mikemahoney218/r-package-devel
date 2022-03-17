@@ -15062,3 +15062,267 @@ Best,
 	Sebastian
 
 
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Tue Mar 15 13:00:46 2022
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Tue, 15 Mar 2022 13:00:46 +0100
+Subject: [R-pkg-devel] cmake, Windows
+In-Reply-To: <1My36N-1oLFjy1dcN-00zXZc@mail.gmx.net>
+References: <1N0X8u-1oMiEg2f5A-00wWI9@mail.gmx.net>
+ <92781C58-7A10-45F9-AF69-7427DD1A9A04@R-project.org>
+ <E5866827-EA36-40F3-AA09-39CA4D966347@R-project.org>
+ <03145bdf-22e5-6ed9-35d0-dd3f2facdfd9@gmail.com>
+ <1My36N-1oLFjy1dcN-00zXZc@mail.gmx.net>
+Message-ID: <ee07be69-2bb6-9754-2a33-e310d099f151@gmail.com>
+
+Dear Matthias,
+
+On 3/13/22 16:31, Matthias Gondan wrote:
+>
+> Dear Tomas,
+>
+> ok, I?ve seen it now; the cmake is a bit of a mess. I used the one 
+> that is found on r-hub, but it points to gcc.exe in 
+> c:/strawberry/perl/ etc., so using cmake just brings trouble at this 
+> stage.
+>
+> I have now followed your advice and prepared an R package that 
+> connects to an existing Installation of SWI-Prolog on the system.
+>
+> https://github.com/mgondan/rologlite
+>
+> [note that currently, it only works properly with the development tree 
+> of SWI-Prolog, but they update quite often]
+>
+> Is is possible to submit such a package to CRAN at all? What is the 
+> next step? Your advice is greatly appreciated.
+>
+Yes. I would say that ideally your package would work even with older 
+versions of Prolog (yet possibly without lacking some features only 
+available in recent versions). I don't know whether that makes sense for 
+what you are doing, but that would be ideal for R users, who could then 
+install SWI Prolog the usual way on their system (e.g. via Debian 
+package manager, simply swi-prolog, when on Debian, and similarly on 
+other systems). On Windows, they can install SWI Prolog from the 
+official installer, which can be recent, but it is not good requiring 
+them to update. On Linux distributions it would take longer for the 
+updates to propagate.
+
+So the package should be able to use an existing installation of SWI 
+Prolog for base functionality at least and pass checks using it. Users 
+wanting recent functionality requiring newer SWI Prolog could then be 
+instructed to install that manually/pointer to SWI Prolog installation 
+manual.
+
+See Writing R Extensions and CRAN Repository policy for more on how to 
+specify external dependencies. In short, there is SystemRequirements 
+field of the package, it needs to be documented how to install the 
+software, the package should not depend on a specific version of SWI 
+Prolog, the package once installed should not depend on a specific 
+version of SWI Prolog (so that binary R packages can be provided).
+
+If this is not possible and you need a new version of SWI Prolog on all 
+systems, newer than normally available, perhaps best to write to CRAN 
+and ask there about this specific case.
+
+Best
+Tomas
+
+> Best wishes,
+>
+> Matthias
+>
+> *Von: *Tomas Kalibera <mailto:tomas.kalibera at gmail.com>
+> *Gesendet: *Montag, 7. M?rz 2022 10:45
+> *An: *Simon Urbanek <mailto:simon.urbanek at R-project.org>; 
+> matthias-gondan <mailto:matthias-gondan at gmx.de>
+> *Cc: *r-package-devel at r-project.org
+> *Betreff: *Re: [R-pkg-devel] cmake, Windows
+>
+> On 3/6/22 21:46, Simon Urbanek wrote:
+>
+> > BTW: one option I forgot to mention would be to add SWI-Prolog to 
+> the toolchain instead so you don't need to build it. However, I don't 
+> know how tied you are to the development branch that you're using. 
+> There is also the official SWI release Windows binary which may be 
+> another option, but I didn't look at the details if that fits your 
+> bill. I would suggest setting up the UCRT environment locally and 
+> testing the different options so you can decide which is the best path 
+> forward.
+>
+> Right, primarily the package should use an existing installation of SWI
+>
+> Prolog in the system. This is also required by the CRAN repository
+>
+> policy, see "Using external C/C++/Fortran libraries.").
+>
+> So if SWI Prolog official release for Windows has the necessary headers
+>
+> and DLLs, your R package could link to them. One example of R package
+>
+> doing this is rjags, dynamically linking to JAGS (though when there is a
+>
+> plain C interface, it is preferable as it is easier to maintain, see
+>
+> WRE). This would be the simplest option and you could use dynamically
+>
+> linked SWI Prolog.
+>
+> Adding a complete language runtime into an R package feels a bit odd to
+>
+> me, but in principle is possible. If Rtools42 libraries included a
+>
+> static library of SWI Prolog, your package could link to that. Rtools42
+>
+> doesn't include it, but in principle it could be added (Rtools42
+>
+> libraries themselves are built on Linux and indeed cmake is available
+>
+> there, some of those use it), I could help with that. This wouldn't work
+>
+> well if you needed to use dynamic linking.
+>
+> Building SWI Prolog from source included in the R package should not be
+>
+> needed and it won't be any easier than adding it to Rtools42. Rtools42
+>
+> currently doesn't have cmake ready for use (adding it is trivial via
+>
+> pacman, but some work and documentation would be needed to make it find
+>
+> the libraries).
+>
+> Best
+>
+> Tomas
+>
+> >
+>
+> > Cheers,
+>
+> > Simon
+>
+> >
+>
+> >
+>
+> >> On Mar 7, 2022, at 9:05 AM, Simon Urbanek 
+> <simon.urbanek at R-project.org> wrote:
+>
+> >>
+>
+> >> Matthias,
+>
+> >>
+>
+> >> that, that is helpful. So we are talking about UCRT here. The 
+> toolchain from https://github.com/kalibera/ucrt3 appears to not 
+> include the cmake binary. I suspect the reason is that since it is 
+> based on MXE, the cmake binary used for the toolchain is native 
+> (Linux) and not the Windows binary. I think there are two options: 
+> either use the CMake officially released binary or have the toolchain 
+> supply cmake.exe. I'd defer to Tomas who is maintaining the UCRT 
+> toolchain to advise which is the better option.
+>
+> >>
+>
+> >> Cheers,
+>
+> >> Simon
+>
+> >>
+>
+> >>
+>
+> >>
+>
+> >>> On Mar 6, 2022, at 12:37 PM, matthias-gondan 
+> <matthias-gondan at gmx.de> wrote:
+>
+> >>>
+>
+> >>> Thanks Simon,
+>
+> >>>
+>
+> >>> I'll remove the paths and report the results. I'll also check 
+> Dirks suggestion (the other response).
+>
+> >>>
+>
+> >>> For what it's worth, the error message was simply "cmake not 
+> found"; when I added the path it was "/ucrt64/bin/cmake not found"
+>
+> >>>
+>
+> >>> 
+> https://win-builder.r-project.org/incoming_pretest/rolog_0.9_20220305_172741/Windows/00install.out
+>
+> >>>
+>
+> >>> Best wishes,
+>
+> >>>
+>
+> >>> Matthias
+>
+> >>>
+>
+> >>> -------- Urspr?ngliche Nachricht --------
+>
+> >>> Von: Simon Urbanek <simon.urbanek at R-project.org>
+>
+> >>> Datum: 05.03.22 23:19 (GMT+01:00)
+>
+> >>> An: matthias-gondan <matthias-gondan at gmx.de>
+>
+> >>> Cc: r-package-devel at r-project.org
+>
+> >>> Betreff: Re: [R-pkg-devel] cmake, Windows
+>
+> >>>
+>
+> >>> Matthias,
+>
+> >>>
+>
+> >>> You didn't supply any output, so we can only guess. From what I 
+> can see in your package you are hard-coding incorrect paths to 
+> compilers and tools in your Makevars.{win|ucrt}. Please make sure you 
+> use R's compilers - never hard-code paths to tools, you need to use 
+> R's settings since the toolchain can be installed in any location.
+>
+> >>>
+>
+> >>> Cheers,
+>
+> >>> Simon
+>
+> >>>
+>
+> >>>
+>
+> >>>> On Mar 6, 2022, at 6:17 AM, matthias-gondan 
+> <matthias-gondan at gmx.de> wrote:
+>
+> >>>>
+>
+> >>>> Dear package developers, I have submitted a source package to 
+> CRAN, and it is rejected because installation fails on 
+> Windows.https://github.com/mgondan/rologThe compilation needs cmake, 
+> which is available on RTools4+.Is there any chance that cmake is 
+> included on the build system? If not, does anyone know a good solution 
+> for this problem?Best regards,Matthias
+>
+> >>>> [[alternative HTML version deleted]]
+>
+> >>>>
+>
+> >>>> ______________________________________________
+>
+> >>>> R-package-devel at r-project.org mailing list
+>
+> >>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+	[[alternative HTML version deleted]]
+
+
