@@ -15936,3 +15936,922 @@ Dirk
 https://dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From @te|@no@bor|n| @end|ng |rom @@tr@zenec@@com  Thu Mar 17 10:06:59 2022
+From: @te|@no@bor|n| @end|ng |rom @@tr@zenec@@com (Borini, Stefano)
+Date: Thu, 17 Mar 2022 09:06:59 +0000
+Subject: [R-pkg-devel] 
+ Ensuring permanence and SHA consistency of released
+ CRAN packages for validated software
+In-Reply-To: <25138.38319.642784.787700@rob.eddelbuettel.com>
+References: <47552FDC-C6FC-4A0B-8066-0C912380DF1F@astrazeneca.com>
+ <11e18a84-af1c-6351-72d4-d48764e347b9@gmail.com>
+ <CAFDcVCQvaH3mE0M-Jv2=yLfbNc+U-GAL0PGONYmCFVEHf1dTrA@mail.gmail.com>
+ <25138.38319.642784.787700@rob.eddelbuettel.com>
+Message-ID: <F68384E4-2AD4-4C28-9627-A3746EB267DD@astrazeneca.com>
+
+Sure, but why rebuild the package that has already been built?
+Alternatively, would it be possible to have an index containing the sha of the packages, both of the current and of the archive? It doesn?t necessarily solve (someone hacking CRAN to inject a package would certainly make sure to update the SHA as well) but at least I would have information on integrity.
+
+And while I am here, would it be possible to have a PACKAGES index equivalent also for the Archive? I wrote my own package resolver, here
+
+https://github.com/AstraZeneca/roo/
+
+to create my environment. It?s similar to python poetry, but I currently can?t do backtracking when a constraint is not respected, pubgrub style, or I would have to download a lot of stuff.
+If I had an index covering both the current and the archive packages, I would be able to evaluate the dependency tree without downloading the package and inspecting DESCRIPTION for constraints, which would allow me to pubgrub it more efficiently.
+
+If you want to talk about this in more detail, I have some experience with the issue on python (I worked for a major scientific python distributor, and I had to learn my fair dose of pain). I would not mind setting up a broader conversation, mostly referring to PEP and PyPA approaches.
+
+--
+Stefano Borini
+Principal Analytical Tools Developer
+AstraZeneca R&D BioPharmaceuticals | Data Science & AI | Early Biometrics & Statistical Innovation
+
+
+
+From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Dirk Eddelbuettel <edd at debian.org>
+Date: Thursday, 17 March 2022 at 02:04
+To: Henrik Bengtsson <henrik.bengtsson at gmail.com>
+Cc: "r-package-devel at r-project.org" <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Ensuring permanence and SHA consistency of released CRAN packages for validated software
+
+
+On 16 March 2022 at 14:01, Henrik Bengtsson wrote:
+| Related to this, there's also been discussion (here or on R-devel), of
+| having `R CMD build` produce identical tarballs when the input doesn't
+| change, but the injection of `Packaged: <timestamp>; <user>` to the
+| `DESCRIPTION` file prevents this. If I recall correctly, there was at
+| least some discussion on being able to control, or anonymize, the
+| <user> part.
+
+It's much bigger than R: https://reproducible-builds.org/<https://reproducible-builds.org>
+
+Started within Debian, but grew fairly quickly beyond one distribution to
+many. We patched the build to use the (fixed) time from debian/changelog
+(rather than current build time) and a few more things and were at some point
+compliant, but there is still more and the package I stand behind as far as
+Debian is concerned currently fails this goal of reproducible (i.e. binary
+identical builds) [1] (and I have limited time to chase this, but the
+initiative is very very good).
+
+If someone wants to help please get in touch off-list. It should just require
+some patience and diligence and I may teach your Debian builds in the
+process. The r-cran-* packages generally pass which is good.
+
+Dirk
+
+[1] https://tests.reproducible-builds.org/debian/rb-pkg/unstable/amd64/r-base.html<https://tests.reproducible-builds.org/debian/rb-pkg/unstable/amd64/r-base.html>
+
+
+--
+https://dirk.eddelbuettel.com<https://dirk.eddelbuettel.com> | @eddelbuettel | edd at debian.org
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel<https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+
+________________________________
+
+AstraZeneca UK Limited is a company incorporated in England and Wales with registered number:03674842 and its registered office at 1 Francis Crick Avenue, Cambridge Biomedical Campus, Cambridge, CB2 0AA.
+
+This e-mail and its attachments are intended for the above named recipient only and may contain confidential and privileged information. If they have come to you in error, you must not copy or show them to anyone; instead, please reply to this e-mail, highlighting the error to the sender and then immediately delete the message. For information about how AstraZeneca UK Limited and its affiliates may process information, personal data and monitor communications, please see our privacy notice at www.astrazeneca.com<https://www.astrazeneca.com>
+
+	[[alternative HTML version deleted]]
+
+
+From @te|@no@bor|n| @end|ng |rom @@tr@zenec@@com  Thu Mar 17 10:14:07 2022
+From: @te|@no@bor|n| @end|ng |rom @@tr@zenec@@com (Borini, Stefano)
+Date: Thu, 17 Mar 2022 09:14:07 +0000
+Subject: [R-pkg-devel] 
+ Ensuring permanence and SHA consistency of released
+ CRAN packages for validated software
+In-Reply-To: <11e18a84-af1c-6351-72d4-d48764e347b9@gmail.com>
+References: <47552FDC-C6FC-4A0B-8066-0C912380DF1F@astrazeneca.com>
+ <11e18a84-af1c-6351-72d4-d48764e347b9@gmail.com>
+Message-ID: <25C4E991-ECA3-4104-BE82-4EFD3C29BB0E@astrazeneca.com>
+
+
+    If you want to guarantee that a CRAN package can be re-installed years
+    from now, *you* should be archiving a copy of it.
+
+We do, in fact, but that's beside the point. The success of an opensource project depends on the user base. I don't control the budget of the company I work for, or how that money is allocated. All I can say is that I found an issue and I am reporting it, and it's an issue that in the python world has been dealt with. It does not require more effort. It actually requires less. Just don't rebuild a package that has already been built.
+That said, I do have some budget of my own time, which I can use (and in fact I do use) to collaborate with opensource projects during my working hours, but as I don't have the keys to CRAN build system I can't really fix the issue myself.
+
+  You may be negligent
+    by not doing so:  there's no guarantee that CRAN will still be
+    distributing *any* version of MASS when the auditors show up.
+
+As I said, we do, but when you decide to host what is basically the official package index for a language, you acquire some responsibilities (if not contractual, at least moral), regardless if you are an opensource developer or not.
+
+
+________________________________
+
+
+AstraZeneca UK Limited is a company incorporated in England and Wales with registered number:03674842 and its registered office at 1 Francis Crick Avenue, Cambridge Biomedical Campus, Cambridge, CB2 0AA.
+
+This e-mail and its attachments are intended for the above named recipient only and may contain confidential and privileged information. If they have come to you in error, you must not copy or show them to anyone; instead, please reply to this e-mail, highlighting the error to the sender and then immediately delete the message. For information about how AstraZeneca UK Limited and its affiliates may process information, personal data and monitor communications, please see our privacy notice at www.astrazeneca.com<https://www.astrazeneca.com>
+
+From |uc@r @end|ng |rom |edor@project@org  Thu Mar 17 11:15:57 2022
+From: |uc@r @end|ng |rom |edor@project@org (=?UTF-8?Q?I=C3=B1aki_Ucar?=)
+Date: Thu, 17 Mar 2022 11:15:57 +0100
+Subject: [R-pkg-devel] 
+ Ensuring permanence and SHA consistency of released
+ CRAN packages for validated software
+In-Reply-To: <F68384E4-2AD4-4C28-9627-A3746EB267DD@astrazeneca.com>
+References: <47552FDC-C6FC-4A0B-8066-0C912380DF1F@astrazeneca.com>
+ <11e18a84-af1c-6351-72d4-d48764e347b9@gmail.com>
+ <CAFDcVCQvaH3mE0M-Jv2=yLfbNc+U-GAL0PGONYmCFVEHf1dTrA@mail.gmail.com>
+ <25138.38319.642784.787700@rob.eddelbuettel.com>
+ <F68384E4-2AD4-4C28-9627-A3746EB267DD@astrazeneca.com>
+Message-ID: <CALEXWq2iBh-ym5j25n=P6TPTKHdx1T4EX2sUOX1z2jU9REaxyw@mail.gmail.com>
+
+On Thu, 17 Mar 2022 at 10:08, Borini, Stefano
+<stefano.borini at astrazeneca.com> wrote:
+>
+> Sure, but why rebuild the package that has already been built?
+
+Because the rest of the stack evolves and changes (compilers, shared
+libraries, other packages), so you need to periodically (or, better
+and more efficiently, each time a dependency changes) rebuild stuff to
+check that it still works. Linux distributions have dedicated services
+for this (see e.g. [1]).
+
+[1] https://koschei.fedoraproject.org/
+
+-- 
+I?aki ?car
+
+
+From @te|@no@bor|n| @end|ng |rom @@tr@zenec@@com  Thu Mar 17 11:37:47 2022
+From: @te|@no@bor|n| @end|ng |rom @@tr@zenec@@com (Borini, Stefano)
+Date: Thu, 17 Mar 2022 10:37:47 +0000
+Subject: [R-pkg-devel] 
+ Ensuring permanence and SHA consistency of released
+ CRAN packages for validated software
+In-Reply-To: <9098794d-3547-7988-034c-3eb35bd529ca@gmail.com>
+References: <47552FDC-C6FC-4A0B-8066-0C912380DF1F@astrazeneca.com>
+ <11e18a84-af1c-6351-72d4-d48764e347b9@gmail.com>
+ <25C4E991-ECA3-4104-BE82-4EFD3C29BB0E@astrazeneca.com>
+ <9098794d-3547-7988-034c-3eb35bd529ca@gmail.com>
+Message-ID: <7C2CD950-7B18-4837-8CA6-D8D2A48FC1AC@astrazeneca.com>
+
+    It's hard to convey tone in an email, but to me your post read more like
+    a demand than a report of an issue.  I apologize for my misreading if
+    that wasn't your intention.
+
+No problem. I just wanted to point out that it is a problem. A lot of people use R and CRAN for regulated environment development. Inside our company, we do everything we can and more to ensure reproducibility and auditability of our results, but of course people may decide to migrate to other languages and environment if guarantees are hard to obtain on these respects. I've been following the EMA recommendations for validation, and the issue is getting more and more prevalent. As an individual working for my company, all I can do is to safeguard the code I produce and put into production to monitor for such events. It is my responsibility and I do everything I can to protect the integrity of the environment my users run calculations on.
+
+   From Dirk's message, it sounds as
+    though he knows a lot about this, so you could work with him to propose
+    a change to the R build process.
+
+We could. However, be aware that my expertise in terms of R is very lacking. I've been a long time python developer. All I do is migrate my python experience and apply it to R, but the deep technicalities of R and CRAN are unknown to me.
+
+    Now it sounds as if you are accusing CRAN of shirking its
+    responsibilities.  CRAN is not responsible for your workflow, you are.
+
+No, but CRAN is responsible for hosting packages and their integrity. I am quite sure that if CRAN were to go away, there would be a complete uproar from the whole R community. Similarly, if CRAN were compromised and packages were modified to inject malicious code, people would be _very_ angry about it. Python has a few PEPs on PyPI integrity, e.g:
+
+https://peps.python.org/pep-0458/
+
+https://peps.python.org/pep-0480/
+
+and a lot more on the Python Packaging Authority site.
+The workflow is to download packages. How I download packages is a different story, but I am assuming that most R users don't give much thought about package SHA. Not sure if packrat or renv checks for SHA. I don't use them. As I said I found them inadequate and built my own solution.
+
+    As I said before, I don't know how it happened that there were two
+    builds of MASS on CRAN, built 50 seconds apart.  But a guess is that it
+    was built and published, but something appeared to indicate that things
+    failed, or someone accidentally repeated some keystrokes, and the
+    process was repeated.  You were unlucky enough to download it during
+    that 50 second window.
+
+Highly unlikely. That day was bank holiday in the UK
+
+Early May Bank Holiday  Mon, 3 May 2021
+
+And I am certainly not working during a bank holiday, let alone re-run locking of packages. I also have to add that this is not the first time this event occurs. I've experienced this many, many times in the past 2 years. This is the first time I actually happen to have both the old package (in roo package cache) and the new one (downloaded) so I could compare the two.
+
+
+
+________________________________
+
+
+AstraZeneca UK Limited is a company incorporated in England and Wales with registered number:03674842 and its registered office at 1 Francis Crick Avenue, Cambridge Biomedical Campus, Cambridge, CB2 0AA.
+
+This e-mail and its attachments are intended for the above named recipient only and may contain confidential and privileged information. If they have come to you in error, you must not copy or show them to anyone; instead, please reply to this e-mail, highlighting the error to the sender and then immediately delete the message. For information about how AstraZeneca UK Limited and its affiliates may process information, personal data and monitor communications, please see our privacy notice at www.astrazeneca.com<https://www.astrazeneca.com>
+
+From |uc@r @end|ng |rom |edor@project@org  Thu Mar 17 11:52:45 2022
+From: |uc@r @end|ng |rom |edor@project@org (=?UTF-8?Q?I=C3=B1aki_Ucar?=)
+Date: Thu, 17 Mar 2022 11:52:45 +0100
+Subject: [R-pkg-devel] 
+ Ensuring permanence and SHA consistency of released
+ CRAN packages for validated software
+In-Reply-To: <13C6835C-01CF-4752-BF87-D9433D91B466@astrazeneca.com>
+References: <47552FDC-C6FC-4A0B-8066-0C912380DF1F@astrazeneca.com>
+ <11e18a84-af1c-6351-72d4-d48764e347b9@gmail.com>
+ <CAFDcVCQvaH3mE0M-Jv2=yLfbNc+U-GAL0PGONYmCFVEHf1dTrA@mail.gmail.com>
+ <25138.38319.642784.787700@rob.eddelbuettel.com>
+ <F68384E4-2AD4-4C28-9627-A3746EB267DD@astrazeneca.com>
+ <CALEXWq2iBh-ym5j25n=P6TPTKHdx1T4EX2sUOX1z2jU9REaxyw@mail.gmail.com>
+ <13C6835C-01CF-4752-BF87-D9433D91B466@astrazeneca.com>
+Message-ID: <CALEXWq0L9oN8Kw9OHmb4A_aYxgJ0G8W5rr5SNz_7=5DvKwkhMg@mail.gmail.com>
+
+On Thu, 17 Mar 2022 at 11:40, Borini, Stefano
+<stefano.borini at astrazeneca.com> wrote:
+>
+> Then I argue that the model is wrong. Platforms change all the time, but package release and package testing are two separate operations.
+
+I answered the question "why rebuild the package that has already been
+built?". I didn't say that the rebuilt package had to be republished.
+In fact, they're not in general. And when it's really needed because
+something in the packaging changed but the upstream source didn't
+change, then there's a "release" tag that is incremented and added as
+a suffix to the version.
+
+> I also guess it hardly scales. If the number of packages were to increase, you can?t rebuild and retest them all every time a linux distribution changes something and you want to retest the whole lot against it.
+
+Well, we do.
+
+-- 
+I?aki ?car
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Mar 17 11:17:18 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 17 Mar 2022 06:17:18 -0400
+Subject: [R-pkg-devel] 
+ Ensuring permanence and SHA consistency of released
+ CRAN packages for validated software
+In-Reply-To: <25C4E991-ECA3-4104-BE82-4EFD3C29BB0E@astrazeneca.com>
+References: <47552FDC-C6FC-4A0B-8066-0C912380DF1F@astrazeneca.com>
+ <11e18a84-af1c-6351-72d4-d48764e347b9@gmail.com>
+ <25C4E991-ECA3-4104-BE82-4EFD3C29BB0E@astrazeneca.com>
+Message-ID: <9098794d-3547-7988-034c-3eb35bd529ca@gmail.com>
+
+On 17/03/2022 5:14 a.m., Borini, Stefano wrote:
+> 
+>      If you want to guarantee that a CRAN package can be re-installed years
+>      from now, *you* should be archiving a copy of it.
+> 
+> We do, in fact, but that's beside the point. The success of an opensource project depends on the user base. I don't control the budget of the company I work for, or how that money is allocated. All I can say is that I found an issue and I am reporting it, and it's an issue that in the python world has been dealt with. It does not require more effort. It actually requires less. Just don't rebuild a package that has already been built.
+
+It's hard to convey tone in an email, but to me your post read more like 
+a demand than a report of an issue.  I apologize for my misreading if 
+that wasn't your intention.
+
+> That said, I do have some budget of my own time, which I can use (and in fact I do use) to collaborate with opensource projects during my working hours, but as I don't have the keys to CRAN build system I can't really fix the issue myself.
+
+Offering to track down the issue and fix it is a good thing.  You can't 
+commit your change, but you could write it.  However, I'd guess it's not 
+as easy as you suggest:  the build time entry is not the only place a 
+timestamp could slip into a package.  From Dirk's message, it sounds as 
+though he knows a lot about this, so you could work with him to propose 
+a change to the R build process.
+
+>    You may be negligent
+>      by not doing so:  there's no guarantee that CRAN will still be
+>      distributing *any* version of MASS when the auditors show up.
+> 
+> As I said, we do, but when you decide to host what is basically the official package index for a language, you acquire some responsibilities (if not contractual, at least moral), regardless if you are an opensource developer or not.
+
+Now it sounds as if you are accusing CRAN of shirking its 
+responsibilities.  CRAN is not responsible for your workflow, you are. 
+If your workflow doesn't fit with CRAN's practices, you could fix your 
+workflow.
+
+As I said before, I don't know how it happened that there were two 
+builds of MASS on CRAN, built 50 seconds apart.  But a guess is that it 
+was built and published, but something appeared to indicate that things 
+failed, or someone accidentally repeated some keystrokes, and the 
+process was repeated.  You were unlucky enough to download it during 
+that 50 second window.  It is not reasonable to suggest that errors like 
+that should be impossible, but Dirk's project seems intended to reduce 
+their impact.
+
+Duncan Muroch
+
+
+From @te|@no@bor|n| @end|ng |rom @@tr@zenec@@com  Thu Mar 17 11:39:51 2022
+From: @te|@no@bor|n| @end|ng |rom @@tr@zenec@@com (Borini, Stefano)
+Date: Thu, 17 Mar 2022 10:39:51 +0000
+Subject: [R-pkg-devel] 
+ Ensuring permanence and SHA consistency of released
+ CRAN packages for validated software
+In-Reply-To: <CALEXWq2iBh-ym5j25n=P6TPTKHdx1T4EX2sUOX1z2jU9REaxyw@mail.gmail.com>
+References: <47552FDC-C6FC-4A0B-8066-0C912380DF1F@astrazeneca.com>
+ <11e18a84-af1c-6351-72d4-d48764e347b9@gmail.com>
+ <CAFDcVCQvaH3mE0M-Jv2=yLfbNc+U-GAL0PGONYmCFVEHf1dTrA@mail.gmail.com>
+ <25138.38319.642784.787700@rob.eddelbuettel.com>
+ <F68384E4-2AD4-4C28-9627-A3746EB267DD@astrazeneca.com>
+ <CALEXWq2iBh-ym5j25n=P6TPTKHdx1T4EX2sUOX1z2jU9REaxyw@mail.gmail.com>
+Message-ID: <13C6835C-01CF-4752-BF87-D9433D91B466@astrazeneca.com>
+
+Then I argue that the model is wrong. Platforms change all the time, but package release and package testing are two separate operations. I also guess it hardly scales. If the number of packages were to increase, you can?t rebuild and retest them all every time a linux distribution changes something and you want to retest the whole lot against it.
+
+
+--
+Stefano Borini
+Principal Analytical Tools Developer
+AstraZeneca R&D BioPharmaceuticals | Data Science & AI | Early Biometrics & Statistical Innovation
+
+
+
+From: I?aki Ucar <iucar at fedoraproject.org>
+Date: Thursday, 17 March 2022 at 10:16
+To: "Borini, Stefano" <stefano.borini at astrazeneca.com>
+Cc: Dirk Eddelbuettel <edd at debian.org>, Henrik Bengtsson <henrik.bengtsson at gmail.com>, "r-package-devel at r-project.org" <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Ensuring permanence and SHA consistency of released CRAN packages for validated software
+
+On Thu, 17 Mar 2022 at 10:08, Borini, Stefano
+<stefano.borini at astrazeneca.com> wrote:
+>
+> Sure, but why rebuild the package that has already been built?
+
+Because the rest of the stack evolves and changes (compilers, shared
+libraries, other packages), so you need to periodically (or, better
+and more efficiently, each time a dependency changes) rebuild stuff to
+check that it still works. Linux distributions have dedicated services
+for this (see e.g. [1]).
+
+[1] https://koschei.fedoraproject.org/<https://koschei.fedoraproject.org>
+
+--
+I?aki ?car
+
+________________________________
+
+AstraZeneca UK Limited is a company incorporated in England and Wales with registered number:03674842 and its registered office at 1 Francis Crick Avenue, Cambridge Biomedical Campus, Cambridge, CB2 0AA.
+
+This e-mail and its attachments are intended for the above named recipient only and may contain confidential and privileged information. If they have come to you in error, you must not copy or show them to anyone; instead, please reply to this e-mail, highlighting the error to the sender and then immediately delete the message. For information about how AstraZeneca UK Limited and its affiliates may process information, personal data and monitor communications, please see our privacy notice at www.astrazeneca.com<https://www.astrazeneca.com>
+
+	[[alternative HTML version deleted]]
+
+
+From @te|@no@bor|n| @end|ng |rom @@tr@zenec@@com  Thu Mar 17 11:48:11 2022
+From: @te|@no@bor|n| @end|ng |rom @@tr@zenec@@com (Borini, Stefano)
+Date: Thu, 17 Mar 2022 10:48:11 +0000
+Subject: [R-pkg-devel] 
+ Ensuring permanence and SHA consistency of released
+ CRAN packages for validated software
+In-Reply-To: <CAFDcVCQvaH3mE0M-Jv2=yLfbNc+U-GAL0PGONYmCFVEHf1dTrA@mail.gmail.com>
+References: <47552FDC-C6FC-4A0B-8066-0C912380DF1F@astrazeneca.com>
+ <11e18a84-af1c-6351-72d4-d48764e347b9@gmail.com>
+ <CAFDcVCQvaH3mE0M-Jv2=yLfbNc+U-GAL0PGONYmCFVEHf1dTrA@mail.gmail.com>
+Message-ID: <53751A42-D5D1-42C0-84C2-4437A17537D2@astrazeneca.com>
+
+
+Related to this, there's also been discussion (here or on R-devel), of
+having `R CMD build` produce identical tarballs when the input doesn't
+change, but the injection of `Packaged: <timestamp>; <user>` to the
+`DESCRIPTION` file prevents this. If I recall correctly, there was at
+least some discussion on being able to control, or anonymize, the
+<user> part.
+
+Yes, you can?t have timestamps in metadata if you want a reproducible build.
+Well, you can, provided that you use different strategies. For example, have a superformat (e.g. like python wheel) instead of a plain tar.gz, and have metainfo
+Inside that. Or you can provide a gpg signature. Even if the sha were to change, one can check for integrity against the signature and know it hasn?t been messed with.
+
+
+MRAN (https://mran.microsoft.com/timemachine<https://mran.microsoft.com/timemachine>) provides a daily
+snapshot of CRAN, and it goes back several years, but I'm not sure if
+that would solve your problem. It's only stable for a particular date,
+but I'd guess that in this case it could pick up one build one day,
+and the other one the next day.
+
+I don?t believe in the snapshot model. It doesn?t scale, and the reality of development, especially agile development, is that I have to mix and match depending on what users require me to add.
+The library I need may not be present in the snapshot, or present in a version that is too old, or constraints may not be satisfied (I hardly believe one can ensure a consistent dependency tree with full constraints respected on more than 9000 packages and counting).
+
+
+There are a few working groups over at the R Consortium
+(https://www.r-consortium.org/projects/isc-working-groups<https://www.r-consortium.org/projects/isc-working-groups>) who are
+interested in reproducibility of R packages. I suspect the 'R
+Validation Hub' working group (https://www.pharmar.org/overview/<https://www.pharmar.org/overview>)
+would be interested in these type of hiccups, even if it's just to
+collect rare "incidents" like this one. I suggest you ping them as
+well.
+
+Will do. Thanks.
+
+As I said, I have some availability of my time for opensource projects and external collaborations, and I can help somehow, but it really depends on what one can do. I know from experience that package management and dependencies are a really hard battle.
+
+
+
+/Henrik
+
+On Wed, Mar 16, 2022 at 12:45 PM Duncan Murdoch
+<murdoch.duncan at gmail.com> wrote:
+>
+> On 16/03/2022 2:51 p.m., Borini, Stefano wrote:
+> > Hello,
+> >
+> > Validated software needs to ensure consistency and reproducibility of its environment, potentially in years' time, when the audit comes. For this reason, we identify all SHA of the packages we download from CRAN to ensure that the package has not changed after the fact, something that may signal us that the package has been corrupted, or malicious code has been added after the fact, and also guarantees the auditors that the packages are indeed the correct ones as they were at the time of release.
+> >
+> > Currently I am dealing with a package that I downloaded once in the past, MASS_7.3-54. This package used to have SHA256
+> >
+> > b800ccd5b5c2709b1559cf5eab126e4935c4f8826cf7891253432bb6a056e821 MASS_7.3-54.tar.gz
+> >
+> > The current package has instead SHA:
+> >
+> > eb644c0e94b447c46387aa22436ef5a43192960ee9cfd0df2940f4a4116179ae MASS_7.3-54.tar.gz
+> >
+> > This triggers all sort of alarms. It is established poor practice to replace a package after the fact exact for these reasons. Once a package is released, it should remain immutable. Subsequent builds can be introduced with a different build number.
+> >
+> > The change appears to be due to the fact that CRAN rebuilds packages occasionally, for reasons to me unknown. Diffing the old and the new MASS_7.3.54.tar.gz reveals the change to be due to this:
+> >
+> > $ diff -Naur MASS_1/ MASS_2/
+> > diff -Naur MASS_1/DESCRIPTION MASS_2/DESCRIPTION
+> > --- MASS_1/DESCRIPTION 2021-05-03 10:03:00.000000000 +0100
+> > +++ MASS_2/DESCRIPTION 2021-05-03 10:03:50.000000000 +0100
+> > @@ -33,4 +33,4 @@
+> > David Firth [ctb]
+> > Maintainer: Brian Ripley <ripley at stats.ox.ac.uk>
+> > Repository: CRAN
+> > -Date/Publication: 2021-05-03 09:03:00 UTC
+> > +Date/Publication: 2021-05-03 09:03:50 UTC
+> > diff -Naur MASS_1/MD5 MASS_2/MD5
+> > --- MASS_1/MD5 2021-05-03 10:03:00.000000000 +0100
+> > +++ MASS_2/MD5 2021-05-03 10:03:50.000000000 +0100
+> > @@ -1,4 +1,4 @@
+> > -560f72bfd93ac57532d2cf113078d2e7 *DESCRIPTION
+> > +ecf84f78aac3c625898be45513307d79 *DESCRIPTION
+> > 35aff05a505ecf7e81e0473767794ca9 *INDEX
+> > c7acdc0fa828f781a0a5586ab9d4fa1b *LICENCE.note
+> > 0ac7b30ad35a4c19ea69d76a6a366b02 *NAMESPACE
+> >
+> > Please prevent SHA changes of released packages on CRAN. Once a package is released, it should not be touched again.
+> >
+> > --
+> >
+> > Stefano Borini
+> > Principal Analytical Tools Developer
+> > AstraZeneca R&D BioPharmaceuticals | Data Science & AI | Early Biometrics & Statistical Innovation
+>
+> I don't know the reason that MASS was built again 50 seconds after the
+> first build, and it would be more convenient for you and some other
+> people if it hadn't been, but your request comes across as unreasonably
+> demanding.
+>
+> You work for a company with a very large budget. CRAN is run by
+> volunteers, and as far as I know, your company has not contributed
+> financially to running it.
+>
+> If you want to guarantee that a CRAN package can be re-installed years
+> from now, *you* should be archiving a copy of it. You may be negligent
+> by not doing so: there's no guarantee that CRAN will still be
+> distributing *any* version of MASS when the auditors show up.
+>
+> Duncan Murdoch
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel<https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+
+________________________________
+
+AstraZeneca UK Limited is a company incorporated in England and Wales with registered number:03674842 and its registered office at 1 Francis Crick Avenue, Cambridge Biomedical Campus, Cambridge, CB2 0AA.
+
+This e-mail and its attachments are intended for the above named recipient only and may contain confidential and privileged information. If they have come to you in error, you must not copy or show them to anyone; instead, please reply to this e-mail, highlighting the error to the sender and then immediately delete the message. For information about how AstraZeneca UK Limited and its affiliates may process information, personal data and monitor communications, please see our privacy notice at www.astrazeneca.com<https://www.astrazeneca.com>
+
+	[[alternative HTML version deleted]]
+
+
+From ev@n@b|eder@tedt @end|ng |rom gm@||@com  Thu Mar 17 14:51:52 2022
+From: ev@n@b|eder@tedt @end|ng |rom gm@||@com (Evan Biederstedt)
+Date: Thu, 17 Mar 2022 09:51:52 -0400
+Subject: [R-pkg-devel] Setting OpenMP threads (globally) for an R package
+Message-ID: <CABFhwYOAwKwkSzduiSZ3YEsqupCmgjRj4Eu47T-2RrYXUm3M5g@mail.gmail.com>
+
+Hi R-package-devel
+
+I'm developing an R package which uses `parallel::mclapply` and several
+other library dependencies which possibly rely upon OpenMP. Unfortunately,
+some functions explode the amount of memory used.
+
+I've noticed that if I set `export OMP_NUM_THREADS=1` before starting R,
+the memory is far more manageable.
+
+My question is, if there a way for me to achieve this behavior within the R
+package itself?
+
+My initial try was to use `R/zzz.R` and an `.onLoad()` function to load
+these global variables upon loading the library.
+
+```
+.onLoad <- function(libname, pkgname){
+  Sys.setenv(OMP_NUM_THREADS=1)
+}
+```
+
+But this doesn't work. The memory still explodes. In fact, I'm worried that
+this cannot be done within an R package itself, as R has already started,
+e.g.  https://stackoverflow.com/a/27320691/5269850
+
+Is there a recommended approach for this problem when writing R packages?
+
+Package here: https://github.com/kharchenkolab/numbat
+
+Related question on SO:
+https://stackoverflow.com/questions/71507979/set-openmp-threads-for-all-dependencies-in-r-package
+
+Any help appreciated. Thanks, Evan
+
+	[[alternative HTML version deleted]]
+
+
+From wo||g@ng@v|echtb@uer @end|ng |rom m@@@tr|chtun|ver@|ty@n|  Fri Mar 18 00:06:20 2022
+From: wo||g@ng@v|echtb@uer @end|ng |rom m@@@tr|chtun|ver@|ty@n| (Viechtbauer, Wolfgang (SP))
+Date: Thu, 17 Mar 2022 23:06:20 +0000
+Subject: [R-pkg-devel] 
+ Setting OpenMP threads (globally) for an R package
+In-Reply-To: <CABFhwYOAwKwkSzduiSZ3YEsqupCmgjRj4Eu47T-2RrYXUm3M5g@mail.gmail.com>
+References: <CABFhwYOAwKwkSzduiSZ3YEsqupCmgjRj4Eu47T-2RrYXUm3M5g@mail.gmail.com>
+Message-ID: <14c4484af0f343318b2889c16fd9fc06@UM-MAIL3214.unimaas.nl>
+
+Hi Evan,
+
+Check omp_set_num_threads() from the RhpcBLASctl package. I know from experience that it works for limiting the number of threads for BLAS inside a running R session with blas_set_num_threads(1) (instead of setting OPENBLAS_NUM_THREADS=1 before running R). I assume it should work the same for omp_set_num_threads().
+
+Best,
+Wolfgang
+
+>-----Original Message-----
+>From: R-package-devel [mailto:r-package-devel-bounces at r-project.org] On Behalf Of
+>Evan Biederstedt
+>Sent: Thursday, 17 March, 2022 14:52
+>To: R Package Development
+>Subject: [R-pkg-devel] Setting OpenMP threads (globally) for an R package
+>
+>Hi R-package-devel
+>
+>I'm developing an R package which uses `parallel::mclapply` and several
+>other library dependencies which possibly rely upon OpenMP. Unfortunately,
+>some functions explode the amount of memory used.
+>
+>I've noticed that if I set `export OMP_NUM_THREADS=1` before starting R,
+>the memory is far more manageable.
+>
+>My question is, if there a way for me to achieve this behavior within the R
+>package itself?
+>
+>My initial try was to use `R/zzz.R` and an `.onLoad()` function to load
+>these global variables upon loading the library.
+>
+>```
+>.onLoad <- function(libname, pkgname){
+>  Sys.setenv(OMP_NUM_THREADS=1)
+>}
+>```
+>
+>But this doesn't work. The memory still explodes. In fact, I'm worried that
+>this cannot be done within an R package itself, as R has already started,
+>e.g.  https://stackoverflow.com/a/27320691/5269850
+>
+>Is there a recommended approach for this problem when writing R packages?
+>
+>Package here: https://github.com/kharchenkolab/numbat
+>
+>Related question on SO:
+>https://stackoverflow.com/questions/71507979/set-openmp-threads-for-all-
+>dependencies-in-r-package
+>
+>Any help appreciated. Thanks, Evan
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Fri Mar 18 00:23:51 2022
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Fri, 18 Mar 2022 12:23:51 +1300
+Subject: [R-pkg-devel] 
+ Setting OpenMP threads (globally) for an R package
+In-Reply-To: <CABFhwYOAwKwkSzduiSZ3YEsqupCmgjRj4Eu47T-2RrYXUm3M5g@mail.gmail.com>
+References: <CABFhwYOAwKwkSzduiSZ3YEsqupCmgjRj4Eu47T-2RrYXUm3M5g@mail.gmail.com>
+Message-ID: <A189E324-6FF6-4FE8-BA09-8A50E3F2DD81@R-project.org>
+
+Evan,
+
+honestly, I think your request may be a red herring. Threads typically don't cause memory explosion, because OpenMP threads don't allocate new memory, but uncontrolled forking does. There are many things that are not allowed inside mclapply so that's where I would look. It may be better to look at the root cause first, but for that we would need more details on what you are doing.
+
+Cheers,
+Simon
+
+
+> On Mar 18, 2022, at 2:51 AM, Evan Biederstedt <evan.biederstedt at gmail.com> wrote:
+> 
+> Hi R-package-devel
+> 
+> I'm developing an R package which uses `parallel::mclapply` and several
+> other library dependencies which possibly rely upon OpenMP. Unfortunately,
+> some functions explode the amount of memory used.
+> 
+> I've noticed that if I set `export OMP_NUM_THREADS=1` before starting R,
+> the memory is far more manageable.
+> 
+> My question is, if there a way for me to achieve this behavior within the R
+> package itself?
+> 
+> My initial try was to use `R/zzz.R` and an `.onLoad()` function to load
+> these global variables upon loading the library.
+> 
+> ```
+> .onLoad <- function(libname, pkgname){
+>  Sys.setenv(OMP_NUM_THREADS=1)
+> }
+> ```
+> 
+> But this doesn't work. The memory still explodes. In fact, I'm worried that
+> this cannot be done within an R package itself, as R has already started,
+> e.g.  https://stackoverflow.com/a/27320691/5269850
+> 
+> Is there a recommended approach for this problem when writing R packages?
+> 
+> Package here: https://github.com/kharchenkolab/numbat
+> 
+> Related question on SO:
+> https://stackoverflow.com/questions/71507979/set-openmp-threads-for-all-dependencies-in-r-package
+> 
+> Any help appreciated. Thanks, Evan
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From bbo|ker @end|ng |rom gm@||@com  Fri Mar 18 00:27:28 2022
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Thu, 17 Mar 2022 19:27:28 -0400
+Subject: [R-pkg-devel] 
+ Setting OpenMP threads (globally) for an R package
+In-Reply-To: <A189E324-6FF6-4FE8-BA09-8A50E3F2DD81@R-project.org>
+References: <CABFhwYOAwKwkSzduiSZ3YEsqupCmgjRj4Eu47T-2RrYXUm3M5g@mail.gmail.com>
+ <A189E324-6FF6-4FE8-BA09-8A50E3F2DD81@R-project.org>
+Message-ID: <31a30568-9380-a4e2-5b53-14cb3c868fea@gmail.com>
+
+    There is some code for managing OpenMP threading in the glmmTMB 
+package, if you search its github repo for "openmp" ...
+
+On 3/17/22 7:23 PM, Simon Urbanek wrote:
+> Evan,
+> 
+> honestly, I think your request may be a red herring. Threads typically don't cause memory explosion, because OpenMP threads don't allocate new memory, but uncontrolled forking does. There are many things that are not allowed inside mclapply so that's where I would look. It may be better to look at the root cause first, but for that we would need more details on what you are doing.
+> 
+> Cheers,
+> Simon
+> 
+> 
+>> On Mar 18, 2022, at 2:51 AM, Evan Biederstedt <evan.biederstedt at gmail.com> wrote:
+>>
+>> Hi R-package-devel
+>>
+>> I'm developing an R package which uses `parallel::mclapply` and several
+>> other library dependencies which possibly rely upon OpenMP. Unfortunately,
+>> some functions explode the amount of memory used.
+>>
+>> I've noticed that if I set `export OMP_NUM_THREADS=1` before starting R,
+>> the memory is far more manageable.
+>>
+>> My question is, if there a way for me to achieve this behavior within the R
+>> package itself?
+>>
+>> My initial try was to use `R/zzz.R` and an `.onLoad()` function to load
+>> these global variables upon loading the library.
+>>
+>> ```
+>> .onLoad <- function(libname, pkgname){
+>>   Sys.setenv(OMP_NUM_THREADS=1)
+>> }
+>> ```
+>>
+>> But this doesn't work. The memory still explodes. In fact, I'm worried that
+>> this cannot be done within an R package itself, as R has already started,
+>> e.g.  https://stackoverflow.com/a/27320691/5269850
+>>
+>> Is there a recommended approach for this problem when writing R packages?
+>>
+>> Package here: https://github.com/kharchenkolab/numbat
+>>
+>> Related question on SO:
+>> https://stackoverflow.com/questions/71507979/set-openmp-threads-for-all-dependencies-in-r-package
+>>
+>> Any help appreciated. Thanks, Evan
+>>
+>> 	[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+(Acting) Graduate chair, Mathematics & Statistics
+
+
+From ev@n@b|eder@tedt @end|ng |rom gm@||@com  Fri Mar 18 02:19:29 2022
+From: ev@n@b|eder@tedt @end|ng |rom gm@||@com (Evan Biederstedt)
+Date: Thu, 17 Mar 2022 21:19:29 -0400
+Subject: [R-pkg-devel] 
+ Setting OpenMP threads (globally) for an R package
+In-Reply-To: <14c4484af0f343318b2889c16fd9fc06@UM-MAIL3214.unimaas.nl>
+References: <CABFhwYOAwKwkSzduiSZ3YEsqupCmgjRj4Eu47T-2RrYXUm3M5g@mail.gmail.com>
+ <14c4484af0f343318b2889c16fd9fc06@UM-MAIL3214.unimaas.nl>
+Message-ID: <CABFhwYM0G3BB2nV-6-55roY9EdPKvWcozo2V-q7Rem9wasvp9g@mail.gmail.com>
+
+Hi Wolfgang
+
+Thank you for the help; this is a very helpful suggestion:
+
+
+*> Check omp_set_num_threads() from the RhpcBLASctl package. I know from
+experience that it works for limiting the number of threads for BLAS inside
+a running R session with blas_set_num_threads(1) (instead of setting
+OPENBLAS_NUM_THREADS=1 before running R). I assume it should work the same
+for omp_set_num_threads().*
+I've experienced BLAS issues similar to this in the past; limiting the
+number of threads for BLAS may be what we need; I'll try it and update you.
+
+Very much appreciated
+Thanks, Evan
+
+
+
+On Thu, Mar 17, 2022 at 7:06 PM Viechtbauer, Wolfgang (SP) <
+wolfgang.viechtbauer at maastrichtuniversity.nl> wrote:
+
+> Hi Evan,
+>
+> Check omp_set_num_threads() from the RhpcBLASctl package. I know from
+> experience that it works for limiting the number of threads for BLAS inside
+> a running R session with blas_set_num_threads(1) (instead of setting
+> OPENBLAS_NUM_THREADS=1 before running R). I assume it should work the same
+> for omp_set_num_threads().
+>
+> Best,
+> Wolfgang
+>
+> >-----Original Message-----
+> >From: R-package-devel [mailto:r-package-devel-bounces at r-project.org] On
+> Behalf Of
+> >Evan Biederstedt
+> >Sent: Thursday, 17 March, 2022 14:52
+> >To: R Package Development
+> >Subject: [R-pkg-devel] Setting OpenMP threads (globally) for an R package
+> >
+> >Hi R-package-devel
+> >
+> >I'm developing an R package which uses `parallel::mclapply` and several
+> >other library dependencies which possibly rely upon OpenMP. Unfortunately,
+> >some functions explode the amount of memory used.
+> >
+> >I've noticed that if I set `export OMP_NUM_THREADS=1` before starting R,
+> >the memory is far more manageable.
+> >
+> >My question is, if there a way for me to achieve this behavior within the
+> R
+> >package itself?
+> >
+> >My initial try was to use `R/zzz.R` and an `.onLoad()` function to load
+> >these global variables upon loading the library.
+> >
+> >```
+> >.onLoad <- function(libname, pkgname){
+> >  Sys.setenv(OMP_NUM_THREADS=1)
+> >}
+> >```
+> >
+> >But this doesn't work. The memory still explodes. In fact, I'm worried
+> that
+> >this cannot be done within an R package itself, as R has already started,
+> >e.g.  https://stackoverflow.com/a/27320691/5269850
+> >
+> >Is there a recommended approach for this problem when writing R packages?
+> >
+> >Package here: https://github.com/kharchenkolab/numbat
+> >
+> >Related question on SO:
+> >https://stackoverflow.com/questions/71507979/set-openmp-threads-for-all-
+> >dependencies-in-r-package
+> >
+> >Any help appreciated. Thanks, Evan
+>
+
+	[[alternative HTML version deleted]]
+
+
+From ev@n@b|eder@tedt @end|ng |rom gm@||@com  Fri Mar 18 02:25:42 2022
+From: ev@n@b|eder@tedt @end|ng |rom gm@||@com (Evan Biederstedt)
+Date: Thu, 17 Mar 2022 21:25:42 -0400
+Subject: [R-pkg-devel] 
+ Setting OpenMP threads (globally) for an R package
+In-Reply-To: <A189E324-6FF6-4FE8-BA09-8A50E3F2DD81@R-project.org>
+References: <CABFhwYOAwKwkSzduiSZ3YEsqupCmgjRj4Eu47T-2RrYXUm3M5g@mail.gmail.com>
+ <A189E324-6FF6-4FE8-BA09-8A50E3F2DD81@R-project.org>
+Message-ID: <CABFhwYNDwCJRX9LCtU0pcSo-_H=aCFi073uaVY-dg4_THB1K_Q@mail.gmail.com>
+
+Hi Simon
+
+I really appreciate the help, thanks for the message.
+I think uncontrolled forking could be the issue, though I don't see all
+cores used via `htop`; I just see the memory quickly surge.
+
+
+*> There are many things that are not allowed inside mclapply so that's
+where I would look. *
+Could you detail this a bit more? This could be what's happening....
+
+
+*>Threads typically don't cause memory explosion, because OpenMP threads
+don't allocate new memory, but uncontrolled forking does*
+Do you have insight on how to explicitly limit forking? It looks like
+Henrik had been thinking about this earlier:
+https://github.com/HenrikBengtsson/Wishlist-for-R/issues/94
+
+Moreover, could you explain how setting the OpenMP global variables e.g.
+`OMP_NUM_THREADS=1` would stop forking? I don't quite follow this.
+
+
+*> It may be better to look at the root cause first, but for that we would
+need more details on what you are doing.*
+Functions with mclapply do indeed show this "memory surging" behavior, e.g.
+
+https://github.com/kharchenkolab/numbat/blob/main/R/main.R#L940-L963
+
+
+Thanks, Evan
+
+On Thu, Mar 17, 2022 at 7:23 PM Simon Urbanek <simon.urbanek at r-project.org>
+wrote:
+
+> Evan,
+>
+> honestly, I think your request may be a red herring. Threads typically
+> don't cause memory explosion, because OpenMP threads don't allocate new
+> memory, but uncontrolled forking does. There are many things that are not
+> allowed inside mclapply so that's where I would look. It may be better to
+> look at the root cause first, but for that we would need more details on
+> what you are doing.
+>
+> Cheers,
+> Simon
+>
+>
+> > On Mar 18, 2022, at 2:51 AM, Evan Biederstedt <
+> evan.biederstedt at gmail.com> wrote:
+> >
+> > Hi R-package-devel
+> >
+> > I'm developing an R package which uses `parallel::mclapply` and several
+> > other library dependencies which possibly rely upon OpenMP.
+> Unfortunately,
+> > some functions explode the amount of memory used.
+> >
+> > I've noticed that if I set `export OMP_NUM_THREADS=1` before starting R,
+> > the memory is far more manageable.
+> >
+> > My question is, if there a way for me to achieve this behavior within
+> the R
+> > package itself?
+> >
+> > My initial try was to use `R/zzz.R` and an `.onLoad()` function to load
+> > these global variables upon loading the library.
+> >
+> > ```
+> > .onLoad <- function(libname, pkgname){
+> >  Sys.setenv(OMP_NUM_THREADS=1)
+> > }
+> > ```
+> >
+> > But this doesn't work. The memory still explodes. In fact, I'm worried
+> that
+> > this cannot be done within an R package itself, as R has already started,
+> > e.g.  https://stackoverflow.com/a/27320691/5269850
+> >
+> > Is there a recommended approach for this problem when writing R packages?
+> >
+> > Package here: https://github.com/kharchenkolab/numbat
+> >
+> > Related question on SO:
+> >
+> https://stackoverflow.com/questions/71507979/set-openmp-threads-for-all-dependencies-in-r-package
+> >
+> > Any help appreciated. Thanks, Evan
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
