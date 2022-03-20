@@ -16855,3 +16855,1083 @@ wrote:
 	[[alternative HTML version deleted]]
 
 
+From @|mon@urb@nek @end|ng |rom R-project@org  Fri Mar 18 03:33:36 2022
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Fri, 18 Mar 2022 15:33:36 +1300
+Subject: [R-pkg-devel] 
+ Setting OpenMP threads (globally) for an R package
+In-Reply-To: <CABFhwYNDwCJRX9LCtU0pcSo-_H=aCFi073uaVY-dg4_THB1K_Q@mail.gmail.com>
+References: <CABFhwYOAwKwkSzduiSZ3YEsqupCmgjRj4Eu47T-2RrYXUm3M5g@mail.gmail.com>
+ <A189E324-6FF6-4FE8-BA09-8A50E3F2DD81@R-project.org>
+ <CABFhwYNDwCJRX9LCtU0pcSo-_H=aCFi073uaVY-dg4_THB1K_Q@mail.gmail.com>
+Message-ID: <EDAA74A9-F553-4749-A970-C941A8ACA2A3@R-project.org>
+
+Evan,
+
+
+> On Mar 18, 2022, at 2:25 PM, Evan Biederstedt <evan.biederstedt at gmail.com> wrote:
+> 
+> Hi Simon
+> 
+> I really appreciate the help, thanks for the message. 
+> I think uncontrolled forking could be the issue, though I don't see all cores used via `htop`; I just see the memory quickly surge. 
+> 
+> > There are many things that are not allowed inside mclapply so that's where I would look. 
+> 
+> Could you detail this a bit more? This could be what's happening....
+> 
+
+Forking a process (what multicore does and thus all the parallel::mc* functions) creates a virtual copy of the process (here R) which shares all resources between the parent and child process (in mclapply as many children as you specify cores). The one special case is memory which is shared as copy-on-write, i.e., if either process changes some memory, it will create a private copy for itself instead of sharing it. Everything else is directly shared between the parent and child. This includes things like file descriptors, sockets etc.
+
+So, for example, you cannot use anything that would rely on such resource previously created by the parent unless both sides are aware of it. A classic example are connections - you cannot use a connection that has been created before you called mclapply, because all the children *and* the parent are sharing it, so if anyone reads from it, it will wreak havoc on all the others. So the use of all mc* functions should be limited to R computing operations which are then safe to do in parallel. Where things get complicated is that you should not be calling other packages unless you know that they are fork-safe. If a package uses 3rd party native library, that's where things get murky as many libraries are not fork-safe, but you as the user may not know it (some will actually issue a warning and tell you that you can't use it, but that's rare).
+
+
+> >Threads typically don't cause memory explosion, because OpenMP threads don't allocate new memory, but uncontrolled forking does
+> 
+> Do you have insight on how to explicitly limit forking? It looks like Henrik had been thinking about this earlier: https://github.com/HenrikBengtsson/Wishlist-for-R/issues/94
+> 
+
+The mc* functions assumed by design that the user has asked for what they intended. Unfortunately, some packages started using mc* functions without explicitly exposing the necessary parameters to the user, which is really bad and was never intended, making it hard for the user to see what's happening. It would be possible for the parallel package to at least track its forking behavior, but as I said the current assumption is that the user has told it to fork, so it does as asked.
+
+
+> Moreover, could you explain how setting the OpenMP global variables e.g. `OMP_NUM_THREADS=1` would stop forking? I don't quite follow this. 
+> 
+
+OpenMP has absolutely nothing to do with this as far as I can tell - that's why I was saying that OpenMP is the red herring here.
+
+
+> > It may be better to look at the root cause first, but for that we would need more details on what you are doing.
+> 
+> Functions with mclapply do indeed show this "memory surging" behavior, e.g. 
+> 
+> https://github.com/kharchenkolab/numbat/blob/main/R/main.R#L940-L963
+> 
+
+Yes, by definition, but it's not real memory. As explained the forking creates n additional copies of the R process, so in tools like ps/top you will see n-times more memory being used. However, that is not real memory, all those processes share their memory in the copy-on-write manner, so after the fork no additional memory is actually used. However, as the processes continue their computation they will create new objects and possibly modify old ones, so those modifications will result in new memory being allocated for each process privately.
+
+A simple example:
+
+x=rnorm(2e8)
+parallel::mclapply(1:4, function(o) Sys.sleep(20), mc.cores=4)
+
+ps axl will result in this on macOS:
+
+  UID   PID  PPID CPU PRI NI      VSZ    RSS WCHAN  STAT   TT       TIME COMMAND
+  501 97025 96821   0  31  0  5930048 1611288 -      S+   s111    0:15.58 R
+  501 97064 97025   0  31  0  5929792   3884 -      S+   s111    0:00.00 R
+  501 97065 97025   0  31  0  5929792   3580 -      S+   s111    0:00.00 R
+  501 97066 97025   0  31  0  5929792   3668 -      S+   s111    0:00.00 R
+  501 97067 97025   0  31  0  5929792   3656 -      S+   s111    0:00.00 R
+
+So you can see that the parent process uses ~1.6Gb of actual memory (RSS) and the children use very little. However, virtual memory (VSZ) is almost 6Gb reported for each, which includes all mapped and shared memory thus reported multiple times.
+
+Things are even more confusing on Linux:
+
+F   UID   PID  PPID PRI  NI    VSZ   RSS WCHAN  STAT TTY        TIME COMMAND
+0 1000 3962 3465 20  0 1721612 1612448 poll_s S+ pts/2     0:12 R
+1 1000 3970 3962 20  0 1721612 1603776 poll_s S+ pts/2     0:00 R
+1 1000 3971 3962 20  0 1721612 1603776 poll_s S+ pts/2     0:00 R
+1 1000 3972 3962 20  0 1721612 1603776 poll_s S+ pts/2     0:00 R
+1 1000 3973 3962 20  0 1721612 1603776 poll_s S+ pts/2     0:00 R
+
+because Linux reports shared memory in each process' RSS. You have to use different tools to account for that, e.g. smem:
+
+  PID User    Command  Swap      USS      PSS      RSS 
+ 3926 1000  R             0     1432   321703  1603980 
+ 3925 1000  R             0     1436   321707  1603980 
+ 3924 1000  R             0     1432   321709  1603980 
+ 3927 1000  R             0     1440   321713  1603980 
+ 3484 1000  R             0     5980   326697  1612332 
+
+where USS is the actually used unshared memory, so you can see that all of the 1.6Gb is shared and almost nothing is owned by the process itself. (PSS uses average per process of shared memory)
+
+Of course, things blow up if you compute on all of it, e.g.:
+
+parallel::mclapply(1:4, function(o) { sum(x + o); Sys.sleep(20) }, mc.cores=4)
+
+ 5026 1000  R             0    33664   348834  1612412 
+ 5053 1000  R             0  1591672  1906390  3166500 
+ 5051 1000  R             0  1591676  1906391  3166492 
+ 5050 1000  R             0  1591676  1906395  3166528 
+ 5052 1000  R             0  1591676  1906395  3166528 
+
+Now each process needs to create a new result vector x + o so each one of them needs additional 1.6Gb of RAM, so you end up needing 8Gb of RAM total.
+
+One most misunderstood concept of paralellization is that if you run 10 things in parallel you will need at least 10 times more resources. And in many cases memory is the most expensive resource.
+
+I hope it helps.
+
+Cheers,
+Simon
+
+
+
+> 
+> Thanks, Evan
+> 
+> On Thu, Mar 17, 2022 at 7:23 PM Simon Urbanek <simon.urbanek at r-project.org> wrote:
+> Evan,
+> 
+> honestly, I think your request may be a red herring. Threads typically don't cause memory explosion, because OpenMP threads don't allocate new memory, but uncontrolled forking does. There are many things that are not allowed inside mclapply so that's where I would look. It may be better to look at the root cause first, but for that we would need more details on what you are doing.
+> 
+> Cheers,
+> Simon
+> 
+> 
+> > On Mar 18, 2022, at 2:51 AM, Evan Biederstedt <evan.biederstedt at gmail.com> wrote:
+> > 
+> > Hi R-package-devel
+> > 
+> > I'm developing an R package which uses `parallel::mclapply` and several
+> > other library dependencies which possibly rely upon OpenMP. Unfortunately,
+> > some functions explode the amount of memory used.
+> > 
+> > I've noticed that if I set `export OMP_NUM_THREADS=1` before starting R,
+> > the memory is far more manageable.
+> > 
+> > My question is, if there a way for me to achieve this behavior within the R
+> > package itself?
+> > 
+> > My initial try was to use `R/zzz.R` and an `.onLoad()` function to load
+> > these global variables upon loading the library.
+> > 
+> > ```
+> > .onLoad <- function(libname, pkgname){
+> >  Sys.setenv(OMP_NUM_THREADS=1)
+> > }
+> > ```
+> > 
+> > But this doesn't work. The memory still explodes. In fact, I'm worried that
+> > this cannot be done within an R package itself, as R has already started,
+> > e.g.  https://stackoverflow.com/a/27320691/5269850
+> > 
+> > Is there a recommended approach for this problem when writing R packages?
+> > 
+> > Package here: https://github.com/kharchenkolab/numbat
+> > 
+> > Related question on SO:
+> > https://stackoverflow.com/questions/71507979/set-openmp-threads-for-all-dependencies-in-r-package
+> > 
+> > Any help appreciated. Thanks, Evan
+> > 
+> >       [[alternative HTML version deleted]]
+> > 
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> > 
+> 
+
+
+From ev@n@b|eder@tedt @end|ng |rom gm@||@com  Fri Mar 18 06:10:35 2022
+From: ev@n@b|eder@tedt @end|ng |rom gm@||@com (Evan Biederstedt)
+Date: Fri, 18 Mar 2022 01:10:35 -0400
+Subject: [R-pkg-devel] 
+ Setting OpenMP threads (globally) for an R package
+In-Reply-To: <EDAA74A9-F553-4749-A970-C941A8ACA2A3@R-project.org>
+References: <CABFhwYOAwKwkSzduiSZ3YEsqupCmgjRj4Eu47T-2RrYXUm3M5g@mail.gmail.com>
+ <A189E324-6FF6-4FE8-BA09-8A50E3F2DD81@R-project.org>
+ <CABFhwYNDwCJRX9LCtU0pcSo-_H=aCFi073uaVY-dg4_THB1K_Q@mail.gmail.com>
+ <EDAA74A9-F553-4749-A970-C941A8ACA2A3@R-project.org>
+Message-ID: <CABFhwYNCAP-uJtWqD-LfZm4x+o9jip-NMxSkZx0=Hw+zXQcNMw@mail.gmail.com>
+
+Hi Simon
+
+Thank you for the detailed explanations; they're very clear and helpful
+thinking through how to debug this.
+
+I think I am still fundamentally confused why `export OMP_NUM_THREADS=1`
+would result in the (desirable) behavior of moderate memory usage.
+
+
+
+*> > Moreover, could you explain how setting the OpenMP global variables
+e.g. `OMP_NUM_THREADS=1` would stop forking? I don't quite follow this.>
+OpenMP has absolutely nothing to do with this as far as I can tell - that's
+why I was saying that OpenMP is the red herring here.*
+There is some connection to setting  `export OMP_NUM_THREADS=1` before
+starting R, and moderate memory usage; that's all I know.
+
+I think Wolfgang might be onto something; the R package uses many Matrix
+operations. I think BLAS/LAPACK libraries read these global variables, no?
+
+https://rdrr.io/github/wrathematics/openblasctl/
+
+But in terms of my question above, I was originally trying to ask if there
+could be any relationship between setting `export OMP_NUM_THREADS=1` before
+starting R and (possibly) unexpected forking causing a memory surge
+(+100GB). Perhaps the R package dependencies hiding something?
+
+This has been a helpful exchange, thank you everyone
+
+Best, Evan
+
+
+On Thu, Mar 17, 2022 at 10:33 PM Simon Urbanek <simon.urbanek at r-project.org>
+wrote:
+
+> Evan,
+>
+>
+> > On Mar 18, 2022, at 2:25 PM, Evan Biederstedt <
+> evan.biederstedt at gmail.com> wrote:
+> >
+> > Hi Simon
+> >
+> > I really appreciate the help, thanks for the message.
+> > I think uncontrolled forking could be the issue, though I don't see all
+> cores used via `htop`; I just see the memory quickly surge.
+> >
+> > > There are many things that are not allowed inside mclapply so that's
+> where I would look.
+> >
+> > Could you detail this a bit more? This could be what's happening....
+> >
+>
+> Forking a process (what multicore does and thus all the parallel::mc*
+> functions) creates a virtual copy of the process (here R) which shares all
+> resources between the parent and child process (in mclapply as many
+> children as you specify cores). The one special case is memory which is
+> shared as copy-on-write, i.e., if either process changes some memory, it
+> will create a private copy for itself instead of sharing it. Everything
+> else is directly shared between the parent and child. This includes things
+> like file descriptors, sockets etc.
+>
+> So, for example, you cannot use anything that would rely on such resource
+> previously created by the parent unless both sides are aware of it. A
+> classic example are connections - you cannot use a connection that has been
+> created before you called mclapply, because all the children *and* the
+> parent are sharing it, so if anyone reads from it, it will wreak havoc on
+> all the others. So the use of all mc* functions should be limited to R
+> computing operations which are then safe to do in parallel. Where things
+> get complicated is that you should not be calling other packages unless you
+> know that they are fork-safe. If a package uses 3rd party native library,
+> that's where things get murky as many libraries are not fork-safe, but you
+> as the user may not know it (some will actually issue a warning and tell
+> you that you can't use it, but that's rare).
+>
+>
+> > >Threads typically don't cause memory explosion, because OpenMP threads
+> don't allocate new memory, but uncontrolled forking does
+> >
+> > Do you have insight on how to explicitly limit forking? It looks like
+> Henrik had been thinking about this earlier:
+> https://github.com/HenrikBengtsson/Wishlist-for-R/issues/94
+> >
+>
+> The mc* functions assumed by design that the user has asked for what they
+> intended. Unfortunately, some packages started using mc* functions without
+> explicitly exposing the necessary parameters to the user, which is really
+> bad and was never intended, making it hard for the user to see what's
+> happening. It would be possible for the parallel package to at least track
+> its forking behavior, but as I said the current assumption is that the user
+> has told it to fork, so it does as asked.
+>
+>
+> > Moreover, could you explain how setting the OpenMP global variables e.g.
+> `OMP_NUM_THREADS=1` would stop forking? I don't quite follow this.
+> >
+>
+> OpenMP has absolutely nothing to do with this as far as I can tell -
+> that's why I was saying that OpenMP is the red herring here.
+>
+>
+> > > It may be better to look at the root cause first, but for that we
+> would need more details on what you are doing.
+> >
+> > Functions with mclapply do indeed show this "memory surging" behavior,
+> e.g.
+> >
+> > https://github.com/kharchenkolab/numbat/blob/main/R/main.R#L940-L963
+> >
+>
+> Yes, by definition, but it's not real memory. As explained the forking
+> creates n additional copies of the R process, so in tools like ps/top you
+> will see n-times more memory being used. However, that is not real memory,
+> all those processes share their memory in the copy-on-write manner, so
+> after the fork no additional memory is actually used. However, as the
+> processes continue their computation they will create new objects and
+> possibly modify old ones, so those modifications will result in new memory
+> being allocated for each process privately.
+>
+> A simple example:
+>
+> x=rnorm(2e8)
+> parallel::mclapply(1:4, function(o) Sys.sleep(20), mc.cores=4)
+>
+> ps axl will result in this on macOS:
+>
+>   UID   PID  PPID CPU PRI NI      VSZ    RSS WCHAN  STAT   TT       TIME
+> COMMAND
+>   501 97025 96821   0  31  0  5930048 1611288 -      S+   s111    0:15.58 R
+>   501 97064 97025   0  31  0  5929792   3884 -      S+   s111    0:00.00 R
+>   501 97065 97025   0  31  0  5929792   3580 -      S+   s111    0:00.00 R
+>   501 97066 97025   0  31  0  5929792   3668 -      S+   s111    0:00.00 R
+>   501 97067 97025   0  31  0  5929792   3656 -      S+   s111    0:00.00 R
+>
+> So you can see that the parent process uses ~1.6Gb of actual memory (RSS)
+> and the children use very little. However, virtual memory (VSZ) is almost
+> 6Gb reported for each, which includes all mapped and shared memory thus
+> reported multiple times.
+>
+> Things are even more confusing on Linux:
+>
+> F   UID   PID  PPID PRI  NI    VSZ   RSS WCHAN  STAT TTY        TIME
+> COMMAND
+> 0 1000 3962 3465 20  0 1721612 1612448 poll_s S+ pts/2     0:12 R
+> 1 1000 3970 3962 20  0 1721612 1603776 poll_s S+ pts/2     0:00 R
+> 1 1000 3971 3962 20  0 1721612 1603776 poll_s S+ pts/2     0:00 R
+> 1 1000 3972 3962 20  0 1721612 1603776 poll_s S+ pts/2     0:00 R
+> 1 1000 3973 3962 20  0 1721612 1603776 poll_s S+ pts/2     0:00 R
+>
+> because Linux reports shared memory in each process' RSS. You have to use
+> different tools to account for that, e.g. smem:
+>
+>   PID User    Command  Swap      USS      PSS      RSS
+>  3926 1000  R             0     1432   321703  1603980
+>  3925 1000  R             0     1436   321707  1603980
+>  3924 1000  R             0     1432   321709  1603980
+>  3927 1000  R             0     1440   321713  1603980
+>  3484 1000  R             0     5980   326697  1612332
+>
+> where USS is the actually used unshared memory, so you can see that all of
+> the 1.6Gb is shared and almost nothing is owned by the process itself. (PSS
+> uses average per process of shared memory)
+>
+> Of course, things blow up if you compute on all of it, e.g.:
+>
+> parallel::mclapply(1:4, function(o) { sum(x + o); Sys.sleep(20) },
+> mc.cores=4)
+>
+>  5026 1000  R             0    33664   348834  1612412
+>  5053 1000  R             0  1591672  1906390  3166500
+>  5051 1000  R             0  1591676  1906391  3166492
+>  5050 1000  R             0  1591676  1906395  3166528
+>  5052 1000  R             0  1591676  1906395  3166528
+>
+> Now each process needs to create a new result vector x + o so each one of
+> them needs additional 1.6Gb of RAM, so you end up needing 8Gb of RAM total.
+>
+> One most misunderstood concept of paralellization is that if you run 10
+> things in parallel you will need at least 10 times more resources. And in
+> many cases memory is the most expensive resource.
+>
+> I hope it helps.
+>
+> Cheers,
+> Simon
+>
+>
+>
+> >
+> > Thanks, Evan
+> >
+> > On Thu, Mar 17, 2022 at 7:23 PM Simon Urbanek <
+> simon.urbanek at r-project.org> wrote:
+> > Evan,
+> >
+> > honestly, I think your request may be a red herring. Threads typically
+> don't cause memory explosion, because OpenMP threads don't allocate new
+> memory, but uncontrolled forking does. There are many things that are not
+> allowed inside mclapply so that's where I would look. It may be better to
+> look at the root cause first, but for that we would need more details on
+> what you are doing.
+> >
+> > Cheers,
+> > Simon
+> >
+> >
+> > > On Mar 18, 2022, at 2:51 AM, Evan Biederstedt <
+> evan.biederstedt at gmail.com> wrote:
+> > >
+> > > Hi R-package-devel
+> > >
+> > > I'm developing an R package which uses `parallel::mclapply` and several
+> > > other library dependencies which possibly rely upon OpenMP.
+> Unfortunately,
+> > > some functions explode the amount of memory used.
+> > >
+> > > I've noticed that if I set `export OMP_NUM_THREADS=1` before starting
+> R,
+> > > the memory is far more manageable.
+> > >
+> > > My question is, if there a way for me to achieve this behavior within
+> the R
+> > > package itself?
+> > >
+> > > My initial try was to use `R/zzz.R` and an `.onLoad()` function to load
+> > > these global variables upon loading the library.
+> > >
+> > > ```
+> > > .onLoad <- function(libname, pkgname){
+> > >  Sys.setenv(OMP_NUM_THREADS=1)
+> > > }
+> > > ```
+> > >
+> > > But this doesn't work. The memory still explodes. In fact, I'm worried
+> that
+> > > this cannot be done within an R package itself, as R has already
+> started,
+> > > e.g.  https://stackoverflow.com/a/27320691/5269850
+> > >
+> > > Is there a recommended approach for this problem when writing R
+> packages?
+> > >
+> > > Package here: https://github.com/kharchenkolab/numbat
+> > >
+> > > Related question on SO:
+> > >
+> https://stackoverflow.com/questions/71507979/set-openmp-threads-for-all-dependencies-in-r-package
+> > >
+> > > Any help appreciated. Thanks, Evan
+> > >
+> > >       [[alternative HTML version deleted]]
+> > >
+> > > ______________________________________________
+> > > R-package-devel at r-project.org mailing list
+> > > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> > >
+> >
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Fri Mar 18 06:33:22 2022
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Fri, 18 Mar 2022 18:33:22 +1300
+Subject: [R-pkg-devel] 
+ Setting OpenMP threads (globally) for an R package
+In-Reply-To: <CABFhwYNCAP-uJtWqD-LfZm4x+o9jip-NMxSkZx0=Hw+zXQcNMw@mail.gmail.com>
+References: <CABFhwYOAwKwkSzduiSZ3YEsqupCmgjRj4Eu47T-2RrYXUm3M5g@mail.gmail.com>
+ <A189E324-6FF6-4FE8-BA09-8A50E3F2DD81@R-project.org>
+ <CABFhwYNDwCJRX9LCtU0pcSo-_H=aCFi073uaVY-dg4_THB1K_Q@mail.gmail.com>
+ <EDAA74A9-F553-4749-A970-C941A8ACA2A3@R-project.org>
+ <CABFhwYNCAP-uJtWqD-LfZm4x+o9jip-NMxSkZx0=Hw+zXQcNMw@mail.gmail.com>
+Message-ID: <0858E210-33AC-4AA0-BB00-BC676FCBE130@R-project.org>
+
+Evan,
+
+
+> On Mar 18, 2022, at 6:10 PM, Evan Biederstedt <evan.biederstedt at gmail.com> wrote:
+> 
+> Hi Simon
+> 
+> Thank you for the detailed explanations; they're very clear and helpful thinking through how to debug this. 
+> 
+> I think I am still fundamentally confused why `export OMP_NUM_THREADS=1` would result in the (desirable) behavior of moderate memory usage. 
+> 
+> > > Moreover, could you explain how setting the OpenMP global variables e.g. `OMP_NUM_THREADS=1` would stop forking? I don't quite follow this.
+> > OpenMP has absolutely nothing to do with this as far as I can tell - that's why I was saying that OpenMP is the red herring here.
+> 
+> There is some connection to setting  `export OMP_NUM_THREADS=1` before starting R, and moderate memory usage; that's all I know. 
+> 
+
+That's odd. OpenMP itself doesn't allocate memory, so that's why I said it shouldn't be related.
+
+
+> I think Wolfgang might be onto something; the R package uses many Matrix operations. I think BLAS/LAPACK libraries read these global variables, no? 
+> 
+
+Ah, ok, now we're getting closer. The BLAS used by R doesn't use parallelization, but if you use a 3rd party BLAS implementation, that's whole another story. Some parallel BLAS implementations honor OMP_NUM_THREADS even though it has nothing to do with OpenMP in that context as BLAS libraries often use their own parallelization methods (i.e., even those that don't use OpenMP often honor it). Whether you can fork a given BLAS is really implementation-specific. For example, you referenced OpenBLAS which appears to *not* be fork-safe at least according to this issue: https://github.com/Homebrew/homebrew-core/issues/75506
+
+But, generally, mixing parallel R and parallel BLAS is a really bad idea so - even if the BLAS was magically fork-safe you definitely want to limit the threads so that you're not overloading the machine: let's say on 8-core machine if you spawn 8 processes with mclapply and each R has BLAS that decided to use 8 cores, you end up with 64-core utilization on 8-core machine which will simply grind it to a halt. So if you have tasks that use threads, don't use multicore as it's pointless and generally unsafe.
+
+You have never provided you sessionInfo() so we can't really help you specifically ...
+
+Cheers,
+Simon
+
+
+
+> https://rdrr.io/github/wrathematics/openblasctl/
+> 
+> But in terms of my question above, I was originally trying to ask if there could be any relationship between setting `export OMP_NUM_THREADS=1` before starting R and (possibly) unexpected forking causing a memory surge (+100GB). Perhaps the R package dependencies hiding something?
+> 
+> This has been a helpful exchange, thank you everyone
+> 
+> Best, Evan
+> 
+> 
+> On Thu, Mar 17, 2022 at 10:33 PM Simon Urbanek <simon.urbanek at r-project.org> wrote:
+> Evan,
+> 
+> 
+> > On Mar 18, 2022, at 2:25 PM, Evan Biederstedt <evan.biederstedt at gmail.com> wrote:
+> > 
+> > Hi Simon
+> > 
+> > I really appreciate the help, thanks for the message. 
+> > I think uncontrolled forking could be the issue, though I don't see all cores used via `htop`; I just see the memory quickly surge. 
+> > 
+> > > There are many things that are not allowed inside mclapply so that's where I would look. 
+> > 
+> > Could you detail this a bit more? This could be what's happening....
+> > 
+> 
+> Forking a process (what multicore does and thus all the parallel::mc* functions) creates a virtual copy of the process (here R) which shares all resources between the parent and child process (in mclapply as many children as you specify cores). The one special case is memory which is shared as copy-on-write, i.e., if either process changes some memory, it will create a private copy for itself instead of sharing it. Everything else is directly shared between the parent and child. This includes things like file descriptors, sockets etc.
+> 
+> So, for example, you cannot use anything that would rely on such resource previously created by the parent unless both sides are aware of it. A classic example are connections - you cannot use a connection that has been created before you called mclapply, because all the children *and* the parent are sharing it, so if anyone reads from it, it will wreak havoc on all the others. So the use of all mc* functions should be limited to R computing operations which are then safe to do in parallel. Where things get complicated is that you should not be calling other packages unless you know that they are fork-safe. If a package uses 3rd party native library, that's where things get murky as many libraries are not fork-safe, but you as the user may not know it (some will actually issue a warning and tell you that you can't use it, but that's rare).
+> 
+> 
+> > >Threads typically don't cause memory explosion, because OpenMP threads don't allocate new memory, but uncontrolled forking does
+> > 
+> > Do you have insight on how to explicitly limit forking? It looks like Henrik had been thinking about this earlier: https://github.com/HenrikBengtsson/Wishlist-for-R/issues/94
+> > 
+> 
+> The mc* functions assumed by design that the user has asked for what they intended. Unfortunately, some packages started using mc* functions without explicitly exposing the necessary parameters to the user, which is really bad and was never intended, making it hard for the user to see what's happening. It would be possible for the parallel package to at least track its forking behavior, but as I said the current assumption is that the user has told it to fork, so it does as asked.
+> 
+> 
+> > Moreover, could you explain how setting the OpenMP global variables e.g. `OMP_NUM_THREADS=1` would stop forking? I don't quite follow this. 
+> > 
+> 
+> OpenMP has absolutely nothing to do with this as far as I can tell - that's why I was saying that OpenMP is the red herring here.
+> 
+> 
+> > > It may be better to look at the root cause first, but for that we would need more details on what you are doing.
+> > 
+> > Functions with mclapply do indeed show this "memory surging" behavior, e.g. 
+> > 
+> > https://github.com/kharchenkolab/numbat/blob/main/R/main.R#L940-L963
+> > 
+> 
+> Yes, by definition, but it's not real memory. As explained the forking creates n additional copies of the R process, so in tools like ps/top you will see n-times more memory being used. However, that is not real memory, all those processes share their memory in the copy-on-write manner, so after the fork no additional memory is actually used. However, as the processes continue their computation they will create new objects and possibly modify old ones, so those modifications will result in new memory being allocated for each process privately.
+> 
+> A simple example:
+> 
+> x=rnorm(2e8)
+> parallel::mclapply(1:4, function(o) Sys.sleep(20), mc.cores=4)
+> 
+> ps axl will result in this on macOS:
+> 
+>   UID   PID  PPID CPU PRI NI      VSZ    RSS WCHAN  STAT   TT       TIME COMMAND
+>   501 97025 96821   0  31  0  5930048 1611288 -      S+   s111    0:15.58 R
+>   501 97064 97025   0  31  0  5929792   3884 -      S+   s111    0:00.00 R
+>   501 97065 97025   0  31  0  5929792   3580 -      S+   s111    0:00.00 R
+>   501 97066 97025   0  31  0  5929792   3668 -      S+   s111    0:00.00 R
+>   501 97067 97025   0  31  0  5929792   3656 -      S+   s111    0:00.00 R
+> 
+> So you can see that the parent process uses ~1.6Gb of actual memory (RSS) and the children use very little. However, virtual memory (VSZ) is almost 6Gb reported for each, which includes all mapped and shared memory thus reported multiple times.
+> 
+> Things are even more confusing on Linux:
+> 
+> F   UID   PID  PPID PRI  NI    VSZ   RSS WCHAN  STAT TTY        TIME COMMAND
+> 0 1000 3962 3465 20  0 1721612 1612448 poll_s S+ pts/2     0:12 R
+> 1 1000 3970 3962 20  0 1721612 1603776 poll_s S+ pts/2     0:00 R
+> 1 1000 3971 3962 20  0 1721612 1603776 poll_s S+ pts/2     0:00 R
+> 1 1000 3972 3962 20  0 1721612 1603776 poll_s S+ pts/2     0:00 R
+> 1 1000 3973 3962 20  0 1721612 1603776 poll_s S+ pts/2     0:00 R
+> 
+> because Linux reports shared memory in each process' RSS. You have to use different tools to account for that, e.g. smem:
+> 
+>   PID User    Command  Swap      USS      PSS      RSS 
+>  3926 1000  R             0     1432   321703  1603980 
+>  3925 1000  R             0     1436   321707  1603980 
+>  3924 1000  R             0     1432   321709  1603980 
+>  3927 1000  R             0     1440   321713  1603980 
+>  3484 1000  R             0     5980   326697  1612332 
+> 
+> where USS is the actually used unshared memory, so you can see that all of the 1.6Gb is shared and almost nothing is owned by the process itself. (PSS uses average per process of shared memory)
+> 
+> Of course, things blow up if you compute on all of it, e.g.:
+> 
+> parallel::mclapply(1:4, function(o) { sum(x + o); Sys.sleep(20) }, mc.cores=4)
+> 
+>  5026 1000  R             0    33664   348834  1612412 
+>  5053 1000  R             0  1591672  1906390  3166500 
+>  5051 1000  R             0  1591676  1906391  3166492 
+>  5050 1000  R             0  1591676  1906395  3166528 
+>  5052 1000  R             0  1591676  1906395  3166528 
+> 
+> Now each process needs to create a new result vector x + o so each one of them needs additional 1.6Gb of RAM, so you end up needing 8Gb of RAM total.
+> 
+> One most misunderstood concept of paralellization is that if you run 10 things in parallel you will need at least 10 times more resources. And in many cases memory is the most expensive resource.
+> 
+> I hope it helps.
+> 
+> Cheers,
+> Simon
+> 
+> 
+> 
+> > 
+> > Thanks, Evan
+> > 
+> > On Thu, Mar 17, 2022 at 7:23 PM Simon Urbanek <simon.urbanek at r-project.org> wrote:
+> > Evan,
+> > 
+> > honestly, I think your request may be a red herring. Threads typically don't cause memory explosion, because OpenMP threads don't allocate new memory, but uncontrolled forking does. There are many things that are not allowed inside mclapply so that's where I would look. It may be better to look at the root cause first, but for that we would need more details on what you are doing.
+> > 
+> > Cheers,
+> > Simon
+> > 
+> > 
+> > > On Mar 18, 2022, at 2:51 AM, Evan Biederstedt <evan.biederstedt at gmail.com> wrote:
+> > > 
+> > > Hi R-package-devel
+> > > 
+> > > I'm developing an R package which uses `parallel::mclapply` and several
+> > > other library dependencies which possibly rely upon OpenMP. Unfortunately,
+> > > some functions explode the amount of memory used.
+> > > 
+> > > I've noticed that if I set `export OMP_NUM_THREADS=1` before starting R,
+> > > the memory is far more manageable.
+> > > 
+> > > My question is, if there a way for me to achieve this behavior within the R
+> > > package itself?
+> > > 
+> > > My initial try was to use `R/zzz.R` and an `.onLoad()` function to load
+> > > these global variables upon loading the library.
+> > > 
+> > > ```
+> > > .onLoad <- function(libname, pkgname){
+> > >  Sys.setenv(OMP_NUM_THREADS=1)
+> > > }
+> > > ```
+> > > 
+> > > But this doesn't work. The memory still explodes. In fact, I'm worried that
+> > > this cannot be done within an R package itself, as R has already started,
+> > > e.g.  https://stackoverflow.com/a/27320691/5269850
+> > > 
+> > > Is there a recommended approach for this problem when writing R packages?
+> > > 
+> > > Package here: https://github.com/kharchenkolab/numbat
+> > > 
+> > > Related question on SO:
+> > > https://stackoverflow.com/questions/71507979/set-openmp-threads-for-all-dependencies-in-r-package
+> > > 
+> > > Any help appreciated. Thanks, Evan
+> > > 
+> > >       [[alternative HTML version deleted]]
+> > > 
+> > > ______________________________________________
+> > > R-package-devel at r-project.org mailing list
+> > > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> > > 
+> > 
+> 
+
+
+From wo||g@ng@v|echtb@uer @end|ng |rom m@@@tr|chtun|ver@|ty@n|  Fri Mar 18 12:04:55 2022
+From: wo||g@ng@v|echtb@uer @end|ng |rom m@@@tr|chtun|ver@|ty@n| (Viechtbauer, Wolfgang (SP))
+Date: Fri, 18 Mar 2022 11:04:55 +0000
+Subject: [R-pkg-devel] 
+ Setting OpenMP threads (globally) for an R package
+In-Reply-To: <0858E210-33AC-4AA0-BB00-BC676FCBE130@R-project.org>
+References: <CABFhwYOAwKwkSzduiSZ3YEsqupCmgjRj4Eu47T-2RrYXUm3M5g@mail.gmail.com>
+ <A189E324-6FF6-4FE8-BA09-8A50E3F2DD81@R-project.org>
+ <CABFhwYNDwCJRX9LCtU0pcSo-_H=aCFi073uaVY-dg4_THB1K_Q@mail.gmail.com>
+ <EDAA74A9-F553-4749-A970-C941A8ACA2A3@R-project.org>
+ <CABFhwYNCAP-uJtWqD-LfZm4x+o9jip-NMxSkZx0=Hw+zXQcNMw@mail.gmail.com>
+ <0858E210-33AC-4AA0-BB00-BC676FCBE130@R-project.org>
+Message-ID: <686da5baac6f40d792a78c53dd7bf370@UM-MAIL3214.unimaas.nl>
+
+Leaving aside whether this whole discussion is really related to the issue that Evan is facing, just for the record, the appropriate environmental variables for different BLAS implementations are:
+
+For OpenBLAS: OPENBLAS_NUM_THREADS
+For BLIS:     BLIS_NUM_THREADS
+For MKL:      MKL_NUM_THREADS
+
+For Atlas, the number of threads is predetermined at compile time.
+
+Best,
+Wolfgang
+
+>-----Original Message-----
+>From: Simon Urbanek [mailto:simon.urbanek at R-project.org]
+>Sent: Friday, 18 March, 2022 6:33
+>To: Evan Biederstedt
+>Cc: Viechtbauer, Wolfgang (SP); R Package Development
+>Subject: Re: [R-pkg-devel] Setting OpenMP threads (globally) for an R package
+>
+>Evan,
+>
+>> On Mar 18, 2022, at 6:10 PM, Evan Biederstedt <evan.biederstedt at gmail.com>
+>wrote:
+>>
+>> Hi Simon
+>>
+>> Thank you for the detailed explanations; they're very clear and helpful
+>thinking through how to debug this.
+>>
+>> I think I am still fundamentally confused why `export OMP_NUM_THREADS=1` would
+>result in the (desirable) behavior of moderate memory usage.
+>>
+>> > > Moreover, could you explain how setting the OpenMP global variables e.g.
+>`OMP_NUM_THREADS=1` would stop forking? I don't quite follow this.
+>> > OpenMP has absolutely nothing to do with this as far as I can tell - that's
+>why I was saying that OpenMP is the red herring here.
+>>
+>> There is some connection to setting  `export OMP_NUM_THREADS=1` before starting
+>R, and moderate memory usage; that's all I know.
+>
+>That's odd. OpenMP itself doesn't allocate memory, so that's why I said it
+>shouldn't be related.
+>
+>> I think Wolfgang might be onto something; the R package uses many Matrix
+>operations. I think BLAS/LAPACK libraries read these global variables, no?
+>
+>Ah, ok, now we're getting closer. The BLAS used by R doesn't use parallelization,
+>but if you use a 3rd party BLAS implementation, that's whole another story. Some
+>parallel BLAS implementations honor OMP_NUM_THREADS even though it has nothing to
+>do with OpenMP in that context as BLAS libraries often use their own
+>parallelization methods (i.e., even those that don't use OpenMP often honor it).
+>Whether you can fork a given BLAS is really implementation-specific. For example,
+>you referenced OpenBLAS which appears to *not* be fork-safe at least according to
+>this issue: https://github.com/Homebrew/homebrew-core/issues/75506
+>
+>But, generally, mixing parallel R and parallel BLAS is a really bad idea so -
+>even if the BLAS was magically fork-safe you definitely want to limit the threads
+>so that you're not overloading the machine: let's say on 8-core machine if you
+>spawn 8 processes with mclapply and each R has BLAS that decided to use 8 cores,
+>you end up with 64-core utilization on 8-core machine which will simply grind it
+>to a halt. So if you have tasks that use threads, don't use multicore as it's
+>pointless and generally unsafe.
+>
+>You have never provided you sessionInfo() so we can't really help you
+>specifically ...
+>
+>Cheers,
+>Simon
+
+
+From edd @end|ng |rom deb|@n@org  Fri Mar 18 13:30:53 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 18 Mar 2022 07:30:53 -0500
+Subject: [R-pkg-devel] 
+ Setting OpenMP threads (globally) for an R package
+In-Reply-To: <686da5baac6f40d792a78c53dd7bf370@UM-MAIL3214.unimaas.nl>
+References: <CABFhwYOAwKwkSzduiSZ3YEsqupCmgjRj4Eu47T-2RrYXUm3M5g@mail.gmail.com>
+ <A189E324-6FF6-4FE8-BA09-8A50E3F2DD81@R-project.org>
+ <CABFhwYNDwCJRX9LCtU0pcSo-_H=aCFi073uaVY-dg4_THB1K_Q@mail.gmail.com>
+ <EDAA74A9-F553-4749-A970-C941A8ACA2A3@R-project.org>
+ <CABFhwYNCAP-uJtWqD-LfZm4x+o9jip-NMxSkZx0=Hw+zXQcNMw@mail.gmail.com>
+ <0858E210-33AC-4AA0-BB00-BC676FCBE130@R-project.org>
+ <686da5baac6f40d792a78c53dd7bf370@UM-MAIL3214.unimaas.nl>
+Message-ID: <25140.31613.358088.383648@rob.eddelbuettel.com>
+
+
+On 18 March 2022 at 11:04, Viechtbauer, Wolfgang (SP) wrote:
+| Leaving aside whether this whole discussion is really related to the issue that Evan is facing, just for the record, the appropriate environmental variables for different BLAS implementations are:
+| 
+| For OpenBLAS: OPENBLAS_NUM_THREADS
+| For BLIS:     BLIS_NUM_THREADS
+| For MKL:      MKL_NUM_THREADS
+
+Helpful list but keep in mind that some implementations also listen to the other env.vars.
+
+I have found RhpcBLASctl to do the job quite reliably.
+
+| For Atlas, the number of threads is predetermined at compile time.
+
+Worth keeping in mind its focus is on tuning compile-time parameters, not multithreading.
+
+Dirk
+
+-- 
+https://dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From c@@rd|@g@bor @end|ng |rom gm@||@com  Thu Mar 17 13:46:41 2022
+From: c@@rd|@g@bor @end|ng |rom gm@||@com (=?UTF-8?B?R8OhYm9yIENzw6FyZGk=?=)
+Date: Thu, 17 Mar 2022 13:46:41 +0100
+Subject: [R-pkg-devel] 
+ Ensuring permanence and SHA consistency of released
+ CRAN packages for validated software
+Message-ID: <CABtg=K=JKHfvt7rXTcb9z9VEGQoMBW=nb4m12PbxytgXkQgkOw@mail.gmail.com>
+
+I am not speaking for CRAN, to be clear. Also, please fix me if I am
+wrong, all this is based on experience.
+
+CRAN rebuilds binary packages because of (potential) changes in
+build-time dependencies. ABI changes, in the loose sense of the term.
+E.g. package A can call the shared library of another package B. If
+the ABI of B changes, then you need to rebuild A.
+
+AFAICT packages are rebuilt frequently and often. E.g. if you look at
+the package time stamps of the package files at
+https://cran.r-project.org/bin/windows/contrib/4.2/ you see that many
+(most?) of the binaries were (re)built yesterday. (If you download a
+file and look inside in DESCRIPTION you'll see that it was indeed
+built yesterday, the timestamp of the file is more or less correct.
+
+Unfortunately (AFAICT) there is no way currently to tell if you have
+the latest build installed and/or downloaded. The only way to make
+sure that you have the latest builds of all packages is to redownload
+and reinstall all of your installed packages.
+
+This occasionally does cause issues in practice, e.g. some error
+reports from users are very hard to reproduce if they happen to have
+an older build of a build time dependency and that makes another
+package fail.
+
+Some time ago I suggested adding the Build field to the metadata, for
+similar reasons. The Build field helps you decide if your package is
+out of date or not, but a hash is obviously better, as you can also
+use it to check the integrity of the package file.
+
+One concern CRAN had with the Build field was that if
+`update.packages()` used this field to decide if a package should be
+updated, that would cause too many downloads.
+
+I agree that it would be great to add the sha256 (or other) hash to
+DESCRIPTION.
+
+Gabor
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Fri Mar 18 17:53:38 2022
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Fri, 18 Mar 2022 09:53:38 -0700
+Subject: [R-pkg-devel] 
+ Setting OpenMP threads (globally) for an R package
+In-Reply-To: <0858E210-33AC-4AA0-BB00-BC676FCBE130@R-project.org>
+References: <CABFhwYOAwKwkSzduiSZ3YEsqupCmgjRj4Eu47T-2RrYXUm3M5g@mail.gmail.com>
+ <A189E324-6FF6-4FE8-BA09-8A50E3F2DD81@R-project.org>
+ <CABFhwYNDwCJRX9LCtU0pcSo-_H=aCFi073uaVY-dg4_THB1K_Q@mail.gmail.com>
+ <EDAA74A9-F553-4749-A970-C941A8ACA2A3@R-project.org>
+ <CABFhwYNCAP-uJtWqD-LfZm4x+o9jip-NMxSkZx0=Hw+zXQcNMw@mail.gmail.com>
+ <0858E210-33AC-4AA0-BB00-BC676FCBE130@R-project.org>
+Message-ID: <CAFDcVCTjoqPfpg09MW2S3R3s-yQqwDuTXREk-M4ZCk1i89HPaA@mail.gmail.com>
+
+> But, generally, mixing parallel R and parallel BLAS is a really bad idea so - even if the BLAS was magically fork-safe ...
+
+Unfortunately, we don't have a way in R to control for this situation.
+The 'parallel' package provides a nice way to run forked processing,
+but there is nothing that allows either end to secure themself against
+the "other side".  For example, a developer might have done their due
+diligence and validated that everything is safe to use with
+mclapply(). However, then one of the direct or indirect dependencies
+is updated and introduced non-fork-safe code, and Boom! - a "Boom!"
+that is often semi-random, some times rare, and hard to narrow down.
+This type of updates are hard to control for.  However, the developer
+of one of those deep-down dependencies might be aware of this problem
+and could make their code agile and choose to fall back to fork-safe
+code (e.g. single-threaded processing) when running in a forked child,
+or simply produce an informative error message about not calling it in
+forked processing. But the 'parallel' package, or R in general,
+doesn't provide a way for that developer to detect this. This is a
+real problem that already exists for some packages out there.
+
+I think exporting parallel:::isChild() would help developers on the
+"other end" to protect against some of these problems, cf.
+https://bugs.r-project.org/show_bug.cgi?id=18230. To avoid clashing
+with other meanings of isChild(), a better name to export might be
+parallel::isForkedChild().  Simon, is this something you think you
+could do?
+
+Thank you,
+
+Henrik
+
+
+On Thu, Mar 17, 2022 at 10:33 PM Simon Urbanek
+<simon.urbanek at r-project.org> wrote:
+>
+> Evan,
+>
+>
+> > On Mar 18, 2022, at 6:10 PM, Evan Biederstedt <evan.biederstedt at gmail.com> wrote:
+> >
+> > Hi Simon
+> >
+> > Thank you for the detailed explanations; they're very clear and helpful thinking through how to debug this.
+> >
+> > I think I am still fundamentally confused why `export OMP_NUM_THREADS=1` would result in the (desirable) behavior of moderate memory usage.
+> >
+> > > > Moreover, could you explain how setting the OpenMP global variables e.g. `OMP_NUM_THREADS=1` would stop forking? I don't quite follow this.
+> > > OpenMP has absolutely nothing to do with this as far as I can tell - that's why I was saying that OpenMP is the red herring here.
+> >
+> > There is some connection to setting  `export OMP_NUM_THREADS=1` before starting R, and moderate memory usage; that's all I know.
+> >
+>
+> That's odd. OpenMP itself doesn't allocate memory, so that's why I said it shouldn't be related.
+>
+>
+> > I think Wolfgang might be onto something; the R package uses many Matrix operations. I think BLAS/LAPACK libraries read these global variables, no?
+> >
+>
+> Ah, ok, now we're getting closer. The BLAS used by R doesn't use parallelization, but if you use a 3rd party BLAS implementation, that's whole another story. Some parallel BLAS implementations honor OMP_NUM_THREADS even though it has nothing to do with OpenMP in that context as BLAS libraries often use their own parallelization methods (i.e., even those that don't use OpenMP often honor it). Whether you can fork a given BLAS is really implementation-specific. For example, you referenced OpenBLAS which appears to *not* be fork-safe at least according to this issue: https://github.com/Homebrew/homebrew-core/issues/75506
+>
+> But, generally, mixing parallel R and parallel BLAS is a really bad idea so - even if the BLAS was magically fork-safe you definitely want to limit the threads so that you're not overloading the machine: let's say on 8-core machine if you spawn 8 processes with mclapply and each R has BLAS that decided to use 8 cores, you end up with 64-core utilization on 8-core machine which will simply grind it to a halt. So if you have tasks that use threads, don't use multicore as it's pointless and generally unsafe.
+>
+> You have never provided you sessionInfo() so we can't really help you specifically ...
+>
+> Cheers,
+> Simon
+>
+>
+>
+> > https://rdrr.io/github/wrathematics/openblasctl/
+> >
+> > But in terms of my question above, I was originally trying to ask if there could be any relationship between setting `export OMP_NUM_THREADS=1` before starting R and (possibly) unexpected forking causing a memory surge (+100GB). Perhaps the R package dependencies hiding something?
+> >
+> > This has been a helpful exchange, thank you everyone
+> >
+> > Best, Evan
+> >
+> >
+> > On Thu, Mar 17, 2022 at 10:33 PM Simon Urbanek <simon.urbanek at r-project.org> wrote:
+> > Evan,
+> >
+> >
+> > > On Mar 18, 2022, at 2:25 PM, Evan Biederstedt <evan.biederstedt at gmail.com> wrote:
+> > >
+> > > Hi Simon
+> > >
+> > > I really appreciate the help, thanks for the message.
+> > > I think uncontrolled forking could be the issue, though I don't see all cores used via `htop`; I just see the memory quickly surge.
+> > >
+> > > > There are many things that are not allowed inside mclapply so that's where I would look.
+> > >
+> > > Could you detail this a bit more? This could be what's happening....
+> > >
+> >
+> > Forking a process (what multicore does and thus all the parallel::mc* functions) creates a virtual copy of the process (here R) which shares all resources between the parent and child process (in mclapply as many children as you specify cores). The one special case is memory which is shared as copy-on-write, i.e., if either process changes some memory, it will create a private copy for itself instead of sharing it. Everything else is directly shared between the parent and child. This includes things like file descriptors, sockets etc.
+> >
+> > So, for example, you cannot use anything that would rely on such resource previously created by the parent unless both sides are aware of it. A classic example are connections - you cannot use a connection that has been created before you called mclapply, because all the children *and* the parent are sharing it, so if anyone reads from it, it will wreak havoc on all the others. So the use of all mc* functions should be limited to R computing operations which are then safe to do in parallel. Where things get complicated is that you should not be calling other packages unless you know that they are fork-safe. If a package uses 3rd party native library, that's where things get murky as many libraries are not fork-safe, but you as the user may not know it (some will actually issue a warning and tell you that you can't use it, but that's rare).
+> >
+> >
+> > > >Threads typically don't cause memory explosion, because OpenMP threads don't allocate new memory, but uncontrolled forking does
+> > >
+> > > Do you have insight on how to explicitly limit forking? It looks like Henrik had been thinking about this earlier: https://github.com/HenrikBengtsson/Wishlist-for-R/issues/94
+> > >
+> >
+> > The mc* functions assumed by design that the user has asked for what they intended. Unfortunately, some packages started using mc* functions without explicitly exposing the necessary parameters to the user, which is really bad and was never intended, making it hard for the user to see what's happening. It would be possible for the parallel package to at least track its forking behavior, but as I said the current assumption is that the user has told it to fork, so it does as asked.
+> >
+> >
+> > > Moreover, could you explain how setting the OpenMP global variables e.g. `OMP_NUM_THREADS=1` would stop forking? I don't quite follow this.
+> > >
+> >
+> > OpenMP has absolutely nothing to do with this as far as I can tell - that's why I was saying that OpenMP is the red herring here.
+> >
+> >
+> > > > It may be better to look at the root cause first, but for that we would need more details on what you are doing.
+> > >
+> > > Functions with mclapply do indeed show this "memory surging" behavior, e.g.
+> > >
+> > > https://github.com/kharchenkolab/numbat/blob/main/R/main.R#L940-L963
+> > >
+> >
+> > Yes, by definition, but it's not real memory. As explained the forking creates n additional copies of the R process, so in tools like ps/top you will see n-times more memory being used. However, that is not real memory, all those processes share their memory in the copy-on-write manner, so after the fork no additional memory is actually used. However, as the processes continue their computation they will create new objects and possibly modify old ones, so those modifications will result in new memory being allocated for each process privately.
+> >
+> > A simple example:
+> >
+> > x=rnorm(2e8)
+> > parallel::mclapply(1:4, function(o) Sys.sleep(20), mc.cores=4)
+> >
+> > ps axl will result in this on macOS:
+> >
+> >   UID   PID  PPID CPU PRI NI      VSZ    RSS WCHAN  STAT   TT       TIME COMMAND
+> >   501 97025 96821   0  31  0  5930048 1611288 -      S+   s111    0:15.58 R
+> >   501 97064 97025   0  31  0  5929792   3884 -      S+   s111    0:00.00 R
+> >   501 97065 97025   0  31  0  5929792   3580 -      S+   s111    0:00.00 R
+> >   501 97066 97025   0  31  0  5929792   3668 -      S+   s111    0:00.00 R
+> >   501 97067 97025   0  31  0  5929792   3656 -      S+   s111    0:00.00 R
+> >
+> > So you can see that the parent process uses ~1.6Gb of actual memory (RSS) and the children use very little. However, virtual memory (VSZ) is almost 6Gb reported for each, which includes all mapped and shared memory thus reported multiple times.
+> >
+> > Things are even more confusing on Linux:
+> >
+> > F   UID   PID  PPID PRI  NI    VSZ   RSS WCHAN  STAT TTY        TIME COMMAND
+> > 0 1000 3962 3465 20  0 1721612 1612448 poll_s S+ pts/2     0:12 R
+> > 1 1000 3970 3962 20  0 1721612 1603776 poll_s S+ pts/2     0:00 R
+> > 1 1000 3971 3962 20  0 1721612 1603776 poll_s S+ pts/2     0:00 R
+> > 1 1000 3972 3962 20  0 1721612 1603776 poll_s S+ pts/2     0:00 R
+> > 1 1000 3973 3962 20  0 1721612 1603776 poll_s S+ pts/2     0:00 R
+> >
+> > because Linux reports shared memory in each process' RSS. You have to use different tools to account for that, e.g. smem:
+> >
+> >   PID User    Command  Swap      USS      PSS      RSS
+> >  3926 1000  R             0     1432   321703  1603980
+> >  3925 1000  R             0     1436   321707  1603980
+> >  3924 1000  R             0     1432   321709  1603980
+> >  3927 1000  R             0     1440   321713  1603980
+> >  3484 1000  R             0     5980   326697  1612332
+> >
+> > where USS is the actually used unshared memory, so you can see that all of the 1.6Gb is shared and almost nothing is owned by the process itself. (PSS uses average per process of shared memory)
+> >
+> > Of course, things blow up if you compute on all of it, e.g.:
+> >
+> > parallel::mclapply(1:4, function(o) { sum(x + o); Sys.sleep(20) }, mc.cores=4)
+> >
+> >  5026 1000  R             0    33664   348834  1612412
+> >  5053 1000  R             0  1591672  1906390  3166500
+> >  5051 1000  R             0  1591676  1906391  3166492
+> >  5050 1000  R             0  1591676  1906395  3166528
+> >  5052 1000  R             0  1591676  1906395  3166528
+> >
+> > Now each process needs to create a new result vector x + o so each one of them needs additional 1.6Gb of RAM, so you end up needing 8Gb of RAM total.
+> >
+> > One most misunderstood concept of paralellization is that if you run 10 things in parallel you will need at least 10 times more resources. And in many cases memory is the most expensive resource.
+> >
+> > I hope it helps.
+> >
+> > Cheers,
+> > Simon
+> >
+> >
+> >
+> > >
+> > > Thanks, Evan
+> > >
+> > > On Thu, Mar 17, 2022 at 7:23 PM Simon Urbanek <simon.urbanek at r-project.org> wrote:
+> > > Evan,
+> > >
+> > > honestly, I think your request may be a red herring. Threads typically don't cause memory explosion, because OpenMP threads don't allocate new memory, but uncontrolled forking does. There are many things that are not allowed inside mclapply so that's where I would look. It may be better to look at the root cause first, but for that we would need more details on what you are doing.
+> > >
+> > > Cheers,
+> > > Simon
+> > >
+> > >
+> > > > On Mar 18, 2022, at 2:51 AM, Evan Biederstedt <evan.biederstedt at gmail.com> wrote:
+> > > >
+> > > > Hi R-package-devel
+> > > >
+> > > > I'm developing an R package which uses `parallel::mclapply` and several
+> > > > other library dependencies which possibly rely upon OpenMP. Unfortunately,
+> > > > some functions explode the amount of memory used.
+> > > >
+> > > > I've noticed that if I set `export OMP_NUM_THREADS=1` before starting R,
+> > > > the memory is far more manageable.
+> > > >
+> > > > My question is, if there a way for me to achieve this behavior within the R
+> > > > package itself?
+> > > >
+> > > > My initial try was to use `R/zzz.R` and an `.onLoad()` function to load
+> > > > these global variables upon loading the library.
+> > > >
+> > > > ```
+> > > > .onLoad <- function(libname, pkgname){
+> > > >  Sys.setenv(OMP_NUM_THREADS=1)
+> > > > }
+> > > > ```
+> > > >
+> > > > But this doesn't work. The memory still explodes. In fact, I'm worried that
+> > > > this cannot be done within an R package itself, as R has already started,
+> > > > e.g.  https://stackoverflow.com/a/27320691/5269850
+> > > >
+> > > > Is there a recommended approach for this problem when writing R packages?
+> > > >
+> > > > Package here: https://github.com/kharchenkolab/numbat
+> > > >
+> > > > Related question on SO:
+> > > > https://stackoverflow.com/questions/71507979/set-openmp-threads-for-all-dependencies-in-r-package
+> > > >
+> > > > Any help appreciated. Thanks, Evan
+> > > >
+> > > >       [[alternative HTML version deleted]]
+> > > >
+> > > > ______________________________________________
+> > > > R-package-devel at r-project.org mailing list
+> > > > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> > > >
+> > >
+> >
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
