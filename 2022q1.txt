@@ -18819,3 +18819,232 @@ henrik.bengtsson at gmail.com> wrote:
 	[[alternative HTML version deleted]]
 
 
+From |uc@r @end|ng |rom |edor@project@org  Mon Mar 21 10:32:04 2022
+From: |uc@r @end|ng |rom |edor@project@org (=?UTF-8?Q?I=C3=B1aki_Ucar?=)
+Date: Mon, 21 Mar 2022 10:32:04 +0100
+Subject: [R-pkg-devel] 
+ Setting OpenMP threads (globally) for an R package
+In-Reply-To: <0858E210-33AC-4AA0-BB00-BC676FCBE130@R-project.org>
+References: <CABFhwYOAwKwkSzduiSZ3YEsqupCmgjRj4Eu47T-2RrYXUm3M5g@mail.gmail.com>
+ <A189E324-6FF6-4FE8-BA09-8A50E3F2DD81@R-project.org>
+ <CABFhwYNDwCJRX9LCtU0pcSo-_H=aCFi073uaVY-dg4_THB1K_Q@mail.gmail.com>
+ <EDAA74A9-F553-4749-A970-C941A8ACA2A3@R-project.org>
+ <CABFhwYNCAP-uJtWqD-LfZm4x+o9jip-NMxSkZx0=Hw+zXQcNMw@mail.gmail.com>
+ <0858E210-33AC-4AA0-BB00-BC676FCBE130@R-project.org>
+Message-ID: <CALEXWq2ggf+EwLoGdFkk_jgC9JYOh4CvPXmYtauoZrqySASB7w@mail.gmail.com>
+
+On Fri, 18 Mar 2022 at 06:33, Simon Urbanek <simon.urbanek at r-project.org> wrote:
+>
+> > On Mar 18, 2022, at 6:10 PM, Evan Biederstedt <evan.biederstedt at gmail.com> wrote:
+> > There is some connection to setting  `export OMP_NUM_THREADS=1` before starting R, and moderate memory usage; that's all I know.
+>
+> That's odd. OpenMP itself doesn't allocate memory, so that's why I said it shouldn't be related.
+
+Evan didn't share the sessionInfo() output, so my guess is that the
+threaded version of OpenBLAS is being used, and, oddly enough, this
+honours OMP flags. See https://github.com/xianyi/OpenBLAS/issues/2985
+
+-- 
+I?aki ?car
+
+
+From @te|@no@bor|n| @end|ng |rom @@tr@zenec@@com  Mon Mar 21 14:15:00 2022
+From: @te|@no@bor|n| @end|ng |rom @@tr@zenec@@com (Borini, Stefano)
+Date: Mon, 21 Mar 2022 13:15:00 +0000
+Subject: [R-pkg-devel] 
+ Ensuring permanence and SHA consistency of released
+ CRAN packages for validated software
+In-Reply-To: <CABtg=K=JKHfvt7rXTcb9z9VEGQoMBW=nb4m12PbxytgXkQgkOw@mail.gmail.com>
+References: <CABtg=K=JKHfvt7rXTcb9z9VEGQoMBW=nb4m12PbxytgXkQgkOw@mail.gmail.com>
+Message-ID: <D14C089F-A65D-4B2E-A6CC-70EAD3E7BD6F@astrazeneca.com>
+
+CRAN rebuilds binary packages because of (potential) changes in
+build-time dependencies. ABI changes, in the loose sense of the term.
+E.g. package A can call the shared library of another package B. If
+the ABI of B changes, then you need to rebuild A.
+
+AFAICT packages are rebuilt frequently and often. E.g. if you look at
+the package time stamps of the package files at
+https://cran.r-project.org/bin/windows/contrib/4.2/<https://cran.r-project.org/bin/windows/contrib/4.2> you see that many
+(most?) of the binaries were (re)built yesterday.
+
+Well, the binaries it?s a different story and needs its own solution. I am referring to the source packages, not the binary ones. So I suspect that when the binaries are rebuilt, the DESCRIPTION file in the source package is updated as well by the build system.
+That?s what creates the issue.
+
+Some time ago I suggested adding the Build field to the metadata, for
+similar reasons. The Build field helps you decide if your package is
+out of date or not, but a hash is obviously better, as you can also
+use it to check the integrity of the package file.
+
+One concern CRAN had with the Build field was that if
+`update.packages()` used this field to decide if a package should be
+updated, that would cause too many downloads.
+
+I agree that it would be great to add the sha256 (or other) hash to
+DESCRIPTION.
+
+You can?t do that because then you would end up in a chicken egg situation where the sha of the tgz package depends on the content of the DESCRIPTION which would depend on the sha of the package.
+
+Do you want me to study in more details on how it?s worked out in python? We could come up with a similar strategy, but I hardly doubt it will be implementable quickly and effortlessly.
+Probably the easiest strategy is to have a gpg signature for each package, but it can get heavy for maintainers at CRAN, and it still does not really solve the problem if it?s automated. Whatever changes the source DESCRIPTION file, will have to repackage the source tar.gz, and then sign it anew.
+________________________________
+
+AstraZeneca UK Limited is a company incorporated in England and Wales with registered number:03674842 and its registered office at 1 Francis Crick Avenue, Cambridge Biomedical Campus, Cambridge, CB2 0AA.
+
+This e-mail and its attachments are intended for the above named recipient only and may contain confidential and privileged information. If they have come to you in error, you must not copy or show them to anyone; instead, please reply to this e-mail, highlighting the error to the sender and then immediately delete the message. For information about how AstraZeneca UK Limited and its affiliates may process information, personal data and monitor communications, please see our privacy notice at www.astrazeneca.com<https://www.astrazeneca.com>
+
+	[[alternative HTML version deleted]]
+
+
+From c@@rd|@g@bor @end|ng |rom gm@||@com  Mon Mar 21 14:22:32 2022
+From: c@@rd|@g@bor @end|ng |rom gm@||@com (=?UTF-8?B?R8OhYm9yIENzw6FyZGk=?=)
+Date: Mon, 21 Mar 2022 14:22:32 +0100
+Subject: [R-pkg-devel] 
+ Ensuring permanence and SHA consistency of released
+ CRAN packages for validated software
+In-Reply-To: <D14C089F-A65D-4B2E-A6CC-70EAD3E7BD6F@astrazeneca.com>
+References: <CABtg=K=JKHfvt7rXTcb9z9VEGQoMBW=nb4m12PbxytgXkQgkOw@mail.gmail.com>
+ <D14C089F-A65D-4B2E-A6CC-70EAD3E7BD6F@astrazeneca.com>
+Message-ID: <CABtg=K=11bYaaKhRHFB6hpEL9oxHWwkc2TYP8_duoDT0V0aERA@mail.gmail.com>
+
+On Mon, Mar 21, 2022 at 2:15 PM Borini, Stefano
+<stefano.borini at astrazeneca.com> wrote:
+> Well, the binaries it?s a different story and needs its own solution. I am referring to the source packages, not the binary ones. So I suspect that when the binaries are rebuilt, the DESCRIPTION file in the source package is updated as well by the build system.
+>
+> That?s what creates the issue.
+
+Oh, right, I missed that, sorry. In my experience the source packages
+are rebuilt much less frequently, at least this was the situation in
+the past. This said, I can't imagine a good reason for rebuilding a
+source package without increasing the version number.
+
+[...]
+> I agree that it would be great to add the sha256 (or other) hash to
+> DESCRIPTION.
+>
+>
+>
+> You can?t do that because then you would end up in a chicken egg situation where the sha of the tgz package depends on the content of the DESCRIPTION which would depend on the sha of the package.
+
+I meant PACKAGES*, sorry.
+
+FWIW for source packages the MD5 is already in PACKAGES, so you can
+use that to see if a source package was updated or not.
+
+G.
+
+[...]
+
+
+From |uc@r @end|ng |rom |edor@project@org  Mon Mar 21 14:23:29 2022
+From: |uc@r @end|ng |rom |edor@project@org (=?UTF-8?Q?I=C3=B1aki_Ucar?=)
+Date: Mon, 21 Mar 2022 14:23:29 +0100
+Subject: [R-pkg-devel] 
+ Ensuring permanence and SHA consistency of released
+ CRAN packages for validated software
+In-Reply-To: <D14C089F-A65D-4B2E-A6CC-70EAD3E7BD6F@astrazeneca.com>
+References: <CABtg=K=JKHfvt7rXTcb9z9VEGQoMBW=nb4m12PbxytgXkQgkOw@mail.gmail.com>
+ <D14C089F-A65D-4B2E-A6CC-70EAD3E7BD6F@astrazeneca.com>
+Message-ID: <CALEXWq1JbFb0_MoMqd7yPwYV-tWP546-DoC_pDD1scNqEOwvtg@mail.gmail.com>
+
+Please, note that the mailing list strips out all the HTML from the
+messages (see the posting guide [1]). It's difficult to follow the
+conversation if there's no explicit marker for the text that is being
+cited.
+
+[1] https://www.r-project.org/posting-guide.html
+
+I?aki
+
+On Mon, 21 Mar 2022 at 14:15, Borini, Stefano
+<stefano.borini at astrazeneca.com> wrote:
+>
+> CRAN rebuilds binary packages because of (potential) changes in
+> build-time dependencies. ABI changes, in the loose sense of the term.
+> E.g. package A can call the shared library of another package B. If
+> the ABI of B changes, then you need to rebuild A.
+>
+> AFAICT packages are rebuilt frequently and often. E.g. if you look at
+> the package time stamps of the package files at
+> https://cran.r-project.org/bin/windows/contrib/4.2/<https://cran.r-project.org/bin/windows/contrib/4.2> you see that many
+> (most?) of the binaries were (re)built yesterday.
+>
+> Well, the binaries it?s a different story and needs its own solution. I am referring to the source packages, not the binary ones. So I suspect that when the binaries are rebuilt, the DESCRIPTION file in the source package is updated as well by the build system.
+> That?s what creates the issue.
+>
+> Some time ago I suggested adding the Build field to the metadata, for
+> similar reasons. The Build field helps you decide if your package is
+> out of date or not, but a hash is obviously better, as you can also
+> use it to check the integrity of the package file.
+>
+> One concern CRAN had with the Build field was that if
+> `update.packages()` used this field to decide if a package should be
+> updated, that would cause too many downloads.
+>
+> I agree that it would be great to add the sha256 (or other) hash to
+> DESCRIPTION.
+>
+> You can?t do that because then you would end up in a chicken egg situation where the sha of the tgz package depends on the content of the DESCRIPTION which would depend on the sha of the package.
+>
+> Do you want me to study in more details on how it?s worked out in python? We could come up with a similar strategy, but I hardly doubt it will be implementable quickly and effortlessly.
+> Probably the easiest strategy is to have a gpg signature for each package, but it can get heavy for maintainers at CRAN, and it still does not really solve the problem if it?s automated. Whatever changes the source DESCRIPTION file, will have to repackage the source tar.gz, and then sign it anew.
+> ________________________________
+>
+> AstraZeneca UK Limited is a company incorporated in En...{{dropped:24}}
+
+
+From vo|ody@ @end|ng |rom m|nd@pr|ng@com  Mon Mar 21 15:51:45 2022
+From: vo|ody@ @end|ng |rom m|nd@pr|ng@com (Vladimir Dergachev)
+Date: Mon, 21 Mar 2022 10:51:45 -0400 (EDT)
+Subject: [R-pkg-devel] 
+ Setting OpenMP threads (globally) for an R package
+In-Reply-To: <A189E324-6FF6-4FE8-BA09-8A50E3F2DD81@R-project.org>
+References: <CABFhwYOAwKwkSzduiSZ3YEsqupCmgjRj4Eu47T-2RrYXUm3M5g@mail.gmail.com>
+ <A189E324-6FF6-4FE8-BA09-8A50E3F2DD81@R-project.org>
+Message-ID: <alpine.DEB.2.22.394.2203211042200.4056@iridium>
+
+
+
+On Fri, 18 Mar 2022, Simon Urbanek wrote:
+
+> Evan,
+>
+> honestly, I think your request may be a red herring. Threads typically don't cause memory explosion, because OpenMP threads don't allocate new memory, but uncontrolled forking does. There are many things that are not allowed inside mclapply so that's where I would look. It may be better to look at the root cause first, but for that we would need more details on what you are doing.
+
+Well, actually this is a real issue as glibc has a concept of "memory 
+arenas".
+
+When using old-style heap allocation a multi-threaded program would 
+have to obtain a lock to the memory allocator - which is a problem in 
+object-oriented code that constantly allocates and deallocates small 
+pieces of memory.
+
+The solution was to have multiple "arenas" from which memory can be 
+allocated and to prevent lock contention. Which works ok when each thread 
+uses the same set of objects, but breaks when doing openmp() style 
+computation where tasks are assigned to compute threads at random.
+
+The memory footprint of the program can easily grow to the number of 
+memory arenas times whatever the footprint was in single-threaded case.
+
+You can force glibc to use heap only with this environment setting:
+
+MALLOC_ARENA_MAX=1
+
+If this happens to make your program slower, this is an indication that 
+the program calls memory allocation function too frequently and needs to 
+be optimized. This tends to improve both multi-threaded and 
+single-threaded performance as memory allocation calls are rather slow 
+even without a lock.
+
+best
+
+Vladimir Dergachev
+
+>
+> Cheers,
+> Simon
+>
+>
+
+
