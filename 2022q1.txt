@@ -19454,3 +19454,436 @@ Simon
 > 
 
 
+From g||||@n @end|ng |rom |r|@@w@@h|ngton@edu  Fri Mar 25 18:59:04 2022
+From: g||||@n @end|ng |rom |r|@@w@@h|ngton@edu (Gillian Sharer)
+Date: Fri, 25 Mar 2022 10:59:04 -0700 (PDT)
+Subject: [R-pkg-devel] building on CRAN: GCC 12 truncation warning,
+ attempted fix not working
+In-Reply-To: <E84FA4C3-D29B-4133-A03E-4A08E1D16BC6@R-project.org>
+References: <1463619924.3196872.1648073096542.JavaMail.zimbra@iris.washington.edu>
+ <E84FA4C3-D29B-4133-A03E-4A08E1D16BC6@R-project.org>
+Message-ID: <435818309.3459905.1648231144585.JavaMail.zimbra@iris.washington.edu>
+
+Thank you. That worked.
+
+-Gillian
+
+----- Original Message -----
+> From: "Simon Urbanek" <simon.urbanek at R-project.org>
+> To: "gillian" <gillian at iris.washington.edu>
+> Cc: "r-package-devel" <r-package-devel at r-project.org>
+> Sent: Wednesday, March 23, 2022 3:47:43 PM
+> Subject: Re: [R-pkg-devel] building on CRAN: GCC 12 truncation warning, attempted fix not working
+
+> Gillian,
+> 
+> the buffer has to have enough space for the content *and* a terminating NUL
+> character, so you need total of at least 12 bytes. Given that stack is
+> typically aligned at 8-bytes I'd simply use 16 for safety.
+> 
+> Cheers,
+> Simon
+> 
+> 
+> 
+>> On Mar 24, 2022, at 11:04 AM, Gillian Sharer <gillian at iris.washington.edu>
+>> wrote:
+>> 
+>> We have some C code in our IRISSeismic package that has starting generating
+>> truncation warnings with GCC 12.
+>> 
+>> This is the original code and warning:
+>> 
+>> 
+>> char seqnum[7];
+>> 
+>> snprintf (seqnum, 7, "%06d", msr->sequence_number);
+>> 
+>> 
+>> 
+>> 
+>> warning: ' %06d' directive output may be truncated writing between 6 and 11
+>> bytes into a region of size 7 [-Wformat-truncation=]
+>> 
+>> 
+>> 
+>> 
+>> This was our attempted fix and new warning:
+>> 
+>> char seqnum[11];
+>> 
+>> snprintf (seqnum, sizeof(seqnum), "%06d", msr->sequence_number);
+>> 
+>> 
+>> 
+>> 
+>> warning: ' snprintf' output may be truncated before the last format character
+>> [-Wformat-truncation=]
+>> 
+>> 
+>> 
+>> 
+>> I don't have much experience with C and I'm not sure why the attempted fix
+>> didn't work. Does anyone have advice on what else I can try to fix this?
+>> 
+>> 
+>> 
+>> 
+>> 
+>> Thanks,
+>> 
+>> Gillian Sharer
+>> 
+>> IRIS DMC
+>> 
+>> 
+>> 
+>> 	[[alternative HTML version deleted]]
+>> 
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From g||||@n @end|ng |rom |r|@@w@@h|ngton@edu  Fri Mar 25 19:19:55 2022
+From: g||||@n @end|ng |rom |r|@@w@@h|ngton@edu (Gillian Sharer)
+Date: Fri, 25 Mar 2022 11:19:55 -0700 (PDT)
+Subject: [R-pkg-devel] documentation warning when using \deqn for equations
+Message-ID: <653242361.3465439.1648232395501.JavaMail.zimbra@iris.washington.edu>
+
+My package submission has just started generating a NOTE for HTML check warnings in my .Rd documentation files when using \deqn to document equations, although it has been successful in the past. It passes all checks on the rhub package machines, but the Debian build for actual submissions is reporting for each use of \deqn: 
+
+
+Warning: inserting implicit <p> 
+Warning: trimming empty <p> 
+
+
+The reported line numbers don't match, but this is only occurring in files with \deqn and the number of warnings matches the number of \deqn uses. 
+
+An example is: 
+\details { 
+Before calculating the envelope, the seismic trace is 'cleaned up' by removing the mean, 
+the trend and by applying a cosine taper. See \link{DDT} for more details. 
+
+The seismic envelope is defined as: 
+
+
+
+
+\deqn{ E(t) = \sqrt{T^2(t) + H^2(t)} } 
+
+
+
+
+where \eqn{T(t)} is the seismic trace and \eqn{H(t)} is the Hilbert transform of \eqn{T(t)}. 
+
+} 
+
+
+
+
+Is there anything obviously wrong with this? 
+
+
+
+
+Thanks, 
+
+Gillian Sharer 
+
+IRIS DMC 
+
+gillian at iris.washington.edu 
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Fri Mar 25 19:28:20 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Fri, 25 Mar 2022 11:28:20 -0700
+Subject: [R-pkg-devel] 
+ documentation warning when using \deqn for equations
+In-Reply-To: <653242361.3465439.1648232395501.JavaMail.zimbra@iris.washington.edu>
+References: <653242361.3465439.1648232395501.JavaMail.zimbra@iris.washington.edu>
+Message-ID: <199652DA-118A-4B35-84CD-893195F899C8@dcn.davis.ca.us>
+
+Where is the second part of your deqn?
+
+The syntax is
+
+  \deqn{}{}
+
+not
+
+  \deqn{}
+
+On March 25, 2022 11:19:55 AM PDT, Gillian Sharer <gillian at iris.washington.edu> wrote:
+>My package submission has just started generating a NOTE for HTML check warnings in my .Rd documentation files when using \deqn to document equations, although it has been successful in the past. It passes all checks on the rhub package machines, but the Debian build for actual submissions is reporting for each use of \deqn: 
+>
+>
+>Warning: inserting implicit <p> 
+>Warning: trimming empty <p> 
+>
+>
+>The reported line numbers don't match, but this is only occurring in files with \deqn and the number of warnings matches the number of \deqn uses. 
+>
+>An example is: 
+>\details { 
+>Before calculating the envelope, the seismic trace is 'cleaned up' by removing the mean, 
+>the trend and by applying a cosine taper. See \link{DDT} for more details. 
+>
+>The seismic envelope is defined as: 
+>
+>
+>
+>
+>\deqn{ E(t) = \sqrt{T^2(t) + H^2(t)} } 
+>
+>
+>
+>
+>where \eqn{T(t)} is the seismic trace and \eqn{H(t)} is the Hilbert transform of \eqn{T(t)}. 
+>
+>} 
+>
+>
+>
+>
+>Is there anything obviously wrong with this? 
+>
+>
+>
+>
+>Thanks, 
+>
+>Gillian Sharer 
+>
+>IRIS DMC 
+>
+>gillian at iris.washington.edu 
+>
+>
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-package-devel at r-project.org mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Mar 25 19:31:36 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 25 Mar 2022 21:31:36 +0300
+Subject: [R-pkg-devel] 
+ documentation warning when using \deqn for equations
+In-Reply-To: <653242361.3465439.1648232395501.JavaMail.zimbra@iris.washington.edu>
+References: <653242361.3465439.1648232395501.JavaMail.zimbra@iris.washington.edu>
+Message-ID: <20220325213136.6c786958@Tarkus>
+
+On Fri, 25 Mar 2022 11:19:55 -0700 (PDT)
+Gillian Sharer <gillian at iris.washington.edu> wrote:
+
+> Is there anything obviously wrong with this? 
+
+Nothing obviously wrong. It's a relatively new check. You can try
+installing http://www.html-tidy.org/ on your computer and using it to
+check the output of R CMD Rdconv -t html man/yourfile.Rd. (If there's a
+"tidy" executable in your $PATH, R CMD check should be able to pick it
+up and perform the HTML check on your machine, too.)
+
+Can you share the source code for the package? Someone could try
+to reproduce the error on their end.
+
+> 	[[alternative HTML version deleted]]
+
+You composed your message in HTML, but we only got the automatically
+generated plain text version, which might be different, because the
+mailing list strips the HTML part of the messages.
+
+-- 
+Best regards,
+Ivan
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Mar 25 19:44:25 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 25 Mar 2022 14:44:25 -0400
+Subject: [R-pkg-devel] 
+ documentation warning when using \deqn for equations
+In-Reply-To: <653242361.3465439.1648232395501.JavaMail.zimbra@iris.washington.edu>
+References: <653242361.3465439.1648232395501.JavaMail.zimbra@iris.washington.edu>
+Message-ID: <33b12f38-bf92-12ed-a8d9-7aac067906c1@gmail.com>
+
+On 25/03/2022 2:19 p.m., Gillian Sharer wrote:
+> My package submission has just started generating a NOTE for HTML check warnings in my .Rd documentation files when using \deqn to document equations, although it has been successful in the past. It passes all checks on the rhub package machines, but the Debian build for actual submissions is reporting for each use of \deqn:
+
+There's been some work on Rd parsing recently in R-devel that could have 
+created some false-positive issues.  It's probably easiest just to wait 
+a day or two to see if the warnings go away.
+
+Duncan Murdoch
+
+> 
+> 
+> Warning: inserting implicit <p>
+> Warning: trimming empty <p>
+> 
+> 
+> The reported line numbers don't match, but this is only occurring in files with \deqn and the number of warnings matches the number of \deqn uses.
+> 
+> An example is:
+> \details {
+> Before calculating the envelope, the seismic trace is 'cleaned up' by removing the mean,
+> the trend and by applying a cosine taper. See \link{DDT} for more details.
+> 
+> The seismic envelope is defined as:
+> 
+> 
+> 
+> 
+> \deqn{ E(t) = \sqrt{T^2(t) + H^2(t)} }
+> 
+> 
+> 
+> 
+> where \eqn{T(t)} is the seismic trace and \eqn{H(t)} is the Hilbert transform of \eqn{T(t)}.
+> 
+> }
+> 
+> 
+> 
+> 
+> Is there anything obviously wrong with this?
+> 
+> 
+> 
+> 
+> Thanks,
+> 
+> Gillian Sharer
+> 
+> IRIS DMC
+> 
+> gillian at iris.washington.edu
+> 
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From D@n@Ke||ey @end|ng |rom D@|@C@  Sat Mar 26 12:34:00 2022
+From: D@n@Ke||ey @end|ng |rom D@|@C@ (Daniel Kelley)
+Date: Sat, 26 Mar 2022 11:34:00 +0000
+Subject: [R-pkg-devel] handling of byte-order-mark on
+ r-devel-linux-x86_64-debian-clang machine
+Message-ID: <AF437760-5DD5-41D6-A8AF-4C0BA064570F@dal.ca>
+
+In the most recent release of the oce package, there is a new test that uses a package-supplied file of meteorological data.  This is one of three such files that are included with the package.  They are from Environment Canada, which keeps changing the format, and so oce needs to be able to read all three varieties.  In the test, I check whether the column names as read match my expectation.
+
+This file starts with a byte-order-mark, and this is skipped over on all but the r-devel-linux-x86_64-debian-clang machine (and, I think, one or both of the Windows machines, but I have the test turned off on those machines, for that reason).
+
+I don't like to see errors in the CRAN page (https://cran.r-project.org/web/checks/check_results_oce.html) but I also don't like making oce releases with just a few days of separation.  What ought I to do?
+
+I'm just guessing, since I don't have access to any test machine (and rhub never seems to be up-to-date with the CRAN test machines), but this seems like a bug in the r-devel-linux-x86_64-debian-clang test setup.  Things are fine on r-devel-linux-x86_64-debian-gcc, so it seems to be a clang (vs gcc) problem.  And things are fine on r-devel-linux-x86_64-fedora-clang, which has clang 14.0.0 (vs clang 14.0.1 on r-devel-linux-x86_64-debian-gcc).
+
+As for the problem itself, it seems like a bug to me because I thought the whole point of a byte-order-mark was that software should take note of it, but then discard it.  Otherwise, taking this particular case, R users could not rely on things like scan(), read.table(), and so forth, to read data properly.  Basically, every user would have to contend with this endianness issue in their code, instead of letting the system handle it.
+
+I'm sorry this email is so long.  Long story short: should I re-release a biggish R package a few days after a release, to fix a bug on one test machine that might not even be a bug?  (I mention "biggish" because oce fails the time-to-build test, and so releasing it is tricky and wastes time for folks on CRAN.)
+
+Thanks in advance for any advice.
+
+Dan Kelley / Department of Oceanography / Dalhousie University / Canada
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sat Mar 26 14:58:42 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sat, 26 Mar 2022 16:58:42 +0300
+Subject: [R-pkg-devel] handling of byte-order-mark on
+ r-devel-linux-x86_64-debian-clang machine
+In-Reply-To: <AF437760-5DD5-41D6-A8AF-4C0BA064570F@dal.ca>
+References: <AF437760-5DD5-41D6-A8AF-4C0BA064570F@dal.ca>
+Message-ID: <20220326165842.3605c913@Tarkus>
+
+On Sat, 26 Mar 2022 11:34:00 +0000
+Daniel Kelley <Dan.Kelley at Dal.Ca> wrote:
+
+> This file starts with a byte-order-mark, and this is skipped over on
+> all but the r-devel-linux-x86_64-debian-clang machine
+
+Could you please explain how you came to this conclusion? I don't have
+much experience with testthat, but looking at the recent results at
+<https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-debian-clang/oce-00check.html>,
+it seems that the whole header is mis-decoded as latin-1, not just the
+BOM included in one field name.
+
+Please correct me if my understanding is wrong, but I'm seeing you use
+readLines to read the header of the file:
+
+>> # encoding defaults to "UTF-8-BOM"
+>> text <- readLines(file, 1, encoding=encoding, warn=FALSE)
+
+The `encoding` argument of readLines() is documented as follows:
+
+>> encoding: encoding to be assumed for input strings.  It is used to
+>> mark character strings as known to be in Latin-1 or UTF-8: it is
+>> not used to re-encode the input. To do the latter, specify the
+>> encoding as part of the connection ?con? or via
+>> ?options(encoding=)?: see the examples.
+
+It's unfortunate that you lack a clean way of reproducing the problem
+(shouldn't it consistently fail on all glibc/libiconv/??? versions?),
+but I think that the right thing to do here is to use
+
+readLines(file(file, encoding = encoding), ...)
+
+...and not the `encoding` argument of readLines. (See also: somewhat
+confusing "Encoding" section in ?file.)
+
+Taking another look at the check log, I see:
+
+>> using session charset: ISO8859-15
+
+Since readLines() seems to return text with Encoding(.) ==
+'unknown' (i.e. native encoding) when it doesn't recognise its
+`encoding` argument, I guess what happens here is that the UTF-8 text is
+interpreted as ISO8859-15, and the same thing used to happen on
+Windows, where the native encoding is the current ANSI code page. This
+gives me a reason to hope that the test will start passing on Windows
+too once you apply the fix.
+
+-- 
+Best regards,
+Ivan
+
+
+From c@@rd|@g@bor @end|ng |rom gm@||@com  Sat Mar 26 15:16:20 2022
+From: c@@rd|@g@bor @end|ng |rom gm@||@com (=?UTF-8?B?R8OhYm9yIENzw6FyZGk=?=)
+Date: Sat, 26 Mar 2022 15:16:20 +0100
+Subject: [R-pkg-devel] handling of byte-order-mark on
+ r-devel-linux-x86_64-debian-clang machine
+In-Reply-To: <AF437760-5DD5-41D6-A8AF-4C0BA064570F@dal.ca>
+References: <AF437760-5DD5-41D6-A8AF-4C0BA064570F@dal.ca>
+Message-ID: <CABtg=Kkx5T5vckSHGMeJCyhBqpZJR1gZG7ZDr0Enw7TUiFb=vg@mail.gmail.com>
+
+On Sat, Mar 26, 2022 at 12:34 PM Daniel Kelley <Dan.Kelley at dal.ca> wrote:
+>
+[...]
+> I'm just guessing, since I don't have access to any test machine (and rhub never seems to be up-to-date with the CRAN test machines), but this seems like a bug in the r-devel-linux-x86_64-debian-clang test setup.  Things are fine on r-devel-linux-x86_64-debian-gcc, so it seems to be a clang (vs gcc) problem.  And things are fine on r-devel-linux-x86_64-fedora-clang, which has clang 14.0.0 (vs clang 14.0.1 on r-devel-linux-x86_64-debian-gcc).
+
+FWIW it reproduces in this container:
+https://hub.docker.com/r/rhub/debian-clang-devel
+
+Gabor
+
+[...]
+
+
