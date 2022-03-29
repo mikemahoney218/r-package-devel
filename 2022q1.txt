@@ -20086,3 +20086,344 @@ Best,
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Mon Mar 28 09:54:57 2022
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Mon, 28 Mar 2022 09:54:57 +0200
+Subject: [R-pkg-devel] handling of byte-order-mark on
+ r-devel-linux-x86_64-debian-clang machine
+In-Reply-To: <20220326165842.3605c913@Tarkus>
+References: <AF437760-5DD5-41D6-A8AF-4C0BA064570F@dal.ca>
+ <20220326165842.3605c913@Tarkus>
+Message-ID: <20a2da52-6488-6fd2-e6a3-bfca617a87c7@gmail.com>
+
+
+On 3/26/22 14:58, Ivan Krylov wrote:
+> On Sat, 26 Mar 2022 11:34:00 +0000
+> Daniel Kelley <Dan.Kelley at Dal.Ca> wrote:
+>
+>> This file starts with a byte-order-mark, and this is skipped over on
+>> all but the r-devel-linux-x86_64-debian-clang machine
+> Could you please explain how you came to this conclusion? I don't have
+> much experience with testthat, but looking at the recent results at
+> <https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-debian-clang/oce-00check.html>,
+> it seems that the whole header is mis-decoded as latin-1, not just the
+> BOM included in one field name.
+>
+> Please correct me if my understanding is wrong, but I'm seeing you use
+> readLines to read the header of the file:
+>
+>>> # encoding defaults to "UTF-8-BOM"
+>>> text <- readLines(file, 1, encoding=encoding, warn=FALSE)
+> The `encoding` argument of readLines() is documented as follows:
+>
+>>> encoding: encoding to be assumed for input strings.  It is used to
+>>> mark character strings as known to be in Latin-1 or UTF-8: it is
+>>> not used to re-encode the input. To do the latter, specify the
+>>> encoding as part of the connection ?con? or via
+>>> ?options(encoding=)?: see the examples.
+> It's unfortunate that you lack a clean way of reproducing the problem
+> (shouldn't it consistently fail on all glibc/libiconv/??? versions?),
+> but I think that the right thing to do here is to use
+>
+> readLines(file(file, encoding = encoding), ...)
+>
+> ...and not the `encoding` argument of readLines. (See also: somewhat
+> confusing "Encoding" section in ?file.)
+
+Thanks, yes, that is correct reading of the documentation. Could you 
+please clarify which part you found somewhat confusing, could that be 
+improved?
+
+>
+> Taking another look at the check log, I see:
+>
+>>> using session charset: ISO8859-15
+> Since readLines() seems to return text with Encoding(.) ==
+> 'unknown' (i.e. native encoding) when it doesn't recognise its
+> `encoding` argument, I guess what happens here is that the UTF-8 text is
+> interpreted as ISO8859-15, and the same thing used to happen on
+> Windows, where the native encoding is the current ANSI code page. This
+> gives me a reason to hope that the test will start passing on Windows
+> too once you apply the fix.
+
+Yes. The encodings are shown also on the check flavors page:
+https://cran.r-project.org/web/checks/check_flavors.html
+
+R-devel and (to-be) R 4.2 on Windows use UTF-8 as native encoding on 
+recent Windows systems, but the older versions use other encodings, 
+CP1252 on the CRAN check machine.
+
+Best
+Tomas
+
+
+>
+
+
+From Bernd@Gruber @end|ng |rom c@nberr@@edu@@u  Mon Mar 28 12:10:23 2022
+From: Bernd@Gruber @end|ng |rom c@nberr@@edu@@u (Bernd.Gruber)
+Date: Mon, 28 Mar 2022 10:10:23 +0000
+Subject: [R-pkg-devel] Error on checks on CRAN
+Message-ID: <SY7PR01MB80649E0881774438C50C2891D41D9@SY7PR01MB8064.ausprd01.prod.outlook.com>
+
+Hi,
+Since yesterday I see there is an error for my package under the cran checks:
+
+r-devel-windows-x86 64-newTK
+[
+
+  *   [using R Under development (unstable) (2022-03-27 r81995 ucrt)
+  *   using platform: x86_64-w64-mingw32 (64-bit)
+  *   using session charset: UTF-8
+  *   checking for file 'dartR/DESCRIPTION' ... OK
+  *   checking extension type ... Package
+  *   this is package 'dartR' version '1.9.9.1'
+  *   package encoding: UTF-8
+  *   checking package namespace information ... OK
+  *   checking package dependencies ... ERROR
+Packages required but not available:
+  'adegenet', 'ggplot2', 'plyr', 'tidyr', 'stringr', 'ape', 'vegan',
+  'SNPRelate', 'StAMPP', 'sp', 'PopGenReport', 'hierfstat',
+  'robustbase', 'gridExtra', 'HardyWeinberg', 'foreach', 'dplyr',
+  'crayon', 'devtools'
+
+Packages suggested but not available for checking:
+  'knitr', 'rmarkdown', 'rgl', 'doParallel', 'data.table', 'reshape2',
+  'pca3d', 'dismo', 'pegas', 'directlabels', 'rgdal',
+  'leaflet.minicharts', 'leaflet', 'rrBLUP', 'poppr', 'Rcpp', 'igraph',
+  'qvalue', 'gdistance', 'seqinr', 'pheatmap', 'RColorBrewer',
+  'gplots', 'vcfR', 'mmod', 'plotly', 'ggthemes', 'ggrepel', 'raster'
+
+VignetteBuilder package required for checking but not installed: 'knitr'
+
+See section 'The DESCRIPTION file' in the 'Writing R Extensions'
+manual.
+  *   DONE
+
+Status: 1 ERROR
+]
+
+
+This error came up just yesterday (just before I wanted to submit a new version of my package).
+I noticed that the error is not only in my package check, but in all packages I checked (even so prominent ones like devtools, ggplot2 etc).
+
+Hence I assume this has to do with their testing settings and the error hopefully goes away by itself. Is it still okay to submit a package update or should I wait until the error is resolved?
+
+Thanks in advance.
+
+Bernd
+
+
+From: R-package-devel <r-package-devel-bounces at r-project.org> On Behalf Of r-package-devel-request at r-project.org
+Sent: Monday, 28 March 2022 9:00 PM
+To: r-package-devel at r-project.org
+Subject: R-package-devel Digest, Vol 83, Issue 24
+
+Send R-package-devel mailing list submissions to
+r-package-devel at r-project.org<mailto:r-package-devel at r-project.org>
+
+To subscribe or unsubscribe via the World Wide Web, visit
+https://stat.ethz.ch/mailman/listinfo/r-package-devel<https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+or, via email, send a message with subject or body 'help' to
+r-package-devel-request at r-project.org<mailto:r-package-devel-request at r-project.org>
+
+You can reach the person managing the list at
+r-package-devel-owner at r-project.org<mailto:r-package-devel-owner at r-project.org>
+
+When replying, please edit your Subject line so it is more specific
+than "Re: Contents of R-package-devel digest..."
+[UC Logo]<http://www.canberra.edu.au>
+
+[UC is #1 in the World for reducing Inequalities]<https://www.canberra.edu.au/>
+
+
+
+The Ngunnawal people are the Traditional Custodians of the ACT where UC's Bruce Campus is situated and are an integral and celebrated part of UC's culture. We also acknowledge other First Nations Peoples.
+
+Australian Government Higher Education Registered Provider (CRICOS) #00212K  Email Disclaimer
+
+[UC Facebook]<https://www.facebook.com/UniversityOfCanberra>    [UC Twitter] <https://twitter.com/UniCanberra>     [UC Instagram] <https://www.instagram.com/unicanberra/>     [UC Linkedin] <https://au.linkedin.com/school/university-of-canberra/>     [UC Youtube] <https://www.youtube.com/user/uniofcanberra>     [University of Canberra] <http://www.canberra.edu.au>
+
+	[[alternative HTML version deleted]]
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Mon Mar 28 13:09:33 2022
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Mon, 28 Mar 2022 13:09:33 +0200
+Subject: [R-pkg-devel] Error on checks on CRAN
+In-Reply-To: <SY7PR01MB80649E0881774438C50C2891D41D9@SY7PR01MB8064.ausprd01.prod.outlook.com>
+References: <SY7PR01MB80649E0881774438C50C2891D41D9@SY7PR01MB8064.ausprd01.prod.outlook.com>
+Message-ID: <bbe17e77-473c-aa33-973e-d9fb770dfb7f@gmail.com>
+
+
+On 3/28/22 12:10, Bernd.Gruber wrote:
+> Hi,
+> Since yesterday I see there is an error for my package under the cran checks:
+>
+> r-devel-windows-x86 64-newTK
+> [
+>
+>    *   [using R Under development (unstable) (2022-03-27 r81995 ucrt)
+>    *   using platform: x86_64-w64-mingw32 (64-bit)
+>    *   using session charset: UTF-8
+>    *   checking for file 'dartR/DESCRIPTION' ... OK
+>    *   checking extension type ... Package
+>    *   this is package 'dartR' version '1.9.9.1'
+>    *   package encoding: UTF-8
+>    *   checking package namespace information ... OK
+>    *   checking package dependencies ... ERROR
+> Packages required but not available:
+>    'adegenet', 'ggplot2', 'plyr', 'tidyr', 'stringr', 'ape', 'vegan',
+>    'SNPRelate', 'StAMPP', 'sp', 'PopGenReport', 'hierfstat',
+>    'robustbase', 'gridExtra', 'HardyWeinberg', 'foreach', 'dplyr',
+>    'crayon', 'devtools'
+>
+> Packages suggested but not available for checking:
+>    'knitr', 'rmarkdown', 'rgl', 'doParallel', 'data.table', 'reshape2',
+>    'pca3d', 'dismo', 'pegas', 'directlabels', 'rgdal',
+>    'leaflet.minicharts', 'leaflet', 'rrBLUP', 'poppr', 'Rcpp', 'igraph',
+>    'qvalue', 'gdistance', 'seqinr', 'pheatmap', 'RColorBrewer',
+>    'gplots', 'vcfR', 'mmod', 'plotly', 'ggthemes', 'ggrepel', 'raster'
+>
+> VignetteBuilder package required for checking but not installed: 'knitr'
+>
+> See section 'The DESCRIPTION file' in the 'Writing R Extensions'
+> manual.
+>    *   DONE
+>
+> Status: 1 ERROR
+> ]
+>
+>
+> This error came up just yesterday (just before I wanted to submit a new version of my package).
+> I noticed that the error is not only in my package check, but in all packages I checked (even so prominent ones like devtools, ggplot2 etc).
+>
+> Hence I assume this has to do with their testing settings and the error hopefully goes away by itself. Is it still okay to submit a package update or should I wait until the error is resolved?
+
+Yes, please ignore this check flavor for now. These checks are now used 
+again for experimenting with further changes to Rtools on Windows as 
+described here:
+
+https://cran.r-project.org/web/checks/check_flavors.html#r-devel-windows-x86_64-new-TK
+https://www.r-project.org/nosvn/winutf8/ucrt3/CRAN/checks/gcc10-UCRT/README.txt
+
+so the checks may again use patched versions of R-devel, patched 
+packages, testing versions of Rtools (now it does), and so failures can 
+be expected. The current large breakage is because this system needs 
+manual changes when a release branch (now R 4.2) is created.
+
+Best
+Tomas
+
+>
+> Thanks in advance.
+>
+> Bernd
+>
+>
+> From: R-package-devel <r-package-devel-bounces at r-project.org> On Behalf Of r-package-devel-request at r-project.org
+> Sent: Monday, 28 March 2022 9:00 PM
+> To: r-package-devel at r-project.org
+> Subject: R-package-devel Digest, Vol 83, Issue 24
+>
+> Send R-package-devel mailing list submissions to
+> r-package-devel at r-project.org<mailto:r-package-devel at r-project.org>
+>
+> To subscribe or unsubscribe via the World Wide Web, visit
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel<https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+> or, via email, send a message with subject or body 'help' to
+> r-package-devel-request at r-project.org<mailto:r-package-devel-request at r-project.org>
+>
+> You can reach the person managing the list at
+> r-package-devel-owner at r-project.org<mailto:r-package-devel-owner at r-project.org>
+>
+> When replying, please edit your Subject line so it is more specific
+> than "Re: Contents of R-package-devel digest..."
+> [UC Logo]<http://www.canberra.edu.au>
+>
+> [UC is #1 in the World for reducing Inequalities]<https://www.canberra.edu.au/>
+>
+>
+>
+> The Ngunnawal people are the Traditional Custodians of the ACT where UC's Bruce Campus is situated and are an integral and celebrated part of UC's culture. We also acknowledge other First Nations Peoples.
+>
+> Australian Government Higher Education Registered Provider (CRICOS) #00212K  Email Disclaimer
+>
+> [UC Facebook]<https://www.facebook.com/UniversityOfCanberra>    [UC Twitter] <https://twitter.com/UniCanberra>     [UC Instagram] <https://www.instagram.com/unicanberra/>     [UC Linkedin] <https://au.linkedin.com/school/university-of-canberra/>     [UC Youtube] <https://www.youtube.com/user/uniofcanberra>     [University of Canberra] <http://www.canberra.edu.au>
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Mon Mar 28 13:16:10 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Mon, 28 Mar 2022 14:16:10 +0300
+Subject: [R-pkg-devel] handling of byte-order-mark on
+ r-devel-linux-x86_64-debian-clang machine
+In-Reply-To: <20a2da52-6488-6fd2-e6a3-bfca617a87c7@gmail.com>
+References: <AF437760-5DD5-41D6-A8AF-4C0BA064570F@dal.ca>
+ <20220326165842.3605c913@Tarkus>
+ <20a2da52-6488-6fd2-e6a3-bfca617a87c7@gmail.com>
+Message-ID: <20220328141610.0cd17f38@arachnoid>
+
+On Mon, 28 Mar 2022 09:54:57 +0200
+Tomas Kalibera <tomas.kalibera at gmail.com> wrote:
+
+> Could you please clarify which part you found somewhat confusing,
+> could that be improved?
+
+Perhaps "somewhat confusing" is an overstatement, sorry about that. All
+the information is already there in both ?file and ?readLines, it just
+requires a bit of thought to understand it.
+
+>> When reading from a text connection, the connections code, after
+>> re-encoding based on the ?encoding? argument, returns text that is
+>> assumed to be in native encoding; an encoding mark is only added by
+>> functions that read from the connection, so e.g.  ?readLines? can
+>> be instructed to mark the text as ?"UTF-8"? or ?"latin1"?, but
+>> ?readLines? does no further conversion.  To allow reading text in
+>> ?"UTF-8"? on a system that cannot represent all such characters in
+>> native encoding (currently only Windows), a connection can be
+>> internally configured to return the read text in UTF-8 even though
+>> it is not the native encoding; currently ?readLines? and ?scan? use
+>> this feature when given a connection that is not yet open and, when
+>> using the feature, they unconditionally mark the text as ?"UTF-8"?.
+
+The paragraph starts by telling the user that the text is decoded into
+the native encoding, then tells about marking the encoding (which is
+counter-productive when decoding arbitrarily-encoded text into native
+encoding) and only then presents the exception to the native encoding
+output rule (decoding into UTF-8). If I'm trying to read a
+CP1252-encoded file on a Windows 7 machine with CP1251 as the session
+encoding, I might get confused by the mention of encoding mark between
+the parts that are important to me.
+
+It could be an improvement to mention that exception closer to the
+first point of the paragraph and, perhaps, to split the "encoding mark"
+part from the "text connection decoding" part:
+
+>> Functions that read from the connection can add an encoding mark
+>> to the returned text. For example, ?readLines? can be instructed
+>> to mark the text as ?"UTF-8"? or ?"latin1"?, but does no further
+>> conversion.
+>>
+>> When given a connection that is not yet open and has a non-default
+>> ?encoding? argument, ?readLines? and ?scan? internally configure the
+>> connection to read text in UTF-8. Otherwise, the text after decoding
+>> is assumed to be in native encoding.
+
+(Maybe this is omitting too much and should be expanded.)
+
+It could also be helpful to mention the fact that the encoding argument
+to readLines() can be ignored right in the description of that
+argument, inviting the user to read the Details section for more
+information.
+
+-- 
+Best regards,
+Ivan
+
+
