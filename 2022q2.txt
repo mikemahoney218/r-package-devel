@@ -1042,3 +1042,142 @@ On April 5, 2022 11:20:37 AM PDT, Tomas Kalibera <tomas.kalibera at gmail.com> w
 Sent from my phone. Please excuse my brevity.
 
 
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Wed Apr  6 09:08:28 2022
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Wed, 6 Apr 2022 09:08:28 +0200
+Subject: [R-pkg-devel] handling of byte-order-mark on
+ r-devel-linux-x86_64-debian-clang machine
+In-Reply-To: <76224FE3-C4E9-4B67-94C3-F17CF1DAFBCB@dcn.davis.ca.us>
+References: <AF437760-5DD5-41D6-A8AF-4C0BA064570F@dal.ca>
+ <20220326165842.3605c913@Tarkus>
+ <20a2da52-6488-6fd2-e6a3-bfca617a87c7@gmail.com>
+ <20220328141610.0cd17f38@arachnoid>
+ <ba71d463-d19f-35ba-20c8-0e65cb37e45e@gmail.com>
+ <76224FE3-C4E9-4B67-94C3-F17CF1DAFBCB@dcn.davis.ca.us>
+Message-ID: <4ee89513-81cb-cefc-a482-811eef8acd30@gmail.com>
+
+On 4/6/22 00:02, Jeff Newmiller wrote:
+> Thanks to the ubiquity of Excel and its misguided inclusion of BOM codes in its UTF-8 CSV format, this optimism about encoding being a corner case seems premature. There are actually multiple options in Excel for writing CSV files, and only one of them (not the first one fortunately) has this "feature", but I (and various beginners I end up helping) seem to encounter these silly files far more frequently than seems reasonable.
+
+I was rather referring to encoding marks in R which declare an encoding 
+of an R string, that is what you see by Encoding(). And to other 
+measures to avoid the problem when the native encoding in R cannot 
+represent all characters users need to work with (when the native 
+encoding cannot be UTF-8). From R 4.2, the native encoding will be UTF-8 
+also on (recent) Windows systems; on most Unix systems, it has been 
+UTF-8 for years. But this change will not impact the handling of BOMs in 
+input.
+
+Is the problem reading CSV files from Excel (even when Excel is at 
+fault) reported anywhere? If not, please report, maybe there is 
+something that could be done to help processing those files on the R 
+side. R handles BOMs in the "connections" code, ?connections, and it 
+uses iconv for input conversion.
+
+Thanks
+Tomas
+
+>
+> On April 5, 2022 11:20:37 AM PDT, Tomas Kalibera <tomas.kalibera at gmail.com> wrote:
+>> On 3/28/22 13:16, Ivan Krylov wrote:
+>>> On Mon, 28 Mar 2022 09:54:57 +0200
+>>> Tomas Kalibera <tomas.kalibera at gmail.com> wrote:
+>>>
+>>>> Could you please clarify which part you found somewhat confusing,
+>>>> could that be improved?
+>>> Perhaps "somewhat confusing" is an overstatement, sorry about that. All
+>>> the information is already there in both ?file and ?readLines, it just
+>>> requires a bit of thought to understand it.
+>>>
+>>>>> When reading from a text connection, the connections code, after
+>>>>> re-encoding based on the ?encoding? argument, returns text that is
+>>>>> assumed to be in native encoding; an encoding mark is only added by
+>>>>> functions that read from the connection, so e.g.  ?readLines? can
+>>>>> be instructed to mark the text as ?"UTF-8"? or ?"latin1"?, but
+>>>>> ?readLines? does no further conversion.  To allow reading text in
+>>>>> ?"UTF-8"? on a system that cannot represent all such characters in
+>>>>> native encoding (currently only Windows), a connection can be
+>>>>> internally configured to return the read text in UTF-8 even though
+>>>>> it is not the native encoding; currently ?readLines? and ?scan? use
+>>>>> this feature when given a connection that is not yet open and, when
+>>>>> using the feature, they unconditionally mark the text as ?"UTF-8"?.
+>>> The paragraph starts by telling the user that the text is decoded into
+>>> the native encoding, then tells about marking the encoding (which is
+>>> counter-productive when decoding arbitrarily-encoded text into native
+>>> encoding) and only then presents the exception to the native encoding
+>>> output rule (decoding into UTF-8). If I'm trying to read a
+>>> CP1252-encoded file on a Windows 7 machine with CP1251 as the session
+>>> encoding, I might get confused by the mention of encoding mark between
+>>> the parts that are important to me.
+>>>
+>>> It could be an improvement to mention that exception closer to the
+>>> first point of the paragraph and, perhaps, to split the "encoding mark"
+>>> part from the "text connection decoding" part:
+>>>
+>>>>> Functions that read from the connection can add an encoding mark
+>>>>> to the returned text. For example, ?readLines? can be instructed
+>>>>> to mark the text as ?"UTF-8"? or ?"latin1"?, but does no further
+>>>>> conversion.
+>>>>>
+>>>>> When given a connection that is not yet open and has a non-default
+>>>>> ?encoding? argument, ?readLines? and ?scan? internally configure the
+>>>>> connection to read text in UTF-8. Otherwise, the text after decoding
+>>>>> is assumed to be in native encoding.
+>>> (Maybe this is omitting too much and should be expanded.)
+>>>
+>>> It could also be helpful to mention the fact that the encoding argument
+>>> to readLines() can be ignored right in the description of that
+>>> argument, inviting the user to read the Details section for more
+>>> information.
+>> Thanks for the suggestions, I've rewritten the paragraphs, biasing
+>> towards users who have UTF-8 as the native encoding as this is going to
+>> be the majority. These users should not have to worry much about the
+>> encoding marks anymore, nor about the internal UTF-8 mode of the
+>> connections code. But the level of detail I think needs to remain as
+>> long as these features are supported - the level of detail is based on
+>> numerous questions and bug reports.
+>>
+>> Best
+>> Tomas
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Apr  6 10:23:52 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 6 Apr 2022 11:23:52 +0300
+Subject: [R-pkg-devel] handling of byte-order-mark on
+ r-devel-linux-x86_64-debian-clang machine
+In-Reply-To: <ba71d463-d19f-35ba-20c8-0e65cb37e45e@gmail.com>
+References: <AF437760-5DD5-41D6-A8AF-4C0BA064570F@dal.ca>
+ <20220326165842.3605c913@Tarkus>
+ <20a2da52-6488-6fd2-e6a3-bfca617a87c7@gmail.com>
+ <20220328141610.0cd17f38@arachnoid>
+ <ba71d463-d19f-35ba-20c8-0e65cb37e45e@gmail.com>
+Message-ID: <20220406112352.6629711b@Tarkus>
+
+On Tue, 5 Apr 2022 20:20:37 +0200
+Tomas Kalibera <tomas.kalibera at gmail.com> wrote:
+
+> I've rewritten the paragraphs, biasing towards users who have UTF-8
+> as the native encoding as this is going to be the majority.
+
+Thank you!
+
+> But the level of detail I think needs to remain as long as these
+> features are supported - the level of detail is based on numerous
+> questions and bug reports.
+
+Of course, all these features have their use cases and it's important
+to stay backwards compatible, including the documentation.
+
+I would also like to apologise to Dan for leading him on a wild goose
+chase that didn't bring him passing read.csv-related tests in the end.
+
+-- 
+Best regards,
+Ivan
+
+
