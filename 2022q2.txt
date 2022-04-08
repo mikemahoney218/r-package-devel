@@ -1181,3 +1181,101 @@ Best regards,
 Ivan
 
 
+From bbo|ker @end|ng |rom gm@||@com  Thu Apr  7 03:54:16 2022
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Wed, 6 Apr 2022 21:54:16 -0400
+Subject: [R-pkg-devel] rmarkdown vignette build failures?
+In-Reply-To: <cf600942-f0e2-0f6e-b8d7-7abf87c1f2fe@gmail.com>
+References: <ddcff059-5672-eb28-0a71-93955e4ac859@gmail.com>
+ <cf600942-f0e2-0f6e-b8d7-7abf87c1f2fe@gmail.com>
+Message-ID: <49e3c4ae-c267-b770-0334-5cec278daf57@gmail.com>
+
+   Follow-up.
+
+* I was wrong about the reversion to an earlier SVN commit helping
+
+* Sebastian Meyer provided **enormously** useful feedback in telling me 
+that these are the steps required to replicate what "R CMD build" is 
+doing internally when it fails
+
+   tools::buildVignettes(dir = ".", tangle = TRUE)
+   vigns <- tools::pkgVignettes(dir = '.', output = TRUE, source = TRUE)
+
+* running this code interactively allowed me to see that my build was 
+failing with these errors:
+
+Error: processing vignette 'lmer.Rnw' failed with diagnostics:
+Running 'texi2dvi' on 'lmer.tex' failed.
+LaTeX errors:
+! Package inputenc Error: Unicode character ? (U+250C)
+(inputenc)                not set up for use with LaTeX.
+
+* further digging showed that for some reason I **absolutely still do 
+not understand**, a simple Rnw chunk that printed a data frame was for 
+some reason finding a 'huxtable' package printing method and trying to 
+print the table using weird Unicode outline characters (e.g. the U+250C 
+complained about above was being used as a box-corner character)
+
+* I still don't really understand what's going on, but I'm getting there ...
+
+   cheers
+    Ben Bolker
+
+
+
+
+
+On 4/5/22 2:10 PM, Ben Bolker wrote:
+>  ? Follow-up: the problem goes away if I revert from SVN r82094 to 
+> r81000.? Will try some more bisection ...
+> 
+> On 4/5/22 12:00 PM, Ben Bolker wrote:
+>> ?? I'm sure I'm doing something silly, but I've recently started 
+>> having a problem building vignettes (with R Under development 
+>> (unstable) (2022-04-05 r82094) -- "Unsuffered Consequences")
+>>
+>> ?? Is anyone else seeing this?
+>>
+>> $ R CMD build broom.mixed
+>> * checking for file ?broom.mixed/DESCRIPTION? ... OK
+>> * preparing ?broom.mixed?:
+>> * checking DESCRIPTION meta-information ... OK
+>> * installing the package to build vignettes
+>> * creating vignettes ...Error in find_vignette_product(name, by = 
+>> "weave", dir = docdir, engine = engine) :
+>> ?? Failed to locate ?weave? output file ?broom_mixed_intro.pdf? or 
+>> ?broom_mixed_intro.html? for vignette with name ?broom_mixed_intro? 
+>> and engine ?utils::Sweave?. The following files exist in working 
+>> directory 
+>> ?/tmp/Rtmp7rjAe4/Rbuild3978f3146b8cd8/broom.mixed/vignettes?: 
+>> ?broom_mixed_intro.rmd? (6322 bytes)
+>> Execution halted
+>>
+>> ?? The weird thing here is that I don't see why R is trying to use 
+>> utils::Sweave ?? The DESCRIPTION file has VignetteBuilder: knitr and 
+>> the head of the vignette file has
+>>
+>> vignette: >
+>> ?? %\VignetteIndexEntry{introduction to broom.mixed}
+>> ?? %\VignetteEngine{knitr::rmarkdown}
+>> ?? \usepackage[utf8]{inputenc}
+>>
+>> ??...
+>>
+>> ??I could swear this used to work ...
+>>
+>> ?? cheers
+>> ?? Ben Bolker
+>>
+>>
+>>
+>>
+> 
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+(Acting) Graduate chair, Mathematics & Statistics
+
+
