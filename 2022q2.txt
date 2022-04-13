@@ -2008,3 +2008,528 @@ s <- sessionInfo()
 cat(s$BLAS, s$LAPACK, sep = "\n")
 
 
+From edd @end|ng |rom deb|@n@org  Tue Apr 12 03:18:29 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Mon, 11 Apr 2022 20:18:29 -0500
+Subject: [R-pkg-devel] help with BLAS/LAPACK version debugging
+In-Reply-To: <5b19da9f-b413-e5ad-91dd-51a5eb88e27a@mcmaster.ca>
+References: <5b19da9f-b413-e5ad-91dd-51a5eb88e27a@mcmaster.ca>
+Message-ID: <25172.54117.83291.878439@rob.eddelbuettel.com>
+
+
+Ben,
+
+I fear your post is too short on specifics on versions tested, and results
+seen. We need more drill-down on what-version-where and the results it got.
+
+So to bootstrap, "here" on my personal dev box I where I tend to keep an
+installation of R-devel (using its embedded LAPACK/BLAS sources) as well as
+the standard R package I stand behind for Debian/Ubuntu (which tends to use
+external libraries for BLAS/LAPACK).
+
+
+Now, here I seem to get a different error between reference BLAS/LAPACK and
+external BLAS/LAPACK:
+
+
+1) R-devel (as SVN r82134) 
+   using libRblas.so + libRlapack.so (i.e. "reference BLAS") gets me
+   
+   Error in chol.default(Hessian) : 
+     the leading minor of order 2 is not positive definite
+
+
+2) R-devel as I upload to Debian, same SVN r82134
+   using external blas: openblas-pthread/{libblas.so.3 + libopenblasp-r0.3.20.so}
+
+   package version libopenblas0 0.3.20, liblapack 3.10.0
+  
+   Error in solve.default(chol(Hessian), gradient) : 
+     system is computationally singular: reciprocal condition number = 0
+
+
+3) For what it is worth every release R version I put into Debian and which
+   is still available (easily, I find) via rocker/r-base or r-base images
+
+   Using 4.0.4 here (again: openblas-pthread/{libblas.so.3 + libopenblasp-r0.3.13.so}
+   (but possibly an older version -- libopenblas 0.3.13, liblapack 3.9.0-3)
+
+   Error in solve.default(chol(Hessian), gradient) : 
+     system is computationally singular: reciprocal condition number = 0
+
+
+I don't claim that the above is complete; I am only pointing out that both
+LAPACK 0.3.9 and 0.3.10 _get me the same error_.  Conrad and I recently did
+dig up an issue for (Rcpp)Armadillo where 0.3.10 _was_ different from 0.3.9,
+but that was for complex-value variables.
+
+The bigger difference seems to be between using R's reference blas, and
+external blas.  I have for a decade+ used external BLAS even when the
+official word to prefer reference BLAS. Now, and very recently NEWS in R seem
+to go the same way prefering 0.3.10 where available.
+
+I hope this helps. I can give you pointers (off-list) if you want to dig some
+more via Docker and different combinations.
+
+
+Cheers, Dirk
+
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From @vr@h@m@@d|er @end|ng |rom gm@||@com  Tue Apr 12 06:29:56 2022
+From: @vr@h@m@@d|er @end|ng |rom gm@||@com (Avraham Adler)
+Date: Tue, 12 Apr 2022 04:29:56 +0000
+Subject: [R-pkg-devel] help with BLAS/LAPACK version debugging
+In-Reply-To: <25172.54117.83291.878439@rob.eddelbuettel.com>
+References: <5b19da9f-b413-e5ad-91dd-51a5eb88e27a@mcmaster.ca>
+ <25172.54117.83291.878439@rob.eddelbuettel.com>
+Message-ID: <CAL6gwnJ=QwX-LWDGoQ2KtDtpZ8GzLiJVFQranrFY641zeRg6UQ@mail.gmail.com>
+
+If it helps, this is on Windows 10 64bit, R 4.2.0alpha, OpenBLAS
+0.3.17 (single threaded, custom compiled for i7-8700K Skylake which
+functions as a Haswell), but default R LAPACK since I still have not
+figured out how to link to a precompiled LAPACK when building natively
+on Windows.
+
+Thanks,
+
+Avi
+
+# 1
+set.seed(101)
+d <- data.frame(z=rnorm(200),
+                  f=factor(sample(1:10,200, replace=TRUE)))
+library(lme4)
+library(testthat)
+fm1 <- lmer(z~ as.numeric(f) + 1|f, d)
+
+R throws--> "boundary (singular) fit: see help('isSingular')"
+
+> fm1 at optinfo$derivs$Hessian[2,2] <- NA
+
+> expect_warning(lme4:::checkConv(fm1 at optinfo$derivs,
+                                  coefs=c(1,1),
+                                  ctrl=lmerControl()$checkConv,lbound=0),
+                 "Problem with Hessian check")
+
+(No warning thrown)
+
+# 2
+dd <- list(gradient = c(0.00132136676711525, 0.00898197413334856, 0),
+   Hessian = structure(c(195.253128051758, 962.483270645142,
+                         0, 962.483270645142, NA, 0, 0, 0, 6542.44775390625),
+                         dim = c(3L, 3L)))
+with(dd, solve(chol(Hessian),gradient))
+
+R throws--> Error in h(simpleError(msg, call)) :
+  error in evaluating the argument 'a' in selecting a method for
+function 'solve': the leading minor of order 2 is not positive
+definite
+
+# 3 (Windows returns empty strings for BLAS and LAPACK)
+
+R version 4.2.0 alpha (2022-04-03 r82074 ucrt)
+Platform: x86_64-w64-mingw32/x64 (64-bit)
+Running under: Windows 10 x64 (build 19043)
+
+Matrix products: default
+
+locale:
+[1] LC_COLLATE=English_United States.utf8  LC_CTYPE=English_United
+States.utf8    LC_MONETARY=English_United States.utf8
+[4] LC_NUMERIC=C                           LC_TIME=English_United
+States.utf8
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base
+
+other attached packages:
+[1] testthat_3.1.3 lme4_1.1-29    Matrix_1.4-1
+
+loaded via a namespace (and not attached):
+ [1] Rcpp_1.0.8.3    lattice_0.20-45 rprojroot_2.0.3 withr_2.5.0
+brio_1.1.3      MASS_7.3-56     grid_4.2.0
+ [8] R6_2.5.1        nlme_3.1-157    magrittr_2.0.3  rlang_1.0.2
+cli_3.2.0       minqa_1.2.4     nloptr_2.0.0
+[15] boot_1.3-28     desc_1.4.1      splines_4.2.0   tools_4.2.0
+pkgload_1.2.4   compiler_4.2.0
+
+On Tue, Apr 12, 2022 at 1:18 AM Dirk Eddelbuettel <edd at debian.org> wrote:
+>
+>
+> Ben,
+>
+> I fear your post is too short on specifics on versions tested, and results
+> seen. We need more drill-down on what-version-where and the results it got.
+>
+> So to bootstrap, "here" on my personal dev box I where I tend to keep an
+> installation of R-devel (using its embedded LAPACK/BLAS sources) as well as
+> the standard R package I stand behind for Debian/Ubuntu (which tends to use
+> external libraries for BLAS/LAPACK).
+>
+>
+> Now, here I seem to get a different error between reference BLAS/LAPACK and
+> external BLAS/LAPACK:
+>
+>
+> 1) R-devel (as SVN r82134)
+>    using libRblas.so + libRlapack.so (i.e. "reference BLAS") gets me
+>
+>    Error in chol.default(Hessian) :
+>      the leading minor of order 2 is not positive definite
+>
+>
+> 2) R-devel as I upload to Debian, same SVN r82134
+>    using external blas: openblas-pthread/{libblas.so.3 + libopenblasp-r0.3.20.so}
+>
+>    package version libopenblas0 0.3.20, liblapack 3.10.0
+>
+>    Error in solve.default(chol(Hessian), gradient) :
+>      system is computationally singular: reciprocal condition number = 0
+>
+>
+> 3) For what it is worth every release R version I put into Debian and which
+>    is still available (easily, I find) via rocker/r-base or r-base images
+>
+>    Using 4.0.4 here (again: openblas-pthread/{libblas.so.3 + libopenblasp-r0.3.13.so}
+>    (but possibly an older version -- libopenblas 0.3.13, liblapack 3.9.0-3)
+>
+>    Error in solve.default(chol(Hessian), gradient) :
+>      system is computationally singular: reciprocal condition number = 0
+>
+>
+> I don't claim that the above is complete; I am only pointing out that both
+> LAPACK 0.3.9 and 0.3.10 _get me the same error_.  Conrad and I recently did
+> dig up an issue for (Rcpp)Armadillo where 0.3.10 _was_ different from 0.3.9,
+> but that was for complex-value variables.
+>
+> The bigger difference seems to be between using R's reference blas, and
+> external blas.  I have for a decade+ used external BLAS even when the
+> official word to prefer reference BLAS. Now, and very recently NEWS in R seem
+> to go the same way prefering 0.3.10 where available.
+>
+> I hope this helps. I can give you pointers (off-list) if you want to dig some
+> more via Docker and different combinations.
+>
+>
+> Cheers, Dirk
+>
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From |uc@r @end|ng |rom |edor@project@org  Tue Apr 12 11:32:01 2022
+From: |uc@r @end|ng |rom |edor@project@org (=?UTF-8?Q?I=C3=B1aki_Ucar?=)
+Date: Tue, 12 Apr 2022 11:32:01 +0200
+Subject: [R-pkg-devel] help with BLAS/LAPACK version debugging
+In-Reply-To: <5b19da9f-b413-e5ad-91dd-51a5eb88e27a@mcmaster.ca>
+References: <5b19da9f-b413-e5ad-91dd-51a5eb88e27a@mcmaster.ca>
+Message-ID: <CALEXWq2yEx5K1WvS1dWoF+RBBu1tNEQXV-TBYH2tS1-T=bzSBw@mail.gmail.com>
+
+Hi Ben,
+
+I see:
+
+$ FLEXIBLAS=openblas-serial Rscript test.R
+Loading required package: Matrix
+boundary (singular) fit: see help('isSingular')
+Error in solve.default(chol(Hessian), gradient) :
+ system is computationally singular: reciprocal condition number = 0
+Calls: with ... with.default -> eval -> eval -> solve -> solve -> solve.default
+
+$ FLEXIBLAS=netlib Rscript test.R
+Loading required package: Matrix
+boundary (singular) fit: see help('isSingular')
+Error in h(simpleError(msg, call)) :
+ error in evaluating the argument 'a' in selecting a method for
+function 'solve': the leading minor of order 2 is not positive
+definite
+Calls: with ... chol -> chol -> chol.default -> .handleSimpleError -> h
+
+This is for Fedora 35 with R 4.1.3 and FlexiBLAS 3.1.3, which allows
+you to easily switch (as shown above) between several implementations
+available, including NETLIB 3.10.0, OpenBLAS 0.3.19 (serial, openmp,
+threads), BLIS 0.7.0 (serial, openmp, threads) and ATLAS 3.10.3, but
+also other libraries you already have if you tell FlexiBLAS where they
+are. If you want to play with those, more info at [1], [2], and of
+course [3].
+
+I?aki
+
+[1] https://cran.r-project.org/bin/linux/fedora/#blaslapack-switching
+[2] https://docs.fedoraproject.org/en-US/packaging-guidelines/BLAS_LAPACK/#_backend_selection
+[3] https://github.com/mpimd-csc/flexiblas/#documentation
+
+On Tue, 12 Apr 2022 at 02:34, Ben Bolker <bbolker at gmail.com> wrote:
+>
+>    Hi folks,
+>
+>    Apologies for long post. (Part 1, overview; part 2, list of attempts
+> so far; part 3, test code.)
+>
+> OVERVIEW
+>
+>    CRAN is reporting check errors with the latest release of lme4
+> <https://cran.r-project.org/web/checks/check_results_lme4.html> that
+> *may* (best guess) be caused by some linear algebra returning NA values
+> rather than throwing an error as expected.
+>
+>    Kurt Hornik says:
+>
+>    > The failing check runs are using an external LAPACK 3.10.0. To be
+> even more precise, Brian does not get this on Fedora with a system
+> reference (netlib) 3.10 LAPACK, whereas I do on Debian with OpenBLAS.  Hth.
+>
+>    The relevant test code is below.
+>
+>    Further notes:
+> https://github.com/lme4/lme4/blob/master/misc/R_lapackstuff.md ;
+> https://github.com/lme4/lme4/issues/677
+>
+>    I think I probably know how to fix/work around the problem, but I
+> would dearly love to have a test system where I could (a) confirm that
+> things are failing in the way/for the reason I expect; and (b) test that
+> my proposed fix actually works.
+>
+>    Any ideas (or reports that the test code fails on your system) would
+> be greatly appreciated ...
+>
+>    cheers
+>      Ben Bolker
+> =====
+>
+> ATTEMPTS SO FAR (none reproduce the error)
+>
+> * running on r-hub debian-gcc-devel, both remotely and in a local Docker
+> container. AFAICT it is running
+>
+> BLAS:   /opt/R-devel/lib/R/lib/libRblas.so
+> LAPACK: /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.10.0
+>
+>    I was unsuccessful in using Debian's update-defaults command to mess
+> around with the LAPACK version.
+>
+>   * running on the `rocker/verse` image from the Rocker project.
+>
+> The default is openblas-pthread/liblapack.so.3; I don't get any errors
+> with this. I can use update-defaults to switch to liblapack.so.3.9.0
+> (not 3.10.0, this is using Debian stable I think), also no errors that way.
+>
+> * running on my own machine (PopOS!, r-devel)
+>
+> This is using openblas-pthread/libopenblasp-r0.3.13.so, and I can't for
+> the life of me figure out how to switch BLAS/LAPACK versions (have tried
+> reinstalling both with (--with-lapack --with-blas) and without, using
+> update-alternatives doesn't seem to make any difference?  Have read
+> various online docs about how this is supposed to work ...
+>
+>
+> =======
+>
+> TEST CODE
+>
+> ## 1. this succeeds for me, fails for CRAN
+>
+> set.seed(101)
+> d <- data.frame(z=rnorm(200),
+>                  f=factor(sample(1:10,200, replace=TRUE)))
+> library(lme4)
+> library(testthat)
+> fm1 <- lmer(z~ as.numeric(f) + 1|f, d)
+> fm1 at optinfo$derivs$Hessian[2,2] <- NA
+> expect_warning(lme4:::checkConv(fm1 at optinfo\$derivs,
+>                                  coefs=c(1,1),
+>                                  ctrl=lmerControl()$checkConv,lbound=0),
+>                 "Problem with Hessian check")
+>
+> ## 2. this throws 'system is computationally singular' for me, returns a
+> vector containing NAs for CRAN (I think)
+>
+> dd <- list(gradient = c(0.00132136676711525, 0.00898197413334856, 0
+> ), Hessian = structure(c(195.253128051758, 962.483270645142,
+> 0, 962.483270645142, NA, 0, 0, 0, 6542.44775390625), dim = c(3L,
+> 3L)))
+> with(dd, solve(chol(Hessian),gradient))
+>
+> ## 3. report BLAS/LAPACK info
+>
+> s <- sessionInfo()
+> cat(s$BLAS, s$LAPACK, sep = "\n")
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+
+-- 
+I?aki ?car
+
+
+From ru@@e||@g@@|mond @end|ng |rom gm@||@com  Tue Apr 12 16:19:34 2022
+From: ru@@e||@g@@|mond @end|ng |rom gm@||@com (Russell Almond)
+Date: Tue, 12 Apr 2022 10:19:34 -0400
+Subject: [R-pkg-devel] Build Environment for Mac OS Catalina
+In-Reply-To: <0ABF6EE1-858D-47F5-A00E-15316C608100@R-project.org>
+References: <9f465b29-0d9d-a692-b356-95fc22fed9d6@gmail.com>
+ <0ABF6EE1-858D-47F5-A00E-15316C608100@R-project.org>
+Message-ID: <EBB0FBAE-32ED-4BFC-B414-1A372A73822C@gmail.com>
+
+Thanks for your help.  An older version of homebrew had installed a conflicting older version of `otool` in /opt/local/bin.  Updating was not cleaning the old version.  Once I cleaned manually cleaned that out, it seemed to work.  
+
+I posted details on stack exchange for the curious.  https://stackoverflow.com/questions/71790401/otool-is-referencing-an-old-version-of-libffi/71844231#71844231 <https://stackoverflow.com/questions/71790401/otool-is-referencing-an-old-version-of-libffi/71844231#71844231>
+
+So my R package is now compiling!
+
+	?Russell
+(I?m not subscribed to R-SIG-Mac, so if somebody who is could forward this answer, that would be good.)
+ 
+
+> On Apr 11, 2022, at 19:57, Simon Urbanek <simon.urbanek at R-project.org> wrote:
+> 
+> Russel,
+> 
+> this is Mac-specific hence more appropriate for R-SIG-Mac, so moving there.
+> 
+> If you are running Catalina then you have Intel Mac so for CRAN R you simply need XCode and that's it (on a clean Mac you can simply run sudo xcode-select --install). There is nothing special - the only exception is if your package contains Fortran code in which case you just install a Fortran compilers from https://mac.r-project.org/tools/gfortran-8.2-Mojave.dmg
+> 
+> However, since you are using Homebrew then things are a lot more complicated. Homebrew toolchains are not compatible with native Mac binaries and they create its own ecosystem which seems to be broken according to your post.
+> 
+> I would recommend deleting /opt/local then check if you have other incompatible libraries in /usr/local. For severe case of misconfiguration best way to remove (or move aside) everything from /usr/local and start from scratch.
+> 
+> Typically the easiest is to install CRAN R as that does not conflict with anything native and it does not require special tools. You can still use Homebrew to install 3rd party libraries that you may need, but make sure you do NOT install any compilers as they tend to wreak havoc on the system with the conflicting libraries. If your dependencies are supported by CRAN then you can fetch them from https://mac.r-project.org/bin/ or you can re-build them yourself using https://github.com/R-macos/recipes
+> 
+> Cheers,
+> Simon
+> 
+> 
+>> On 12/04/2022, at 11:30 AM, Russell Almond <russell.g.almond at gmail.com> wrote:
+>> 
+>> I'm doing my development on an older version of Mac OS, running Catalina.  I'm a bit confused as to what the proper development environment is because the stuff on https://mac.r-project.org/tools seems to be for either more recent or older versions of MacOS.  I also seem to have screwed up something in my toolchain (the curious can see my question at https://stackoverflow.com/questions/71790401/otool-is-referencing-an-old-version-of-libffi ).
+>> 
+>> I have a couple of related questions:
+>> 
+>> 1) What is the right set of instructions for setting up the tool chain for Mac OS Catalina?
+>> 
+>> 2) I'm currently using the R install from homebrew, but I thought I saw something about a different version of R that I should be using.  Is that still current advise?
+>> 
+>> Thanks, Googling the answers to these questions points me at some pages that are clearly out of date.
+>> 
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>> 
+> 
+
+
+	[[alternative HTML version deleted]]
+
+
+From kev|n@r@coombe@ @end|ng |rom gm@||@com  Tue Apr 12 19:29:58 2022
+From: kev|n@r@coombe@ @end|ng |rom gm@||@com (Kevin R. Coombes)
+Date: Tue, 12 Apr 2022 13:29:58 -0400
+Subject: [R-pkg-devel] function name conflict
+Message-ID: <bc6fda62-73d0-4a33-572c-5b310119d2b2@gmail.com>
+
+Hi,
+
+I am writing a package that Imports several other packages. One of my 
+imported packages eventually imports (through a chain of dependencies) 
+"lifecycle", and another eventually imports "rlang". Both "rlang" and 
+"lifecycle" define and export functions called "last_warnings".? As a 
+result, when I first execute "library(MYPACKAGE)" in a script, I get a 
+warning of the form
+ ? " replacing previous import 'lifecycle::last_warnings' by 
+'rlang::last_warnings' when loading 'tibble' "
+
+I don't want the users of MYPACKAGE to have to see this warning (since I 
+know it will spook novices). Is there anything I can do with Imports, 
+Depends, or something else to prevent this warning from occurring? (I 
+know that I can suppress warnings in each script, but I also don't want 
+to explain to my users that they have to do that.
+
+Note that I have tried reversing the order of the two functions that I 
+import in the Imports declaration in the DESCRIPTION file, to no effect. 
+I also only use one function from each of the two imported pakages, and 
+they are explicitly listed in importFrom directives in the NAMESPACE file.
+
+Thank in advance,
+ ? Kevin
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Apr 12 19:50:51 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 12 Apr 2022 20:50:51 +0300
+Subject: [R-pkg-devel] function name conflict
+In-Reply-To: <bc6fda62-73d0-4a33-572c-5b310119d2b2@gmail.com>
+References: <bc6fda62-73d0-4a33-572c-5b310119d2b2@gmail.com>
+Message-ID: <20220412205051.5b3cd910@Tarkus>
+
+On Tue, 12 Apr 2022 13:29:58 -0400
+"Kevin R. Coombes" <kevin.r.coombes at gmail.com> wrote:
+
+> I also only use one function from each of the two imported pakages,
+> and they are explicitly listed in importFrom directives in the
+> NAMESPACE file.
+
+This should be the right thing to do: list them in Imports and either
+use importFrom() or qualify the names of the functions you use with
+their namespaces; but don't list them in Depends.
+
+Are you sure you're not importing some other package (or listing it in
+Depends) that, in turn, Depends on rlang and/or lifecycle, bringing
+them into your namespace too?
+
+Can you show us the code?
+
+-- 
+Best regards,
+Ivan
+
+
+From kev|n@r@coombe@ @end|ng |rom gm@||@com  Tue Apr 12 20:14:33 2022
+From: kev|n@r@coombe@ @end|ng |rom gm@||@com (Kevin R. Coombes)
+Date: Tue, 12 Apr 2022 14:14:33 -0400
+Subject: [R-pkg-devel] function name conflict
+In-Reply-To: <20220412205051.5b3cd910@Tarkus>
+References: <bc6fda62-73d0-4a33-572c-5b310119d2b2@gmail.com>
+ <20220412205051.5b3cd910@Tarkus>
+Message-ID: <d3f5d55f-b2c8-954b-0a29-91aeac8777b4@gmail.com>
+
+Thanks for the answer. In the process of going back to try making a 
+minimal example, I realized that the problem isn't my package; it 
+already occurs in one of the packages I import. (I could have sworn I 
+checked this previously, but apparently missed the true culprit.) In any 
+event, I'll report a bug to them and suggest more careful use of 
+importFrom to get around it.
+
+Best,
+ ? Kevin
+
+On 4/12/2022 1:50 PM, Ivan Krylov wrote:
+> On Tue, 12 Apr 2022 13:29:58 -0400
+> "Kevin R. Coombes" <kevin.r.coombes at gmail.com> wrote:
+>
+>> I also only use one function from each of the two imported pakages,
+>> and they are explicitly listed in importFrom directives in the
+>> NAMESPACE file.
+> This should be the right thing to do: list them in Imports and either
+> use importFrom() or qualify the names of the functions you use with
+> their namespaces; but don't list them in Depends.
+>
+> Are you sure you're not importing some other package (or listing it in
+> Depends) that, in turn, Depends on rlang and/or lifecycle, bringing
+> them into your namespace too?
+>
+> Can you show us the code?
+>
+
+
