@@ -2533,3 +2533,176 @@ On 4/12/2022 1:50 PM, Ivan Krylov wrote:
 >
 
 
+From edd @end|ng |rom deb|@n@org  Thu Apr 14 19:42:02 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 14 Apr 2022 12:42:02 -0500
+Subject: [R-pkg-devel] pandoc missing on r-release-macos-x86_64,
+ r-oldrel-macos-x86_64
+Message-ID: <25176.23786.509921.829975@rob.eddelbuettel.com>
+
+
+Two (related) questions:
+
+1. Could pandoc be installed on the macoOS machines CRAN uses? If not, could
+   R Core devise a way to have a registered vignette builder fail gracefully?
+
+2. Could CRAN define and publish a minimal set of external applications
+   available on each build + test machine?
+
+Happy to help with patches or tests if there is interest.
+
+Thanks, as always, for everything CRAN does.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Apr 14 20:16:00 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 14 Apr 2022 14:16:00 -0400
+Subject: [R-pkg-devel] pandoc missing on r-release-macos-x86_64,
+ r-oldrel-macos-x86_64
+In-Reply-To: <25176.23786.509921.829975@rob.eddelbuettel.com>
+References: <25176.23786.509921.829975@rob.eddelbuettel.com>
+Message-ID: <273629f6-034a-d19b-2e55-8be130255bb4@gmail.com>
+
+On 14/04/2022 1:42 p.m., Dirk Eddelbuettel wrote:
+> 
+> Two (related) questions:
+> 
+> 1. Could pandoc be installed on the macoOS machines CRAN uses? If not, could
+>     R Core devise a way to have a registered vignette builder fail gracefully?
+
+Can't help with the first request, but the second is really something 
+that's up to the vignette writer and builder.  For example, in rgl, the 
+vignettes use knitr, and they all execute this at the start:
+
+if (!requireNamespace("rmarkdown", quietly = TRUE) ||
+     !rmarkdown::pandoc_available("1.14")) {
+   warning(call. = FALSE, "These vignettes assume rmarkdown and pandoc 
+version 1.14.  These were not found. Older versions will not work.")
+   knitr::knit_exit()
+}
+
+The warning message doesn't cause a check failure, and the knit_exit() 
+call just stops processing at that point.
+
+When I wrote this, knitr would fall back to an earlier version of 
+rmarkdown that didn't need Pandoc.  I had to quit the vignette because 
+that earlier version couldn't handle rgl output.
+
+I'm not sure knitr does fail gracefully nowadays, but the point is that 
+it could make a graceful exit if it wanted to.  This doesn't require R 
+Core to make changes.
+
+Duncan Murdoch
+
+> 2. Could CRAN define and publish a minimal set of external applications
+>     available on each build + test machine?
+> 
+> Happy to help with patches or tests if there is interest.
+> 
+> Thanks, as always, for everything CRAN does.
+> 
+> Dirk
+>
+
+
+From edd @end|ng |rom deb|@n@org  Thu Apr 14 20:33:53 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 14 Apr 2022 13:33:53 -0500
+Subject: [R-pkg-devel] pandoc missing on r-release-macos-x86_64,
+ r-oldrel-macos-x86_64
+In-Reply-To: <273629f6-034a-d19b-2e55-8be130255bb4@gmail.com>
+References: <25176.23786.509921.829975@rob.eddelbuettel.com>
+ <273629f6-034a-d19b-2e55-8be130255bb4@gmail.com>
+Message-ID: <25176.26897.70940.908995@rob.eddelbuettel.com>
+
+
+On 14 April 2022 at 14:16, Duncan Murdoch wrote:
+| Can't help with the first request, but the second is really something 
+| that's up to the vignette writer and builder.
+
+I understand, and resolving to brute force in a configure (shell or R) script
+may be my next out, but note the second point I made.
+
+There *is* an implicit consensus on what we can or cannot use [1]. We we
+would be better off by an *explicit* list that should contain pandoc.
+
+Dirk
+
+
+[1] Though it may get dicey on particular (La)TeX styles and fonts as we
+know, which I now work around as live being short and all by re-rendering
+most pdf vignettes and having Sweave just slurp the premade pdf in.
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Thu Apr 14 23:03:13 2022
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Fri, 15 Apr 2022 09:03:13 +1200
+Subject: [R-pkg-devel] pandoc missing on r-release-macos-x86_64,
+ r-oldrel-macos-x86_64
+In-Reply-To: <25176.23786.509921.829975@rob.eddelbuettel.com>
+References: <25176.23786.509921.829975@rob.eddelbuettel.com>
+Message-ID: <D8769A18-150B-426C-B70A-2748A87E90A5@R-project.org>
+
+Dirk,
+
+thanks, pandoc was only temporarily unavailable due to 4.2.0 release preparations (update of the dependencies). It was rectified since. Unfortunately the full CRAN re-build takes more than a day so the time from the build, fixing issues to reporting on the CRAN website can take a few days until we are back to incremental builds. Long story short, should be fixed.
+
+Cheers,
+Simon
+
+
+> On Apr 15, 2022, at 5:42 AM, Dirk Eddelbuettel <edd at debian.org> wrote:
+> 
+> 
+> Two (related) questions:
+> 
+> 1. Could pandoc be installed on the macoOS machines CRAN uses? If not, could
+>   R Core devise a way to have a registered vignette builder fail gracefully?
+> 
+> 2. Could CRAN define and publish a minimal set of external applications
+>   available on each build + test machine?
+> 
+> Happy to help with patches or tests if there is interest.
+> 
+> Thanks, as always, for everything CRAN does.
+> 
+> Dirk
+> 
+> -- 
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> 
+
+
+From edd @end|ng |rom deb|@n@org  Thu Apr 14 23:16:18 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 14 Apr 2022 16:16:18 -0500
+Subject: [R-pkg-devel] pandoc missing on r-release-macos-x86_64,
+ r-oldrel-macos-x86_64
+In-Reply-To: <D8769A18-150B-426C-B70A-2748A87E90A5@R-project.org>
+References: <25176.23786.509921.829975@rob.eddelbuettel.com>
+ <D8769A18-150B-426C-B70A-2748A87E90A5@R-project.org>
+Message-ID: <25176.36642.236854.769649@rob.eddelbuettel.com>
+
+
+Simon,
+
+On 15 April 2022 at 09:03, Simon Urbanek wrote:
+| thanks, pandoc was only temporarily unavailable due to 4.2.0 release preparations (update of the dependencies). It was rectified since. Unfortunately the full CRAN re-build takes more than a day so the time from the build, fixing issues to reporting on the CRAN website can take a few days until we are back to incremental builds. Long story short, should be fixed.
+
+Thank you -- it came up for two packages with html-based and pandoc-generated
+vignettes having issues, and was fairly sure they worked before.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
