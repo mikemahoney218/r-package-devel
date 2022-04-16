@@ -2706,3 +2706,208 @@ Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From ge|bjeremy22 @end|ng |rom gm@||@com  Fri Apr 15 15:05:21 2022
+From: ge|bjeremy22 @end|ng |rom gm@||@com (=?UTF-8?B?asOpcsOpbXkgR2VsYg==?=)
+Date: Fri, 15 Apr 2022 09:05:21 -0400
+Subject: [R-pkg-devel] CRAN check linux gcc12 Boost error
+In-Reply-To: <CACSk529OUxo0ftfvhDaP6wyX==dVphWYBOovXCmSLW5q_ht7zA@mail.gmail.com>
+References: <CACSk529OUxo0ftfvhDaP6wyX==dVphWYBOovXCmSLW5q_ht7zA@mail.gmail.com>
+Message-ID: <CACSk528NgNk=xM0WvL3RFmk6PfKdB3Z-8_pLJA2U8ZBsgHov2Q@mail.gmail.com>
+
+Dear all,
+
+I send this message after a good call from I?aki Ucar. The compilation
+error with gcc12 I had for spNetwork was very likely caused by some
+namespace pollution :
+
+using namespace std;
+
+After removing it and adding std:: were needed, I was able to compile the
+package on a Docker with gcc12 (https://hub.docker.com/r/rocker/r-edge/tags)
+thanks to the maintainer from the package BH.
+
+Long story short, if you use BH in your package and have some weird
+compilation error with gcc12, it could be caused by namespace pollution.
+
+All the best
+
+
+Le dim. 10 avr. 2022 ? 14:32, j?r?my Gelb <gelbjeremy22 at gmail.com> a ?crit :
+
+> Dear all,
+>
+> A package I am developing is encountering an error on the platform
+> (r-devel-linux-x86_64-debian-gcc) since CRAN decided to force the use of
+> gcc12.
+>
+> The error is caused by the use of the bh package and the c++ Boost
+> geometry library. Boost is not supposed to be compiled with gcc12 (
+> https://www.boost.org/users/history/version_1_78_0.html), but I really
+> would like to continue to use it in my package.
+>
+> Is there a way to ensure that an "older" version (11 should be fine) is
+> available and used when the package is installed and display an error
+> message otherwise?
+>
+> Thank you !
+> --
+>
+> *J?r?my GELB*
+> Assistant de recherche ? l'*INRS*
+> Docteur en ?tudes Urbaines
+>
+> 514 658 6054
+> gelbjeremy22 at gmail.com
+> F-4221 Avenue Coloniale H2W2C3 Montr?al Quebec
+>
+
+
+-- 
+
+*J?r?my GELB*
+Assistant de recherche ? l'*INRS*
+Docteur en ?tudes Urbaines
+
+514 658 6054
+gelbjeremy22 at gmail.com
+F-4221 Avenue Coloniale H2W2C3 Montr?al Quebec
+
+	[[alternative HTML version deleted]]
+
+
+From deep@y@n@@@rk@r @end|ng |rom gm@||@com  Fri Apr 15 19:16:00 2022
+From: deep@y@n@@@rk@r @end|ng |rom gm@||@com (Deepayan Sarkar)
+Date: Fri, 15 Apr 2022 22:46:00 +0530
+Subject: [R-pkg-devel] Single page reference manual in html format
+In-Reply-To: <CABFfbXtcZF8WfDu+qK30pUof01b9SFkEdTd5exw5=DjpiC49nQ@mail.gmail.com>
+References: <CABFfbXtcZF8WfDu+qK30pUof01b9SFkEdTd5exw5=DjpiC49nQ@mail.gmail.com>
+Message-ID: <CADfFDC4rSrnqcWQraFjTYyvA-bF-fiH=QkHcQQiTviMq4-orww@mail.gmail.com>
+
+On Sat, Apr 9, 2022 at 8:35 PM Jeroen Ooms <jeroen at berkeley.edu> wrote:
+>
+> Is there a way to generate the package reference manual in a (one
+> page) html format? It would be nice to access reference manuals from
+> devices without a pdf reader.
+
+I don't think so, but it would certainly be a nice feature to have.
+
+Most of the necessary code is already there, so it shouldn't be too
+difficult. We'll work on it.
+
+Best,
+-Deepayan
+
+> We can use `R CMD Rd2pdf {pkgdir}` to generate the reference manual in
+> pdf format, but afaict `R CMD Rd2text` and `R CMD rdconv` only convert
+> single Rd files, and do not support generating a full package
+> reference manual.
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Apr 15 20:18:05 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 15 Apr 2022 14:18:05 -0400
+Subject: [R-pkg-devel] Single page reference manual in html format
+In-Reply-To: <CADfFDC4rSrnqcWQraFjTYyvA-bF-fiH=QkHcQQiTviMq4-orww@mail.gmail.com>
+References: <CABFfbXtcZF8WfDu+qK30pUof01b9SFkEdTd5exw5=DjpiC49nQ@mail.gmail.com>
+ <CADfFDC4rSrnqcWQraFjTYyvA-bF-fiH=QkHcQQiTviMq4-orww@mail.gmail.com>
+Message-ID: <2c7ec1d0-cdc5-7696-5203-cbbcd46e5c52@gmail.com>
+
+On 15/04/2022 1:16 p.m., Deepayan Sarkar wrote:
+> On Sat, Apr 9, 2022 at 8:35 PM Jeroen Ooms <jeroen at berkeley.edu> wrote:
+>>
+>> Is there a way to generate the package reference manual in a (one
+>> page) html format? It would be nice to access reference manuals from
+>> devices without a pdf reader.
+> 
+> I don't think so, but it would certainly be a nice feature to have.
+> 
+> Most of the necessary code is already there, so it shouldn't be too
+> difficult. We'll work on it.
+
+I think this would be better done in a contributed package rather than 
+in core R, because there are lots of customizations that people would want:
+
+- Some people would want to execute the example code, like pkgdown does.
+- Some people would want each help page in a separate HTML page (like 
+pkgdown), but with links to step through all the pages (I don't think 
+pkgdown does this).
+- People would want to customize the look of the page, possibly with 
+syntax highlighting, or just different fonts and layouts.
+
+Adding an "all in one page" option to pkgdown might be the easiest way 
+to do this, because they already have a lot of customization 
+possibilities.  But there are probably other "make a web page for this 
+package" packages out there.
+
+If you do include it in base R, please at least allow the CSS to be 
+customized.
+
+Duncan Murdoch
+
+
+From deep@y@n@@@rk@r @end|ng |rom gm@||@com  Fri Apr 15 20:36:19 2022
+From: deep@y@n@@@rk@r @end|ng |rom gm@||@com (Deepayan Sarkar)
+Date: Sat, 16 Apr 2022 00:06:19 +0530
+Subject: [R-pkg-devel] Single page reference manual in html format
+In-Reply-To: <2c7ec1d0-cdc5-7696-5203-cbbcd46e5c52@gmail.com>
+References: <CABFfbXtcZF8WfDu+qK30pUof01b9SFkEdTd5exw5=DjpiC49nQ@mail.gmail.com>
+ <CADfFDC4rSrnqcWQraFjTYyvA-bF-fiH=QkHcQQiTviMq4-orww@mail.gmail.com>
+ <2c7ec1d0-cdc5-7696-5203-cbbcd46e5c52@gmail.com>
+Message-ID: <CADfFDC6Vx2VNafP4SxbH8chVDosDW+4p2kbpvkGpdY+5d2kXEA@mail.gmail.com>
+
+On Fri, Apr 15, 2022 at 11:48 PM Duncan Murdoch
+<murdoch.duncan at gmail.com> wrote:
+>
+> On 15/04/2022 1:16 p.m., Deepayan Sarkar wrote:
+> > On Sat, Apr 9, 2022 at 8:35 PM Jeroen Ooms <jeroen at berkeley.edu> wrote:
+> >>
+> >> Is there a way to generate the package reference manual in a (one
+> >> page) html format? It would be nice to access reference manuals from
+> >> devices without a pdf reader.
+> >
+> > I don't think so, but it would certainly be a nice feature to have.
+> >
+> > Most of the necessary code is already there, so it shouldn't be too
+> > difficult. We'll work on it.
+>
+> I think this would be better done in a contributed package rather than
+> in core R, because there are lots of customizations that people would want:
+>
+> - Some people would want to execute the example code, like pkgdown does.
+> - Some people would want each help page in a separate HTML page (like
+> pkgdown), but with links to step through all the pages (I don't think
+> pkgdown does this).
+> - People would want to customize the look of the page, possibly with
+> syntax highlighting, or just different fonts and layouts.
+>
+> Adding an "all in one page" option to pkgdown might be the easiest way
+> to do this, because they already have a lot of customization
+> possibilities.  But there are probably other "make a web page for this
+> package" packages out there.
+
+Yes, that might be a good alternative.
+
+> If you do include it in base R, please at least allow the CSS to be
+> customized.
+
+Sure. So far I was only thinking of adding a couple of arguments to Rd2HTML()
+
+- 'standalone=TRUE' (FALSE would skip the header and footer), and possibly
+
+- 'Rhtml=FALSE' (TRUE would wrap the examples inside <!--begin.rcode
+and end.rcode-->
+
+This should make it easier to build up whatever is desired, regardless
+of what base R implements. HTMLheader() already has an option to
+specify the CSS file, so that could be used to create the header.
+
+Best,
+-Deepayan
+
+> Duncan Murdoch
+
+
