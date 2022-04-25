@@ -4699,3 +4699,140 @@ Great. Thanks for sharing!
 >
 
 
+From @vr@h@m@@d|er @end|ng |rom gm@||@com  Sun Apr 24 16:30:46 2022
+From: @vr@h@m@@d|er @end|ng |rom gm@||@com (Avraham Adler)
+Date: Sun, 24 Apr 2022 14:30:46 +0000
+Subject: [R-pkg-devel] Github action setup for R 4.2.0 on Windows?
+In-Reply-To: <CALyqOb9FNX6uCEkBu42ajtkCcqjprPF6WWAC-Xro93_7o7pCgQ@mail.gmail.com>
+References: <9a68d64e-e16a-c580-f018-6902b07e752b@gmail.com>
+ <CALyqOb_E+8OraWuf5XyW+iwKMwmEBBT-zVuMC=8+imB9CUe6Cg@mail.gmail.com>
+ <e1092e9a-f5d7-add2-9bd7-42065a5ef4b3@gmail.com>
+ <CALyqOb9FNX6uCEkBu42ajtkCcqjprPF6WWAC-Xro93_7o7pCgQ@mail.gmail.com>
+Message-ID: <CAL6gwnLDQsC-SpeQm+RTAnwutJbUBb32HU8E1rU5OB5xTFNx+w@mail.gmail.com>
+
+Indeed, thank you, Dr. Murdoch, for sharing how to update the workflows!
+
+Avi
+
+On Sat, Apr 23, 2022 at 2:23 PM Hiroaki Yutani <yutani.ini at gmail.com> wrote:
+>
+> Great. Thanks for sharing!
+>
+> 2022?4?23?(?) 23:12 Duncan Murdoch <murdoch.duncan at gmail.com>:
+> >
+> > On 23/04/2022 9:42 a.m., Hiroaki Yutani wrote:
+> > > Hi,
+> > >
+> > > I asked about it, but they decided to keep using Rtools40's UCRT
+> > > toolchain by default for r-lib/actions/setup-r, until GitHub's default
+> > > is switched to Rtools42. To obtain the Rtools42, we need to specify
+> > > `rtools-version: '42'`.
+> > >
+> > > c.f. https://github.com/r-lib/actions/issues/553
+> >
+> > Thanks, that fixes it.  To be explicit, these are the changes to the
+> > workflow:
+> >
+> >     strategy:
+> >        fail-fast: false
+> >        matrix:
+> >          config:
+> >
+> >                # New option on the next line:
+> >
+> >            - {os: windows-latest, r: 'release', rtools-version: '42'}
+> >            - {os: ubuntu-18.04,   r: 'devel', rspm:
+> > "https://packagemanager.rstudio.com/cran/__linux__/bionic/latest",
+> > http-user-agent: "R/4.1.0 (ubuntu-18.04) R (4.1.0 x86_64-pc-linux-gnu
+> > x86_64 linux-gnu) on GitHub Actions" }
+> >
+> >      env:
+> >        R_REMOTES_NO_ERRORS_FROM_WARNINGS: true
+> >        _R_CHECK_FORCE_SUGGESTS_: false
+> >        # _R_CHECK_RD_XREFS_: false
+> >        # _R_CHECK_CRAN_INCOMING_: false
+> >        # _R_CHECK_AUTOCONF_: false
+> >        RSPM: ${{ matrix.config.rspm }}
+> >        GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+> >        RGL_USE_NULL: true
+> >
+> >      steps:
+> >        - uses: actions/checkout at v2
+> >
+> >           # Change to @v2 on the next line:
+> >
+> >        - uses: r-lib/actions/setup-r at v2
+> >          with:
+> >            r-version: ${{ matrix.config.r }}
+> >            http-user-agent: ${{ matrix.config.http-user-agent }}
+> >
+> >               # Add this line to make use of the option
+> >
+> >            rtools-version: ${{ matrix.config.rtools-version }}
+> >
+> >
+> > I also updated the setup-pandoc action to v2, but that's unrelated.
+> >
+> > Duncan Murdoch
+> >
+> > >
+> > > Best,
+> > > Yutani
+> > >
+> > > 2022?4?23?(?) 22:37 Duncan Murdoch <murdoch.duncan at gmail.com>:
+> > >>
+> > >> Today a Github actions check of rgl failed on Windows with R 4.2.0 and
+> > >> this error:
+> > >>
+> > >>
+> > >> g++  -std=gnu++11 -I"C:/R/include" -DNDEBUG -DHAVE_PNG_H -DHAVE_FREETYPE
+> > >> -Iext -Iext/ftgl
+> > >> -Ic:/rtools42/x86_64-w64-mingw32.static.posix/include/freetype2
+> > >> -DRGL_W32    -I"c:/rtools42/x86_64-w64-mingw32.static.posix/include"
+> > >> -O2 -Wall  -mfpmath=sse -msse2 -mstackrealign  -Wall -pedantic -c
+> > >> BBoxDeco.cpp -o BBoxDeco.o
+> > >> In file included from glgui.h:10,
+> > >>                    from BBoxDeco.cpp:6:
+> > >> ext/ftgl/FTGL/ftgl.h:32:10: fatal error: ft2build.h: No such file or
+> > >> directory
+> > >>      32 | #include <ft2build.h>
+> > >>         |          ^~~~~~~~~~~~
+> > >> compilation terminated.
+> > >> make: *** [C:/R/etc/x64/Makeconf:259: BBoxDeco.o] Error 1
+> > >> ERROR: compilation failed for package 'rgl'
+> > >> * removing
+> > >> 'C:/Users/RUNNER~1/AppData/Local/Temp/RtmpOc4X2w/Rinst105c7555452b/rgl'
+> > >>         -----------------------------------
+> > >> ERROR: package installation failed
+> > >> Error: Error in proc$get_built_file() : Build process failed
+> > >> Calls: <Anonymous> ... build_package -> with_envvar -> force -> <Anonymous>
+> > >> Execution halted
+> > >> Error: Process completed with exit code 1.
+> > >>
+> > >>
+> > >> If I'm interpreting it correctly, the problem is that the Freetype
+> > >> includes are not installed.  I don't have a good local Windows build
+> > >> system running currently, but I believe Rtools42 includes Freetype, so
+> > >> this makes it look as though the Github build doesn't have a proper
+> > >> install of Rtools42.
+> > >>
+> > >> The script I was using is here:
+> > >>
+> > >>
+> > >> https://github.com/dmurdoch/rgl/blob/master/.github/workflows/R-CMD-check.yaml
+> > >>
+> > >> Can anyone spot what I'm doing wrong, or is it just a matter of waiting
+> > >> until something else is updated on Github?
+> > >>
+> > >> Duncan Murdoch
+> > >>
+> > >> ______________________________________________
+> > >> R-package-devel at r-project.org mailing list
+> > >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
