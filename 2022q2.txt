@@ -5760,3 +5760,599 @@ is to make it an explicit \describe list:
 Duncan Murdoch
 
 
+From dom|n|c@comto|@ @end|ng |rom gm@||@com  Tue Apr 26 04:45:41 2022
+From: dom|n|c@comto|@ @end|ng |rom gm@||@com (Dominic Comtois)
+Date: Mon, 25 Apr 2022 22:45:41 -0400
+Subject: [R-pkg-devel] How to fix Tcl/Tk Error on Mac OS build
+Message-ID: <CAEfsz7rHsuKtyMyLpbzPYaPFqWE1SfguwypCEMgvyix9AHbtyQ@mail.gmail.com>
+
+I was asked by CRAN to fix some problems appearing in my summarytools
+<https://cran.r-project.org/web/checks/check_results_summarytools.html>'
+package build checks. Trivial email problems aside, on the summary page
+<https://www.r-project.org/nosvn/R.check/r-release-macos-arm64/summarytools-00check.html>
+for the Mac OS build, I see:
+
+[...]
+checking whether package ?summarytools? can be installed ... [1s/1s] ERROR
+Installation failed.
+See
+?/Volumes/Builds/packages/big-sur-arm64/results/4.2/summarytools.Rcheck/00install.out?
+for details.
+[...]
+
+On the details page
+<https://www.r-project.org/nosvn/R.check/r-release-macos-arm64/summarytools-00install.html>,
+I see:
+
+[...]
+** byte-compile and prepare package for lazy loadingtcltk DLL is
+linked to '/opt/R/arm64/lib/libtk8.6.dylib'
+Error: .onLoad failed in loadNamespace() for 'tcltk', details:
+  call: fun(libname, pkgname)
+  error: Tcl/Tk libraries are missing: install the Tcl/Tk component
+from the R installerExecution halted
+ERROR: lazy loading failed for package ?summarytools?
+[...]
+
+Tcl/Tk is used by some functions to allow users to bring up an "open
+file...", & "save file..." dialogs & message boxes, as well as the
+tclvalue() function. In my NAMESPACE, I have:
+
+importFrom(tcltk,tclvalue)
+importFrom(tcltk,tk_messageBox)
+importFrom(tcltk,tkgetOpenFile)
+importFrom(tcltk,tkgetSaveFile)
+
+Also, a prerequisite is to have XQuartz <https://www.xquartz.org/>
+installed on Mac OS.
+
+Summarytools has been around for a while, and I never had this problem
+before. And since I don't have a Mac machine, I'm not sure how to go about
+this. A Google search reveals that several other packages have the same
+issue. But I wasn't able to find the root cause nor a proper solution. Any
+tips / pointers would be greatly appreciated.
+
+Thanks,
+
+Dominic Comtois
+summarytools
+<https://cran.r-project.org/web/packages/summarytools/index.html> author &
+maintainer
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Tue Apr 26 13:38:09 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 26 Apr 2022 06:38:09 -0500
+Subject: [R-pkg-devel] How to fix Tcl/Tk Error on Mac OS build
+In-Reply-To: <CAEfsz7rHsuKtyMyLpbzPYaPFqWE1SfguwypCEMgvyix9AHbtyQ@mail.gmail.com>
+References: <CAEfsz7rHsuKtyMyLpbzPYaPFqWE1SfguwypCEMgvyix9AHbtyQ@mail.gmail.com>
+Message-ID: <25191.55713.853018.141362@rob.eddelbuettel.com>
+
+
+Dominic,
+
+On 25 April 2022 at 22:45, Dominic Comtois wrote:
+| ** byte-compile and prepare package for lazy loadingtcltk DLL is
+| linked to '/opt/R/arm64/lib/libtk8.6.dylib'
+| Error: .onLoad failed in loadNamespace() for 'tcltk', details:
+|   call: fun(libname, pkgname)
+|   error: Tcl/Tk libraries are missing: install the Tcl/Tk component
+| from the R installerExecution halted
+| ERROR: lazy loading failed for package ?summarytools?
+| [...]
+
+Doesn't this simply demonstrate that tcltk is missing on that platform?
+Which is not your fault, or under your control.
+
+There is no simple or singular way for us to communicate such setup issues to
+CRAn so you could try to email the maintainer of that port here or privately.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Tue Apr 26 14:38:19 2022
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Tue, 26 Apr 2022 14:38:19 +0200
+Subject: [R-pkg-devel] How to fix Tcl/Tk Error on Mac OS build
+In-Reply-To: <25191.55713.853018.141362@rob.eddelbuettel.com>
+References: <CAEfsz7rHsuKtyMyLpbzPYaPFqWE1SfguwypCEMgvyix9AHbtyQ@mail.gmail.com>
+ <25191.55713.853018.141362@rob.eddelbuettel.com>
+Message-ID: <2a4c9f61-f8f1-f093-d4ef-f2a2b2a979cc@gmail.com>
+
+
+On 4/26/22 13:38, Dirk Eddelbuettel wrote:
+> Dominic,
+>
+> On 25 April 2022 at 22:45, Dominic Comtois wrote:
+> | ** byte-compile and prepare package for lazy loadingtcltk DLL is
+> | linked to '/opt/R/arm64/lib/libtk8.6.dylib'
+> | Error: .onLoad failed in loadNamespace() for 'tcltk', details:
+> |   call: fun(libname, pkgname)
+> |   error: Tcl/Tk libraries are missing: install the Tcl/Tk component
+> | from the R installerExecution halted
+> | ERROR: lazy loading failed for package ?summarytools?
+> | [...]
+>
+> Doesn't this simply demonstrate that tcltk is missing on that platform?
+> Which is not your fault, or under your control.
+
+Yes, as can be seen by looking at other packages using tcltk (e.g. 
+tcltk2 or tkrplot).
+
+> There is no simple or singular way for us to communicate such setup issues to
+> CRAn so you could try to email the maintainer of that port here or privately.
+
+You can find the name and address of the maintainer here
+
+https://cran.r-project.org/web/packages/external_libs.html
+
+(linked from the CRAN Repository Policy, 
+https://cran.r-project.org/web/packages/policies.html)
+
+and report, but that is probably no longer necessary as Simon is reading 
+this list as well.
+
+Best
+Tomas
+
+>
+> Dirk
+>
+
+
+From dw|n@em|u@ @end|ng |rom comc@@t@net  Tue Apr 26 17:07:30 2022
+From: dw|n@em|u@ @end|ng |rom comc@@t@net (David Winsemius)
+Date: Tue, 26 Apr 2022 09:07:30 -0600
+Subject: [R-pkg-devel] How to fix Tcl/Tk Error on Mac OS build
+In-Reply-To: <2a4c9f61-f8f1-f093-d4ef-f2a2b2a979cc@gmail.com>
+References: <CAEfsz7rHsuKtyMyLpbzPYaPFqWE1SfguwypCEMgvyix9AHbtyQ@mail.gmail.com>
+ <25191.55713.853018.141362@rob.eddelbuettel.com>
+ <2a4c9f61-f8f1-f093-d4ef-f2a2b2a979cc@gmail.com>
+Message-ID: <C304AEAC-9454-4F7B-A24B-93E4C15693F0@comcast.net>
+
+Apologies if these items are know to be common knowledge. I have no experience with package development that uses TcL/Tk. My sketchy knowledge comes only from seeing it mentioned on the Mac-specific pages and on R-Mac-SIG mailing list.
+ 
+This appears possibly the most on point since arm build is mentioned in the error log:
+
+On 2021-09-18 2:20 a.m., Prof Brian Ripley wrote:
+> On 09/09/2021 19:03, John Fox wrote:
+>> Dear Simon, Philippe, and list members,
+>> 
+>> I've encountered some Tcl/Tk-related issues with the Apple silicon arm64 build of R 4.1.0 for macOS. These issues affect the Rcmdr package, although they don't prevent it from working:
+>> 
+>> (1) Some fonts that are available for the Intel build appear to be missing from the arm64 build. Compare the screen shots of the Rcmdr main window at <https://socialsciences.mcmaster.ca/jfox/.Pickup/x86_64-apple-darwin17.0.png> (Intel build) and <https://socialsciences.mcmaster.ca/jfox/.Pickup/aarch64-apple-darwin20.png> (arm64 build). This problem is purely aesthetic.
+>> 
+>> (2) The Tcl/Tk Tktable package is apparently absent from the arm64 build but still present in the Intel build. The Rcmdr detects its absence and suppresses some features (i.e., those requiring the Rcmdr data editor). I understand that the Tktable package is problematic and it may have been removed intentionally.
+>> 
+>> The Tcl/Tk Tablelist package would be a reasonable substitute, and were it available, I could use it to restore the missing features in the Rcmdr. I'm aware that Philippe Grosjean planned to incorporate Tablelist in his tcltk2 package, but as far as I know, that plan hasn't yet materialized. If I knew how to supply a Tcl/Tk package in an R package, I could put Tablelist directly in the Rcmdr.
+>> 
+>> Any help would be greatly appreciated.
+>> 
+>> John
+>> 
+> To close this circle, Simon has provided
+> https://mac.r-project.org/libs-arm64/tcltk-8.6.11-xft-darwin20.4-arm64.pkg
+> If you install that, it updates Tk and adds Tktable, solving both problems.  (As the Tcl/Tk installation is shared between R versions, this will fix 4.1.0 as well as 4.1.1.  It will be incorporated in future releases.)
+
+
+-----
+
+The R for MacOS page says:
+-----------
+
+R-4.2.0.pkg (notarized and signed)
+SHA1-hash: 2a90fb8629e44f72f9d89d6a9bac9b71564587d7
+(ca. 90MB) for Intel Macs	
+
+R 4.2.0 binary for macOS 10.13 (High Sierra) and higher, Intel 64-bit build, signed and notarized package.
+Contains R 4.2.0 framework, R.app GUI 1.78 in 64-bit for Intel Macs, Tcl/Tk 8.6.6 X11 libraries and Texinfo 6.7. The latter two components are optional and can be ommitted when choosing "custom install", they are only needed if you want to use the tcltk R package or build package documentation from sources.
+---------------
+
+And there is further information at the Mac R Tools page: https://cran.r-project.org/bin/macosx/tools/
+
+------------------
+-------------------
+And there is discussion about how to avoid unnecessary efforts to load TkTcl in the R-Mac-SIG list
+
+https://markmail.org/search/?q=list%3Aorg.r-project.r-help+tcl+tk+package#query:list%3Aorg.r-project.r-help%20tcl%20tk%20package%20order%3Adate-backward+page:1+mid:s4zpfqw6t3vbr4z6+state:results
+
+--------------
+
+HTH;
+David.
+--------------
+
+
+> On Apr 26, 2022, at 6:38 AM, Tomas Kalibera <tomas.kalibera at gmail.com> wrote:
+> 
+> 
+> On 4/26/22 13:38, Dirk Eddelbuettel wrote:
+>> Dominic,
+>> 
+>> On 25 April 2022 at 22:45, Dominic Comtois wrote:
+>> | ** byte-compile and prepare package for lazy loadingtcltk DLL is
+>> | linked to '/opt/R/arm64/lib/libtk8.6.dylib'
+>> | Error: .onLoad failed in loadNamespace() for 'tcltk', details:
+>> |   call: fun(libname, pkgname)
+>> |   error: Tcl/Tk libraries are missing: install the Tcl/Tk component
+>> | from the R installerExecution halted
+>> | ERROR: lazy loading failed for package ?summarytools?
+>> | [...]
+>> 
+>> Doesn't this simply demonstrate that tcltk is missing on that platform?
+>> Which is not your fault, or under your control.
+> 
+> Yes, as can be seen by looking at other packages using tcltk (e.g. tcltk2 or tkrplot).
+> 
+>> There is no simple or singular way for us to communicate such setup issues to
+>> CRAn so you could try to email the maintainer of that port here or privately.
+> 
+> You can find the name and address of the maintainer here
+> 
+> https://cran.r-project.org/web/packages/external_libs.html
+> 
+> (linked from the CRAN Repository Policy, https://cran.r-project.org/web/packages/policies.html)
+> 
+> and report, but that is probably no longer necessary as Simon is reading this list as well.
+> 
+> Best
+> Tomas
+> 
+>> 
+>> Dirk
+>> 
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From j|ox @end|ng |rom mcm@@ter@c@  Tue Apr 26 18:01:52 2022
+From: j|ox @end|ng |rom mcm@@ter@c@ (John Fox)
+Date: Tue, 26 Apr 2022 12:01:52 -0400
+Subject: [R-pkg-devel] [R-SIG-Mac] R CMD check "HTML version of manual"
+ NOTE/Warnings
+In-Reply-To: <c5fc924b-8154-b541-41b1-0d10a3fe2475@stats.ox.ac.uk>
+References: <8c7b94c4-b0de-0e32-da29-0d6701e503e7@mcmaster.ca>
+ <e964b23d-0905-c7a4-4474-98032268d017@stats.ox.ac.uk>
+ <e790b76b-e615-2fce-dcec-e09efabd59b5@mcmaster.ca>
+ <F963B5EF-0F5F-4D18-87FF-1640E57D2E1A@gmail.com>
+ <c5fc924b-8154-b541-41b1-0d10a3fe2475@stats.ox.ac.uk>
+Message-ID: <503de2b2-3641-698d-bacb-8756aa480a35@mcmaster.ca>
+
+Dear Brian and Peter,
+
+As Brian mentioned, I still get warnings (though different ones) from 
+the updated tidy. For example, for the car package:
+
+------ snip -------
+
+* checking HTML version of manual ... NOTE
+Found the following problems:
+Anova.Rd:4:1: Warning: <link> inserting "type" attribute
+Anova.Rd:12:1: Warning: <script> proprietary attribute "onload"
+Anova.Rd:12:1: Warning: <script> inserting "type" attribute
+Anova.Rd:17:1: Warning: <table> lacks "summary" attribute
+Anova.Rd:135:1: Warning: <table> lacks "summary" attribute
+Anova.Rd:285:1: Warning: <table> lacks "summary" attribute
+
+------ snip -------
+
+As before, these warnings are generated for all of the .Rd files in the 
+package.
+
+I'm cc'ing the r-package-devel list (with apologies for cross-posting) 
+so that there will be a record there.
+
+Best,
+  John
+
+On 2022-04-26 11:22 a.m., Prof Brian Ripley wrote:
+> On 26/04/2022 15:43, peter dalgaard wrote:
+>> Yes, I think this should go to r-package-devel or maybe even file a 
+>> bug report against "R CMD check". Looks like we "just" need to revise 
+>> the logic at the start of check_Rd2HTML():
+>>
+>> ???? check_Rd2HTML <- function(pkgdir) {
+>> ???????? if(!nzchar(Sys.which("tidy")) ||
+>> ??????????? !startsWith(system2("tidy", "--version", stdout = TRUE),
+>> ??????????????????????? "HTML Tidy"))
+>> ???????????? return()
+>>
+>> to either
+>>
+>> - look for a version number (which the Apple builds don't have)
+>> - explicitly reject the 2006 Apple builds
+>> - somehow allow for an override using an environment variable
+> 
+> This is switched on by _R_CHECK_RD_VALIDATE_RD2HTML_=true or --as-cran. 
+>  ?I plan to at least let _R_CHECK_RD_VALIDATE_RD2HTML_=false override 
+> --as-cran.
+> 
+> There seems to have been a report on r-package-devel not mentioning macOS:
+> 
+> https://stat.ethz.ch/pipermail/r-package-devel/2022q1/007804.html
+> https://stat.ethz.ch/pipermail/r-package-devel/2022q2/007932.html
+> 
+> but I don't think anyone had a clue that the macOS 'tidy' might be 
+> insufficient.
+> 
+>>
+>> or thereabouts...
+>>
+>> - pd
+>>
+>>> On 26 Apr 2022, at 16:25 , John Fox <jfox at mcmaster.ca> wrote:
+>>>
+>>> Dear Brian,
+>>>
+>>> Thank you very much for the explanation. Please see interline below:
+>>>
+>>> On 2022-04-25 4:51 p.m., Prof Brian Ripley wrote:
+>>>> On 25/04/2022 20:04, John Fox wrote:
+>>>>> Dear R-sig-mac list members,
+>>>>>
+>>>>> When checking packages --as-cran with R 4.2.0 (and R 4.2.0 
+>>>>> patched), I'm seeing multiple warnings (and a NOTE) concerning the 
+>>>>> HTML version of the package help-page manuals. The warning appears 
+>>>>> for every .Rd file in all of the packages that I've checked. I 
+>>>>> didn't see this problem before R 4.2.0.
+>>>>>
+>>>>> I'm writing to the r-sig-mac list rather than r-package-devel 
+>>>>> because I
+>>>> Unfortunately the authors of this are not on r-sig-mac.
+>>>
+>>> Should I mention this as well on r-package-devel?
+>>>
+>>>>> don't encounter the same problem under Windows. Nor does it appear 
+>>>>> on the CRAN check pages for the packages.
+>>>> This check is only done if you have 'tidy' on the path.? My Monterey 
+>>>> M1 MBP has
+>>>> auk2% tidy --version
+>>>> HTML Tidy for Mac OS X released on 31 October 2006 - Apple Inc. 
+>>>> build 2649
+>>>
+>>> That's exactly the version installed on my MacBook Pro. Is this 
+>>> standard for Monterey? If not, would it be best simply to remove tidy 
+>>> (and how did it get there?).
+>>>
+>>>> I think that is far too old.? The short answer is to ignore these, 
+>>>> or update tidy (from http://binaries.html-tidy.org/) which (5.8.0) 
+>>>> finds different issues for car that I do not see on Fedora (with 
+>>>> 5.7.16).
+>>>
+>>> I saw these warnings for every .Rd file in all of the packages I 
+>>> checked, not just for the car package. The HTML is presumably 
+>>> generated from the .Rd files by the R installation process. If tidy 
+>>> is general, or common, on Monterey Macs, I wonder why others aren't 
+>>> reporting similar warnings on R CMD check --as-cran.
+>>>
+>>>> Probably your Windows machine does not have tidy installed.
+>>>>> I know that there's been discussion of adding an HTML manual, which 
+>>>>> seems a good idea, but I didn't realize that this has apparently 
+>>>>> already been implemented.
+>>>>>
+>>>>> Has anyone else experienced this problem or does anyone understand 
+>>>>> its source? AFAIK, there's nothing unusual about the R installation 
+>>>>> on my Mac, but of course there may be some setting that 
+>>>>> inadvertently turned on checking the HTML manual.
+>>>> --as-cran turned it on ((f tidy is available).
+>>>
+>>> Again, thank you for the explanation.
+>>>
+>>> Best,
+>>> John
+>>>
+>>>>>
+>>>>> Here's an example (with many lines elided, . . .):
+>>>>>
+>>>>> ------ snip ------
+>>>>>
+>>>>> Johns-MacBook-Pro:car johnfox$ R CMD check --as-cran car_3.0-13.tar.gz
+>>>>> * using log directory 
+>>>>> '/Users/johnfox/Documents/R-package-sources/car/car.Rcheck'
+>>>>> * using R version 4.2.0 Patched (2022-04-24 r82246)
+>>>>> * using platform: aarch64-apple-darwin20 (64-bit)
+>>>>> * using session charset: UTF-8
+>>>>> * using option '--as-cran'
+>>>>> * checking for file 'car/DESCRIPTION' ... OK
+>>>>> * this is package 'car' version '3.0-13'
+>>>>> * checking CRAN incoming feasibility ... Note_to_CRAN_maintainers
+>>>>> Maintainer: 'John Fox <jfox at mcmaster.ca>'
+>>>>> * checking package namespace information ... OK
+>>>>>
+>>>>> . . .
+>>>>>
+>>>>> * checking PDF version of manual ... OK
+>>>>> * checking HTML version of manual ... NOTE
+>>>>> Found the following problems:
+>>>>> Anova.Rd:4:1: Warning: <link> inserting "type" attribute
+>>>>> Anova.Rd:12:1: Warning: <script> proprietary attribute "onload"
+>>>>> Anova.Rd:12:1: Warning: <script> inserting "type" attribute
+>>>>> Anova.Rd:17:1: Warning: <table> lacks "summary" attribute
+>>>>> Anova.Rd:135:1: Warning: <table> lacks "summary" attribute
+>>>>> Anova.Rd:285:1: Warning: <table> lacks "summary" attribute
+>>>>> Boot.Rd:4:1: Warning: <link> inserting "type" attribute
+>>>>> Boot.Rd:12:1: Warning: <script> proprietary attribute "onload"
+>>>>> Boot.Rd:12:1: Warning: <script> inserting "type" attribute
+>>>>> Boot.Rd:17:1: Warning: <table> lacks "summary" attribute
+>>>>> Boot.Rd:56:1: Warning: <table> lacks "summary" attribute
+>>>>>
+>>>>> . . .
+>>>>>
+>>>>> which.names.Rd:12:1: Warning: <script> proprietary attribute "onload"
+>>>>> which.names.Rd:12:1: Warning: <script> inserting "type" attribute
+>>>>> which.names.Rd:17:1: Warning: <table> lacks "summary" attribute
+>>>>> which.names.Rd:44:1: Warning: <table> lacks "summary" attribute
+>>>>> * checking for non-standard things in the check directory ... OK
+>>>>> * checking for detritus in the temp directory ... OK
+>>>>> * DONE
+>>>>>
+>>>>> Status: 1 NOTE
+>>>>> See
+>>>>>    
+>>>>> '/Users/johnfox/Documents/R-package-sources/car/car.Rcheck/00check.log' 
+>>>>>
+>>>>> for details.
+>>>>>
+>>>>> ------ snip ------
+>>>>>
+>>>>> Any help would be appreciated.
+>>>>>
+>>>>> Thanks,
+>>>>> ?? John
+>>> -- 
+>>> John Fox, Professor Emeritus
+>>> McMaster University
+>>> Hamilton, Ontario, Canada
+>>> web: https://socialsciences.mcmaster.ca/jfox/
+>>>
+>>> _______________________________________________
+>>> R-SIG-Mac mailing list
+>>> R-SIG-Mac at r-project.org
+>>> https://stat.ethz.ch/mailman/listinfo/r-sig-mac
+>>
+> 
+>
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Apr 26 18:46:17 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 26 Apr 2022 12:46:17 -0400
+Subject: [R-pkg-devel] Two problems with fda
+In-Reply-To: <2bb78528-297c-2d7b-92ee-3df36c41b392@gmail.com>
+References: <480FFE80-30A0-42A0-86BC-684B352340F4@mcgill.ca>
+ <f2014990-ad7e-dd00-6010-ffedf0b58988@effectivedefense.org>
+ <20220425234016.439173ab@Tarkus>
+ <2bb78528-297c-2d7b-92ee-3df36c41b392@gmail.com>
+Message-ID: <54719f3b-4001-b611-0743-af927e5fa264@gmail.com>
+
+On 25/04/2022 8:24 p.m., Duncan Murdoch wrote:
+  ...
+> 
+> \value{
+>     These functions return either a standard \code{fRegress} fit object or
+>     or a model specification:
+>     \item{The \code{fRegress} fit object case:}{
+> 
+> 
+> Aha, in a \value{} section, bare \items are supposed to mark components
+> of the value, so they are automatically code.  I think the fix for this
+> is to make it an explicit \describe list:
+> 
+> \value{
+>     These functions return either a standard \code{fRegress} fit object or
+>     or a model specification:
+>     \describe{
+>       \item{The \code{fRegress} fit object case:}{
+> 
+>     ... eventually ...
+> 
+>     }
+
+An even simpler fix:  don't mark the section title as an \item, i.e. 
+write as
+
+\value{
+    These functions return either a standard \code{fRegress} fit object or
+    or a model specification.
+
+    The \code{fRegress} fit object case:
+
+
+    \item{field}{description .... }
+
+
+Duncan Murdoch
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Wed Apr 27 00:31:52 2022
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Wed, 27 Apr 2022 10:31:52 +1200
+Subject: [R-pkg-devel] How to fix Tcl/Tk Error on Mac OS build
+In-Reply-To: <CAEfsz7rHsuKtyMyLpbzPYaPFqWE1SfguwypCEMgvyix9AHbtyQ@mail.gmail.com>
+References: <CAEfsz7rHsuKtyMyLpbzPYaPFqWE1SfguwypCEMgvyix9AHbtyQ@mail.gmail.com>
+Message-ID: <9A1171CE-9478-408A-978B-F65DA847526F@R-project.org>
+
+Thanks, indeed, as part of full re-install for R 4.2.0 package builds the Tcl/Tk libraries were missing. Now fixed and summarytools check with
+
+* checking data for non-ASCII characters ... NOTE
+  Note: found 78 marked UTF-8 strings
+Status: 1 NOTE
+
+I'll just repeat the important link that Tomas posted: https://cran.r-project.org/web/packages/external_libs.html
+
+On a slightly orthogonal note (not related to the question other than it involves tcltk): I'd like to point out that Tcl/Tk is often not available on computing servers, so I would recommend packages that do not provide GUI tools to avoid dependence on tcltk if not strictly necessary as it prevents the use in headless HPC environments.
+
+Cheers,
+Simon
+
+
+> On Apr 26, 2022, at 2:45 PM, Dominic Comtois <dominic.comtois at gmail.com> wrote:
+> 
+> I was asked by CRAN to fix some problems appearing in my summarytools
+> <https://cran.r-project.org/web/checks/check_results_summarytools.html>'
+> package build checks. Trivial email problems aside, on the summary page
+> <https://www.r-project.org/nosvn/R.check/r-release-macos-arm64/summarytools-00check.html>
+> for the Mac OS build, I see:
+> 
+> [...]
+> checking whether package ?summarytools? can be installed ... [1s/1s] ERROR
+> Installation failed.
+> See
+> ?/Volumes/Builds/packages/big-sur-arm64/results/4.2/summarytools.Rcheck/00install.out?
+> for details.
+> [...]
+> 
+> On the details page
+> <https://www.r-project.org/nosvn/R.check/r-release-macos-arm64/summarytools-00install.html>,
+> I see:
+> 
+> [...]
+> ** byte-compile and prepare package for lazy loadingtcltk DLL is
+> linked to '/opt/R/arm64/lib/libtk8.6.dylib'
+> Error: .onLoad failed in loadNamespace() for 'tcltk', details:
+>  call: fun(libname, pkgname)
+>  error: Tcl/Tk libraries are missing: install the Tcl/Tk component
+> from the R installerExecution halted
+> ERROR: lazy loading failed for package ?summarytools?
+> [...]
+> 
+> Tcl/Tk is used by some functions to allow users to bring up an "open
+> file...", & "save file..." dialogs & message boxes, as well as the
+> tclvalue() function. In my NAMESPACE, I have:
+> 
+> importFrom(tcltk,tclvalue)
+> importFrom(tcltk,tk_messageBox)
+> importFrom(tcltk,tkgetOpenFile)
+> importFrom(tcltk,tkgetSaveFile)
+> 
+> Also, a prerequisite is to have XQuartz <https://www.xquartz.org/>
+> installed on Mac OS.
+> 
+> Summarytools has been around for a while, and I never had this problem
+> before. And since I don't have a Mac machine, I'm not sure how to go about
+> this. A Google search reveals that several other packages have the same
+> issue. But I wasn't able to find the root cause nor a proper solution. Any
+> tips / pointers would be greatly appreciated.
+> 
+> Thanks,
+> 
+> Dominic Comtois
+> summarytools
+> <https://cran.r-project.org/web/packages/summarytools/index.html> author &
+> maintainer
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
