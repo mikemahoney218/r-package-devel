@@ -7030,3 +7030,575 @@ Director, School of Computational Science and Engineering
 (Acting) Graduate chair, Mathematics & Statistics
 
 
+From d@tr7320 @end|ng |rom un|@@ydney@edu@@u  Sat Apr 30 14:00:05 2022
+From: d@tr7320 @end|ng |rom un|@@ydney@edu@@u (Dario Strbenac)
+Date: Sat, 30 Apr 2022 12:00:05 +0000
+Subject: [R-pkg-devel] Rlang and Code Evalutation Within Aesthetics
+Message-ID: <SY2PR01MB3003DD190D342FB17A3ED260CDFF9@SY2PR01MB3003.ausprd01.prod.outlook.com>
+
+Good day,
+
+I am troubled understanding why the following example doesn't work:
+
+> characteristicsList
+$x
+`Classifier Name`
+> ggplot2::aes(fill = if(TRUE) NULL else !!rlang::sym(characteristicsList[["fillColour"]]))
+Error in `rlang::sym()`:
+! Can't convert NULL to a symbol.
+> rlang::last_error()
+10. rlang::sym(characteristicsList[["fillColour"]])
+
+but the following does work without error:
+
+> if(TRUE) NULL else !!rlang::sym(characteristicsList[["fillColour"]])
+NULL # It is desirably avoiding the else part.
+
+The first example seems to be evaluating the else part, even though the if condition is true.
+
+The overall aim is to allow the end-user to specify a named list of appearance-modifying parameters, and for the function to create a ggplot with them, without being bamboozled if the end-user's list doesn't contain the specification for fill colour variable name or line colour variable name (like the list in the example above does not have). Thanks in advance for any suggested reading.
+
+--------------------------------------
+Dario Strbenac
+University of Sydney
+Camperdown NSW 2050
+Australia
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Apr 30 14:09:51 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 30 Apr 2022 08:09:51 -0400
+Subject: [R-pkg-devel] Rlang and Code Evalutation Within Aesthetics
+In-Reply-To: <SY2PR01MB3003DD190D342FB17A3ED260CDFF9@SY2PR01MB3003.ausprd01.prod.outlook.com>
+References: <SY2PR01MB3003DD190D342FB17A3ED260CDFF9@SY2PR01MB3003.ausprd01.prod.outlook.com>
+Message-ID: <fc7ed04e-97fb-bd5f-99ce-3e482a34cfd9@gmail.com>
+
+On 30/04/2022 8:00 a.m., Dario Strbenac wrote:
+> Good day,
+> 
+> I am troubled understanding why the following example doesn't work:
+> 
+>> characteristicsList
+> $x
+> `Classifier Name`
+>> ggplot2::aes(fill = if(TRUE) NULL else !!rlang::sym(characteristicsList[["fillColour"]]))
+> Error in `rlang::sym()`:
+> ! Can't convert NULL to a symbol.
+>> rlang::last_error()
+> 10. rlang::sym(characteristicsList[["fillColour"]])
+> 
+> but the following does work without error:
+> 
+>> if(TRUE) NULL else !!rlang::sym(characteristicsList[["fillColour"]])
+> NULL # It is desirably avoiding the else part.
+> 
+> The first example seems to be evaluating the else part, even though the if condition is true.
+> 
+> The overall aim is to allow the end-user to specify a named list of appearance-modifying parameters, and for the function to create a ggplot with them, without being bamboozled if the end-user's list doesn't contain the specification for fill colour variable name or line colour variable name (like the list in the example above does not have). Thanks in advance for any suggested reading.
+
+I'm pretty sure this isn't the right place to ask about ggplot2, but 
+that looks like a bug to me.
+
+Duncan Murdoch
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Sat Apr 30 16:53:19 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Sat, 30 Apr 2022 07:53:19 -0700
+Subject: [R-pkg-devel] Rlang and Code Evalutation Within Aesthetics
+In-Reply-To: <fc7ed04e-97fb-bd5f-99ce-3e482a34cfd9@gmail.com>
+References: <SY2PR01MB3003DD190D342FB17A3ED260CDFF9@SY2PR01MB3003.ausprd01.prod.outlook.com>
+ <fc7ed04e-97fb-bd5f-99ce-3e482a34cfd9@gmail.com>
+Message-ID: <C04ED051-6433-4407-9309-BDE5D54E64A8@dcn.davis.ca.us>
+
+Things like sensible legends are also impeded by using complex expressions in aesthetics mappings, so call it a workaround if you like but creating the data frame the way it should be _before_ giving it to ggplot has always been recommended.
+
+On April 30, 2022 5:09:51 AM PDT, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>On 30/04/2022 8:00 a.m., Dario Strbenac wrote:
+>> Good day,
+>> 
+>> I am troubled understanding why the following example doesn't work:
+>> 
+>>> characteristicsList
+>> $x
+>> `Classifier Name`
+>>> ggplot2::aes(fill = if(TRUE) NULL else !!rlang::sym(characteristicsList[["fillColour"]]))
+>> Error in `rlang::sym()`:
+>> ! Can't convert NULL to a symbol.
+>>> rlang::last_error()
+>> 10. rlang::sym(characteristicsList[["fillColour"]])
+>> 
+>> but the following does work without error:
+>> 
+>>> if(TRUE) NULL else !!rlang::sym(characteristicsList[["fillColour"]])
+>> NULL # It is desirably avoiding the else part.
+>> 
+>> The first example seems to be evaluating the else part, even though the if condition is true.
+>> 
+>> The overall aim is to allow the end-user to specify a named list of appearance-modifying parameters, and for the function to create a ggplot with them, without being bamboozled if the end-user's list doesn't contain the specification for fill colour variable name or line colour variable name (like the list in the example above does not have). Thanks in advance for any suggested reading.
+>
+>I'm pretty sure this isn't the right place to ask about ggplot2, but that looks like a bug to me.
+>
+>Duncan Murdoch
+>
+>______________________________________________
+>R-package-devel at r-project.org mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From @rk@jyot|@@h@93 @end|ng |rom gm@||@com  Sat Apr 30 16:54:22 2022
+From: @rk@jyot|@@h@93 @end|ng |rom gm@||@com (Arkajyoti Saha)
+Date: Sat, 30 Apr 2022 07:54:22 -0700
+Subject: [R-pkg-devel] Error in r-devel-windows-x86_64 check: package not
+ found.
+Message-ID: <CADn4F6CAFP4oVGw50iDYVvTbWDBWfEf9fVRqeYcO5aYzpsF4Qw@mail.gmail.com>
+
+I recently updated a package in CRAN. Though it passed the
+r-devel-linux-x86_64
+<https://cran.r-project.org/web/checks/check_flavors.html#r-devel-linux-x86_64-debian-clang>
+flavors, I saw an error with r-devel-windows-x86_64
+<https://www.r-project.org/nosvn/R.check/r-devel-windows-x86_64/BRISC-00check.html>.
+
+The error says "Error : package 'RANN' required by 'BRISC' could not be
+found"
+The detailed report can be found at
+https://www.r-project.org/nosvn/R.check/r-devel-windows-x86_64/BRISC-00install.html
+
+I was wondering if there is anything to be done on my behalf to circumvent
+this problem,
+Please let me know if I can provide you with any additional information,
+
+thanks,
+Arka
+
+	[[alternative HTML version deleted]]
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Sat Apr 30 17:09:20 2022
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Sat, 30 Apr 2022 17:09:20 +0200
+Subject: [R-pkg-devel] 
+ Error in r-devel-windows-x86_64 check: package not found.
+In-Reply-To: <CADn4F6CAFP4oVGw50iDYVvTbWDBWfEf9fVRqeYcO5aYzpsF4Qw@mail.gmail.com>
+References: <CADn4F6CAFP4oVGw50iDYVvTbWDBWfEf9fVRqeYcO5aYzpsF4Qw@mail.gmail.com>
+Message-ID: <25197.20768.187547.497140@stat.math.ethz.ch>
+
+>>>>> Arkajyoti Saha 
+>>>>>     on Sat, 30 Apr 2022 07:54:22 -0700 writes:
+
+    > I recently updated a package in CRAN. Though it passed the
+    > r-devel-linux-x86_64
+    > <https://cran.r-project.org/web/checks/check_flavors.html#r-devel-linux-x86_64-debian-clang>
+    > flavors, I saw an error with r-devel-windows-x86_64
+    > <https://www.r-project.org/nosvn/R.check/r-devel-windows-x86_64/BRISC-00check.html>.
+
+    > The error says "Error : package 'RANN' required by 'BRISC'
+    > could not be found" The detailed report can be found at
+    > https://www.r-project.org/nosvn/R.check/r-devel-windows-x86_64/BRISC-00install.html
+
+    > I was wondering if there is anything to be done on my
+    > behalf to circumvent this problem, Please let me know if I
+    > can provide you with any additional information,
+
+    > thanks, Arka
+
+Fortunately, this has been a transitional bug in R-devel, and is
+unrelated to the Windows / non-Windows differences:
+
+It's been caused by fixing R bugzilla PR#18331  w/ NEWS entry
+
+    * library() now passes its lib.loc argument when requiring Depends
+      packages; reported (with fix) in PR#18331 by Mikael Jagan.
+
+and the orginal change (svn rev 82284) inadvertantly "killed"
+correct working of install.packages()  in some not too
+unfrequent cases.
+
+I've looked for you at
+   https://www.r-project.org/nosvn/R.check/r-devel-windows-x86_64/BRISC-00check.txt
+and see that indeed the BRISC installation had happened with
+R-devel svn r88285 which contains this bug.
+
+This newly introduced bug (yesterday) has now been fixed, 28h
+later (with svn r88287). 
+It's been my fault  (and fix).
+
+Martin
+
+
+From @rk@jyot|@@h@93 @end|ng |rom gm@||@com  Sat Apr 30 17:18:32 2022
+From: @rk@jyot|@@h@93 @end|ng |rom gm@||@com (Arkajyoti Saha)
+Date: Sat, 30 Apr 2022 08:18:32 -0700
+Subject: [R-pkg-devel] 
+ Error in r-devel-windows-x86_64 check: package not found.
+In-Reply-To: <25197.20768.187547.497140@stat.math.ethz.ch>
+References: <CADn4F6CAFP4oVGw50iDYVvTbWDBWfEf9fVRqeYcO5aYzpsF4Qw@mail.gmail.com>
+ <25197.20768.187547.497140@stat.math.ethz.ch>
+Message-ID: <CADn4F6DM7v6ttVnT+pcPjRbmNSwhm9vjKVWwe2ABAjFVce6vPQ@mail.gmail.com>
+
+Thanks so much for the clarification!!
+
+On Sat, Apr 30, 2022 at 8:09 AM Martin Maechler <maechler at stat.math.ethz.ch>
+wrote:
+
+> >>>>> Arkajyoti Saha
+> >>>>>     on Sat, 30 Apr 2022 07:54:22 -0700 writes:
+>
+>     > I recently updated a package in CRAN. Though it passed the
+>     > r-devel-linux-x86_64
+>     > <
+> https://cran.r-project.org/web/checks/check_flavors.html#r-devel-linux-x86_64-debian-clang
+> >
+>     > flavors, I saw an error with r-devel-windows-x86_64
+>     > <
+> https://www.r-project.org/nosvn/R.check/r-devel-windows-x86_64/BRISC-00check.html
+> >.
+>
+>     > The error says "Error : package 'RANN' required by 'BRISC'
+>     > could not be found" The detailed report can be found at
+>     >
+> https://www.r-project.org/nosvn/R.check/r-devel-windows-x86_64/BRISC-00install.html
+>
+>     > I was wondering if there is anything to be done on my
+>     > behalf to circumvent this problem, Please let me know if I
+>     > can provide you with any additional information,
+>
+>     > thanks, Arka
+>
+> Fortunately, this has been a transitional bug in R-devel, and is
+> unrelated to the Windows / non-Windows differences:
+>
+> It's been caused by fixing R bugzilla PR#18331  w/ NEWS entry
+>
+>     * library() now passes its lib.loc argument when requiring Depends
+>       packages; reported (with fix) in PR#18331 by Mikael Jagan.
+>
+> and the orginal change (svn rev 82284) inadvertantly "killed"
+> correct working of install.packages()  in some not too
+> unfrequent cases.
+>
+> I've looked for you at
+>
+> https://www.r-project.org/nosvn/R.check/r-devel-windows-x86_64/BRISC-00check.txt
+> and see that indeed the BRISC installation had happened with
+> R-devel svn r88285 which contains this bug.
+>
+> This newly introduced bug (yesterday) has now been fixed, 28h
+> later (with svn r88287).
+> It's been my fault  (and fix).
+>
+> Martin
+>
+
+	[[alternative HTML version deleted]]
+
+
+From m@tth|@@-gond@n @end|ng |rom gmx@de  Sat Apr 30 18:57:46 2022
+From: m@tth|@@-gond@n @end|ng |rom gmx@de (Matthias Gondan)
+Date: Sat, 30 Apr 2022 18:57:46 +0200
+Subject: [R-pkg-devel] Need advice CRAN package check results
+Message-ID: <1N4Qwg-1nt88b04v8-011P3o@mail.gmx.net>
+
+Dear developers,
+
+I have recently submitted my first r package, and bear with me, I am still learning things. Most importantly, there is a page with the CRAN package checks,
+
+https://cran.rstudio.com/web/checks/check_results_rolog.html
+
+The package check for r-release-macos-arm64 fails, in two places. 
+
+? The one in the table refers to Version 0.9, that one is less interesting because I have already fixed it. Well, minor question, will the version numbers for these tests increase automatically?
+? More importantly, there are two links called M1mac below the table, ?Additional issues?. They refer to the current version of the package, 0.9.2. The left link points to https://www.stats.ox.ac.uk/pub/bdr/M1mac/rolog.log, and there is an error message at 69% that needs to be fixed somehow. Note that the message is not really helpful (clang: error: unable to execute command: Abort trap: 6, clang: error: clang frontend command failed due to signal)
+
+To investigate this in more detail, I tried the mac-builder service, but the build doesn?t fail there: https://mac.r-project.org/macbuilder/results/1651148567-352c2175cfbba55d/. I think this will be deleted soon, so this one is more recent, with only little changes: https://mac.r-project.org/macbuilder/results/1651332515-22f4e1b1c9492557/ 
+
+Does anyone have a good idea how to move on? I don?t have a Mac M1 at hand?
+
+Best wishes,
+
+Matthias
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Apr 30 19:58:57 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 30 Apr 2022 13:58:57 -0400
+Subject: [R-pkg-devel] Need advice CRAN package check results
+In-Reply-To: <1N4Qwg-1nt88b04v8-011P3o@mail.gmx.net>
+References: <1N4Qwg-1nt88b04v8-011P3o@mail.gmx.net>
+Message-ID: <10dbc864-aeec-4b03-e45c-ab1b46e85573@gmail.com>
+
+On 30/04/2022 12:57 p.m., Matthias Gondan wrote:
+> Dear developers,
+> 
+> I have recently submitted my first r package, and bear with me, I am still learning things. Most importantly, there is a page with the CRAN package checks,
+> 
+> https://cran.rstudio.com/web/checks/check_results_rolog.html
+> 
+> The package check for r-release-macos-arm64 fails, in two places.
+> 
+> ? The one in the table refers to Version 0.9, that one is less interesting because I have already fixed it. Well, minor question, will the version numbers for these tests increase automatically?
+
+You manually change the version number of your package, and the version 
+number in the check table shows which version was tested.  New 
+submissions won't show up there until they are accepted.
+
+Occasionally a new version could be accepted but fail to build on some 
+platforms; in that case the version number for that platform won't be 
+updated.  I think it's also possible for CRAN maintainers to manually 
+skip checks if they want.
+
+> ? More importantly, there are two links called M1mac below the table, ?Additional issues?. They refer to the current version of the package, 0.9.2. The left link points to https://www.stats.ox.ac.uk/pub/bdr/M1mac/rolog.log, and there is an error message at 69% that needs to be fixed somehow. Note that the message is not really helpful (clang: error: unable to execute command: Abort trap: 6, clang: error: clang frontend command failed due to signal)
+
+That looks like clang crashed.  If you can't duplicate it locally, it 
+will be hard to fix.
+
+At the start of your log, there were these messages:
+
+CMake Warning at cmake/port/Darwin.cmake:39 (message):
+   Could not find Macport or Homebrew to provide dependencies 		 trying to
+   configure with default search paths
+
+I would try to test on a system that doesn't have Macport or Homebrew 
+installed.
+
+> To investigate this in more detail, I tried the mac-builder service, but the build doesn?t fail there: https://mac.r-project.org/macbuilder/results/1651148567-352c2175cfbba55d/. I think this will be deleted soon, so this one is more recent, with only little changes: https://mac.r-project.org/macbuilder/results/1651332515-22f4e1b1c9492557/
+> 
+> Does anyone have a good idea how to move on? I don?t have a Mac M1 at hand?
+
+I think you'll need to find one to test on.  I'm not sure if Github 
+offers that platform for running Github actions, but I imagine there's 
+one somewhere or other.
+
+Duncan Murdoch
+
+
+From r|||ght79 @end|ng |rom gm@||@com  Sat Apr 30 20:33:23 2022
+From: r|||ght79 @end|ng |rom gm@||@com (Robert M. Flight)
+Date: Sat, 30 Apr 2022 14:33:23 -0400
+Subject: [R-pkg-devel] Need advice CRAN package check results
+In-Reply-To: <10dbc864-aeec-4b03-e45c-ab1b46e85573@gmail.com>
+References: <1N4Qwg-1nt88b04v8-011P3o@mail.gmx.net>
+ <10dbc864-aeec-4b03-e45c-ab1b46e85573@gmail.com>
+Message-ID: <CAJLyBTVYQu5X7N8+RxbjEXt2v__cP976ywFGECJPyUjZ7c9bQA@mail.gmail.com>
+
+Matthias and Duncan,
+
+As far as testing on an M1 Mac, it looks like CRAN has an M1 builder
+similar to win-builder, and r-hub also has one available for testing.
+
+See this twitter thread.
+
+https://twitter.com/bolkerb/status/1520060589875380231?t=hcFIPUMPXoByuBpyQ7eydA&s=19
+
+And thanks to Dirk Eddelbuttel and Ben Bolker for pointing those out.
+
+I hope those help you diagnose the issues you are experiencing.
+
+Cheers,
+
+Robert
+
+On Sat, Apr 30, 2022, 1:59 PM Duncan Murdoch <murdoch.duncan at gmail.com>
+wrote:
+
+> On 30/04/2022 12:57 p.m., Matthias Gondan wrote:
+> > Dear developers,
+> >
+> > I have recently submitted my first r package, and bear with me, I am
+> still learning things. Most importantly, there is a page with the CRAN
+> package checks,
+> >
+> > https://cran.rstudio.com/web/checks/check_results_rolog.html
+> >
+> > The package check for r-release-macos-arm64 fails, in two places.
+> >
+> > ? The one in the table refers to Version 0.9, that one is less
+> interesting because I have already fixed it. Well, minor question, will the
+> version numbers for these tests increase automatically?
+>
+> You manually change the version number of your package, and the version
+> number in the check table shows which version was tested.  New
+> submissions won't show up there until they are accepted.
+>
+> Occasionally a new version could be accepted but fail to build on some
+> platforms; in that case the version number for that platform won't be
+> updated.  I think it's also possible for CRAN maintainers to manually
+> skip checks if they want.
+>
+> > ? More importantly, there are two links called M1mac below the table,
+> ?Additional issues?. They refer to the current version of the package,
+> 0.9.2. The left link points to
+> https://www.stats.ox.ac.uk/pub/bdr/M1mac/rolog.log, and there is an error
+> message at 69% that needs to be fixed somehow. Note that the message is not
+> really helpful (clang: error: unable to execute command: Abort trap: 6,
+> clang: error: clang frontend command failed due to signal)
+>
+> That looks like clang crashed.  If you can't duplicate it locally, it
+> will be hard to fix.
+>
+> At the start of your log, there were these messages:
+>
+> CMake Warning at cmake/port/Darwin.cmake:39 (message):
+>    Could not find Macport or Homebrew to provide dependencies
+> trying to
+>    configure with default search paths
+>
+> I would try to test on a system that doesn't have Macport or Homebrew
+> installed.
+>
+> > To investigate this in more detail, I tried the mac-builder service, but
+> the build doesn?t fail there:
+> https://mac.r-project.org/macbuilder/results/1651148567-352c2175cfbba55d/.
+> I think this will be deleted soon, so this one is more recent, with only
+> little changes:
+> https://mac.r-project.org/macbuilder/results/1651332515-22f4e1b1c9492557/
+> >
+> > Does anyone have a good idea how to move on? I don?t have a Mac M1 at
+> hand?
+>
+> I think you'll need to find one to test on.  I'm not sure if Github
+> offers that platform for running Github actions, but I imagine there's
+> one somewhere or other.
+>
+> Duncan Murdoch
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Sat Apr 30 20:48:26 2022
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Sat, 30 Apr 2022 13:48:26 -0500
+Subject: [R-pkg-devel] Need advice CRAN package check results
+In-Reply-To: <10dbc864-aeec-4b03-e45c-ab1b46e85573@gmail.com>
+References: <1N4Qwg-1nt88b04v8-011P3o@mail.gmx.net>
+ <10dbc864-aeec-4b03-e45c-ab1b46e85573@gmail.com>
+Message-ID: <02f222d4-72dc-2a71-326f-e415890ece76@effectivedefense.org>
+
+
+
+On 4/30/22 12:58 PM, Duncan Murdoch wrote:
+> On 30/04/2022 12:57 p.m., Matthias Gondan wrote:
+>> Dear developers,
+>>
+>> I have recently submitted my first r package, and bear with me, I am 
+>> still learning things. Most importantly, there is a page with the CRAN 
+>> package checks,
+>>
+>> https://cran.rstudio.com/web/checks/check_results_rolog.html
+>>
+>> The package check for r-release-macos-arm64 fails, in two places.
+>>
+>> ? The one in the table refers to Version 0.9, that one is less 
+>> interesting because I have already fixed it. Well, minor question, 
+>> will the version numbers for these tests increase automatically?
+> 
+> You manually change the version number of your package, and the version 
+> number in the check table shows which version was tested.? New 
+> submissions won't show up there until they are accepted.
+> 
+> Occasionally a new version could be accepted but fail to build on some 
+> platforms; in that case the version number for that platform won't be 
+> updated.? I think it's also possible for CRAN maintainers to manually 
+> skip checks if they want.
+> 
+>> ? More importantly, there are two links called M1mac below the table, 
+>> ?Additional issues?. They refer to the current version of the package, 
+>> 0.9.2. The left link points to 
+>> https://www.stats.ox.ac.uk/pub/bdr/M1mac/rolog.log, and there is an 
+>> error message at 69% that needs to be fixed somehow. Note that the 
+>> message is not really helpful (clang: error: unable to execute 
+>> command: Abort trap: 6, clang: error: clang frontend command failed 
+>> due to signal)
+> 
+> That looks like clang crashed.? If you can't duplicate it locally, it 
+> will be hard to fix.
+> 
+> At the start of your log, there were these messages:
+> 
+> CMake Warning at cmake/port/Darwin.cmake:39 (message):
+>  ? Could not find Macport or Homebrew to provide dependencies          
+> trying to
+>  ? configure with default search paths
+> 
+> I would try to test on a system that doesn't have Macport or Homebrew 
+> installed.
+> 
+>> To investigate this in more detail, I tried the mac-builder service, 
+>> but the build doesn?t fail there: 
+>> https://mac.r-project.org/macbuilder/results/1651148567-352c2175cfbba55d/. 
+>> I think this will be deleted soon, so this one is more recent, with 
+>> only little changes: 
+>> https://mac.r-project.org/macbuilder/results/1651332515-22f4e1b1c9492557/
+>>
+>> Does anyone have a good idea how to move on? I don?t have a Mac M1 at 
+>> hand?
+> 
+> I think you'll need to find one to test on.? I'm not sure if Github 
+> offers that platform for running Github actions, but I imagine there's 
+> one somewhere or other.
+
+
+	  One of my "R-CMD-check.yaml" files includes the following:
+
+
+{os: macOS-latest, r: 'release'}
+
+
+	  If you have this and it does not replicate your error, I don't know 
+what other Mac options are available or if they would help.
+
+
+TWO OTHER THOUGHTS:
+
+
+1.  HOW DID YOU SUBMIT TO CRAN?  I know two ways.  You can submit 
+directly via:
+
+
+https://cran.r-project.org/submit.html
+
+
+	  Alternatively, you can use "devtools::release()" as described in 
+Chapter 20 of Wickham and Bryan, R Packages, available at:
+
+
+https://r-pkgs.org
+
+
+	  IF YOU SUBMITTED ONLY ONE OF THESE TWO WAYS, try the other ;-)
+
+
+2.  DOCUMENT THIS PROBLEM IN a "cran-comments.md" file, as described in 
+Wickham and Bryan.  Explain you can NOT replicate this problem.  With 
+luck, if the package fails, a CRAN maintainer may look at that file and 
+provide a more helpful suggestion -- or even fix the problem, if it's 
+actually a problem with their platform.
+
+
+	  Hope this helps.
+
+
+	  Spencer Graves
+
+
+p.s.  Jim Ramsay and I just went through some of this with the "fda" 
+package.  We fixed that problem with help from Duncan Murdoch (THANKS, 
+DUNCAN!!!).  We still have other problems, but ...
+
+> 
+> Duncan Murdoch
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
