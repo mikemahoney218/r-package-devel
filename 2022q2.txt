@@ -7650,3 +7650,614 @@ David
 	[[alternative HTML version deleted]]
 
 
+From v|ncentv@nhee@ @end|ng |rom gm@||@com  Tue May  3 11:50:09 2022
+From: v|ncentv@nhee@ @end|ng |rom gm@||@com (Vincent van Hees)
+Date: Tue, 3 May 2022 11:50:09 +0200
+Subject: [R-pkg-devel] Load data inside .Rd documentation file inside the
+ item-field?
+Message-ID: <CALnEB14P6iWH8+fVLD8h0O1que2S2M87UeD1WSMQxt9mS3REUQ@mail.gmail.com>
+
+Dear list,
+
+Is it possible in .Rd documentation to load and use data inside an
+item-field like we can integrate R data in text in R markdown files?
+
+Something along the lines of:
+\item{max}{
+  Numeric, default value = `R max`, controls the upper limit of the plot.
+}
+where `R max` resolves into the actual default value.
+
+I am guessing this is not possible, but it would be great if someone could
+either confirm or point me to the actual way to do this.
+
+Full story with clarification for why I am trying to do this:
+The R package I maintain has a function that acts as a data processing
+pipeline with over a hundred configuration arguments. Given that it is bad
+practice to write a function with this number of input arguments, I use
+parameter objects that hold sets of arguments. These objects are then
+passed on to the pipeline function. The default values for the parameter
+objects are stored in a separate function load_params() that aids in
+loading the defaults. Although it makes the code a lot easier to navigate,
+it also means that the user will no longer find default argument values in
+the standard package documentation.
+
+As a solution I can write a package vignette that loads and displays all
+the default argument values. However, for those more oriented towards using
+the ? command to get help about the function, it would be nice if the same
+default arguments values are also shown in the package documentation, being
+the .Rd files accessed via .pdf or with ? in R.
+
+Thanks, Vincent
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue May  3 12:08:01 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 3 May 2022 06:08:01 -0400
+Subject: [R-pkg-devel] Fwd: Load data inside .Rd documentation file inside
+ the item-field?
+In-Reply-To: <9cefb08d-36c2-a1db-a125-7888ef935185@gmail.com>
+References: <9cefb08d-36c2-a1db-a125-7888ef935185@gmail.com>
+Message-ID: <e0e69a1b-37a4-e9b9-fc0d-1cfb6e88d536@gmail.com>
+
+Whoops, forgot to cc the list.
+
+
+-------- Forwarded Message --------
+Subject: Re: [R-pkg-devel] Load data inside .Rd documentation file 
+inside the item-field?
+Date: Tue, 3 May 2022 06:07:01 -0400
+From: Duncan Murdoch <murdoch.duncan at gmail.com>
+To: Vincent van Hees <vincentvanhees at gmail.com>
+
+On 03/05/2022 5:50 a.m., Vincent van Hees wrote:
+> Dear list,
+> 
+> Is it possible in .Rd documentation to load and use data inside an
+> item-field like we can integrate R data in text in R markdown files?
+> 
+> Something along the lines of:
+> \item{max}{
+>    Numeric, default value = `R max`, controls the upper limit of the plot.
+> }
+> where `R max` resolves into the actual default value.
+> 
+> I am guessing this is not possible, but it would be great if someone could
+> either confirm or point me to the actual way to do this.
+
+It is possible to execute R code and display the results on the help 
+page.  You'll need to be able to compute the value you want to display. 
+   Supposing "max" is the name of a parameter to function "fn" in 
+package "pkg", the default value is
+
+      formals(pkg::fn)[["max"]]
+
+You insert this into the help page using syntax
+
+      \Sexpr{formals(pkg::fn)[["max"]]}
+
+which will apply `as.character()` to it (I think, though maybe it's 
+format() ...) and insert the text there.
+
+This is executed when the package installs.  I believe you'll already 
+have the code installed so this runs the new installation, but you 
+should check:  it might show you the default from a previous install.
+
+You can also run the code when you build the tarball, using
+
+       \Sexpr[stage=build]{formals(pkg::fn)[["max"]]}
+
+in which case it will use whatever version of pkg happens to be 
+installed on your system at the time of the build, not necessarily the 
+one you are building.
+
+Or finally, you could use
+
+       \Sexpr[stage=render]{formals(pkg::fn)[["max"]]}
+
+which won't run the code until the user asks to display the help page.
+
+For more details and options, see Writing R Extensions section 2.12, 
+"Dynamic pages".
+
+Duncan Murdoch
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue May  3 14:58:21 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 3 May 2022 15:58:21 +0300
+Subject: [R-pkg-devel] 
+ Fwd: Load data inside .Rd documentation file inside the item-field?
+In-Reply-To: <e0e69a1b-37a4-e9b9-fc0d-1cfb6e88d536@gmail.com>
+References: <9cefb08d-36c2-a1db-a125-7888ef935185@gmail.com>
+ <e0e69a1b-37a4-e9b9-fc0d-1cfb6e88d536@gmail.com>
+Message-ID: <20220503155821.7f060db8@Tarkus>
+
+On Tue, 3 May 2022 06:08:01 -0400
+Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+
+> You can also run the code when you build the tarball, using
+> 
+>        \Sexpr[stage=build]{formals(pkg::fn)[["max"]]}
+> 
+> in which case it will use whatever version of pkg happens to be 
+> installed on your system at the time of the build, not necessarily
+> the one you are building.
+
+Shouldn't [stage=build] still correspond to the current
+version of the package being built, thanks to the extra step of 
+"* installing the package to process help pages"?
+
+-- 
+Best regards,
+Ivan
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue May  3 15:45:51 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 3 May 2022 09:45:51 -0400
+Subject: [R-pkg-devel] 
+ Fwd: Load data inside .Rd documentation file inside the item-field?
+In-Reply-To: <20220503155821.7f060db8@Tarkus>
+References: <9cefb08d-36c2-a1db-a125-7888ef935185@gmail.com>
+ <e0e69a1b-37a4-e9b9-fc0d-1cfb6e88d536@gmail.com>
+ <20220503155821.7f060db8@Tarkus>
+Message-ID: <06c38505-f677-6727-aa21-d156dd154aa0@gmail.com>
+
+On 03/05/2022 8:58 a.m., Ivan Krylov wrote:
+> On Tue, 3 May 2022 06:08:01 -0400
+> Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+> 
+>> You can also run the code when you build the tarball, using
+>>
+>>         \Sexpr[stage=build]{formals(pkg::fn)[["max"]]}
+>>
+>> in which case it will use whatever version of pkg happens to be
+>> installed on your system at the time of the build, not necessarily
+>> the one you are building.
+> 
+> Shouldn't [stage=build] still correspond to the current
+> version of the package being built, thanks to the extra step of
+> "* installing the package to process help pages"?
+> 
+
+Yes, you're right.  Sorry for the misinformation.
+
+Duncan Murdoch
+
+
+From c@@rd|@g@bor @end|ng |rom gm@||@com  Tue May  3 15:53:45 2022
+From: c@@rd|@g@bor @end|ng |rom gm@||@com (=?UTF-8?B?R8OhYm9yIENzw6FyZGk=?=)
+Date: Tue, 3 May 2022 15:53:45 +0200
+Subject: [R-pkg-devel] 
+ Load data inside .Rd documentation file inside the item-field?
+In-Reply-To: <CALnEB14P6iWH8+fVLD8h0O1que2S2M87UeD1WSMQxt9mS3REUQ@mail.gmail.com>
+References: <CALnEB14P6iWH8+fVLD8h0O1que2S2M87UeD1WSMQxt9mS3REUQ@mail.gmail.com>
+Message-ID: <CABtg=KnBBjs_jtrogD-c-wyTdxJSXgWq6cVVTGd4zL=vk_mf2w@mail.gmail.com>
+
+You can also do this with roxygen2:
+https://roxygen2.r-lib.org/articles/rd-formatting.html#inline-code
+
+It runs when you are generating the manual pages, for better or worse.
+
+Gabor
+
+On Tue, May 3, 2022 at 11:51 AM Vincent van Hees
+<vincentvanhees at gmail.com> wrote:
+>
+> Dear list,
+>
+> Is it possible in .Rd documentation to load and use data inside an
+> item-field like we can integrate R data in text in R markdown files?
+>
+> Something along the lines of:
+> \item{max}{
+>   Numeric, default value = `R max`, controls the upper limit of the plot.
+> }
+> where `R max` resolves into the actual default value.
+>
+> I am guessing this is not possible, but it would be great if someone could
+> either confirm or point me to the actual way to do this.
+>
+> Full story with clarification for why I am trying to do this:
+> The R package I maintain has a function that acts as a data processing
+> pipeline with over a hundred configuration arguments. Given that it is bad
+> practice to write a function with this number of input arguments, I use
+> parameter objects that hold sets of arguments. These objects are then
+> passed on to the pipeline function. The default values for the parameter
+> objects are stored in a separate function load_params() that aids in
+> loading the defaults. Although it makes the code a lot easier to navigate,
+> it also means that the user will no longer find default argument values in
+> the standard package documentation.
+>
+> As a solution I can write a package vignette that loads and displays all
+> the default argument values. However, for those more oriented towards using
+> the ? command to get help about the function, it would be nice if the same
+> default arguments values are also shown in the package documentation, being
+> the .Rd files accessed via .pdf or with ? in R.
+>
+> Thanks, Vincent
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From pro|jcn@@h @end|ng |rom gm@||@com  Tue May  3 19:54:11 2022
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Tue, 3 May 2022 13:54:11 -0400
+Subject: [R-pkg-devel] HTML5 errors in win-builder R-release check
+Message-ID: <03c3ef03-8262-d727-1bde-a9e204e92aa9@gmail.com>
+
+I've been asked to "fix" some NOTEs in two of my packages.
+
+The local (Linux Mint) R CMD check --as-cran gives no errors. Nor does win-builder for R-devel,
+but R-release gives many errors of the form
+
+Found the following problems:
+Rcgmin.Rd:17:1: Warning: <table> attribute "width" not allowed for HTML5
+
+Rcgmin.Rd:46:1: Warning: <tr> attribute "valign" not allowed for HTML5
+
+Rcgmin.Rd:50:1: Warning: <tr> attribute "valign" not allowed for HTML5
+
+Rcgmin.Rd:56:1: Warning: <tr> attribute "valign" not allowed for HTML5
+
+
+In some cases the lines pointed to are beyond the end of my Rd file.
+
+Does anyone know the source, and hopefully the solution, to these?
+
+It's really difficult to fix something that does not appear to be an error
+in the systems I can dig into.
+
+John Nash
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue May  3 20:50:52 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 3 May 2022 14:50:52 -0400
+Subject: [R-pkg-devel] HTML5 errors in win-builder R-release check
+In-Reply-To: <03c3ef03-8262-d727-1bde-a9e204e92aa9@gmail.com>
+References: <03c3ef03-8262-d727-1bde-a9e204e92aa9@gmail.com>
+Message-ID: <35dd9e1f-1db1-463b-8a5a-4d7789a28822@gmail.com>
+
+On 03/05/2022 1:54 p.m., J C Nash wrote:
+> I've been asked to "fix" some NOTEs in two of my packages.
+> 
+> The local (Linux Mint) R CMD check --as-cran gives no errors. Nor does win-builder for R-devel,
+> but R-release gives many errors of the form
+> 
+> Found the following problems:
+> Rcgmin.Rd:17:1: Warning: <table> attribute "width" not allowed for HTML5
+> 
+> Rcgmin.Rd:46:1: Warning: <tr> attribute "valign" not allowed for HTML5
+> 
+> Rcgmin.Rd:50:1: Warning: <tr> attribute "valign" not allowed for HTML5
+> 
+> Rcgmin.Rd:56:1: Warning: <tr> attribute "valign" not allowed for HTML5
+> 
+> 
+> In some cases the lines pointed to are beyond the end of my Rd file.
+> 
+> Does anyone know the source, and hopefully the solution, to these?
+> 
+> It's really difficult to fix something that does not appear to be an error
+> in the systems I can dig into.
+
+This has been discussed on R-sig-mac.
+
+The messages likely originate in the "tidy" utility.  Some systems have 
+very old versions of tidy which complain about very valid things; others 
+have very new versions which spot errors in the HTML generation that R 
+uses when building HTML help pages.
+
+I think the error locations are misleading, in that "Rcgmin.Rd:17:1" 
+really should be "Rcgmin.html:17:1", i.e. column 1 of line 17 of the 
+html version of the Rcgmin help page (and I'd guess the column number is 
+wrong too).
+
+There may be a few real errors mixed in with the spurious ones, but I 
+think I'd ignore all such warnings for now, since there's nothing you 
+can do about most of them.
+
+Duncan Murdoch
+
+
+From j|ox @end|ng |rom mcm@@ter@c@  Tue May  3 21:00:08 2022
+From: j|ox @end|ng |rom mcm@@ter@c@ (John Fox)
+Date: Tue, 3 May 2022 15:00:08 -0400
+Subject: [R-pkg-devel] HTML5 errors in win-builder R-release check
+In-Reply-To: <15266_1651603874_243IpEMN018771_35dd9e1f-1db1-463b-8a5a-4d7789a28822@gmail.com>
+References: <03c3ef03-8262-d727-1bde-a9e204e92aa9@gmail.com>
+ <15266_1651603874_243IpEMN018771_35dd9e1f-1db1-463b-8a5a-4d7789a28822@gmail.com>
+Message-ID: <37fd4fbb-6061-21e8-aceb-6c471f737e50@mcmaster.ca>
+
+Dear Duncan and John,
+
+I also cross-posted some of the discussion on R-SIG-Mac to 
+r-package-devel when it became clear that the problem wasn't necessarily 
+specific to Macs. See 
+<https://stat.ethz.ch/pipermail/r-package-devel/2022q2/007993.html>, and 
+also most recently on R-SIG-Mac, Brian Ripley's resolution of the 
+matter, at <https://stat.ethz.ch/pipermail/r-sig-mac/2022-May/014443.html>.
+
+Best,
+  John
+
+On 2022-05-03 2:50 p.m., Duncan Murdoch wrote:
+> On 03/05/2022 1:54 p.m., J C Nash wrote:
+>> I've been asked to "fix" some NOTEs in two of my packages.
+>>
+>> The local (Linux Mint) R CMD check --as-cran gives no errors. Nor does 
+>> win-builder for R-devel,
+>> but R-release gives many errors of the form
+>>
+>> Found the following problems:
+>> Rcgmin.Rd:17:1: Warning: <table> attribute "width" not allowed for HTML5
+>>
+>> Rcgmin.Rd:46:1: Warning: <tr> attribute "valign" not allowed for HTML5
+>>
+>> Rcgmin.Rd:50:1: Warning: <tr> attribute "valign" not allowed for HTML5
+>>
+>> Rcgmin.Rd:56:1: Warning: <tr> attribute "valign" not allowed for HTML5
+>>
+>>
+>> In some cases the lines pointed to are beyond the end of my Rd file.
+>>
+>> Does anyone know the source, and hopefully the solution, to these?
+>>
+>> It's really difficult to fix something that does not appear to be an 
+>> error
+>> in the systems I can dig into.
+> 
+> This has been discussed on R-sig-mac.
+> 
+> The messages likely originate in the "tidy" utility.? Some systems have 
+> very old versions of tidy which complain about very valid things; others 
+> have very new versions which spot errors in the HTML generation that R 
+> uses when building HTML help pages.
+> 
+> I think the error locations are misleading, in that "Rcgmin.Rd:17:1" 
+> really should be "Rcgmin.html:17:1", i.e. column 1 of line 17 of the 
+> html version of the Rcgmin help page (and I'd guess the column number is 
+> wrong too).
+> 
+> There may be a few real errors mixed in with the spurious ones, but I 
+> think I'd ignore all such warnings for now, since there's nothing you 
+> can do about most of them.
+> 
+> Duncan Murdoch
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+-- 
+John Fox, Professor Emeritus
+McMaster University
+Hamilton, Ontario, Canada
+web: https://socialsciences.mcmaster.ca/jfox/
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Tue May  3 21:09:00 2022
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Tue, 3 May 2022 12:09:00 -0700
+Subject: [R-pkg-devel] HTML5 errors in win-builder R-release check
+In-Reply-To: <03c3ef03-8262-d727-1bde-a9e204e92aa9@gmail.com>
+References: <03c3ef03-8262-d727-1bde-a9e204e92aa9@gmail.com>
+Message-ID: <CAFDcVCSWMfWMxm7SHM8zaeANaB4jM4MYHfBiHZYk=KcVAkF_WA@mail.gmail.com>
+
+Looks like a mistake in R that was fixed in R-devel (rev 82308) less
+than a day ago, cf.
+
+https://github.com/wch/r-source/commit/60cc6ebd762d4199aa8e5addf08282e336138a4a
+
+/Henrik
+
+On Tue, May 3, 2022 at 10:54 AM J C Nash <profjcnash at gmail.com> wrote:
+>
+> I've been asked to "fix" some NOTEs in two of my packages.
+>
+> The local (Linux Mint) R CMD check --as-cran gives no errors. Nor does win-builder for R-devel,
+> but R-release gives many errors of the form
+>
+> Found the following problems:
+> Rcgmin.Rd:17:1: Warning: <table> attribute "width" not allowed for HTML5
+>
+> Rcgmin.Rd:46:1: Warning: <tr> attribute "valign" not allowed for HTML5
+>
+> Rcgmin.Rd:50:1: Warning: <tr> attribute "valign" not allowed for HTML5
+>
+> Rcgmin.Rd:56:1: Warning: <tr> attribute "valign" not allowed for HTML5
+>
+>
+> In some cases the lines pointed to are beyond the end of my Rd file.
+>
+> Does anyone know the source, and hopefully the solution, to these?
+>
+> It's really difficult to fix something that does not appear to be an error
+> in the systems I can dig into.
+>
+> John Nash
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+On Tue, May 3, 2022 at 10:54 AM J C Nash <profjcnash at gmail.com> wrote:
+>
+> I've been asked to "fix" some NOTEs in two of my packages.
+>
+> The local (Linux Mint) R CMD check --as-cran gives no errors. Nor does win-builder for R-devel,
+> but R-release gives many errors of the form
+>
+> Found the following problems:
+> Rcgmin.Rd:17:1: Warning: <table> attribute "width" not allowed for HTML5
+>
+> Rcgmin.Rd:46:1: Warning: <tr> attribute "valign" not allowed for HTML5
+>
+> Rcgmin.Rd:50:1: Warning: <tr> attribute "valign" not allowed for HTML5
+>
+> Rcgmin.Rd:56:1: Warning: <tr> attribute "valign" not allowed for HTML5
+>
+>
+> In some cases the lines pointed to are beyond the end of my Rd file.
+>
+> Does anyone know the source, and hopefully the solution, to these?
+>
+> It's really difficult to fix something that does not appear to be an error
+> in the systems I can dig into.
+>
+> John Nash
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Tue May  3 21:10:17 2022
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Tue, 3 May 2022 12:10:17 -0700
+Subject: [R-pkg-devel] HTML5 errors in win-builder R-release check
+In-Reply-To: <CAFDcVCSWMfWMxm7SHM8zaeANaB4jM4MYHfBiHZYk=KcVAkF_WA@mail.gmail.com>
+References: <03c3ef03-8262-d727-1bde-a9e204e92aa9@gmail.com>
+ <CAFDcVCSWMfWMxm7SHM8zaeANaB4jM4MYHfBiHZYk=KcVAkF_WA@mail.gmail.com>
+Message-ID: <CAFDcVCQDZiiafhqBEjdeps-dvPDy4xSwRHc=FzQg=bqgSb6ZMg@mail.gmail.com>
+
+Maybe I spoke too soon; that doesn't look like a change in R code;
+only in their regression tests. /Henrik
+
+On Tue, May 3, 2022 at 12:09 PM Henrik Bengtsson
+<henrik.bengtsson at gmail.com> wrote:
+>
+> Looks like a mistake in R that was fixed in R-devel (rev 82308) less
+> than a day ago, cf.
+>
+> https://github.com/wch/r-source/commit/60cc6ebd762d4199aa8e5addf08282e336138a4a
+>
+> /Henrik
+>
+> On Tue, May 3, 2022 at 10:54 AM J C Nash <profjcnash at gmail.com> wrote:
+> >
+> > I've been asked to "fix" some NOTEs in two of my packages.
+> >
+> > The local (Linux Mint) R CMD check --as-cran gives no errors. Nor does win-builder for R-devel,
+> > but R-release gives many errors of the form
+> >
+> > Found the following problems:
+> > Rcgmin.Rd:17:1: Warning: <table> attribute "width" not allowed for HTML5
+> >
+> > Rcgmin.Rd:46:1: Warning: <tr> attribute "valign" not allowed for HTML5
+> >
+> > Rcgmin.Rd:50:1: Warning: <tr> attribute "valign" not allowed for HTML5
+> >
+> > Rcgmin.Rd:56:1: Warning: <tr> attribute "valign" not allowed for HTML5
+> >
+> >
+> > In some cases the lines pointed to are beyond the end of my Rd file.
+> >
+> > Does anyone know the source, and hopefully the solution, to these?
+> >
+> > It's really difficult to fix something that does not appear to be an error
+> > in the systems I can dig into.
+> >
+> > John Nash
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+> On Tue, May 3, 2022 at 10:54 AM J C Nash <profjcnash at gmail.com> wrote:
+> >
+> > I've been asked to "fix" some NOTEs in two of my packages.
+> >
+> > The local (Linux Mint) R CMD check --as-cran gives no errors. Nor does win-builder for R-devel,
+> > but R-release gives many errors of the form
+> >
+> > Found the following problems:
+> > Rcgmin.Rd:17:1: Warning: <table> attribute "width" not allowed for HTML5
+> >
+> > Rcgmin.Rd:46:1: Warning: <tr> attribute "valign" not allowed for HTML5
+> >
+> > Rcgmin.Rd:50:1: Warning: <tr> attribute "valign" not allowed for HTML5
+> >
+> > Rcgmin.Rd:56:1: Warning: <tr> attribute "valign" not allowed for HTML5
+> >
+> >
+> > In some cases the lines pointed to are beyond the end of my Rd file.
+> >
+> > Does anyone know the source, and hopefully the solution, to these?
+> >
+> > It's really difficult to fix something that does not appear to be an error
+> > in the systems I can dig into.
+> >
+> > John Nash
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue May  3 21:18:10 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 3 May 2022 22:18:10 +0300
+Subject: [R-pkg-devel] HTML5 errors in win-builder R-release check
+In-Reply-To: <CAFDcVCQDZiiafhqBEjdeps-dvPDy4xSwRHc=FzQg=bqgSb6ZMg@mail.gmail.com>
+References: <03c3ef03-8262-d727-1bde-a9e204e92aa9@gmail.com>
+ <CAFDcVCSWMfWMxm7SHM8zaeANaB4jM4MYHfBiHZYk=KcVAkF_WA@mail.gmail.com>
+ <CAFDcVCQDZiiafhqBEjdeps-dvPDy4xSwRHc=FzQg=bqgSb6ZMg@mail.gmail.com>
+Message-ID: <20220503221810.03430dd9@Tarkus>
+
+On Tue, 3 May 2022 12:10:17 -0700
+Henrik Bengtsson <henrik.bengtsson at gmail.com> wrote:
+
+> Maybe I spoke too soon; that doesn't look like a change in R code;
+> only in their regression tests. /Henrik
+
+Here's the earlier commit (r82283) where the HTML generation code was
+changed:
+https://github.com/r-devel/r-svn/commit/5b2011ddbd7f9bad82e374904c9e3da21e760a9f
+
+-- 
+Best regards,
+Ivan
+
+
+From pro|jcn@@h @end|ng |rom gm@||@com  Tue May  3 22:56:05 2022
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Tue, 3 May 2022 16:56:05 -0400
+Subject: [R-pkg-devel] HTML5 errors in win-builder R-release check
+In-Reply-To: <20220503221810.03430dd9@Tarkus>
+References: <03c3ef03-8262-d727-1bde-a9e204e92aa9@gmail.com>
+ <CAFDcVCSWMfWMxm7SHM8zaeANaB4jM4MYHfBiHZYk=KcVAkF_WA@mail.gmail.com>
+ <CAFDcVCQDZiiafhqBEjdeps-dvPDy4xSwRHc=FzQg=bqgSb6ZMg@mail.gmail.com>
+ <20220503221810.03430dd9@Tarkus>
+Message-ID: <6754a4f0-9824-4094-1548-22b1931936d7@gmail.com>
+
+Thanks to all for quick responses.
+
+While I'll check some of the links, esp. Brian Ripley's, it looks like
+it may be a good idea to take a few days off this task to let code settle
+down. Rhub couldn't find errors that win-builder complained of -- well, at
+least at the time instance I tried it!
+
+Best, JN
+
+
+On 2022-05-03 15:18, Ivan Krylov wrote:
+> On Tue, 3 May 2022 12:10:17 -0700
+> Henrik Bengtsson <henrik.bengtsson at gmail.com> wrote:
+> 
+>> Maybe I spoke too soon; that doesn't look like a change in R code;
+>> only in their regression tests. /Henrik
+> 
+> Here's the earlier commit (r82283) where the HTML generation code was
+> changed:
+> https://github.com/r-devel/r-svn/commit/5b2011ddbd7f9bad82e374904c9e3da21e760a9f
+>
+
+
