@@ -8398,3 +8398,380 @@ not more chatter about this? Maybe John and I are doing something unusual?
      Ben Bolker
 
 
+From Ben@Engber@ @end|ng |rom Be-Log|c@|@n|  Sat May  7 23:24:19 2022
+From: Ben@Engber@ @end|ng |rom Be-Log|c@|@n| (Ben Engbers)
+Date: Sat, 7 May 2022 23:24:19 +0200
+Subject: [R-pkg-devel] Searching examples in source code
+Message-ID: <a068ddb6-fee1-76ac-c180-c02f51effa7f@Be-Logical.nl>
+
+Hi,
+
+My package (RBaseX) is written entirely in R. The performance is not bad 
+but to further improve the performance I want to investigate to what 
+extent use of C++ makes sense. Problem is that I have little experience 
+with C++ and none with Rcpp. So I am looking for examples.
+On my (linux) system I installed several packages that needed to be 
+compiled. So it is likely that I already have examples on my system.
+
+My first question is if there is a useful linux command to search all 
+the source code of installed packages on my system.
+The second question is if there is a command to search all packages at 
+https://cran.r-project.org/web/packages/available_packages_by_name.html?
+
+This question is not only relevant to C++ examples. It would also be 
+nice if you could search for occurrences of commands in R code.
+
+Ben
+
+
+From bbo|ker @end|ng |rom gm@||@com  Sun May  8 00:43:54 2022
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Sat, 7 May 2022 18:43:54 -0400
+Subject: [R-pkg-devel] nit-picking about CRAN repository policy
+Message-ID: <1d04b066-4d72-16ae-6758-e8d5c81cb133@gmail.com>
+
+
+   Folks,
+
+   CRAN has recently set up an auxiliary 'noSuggests' test platform that 
+tests that packages are using suggested packages conditionally, as 
+recommended in Writing R Extensions, and as (sort of) specified in the 
+CRAN repository policy.
+
+   Specifically, the CRP (revision 5236) says:
+
+ > A package listed in ?Suggests? or ?Enhances? should be used 
+conditionally in examples or tests if it cannot straightforwardly be 
+installed on the major R platforms. (?Writing R Extensions? recommends 
+that they are always used conditionally.)
+
+   One of my packages failed on the 'noSuggest' test platform 
+<https://www.stats.ox.ac.uk/pub/bdr/noSuggests/bbmle.out> because two 
+suggested packages were used unconditionally in the vignette. There are 
+two reasons (IMO) that this should *not* have triggered a threat of 
+archiving:
+
+   (1) the unconditional package use was in a vignette, not in examples 
+or tests
+   (2) the relevant packages (AICcmodavg and MuMIn) are available on 
+CRAN and install easily on Linux/Windows/MacOS (they are R-only, no 
+compiled code or extra requirements, binaries are available on CRAN).
+
+    Is it worth suggesting to CRAN maintainers that either they refine 
+their 'noSuggests' test so that it conforms to the wording in the CRP, 
+or that they change the CRP wording to something stricter like
+
+ > Any package listed in ?Suggests? or ?Enhances? should be used 
+conditionally in examples, tests, and vignettes.
+
+  ?
+
+   cheers
+     Ben Bolker
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Sun May  8 00:47:36 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Sat, 07 May 2022 15:47:36 -0700
+Subject: [R-pkg-devel] Searching examples in source code
+In-Reply-To: <a068ddb6-fee1-76ac-c180-c02f51effa7f@Be-Logical.nl>
+References: <a068ddb6-fee1-76ac-c180-c02f51effa7f@Be-Logical.nl>
+Message-ID: <7A09F496-FA18-4303-BFAD-4DC20ACEC089@dcn.davis.ca.us>
+
+I use grep, the old "general regular expression parser" at the bash command-line. It is also useful in conjunction with the "find" and "xargs".
+
+You can also do these things with list.files and readLines and grep within R, but splatting it out onto a terminal screen with the "less" program is convenient.
+
+On May 7, 2022 2:24:19 PM PDT, Ben Engbers <Ben.Engbers at Be-Logical.nl> wrote:
+>Hi,
+>
+>My package (RBaseX) is written entirely in R. The performance is not bad but to further improve the performance I want to investigate to what extent use of C++ makes sense. Problem is that I have little experience with C++ and none with Rcpp. So I am looking for examples.
+>On my (linux) system I installed several packages that needed to be compiled. So it is likely that I already have examples on my system.
+>
+>My first question is if there is a useful linux command to search all the source code of installed packages on my system.
+>The second question is if there is a command to search all packages at https://cran.r-project.org/web/packages/available_packages_by_name.html?
+>
+>This question is not only relevant to C++ examples. It would also be nice if you could search for occurrences of commands in R code.
+>
+>Ben
+>
+>______________________________________________
+>R-package-devel at r-project.org mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From edd @end|ng |rom deb|@n@org  Sun May  8 00:54:44 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Sat, 7 May 2022 17:54:44 -0500
+Subject: [R-pkg-devel] nit-picking about CRAN repository policy
+In-Reply-To: <1d04b066-4d72-16ae-6758-e8d5c81cb133@gmail.com>
+References: <1d04b066-4d72-16ae-6758-e8d5c81cb133@gmail.com>
+Message-ID: <25206.63668.47319.880585@rob.eddelbuettel.com>
+
+
+While I of course do not speak for CRAN, allow me (given I've harped on this
+beat before [1]) to record a strong disagreement here: "unconditionally used"
+is simply not reflecting the conditional nature of a Suggests, nomatter where
+it happens in the package.  Vignettes are no different from examples.
+
+So I say thanks to CRAN for having gradually sharpened the language in the
+CRAN Repo Policu over the years and for now adding even more explicit tests.
+
+Dirk
+
+[1] One such post is "Suggests != Depends which is at
+https://dirk.eddelbuettel.com/blog/2017/03/22/#suggests_is_not_depends
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sun May  8 01:17:32 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 7 May 2022 19:17:32 -0400
+Subject: [R-pkg-devel] nit-picking about CRAN repository policy
+In-Reply-To: <1d04b066-4d72-16ae-6758-e8d5c81cb133@gmail.com>
+References: <1d04b066-4d72-16ae-6758-e8d5c81cb133@gmail.com>
+Message-ID: <50dbff31-6ef4-59c6-2c77-e26fe8c0095e@gmail.com>
+
+On 07/05/2022 6:43 p.m., Ben Bolker wrote:
+> 
+>     Folks,
+> 
+>     CRAN has recently set up an auxiliary 'noSuggests' test platform that
+> tests that packages are using suggested packages conditionally, as
+> recommended in Writing R Extensions, and as (sort of) specified in the
+> CRAN repository policy.
+> 
+>     Specifically, the CRP (revision 5236) says:
+> 
+>   > A package listed in ?Suggests? or ?Enhances? should be used
+> conditionally in examples or tests if it cannot straightforwardly be
+> installed on the major R platforms. (?Writing R Extensions? recommends
+> that they are always used conditionally.)
+> 
+>     One of my packages failed on the 'noSuggest' test platform
+> <https://www.stats.ox.ac.uk/pub/bdr/noSuggests/bbmle.out> because two
+> suggested packages were used unconditionally in the vignette. There are
+> two reasons (IMO) that this should *not* have triggered a threat of
+> archiving:
+> 
+>     (1) the unconditional package use was in a vignette, not in examples
+> or tests
+>     (2) the relevant packages (AICcmodavg and MuMIn) are available on
+> CRAN and install easily on Linux/Windows/MacOS (they are R-only, no
+> compiled code or extra requirements, binaries are available on CRAN).
+> 
+>      Is it worth suggesting to CRAN maintainers that either they refine
+> their 'noSuggests' test so that it conforms to the wording in the CRP,
+> or that they change the CRP wording to something stricter like
+> 
+>   > Any package listed in ?Suggests? or ?Enhances? should be used
+> conditionally in examples, tests, and vignettes.
+
+I wouldn't think it's worth the time, but you could submit a suggested 
+patch to them if you feel like it.
+
+Personally I'd take a more extreme position than theirs:  your package 
+should check without errors if any subset of the Suggests packages is 
+installed.  This isn't practical to test, but "all" and "none" is at 
+least something.
+
+With vignette formats based on knitr, it's very easy to implement this. 
+  Just add a code chunk at the beginning with code like this:
+
+   if (!requireNamespace("sug1") ||
+       !requireNamespace("sug2")) {
+     warning(call. = FALSE, "This vignette requires sug1 and sug2 to be 
+installed")
+     knitr::knit_exit()
+   }
+
+I don't know if other vignette engines make it so easy to bail out, but 
+they should.
+
+Duncan Murdoch
+
+
+From bbo|ker @end|ng |rom gm@||@com  Sun May  8 01:30:23 2022
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Sat, 7 May 2022 19:30:23 -0400
+Subject: [R-pkg-devel] nit-picking about CRAN repository policy
+In-Reply-To: <50dbff31-6ef4-59c6-2c77-e26fe8c0095e@gmail.com>
+References: <1d04b066-4d72-16ae-6758-e8d5c81cb133@gmail.com>
+ <50dbff31-6ef4-59c6-2c77-e26fe8c0095e@gmail.com>
+Message-ID: <9154338b-33eb-2c76-c907-65ba45dd8194@gmail.com>
+
+
+
+On 2022-05-07 7:17 p.m., Duncan Murdoch wrote:
+> On 07/05/2022 6:43 p.m., Ben Bolker wrote:
+>>
+>> ??? Folks,
+>>
+>> ??? CRAN has recently set up an auxiliary 'noSuggests' test platform that
+>> tests that packages are using suggested packages conditionally, as
+>> recommended in Writing R Extensions, and as (sort of) specified in the
+>> CRAN repository policy.
+>>
+>> ??? Specifically, the CRP (revision 5236) says:
+>>
+>> ? > A package listed in ?Suggests? or ?Enhances? should be used
+>> conditionally in examples or tests if it cannot straightforwardly be
+>> installed on the major R platforms. (?Writing R Extensions? recommends
+>> that they are always used conditionally.)
+>>
+>> ??? One of my packages failed on the 'noSuggest' test platform
+>> <https://www.stats.ox.ac.uk/pub/bdr/noSuggests/bbmle.out> because two
+>> suggested packages were used unconditionally in the vignette. There are
+>> two reasons (IMO) that this should *not* have triggered a threat of
+>> archiving:
+>>
+>> ??? (1) the unconditional package use was in a vignette, not in examples
+>> or tests
+>> ??? (2) the relevant packages (AICcmodavg and MuMIn) are available on
+>> CRAN and install easily on Linux/Windows/MacOS (they are R-only, no
+>> compiled code or extra requirements, binaries are available on CRAN).
+>>
+>> ???? Is it worth suggesting to CRAN maintainers that either they refine
+>> their 'noSuggests' test so that it conforms to the wording in the CRP,
+>> or that they change the CRP wording to something stricter like
+>>
+>> ? > Any package listed in ?Suggests? or ?Enhances? should be used
+>> conditionally in examples, tests, and vignettes.
+> 
+> I wouldn't think it's worth the time, but you could submit a suggested 
+> patch to them if you feel like it.
+> 
+> Personally I'd take a more extreme position than theirs:? your package 
+> should check without errors if any subset of the Suggests packages is 
+> installed.? This isn't practical to test, but "all" and "none" is at 
+> least something.
+> 
+> With vignette formats based on knitr, it's very easy to implement this. 
+>  ?Just add a code chunk at the beginning with code like this:
+> 
+>  ? if (!requireNamespace("sug1") ||
+>  ????? !requireNamespace("sug2")) {
+>  ??? warning(call. = FALSE, "This vignette requires sug1 and sug2 to be 
+> installed")
+>  ??? knitr::knit_exit()
+>  ? }
+> 
+> I don't know if other vignette engines make it so easy to bail out, but 
+> they should.
+> 
+> Duncan Murdoch
+
+
+   Thanks.
+
+   Fixing the problems isn't difficult or unreasonable (I will do it in 
+a more subtle way, running chunks of code conditionally). I'm just 
+feeling a little bit grumpy/defensive because:
+
+  * CRAN  asked me to submit a patched version before May 7
+  * I submitted a patched version to CRAN at 7:30 PM local time on May 6 
+(which is admittedly May 7 in UK/European time)
+* I woke up to an e-mail from CRAN to me and 50 downstream package 
+maintainers saying that my package was scheduled for archiving, and a 
+concerned message from a downstream package maintainer ...
+
+   cheers
+    Ben B.
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sun May  8 01:38:19 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 7 May 2022 19:38:19 -0400
+Subject: [R-pkg-devel] nit-picking about CRAN repository policy
+In-Reply-To: <9154338b-33eb-2c76-c907-65ba45dd8194@gmail.com>
+References: <1d04b066-4d72-16ae-6758-e8d5c81cb133@gmail.com>
+ <50dbff31-6ef4-59c6-2c77-e26fe8c0095e@gmail.com>
+ <9154338b-33eb-2c76-c907-65ba45dd8194@gmail.com>
+Message-ID: <5c30797e-8ee1-78f4-4d3c-8fedb54cb15a@gmail.com>
+
+On 07/05/2022 7:30 p.m., Ben Bolker wrote:
+> 
+> 
+> On 2022-05-07 7:17 p.m., Duncan Murdoch wrote:
+>> On 07/05/2022 6:43 p.m., Ben Bolker wrote:
+>>>
+>>>  ??? Folks,
+>>>
+>>>  ??? CRAN has recently set up an auxiliary 'noSuggests' test platform that
+>>> tests that packages are using suggested packages conditionally, as
+>>> recommended in Writing R Extensions, and as (sort of) specified in the
+>>> CRAN repository policy.
+>>>
+>>>  ??? Specifically, the CRP (revision 5236) says:
+>>>
+>>>  ? > A package listed in ?Suggests? or ?Enhances? should be used
+>>> conditionally in examples or tests if it cannot straightforwardly be
+>>> installed on the major R platforms. (?Writing R Extensions? recommends
+>>> that they are always used conditionally.)
+>>>
+>>>  ??? One of my packages failed on the 'noSuggest' test platform
+>>> <https://www.stats.ox.ac.uk/pub/bdr/noSuggests/bbmle.out> because two
+>>> suggested packages were used unconditionally in the vignette. There are
+>>> two reasons (IMO) that this should *not* have triggered a threat of
+>>> archiving:
+>>>
+>>>  ??? (1) the unconditional package use was in a vignette, not in examples
+>>> or tests
+>>>  ??? (2) the relevant packages (AICcmodavg and MuMIn) are available on
+>>> CRAN and install easily on Linux/Windows/MacOS (they are R-only, no
+>>> compiled code or extra requirements, binaries are available on CRAN).
+>>>
+>>>  ???? Is it worth suggesting to CRAN maintainers that either they refine
+>>> their 'noSuggests' test so that it conforms to the wording in the CRP,
+>>> or that they change the CRP wording to something stricter like
+>>>
+>>>  ? > Any package listed in ?Suggests? or ?Enhances? should be used
+>>> conditionally in examples, tests, and vignettes.
+>>
+>> I wouldn't think it's worth the time, but you could submit a suggested
+>> patch to them if you feel like it.
+>>
+>> Personally I'd take a more extreme position than theirs:? your package
+>> should check without errors if any subset of the Suggests packages is
+>> installed.? This isn't practical to test, but "all" and "none" is at
+>> least something.
+>>
+>> With vignette formats based on knitr, it's very easy to implement this.
+>>   ?Just add a code chunk at the beginning with code like this:
+>>
+>>   ? if (!requireNamespace("sug1") ||
+>>   ????? !requireNamespace("sug2")) {
+>>   ??? warning(call. = FALSE, "This vignette requires sug1 and sug2 to be
+>> installed")
+>>   ??? knitr::knit_exit()
+>>   ? }
+>>
+>> I don't know if other vignette engines make it so easy to bail out, but
+>> they should.
+>>
+>> Duncan Murdoch
+> 
+> 
+>     Thanks.
+> 
+>     Fixing the problems isn't difficult or unreasonable (I will do it in
+> a more subtle way, running chunks of code conditionally). I'm just
+> feeling a little bit grumpy/defensive because:
+> 
+>    * CRAN  asked me to submit a patched version before May 7
+>    * I submitted a patched version to CRAN at 7:30 PM local time on May 6
+> (which is admittedly May 7 in UK/European time)
+> * I woke up to an e-mail from CRAN to me and 50 downstream package
+> maintainers saying that my package was scheduled for archiving, and a
+> concerned message from a downstream package maintainer ...
+
+As far as I know, the folks at CRAN are *always* grumpy.
+
+Duncan
+
+
