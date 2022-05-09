@@ -8775,3 +8775,801 @@ As far as I know, the folks at CRAN are *always* grumpy.
 Duncan
 
 
+From murr@y@e||ord @end|ng |rom ot@go@@c@nz  Sun May  8 10:01:16 2022
+From: murr@y@e||ord @end|ng |rom ot@go@@c@nz (Murray Efford)
+Date: Sun, 8 May 2022 08:01:16 +0000
+Subject: [R-pkg-devel] DOI in Description (possibly) invalid
+Message-ID: <SY4PR01MB5658A1122354FF9D75FF594BACC79@SY4PR01MB5658.ausprd01.prod.outlook.com>
+
+A CRAN reviewer requested I add a reference to the Description field, suggesting the format <doi:...>. This results in checks reporting "Found the following (possibly) invalid DOIs:... Service unavailable". I can't see anything wrong with <doi:10.1111/j.0030-1299.2004.13043.x> (see also https://github.com/MurrayEfford/ipsecr).
+
+I dimly remember some recent discussion on this, but cannot now find it. Thanks for any help.
+
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sun May  8 13:29:28 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sun, 8 May 2022 14:29:28 +0300
+Subject: [R-pkg-devel] DOI in Description (possibly) invalid
+In-Reply-To: <SY4PR01MB5658A1122354FF9D75FF594BACC79@SY4PR01MB5658.ausprd01.prod.outlook.com>
+References: <SY4PR01MB5658A1122354FF9D75FF594BACC79@SY4PR01MB5658.ausprd01.prod.outlook.com>
+Message-ID: <20220508142928.2b4f103c@trisector>
+
+On Sun, 8 May 2022 08:01:16 +0000
+Murray Efford <murray.efford at otago.ac.nz> wrote:
+
+> This results in checks reporting "Found the following (possibly)
+> invalid DOIs:... Service unavailable".
+
+This happens because there's Cloudflare sitting between the world and
+Wiley Online Library, and Cloudflare replies with the HTTP error code
+503 to requests it doesn't like. When checking DOIs for validity, R CMD
+check doesn't bother pretending to be a human operating a browser (it's
+hard and keeps getting harder), so Cloudflare classifies this request
+as automated and possibly malicious and refuses to serve it. On the
+other hand, when you follow the link manually with a browser,
+Cloudflare knows you're a human because it's been keeping track of your
+browsing patterns across other websites under Cloudflare protection,
+and they match typical human behaviour, so you get the content.
+
+It's a known problem. For now, you just have to mention it in the
+submission comment.
+
+There has been a suggestion to change the DOI check so that it would
+stop after one request to the https://doi.org/ server (which doesn't
+discriminate against such automated requests for now) and doesn't try
+to follow the link returned by doi.org (which might). Perhaps it would
+get implemented when this problem gets worse.
+
+-- 
+Best regards,
+Ivan
+
+
+From |uc@r @end|ng |rom |edor@project@org  Sun May  8 17:55:32 2022
+From: |uc@r @end|ng |rom |edor@project@org (=?UTF-8?Q?I=C3=B1aki_Ucar?=)
+Date: Sun, 8 May 2022 17:55:32 +0200
+Subject: [R-pkg-devel] Searching examples in source code
+In-Reply-To: <a068ddb6-fee1-76ac-c180-c02f51effa7f@Be-Logical.nl>
+References: <a068ddb6-fee1-76ac-c180-c02f51effa7f@Be-Logical.nl>
+Message-ID: <CALEXWq0S=d3BXUAZCfcgbuh8SjCnyyk7QAzRuw0skGpKvbTCpQ@mail.gmail.com>
+
+On Sat, 7 May 2022 at 23:25, Ben Engbers <Ben.Engbers at be-logical.nl> wrote:
+>
+> Hi,
+>
+> My package (RBaseX) is written entirely in R. The performance is not bad
+> but to further improve the performance I want to investigate to what
+> extent use of C++ makes sense. Problem is that I have little experience
+> with C++ and none with Rcpp. So I am looking for examples.
+
+The Rcpp Gallery is a good place to start: https://gallery.rcpp.org/
+
+> On my (linux) system I installed several packages that needed to be
+> compiled. So it is likely that I already have examples on my system.
+>
+> My first question is if there is a useful linux command to search all
+> the source code of installed packages on my system.
+
+Not sure what you mean here. The source code is not copied along with
+your installed packages.
+
+> The second question is if there is a command to search all packages at
+> https://cran.r-project.org/web/packages/available_packages_by_name.html?
+>
+> This question is not only relevant to C++ examples. It would also be
+> nice if you could search for occurrences of commands in R code.
+
+There's a read-only mirror of CRAN on GitHub
+(https://github.com/cran). Going there and using the search form
+(i.e., specifying "org:cran <your_search_here>") is probably the best
+bet to find what you're looking for.
+
+I?aki
+
+>
+> Ben
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+
+-- 
+I?aki ?car
+
+
+From ben@engber@ @end|ng |rom gm@||@com  Sun May  8 21:02:18 2022
+From: ben@engber@ @end|ng |rom gm@||@com (Ben Engbers)
+Date: Sun, 8 May 2022 21:02:18 +0200
+Subject: [R-pkg-devel] Searching examples in source code
+In-Reply-To: <CALEXWq0S=d3BXUAZCfcgbuh8SjCnyyk7QAzRuw0skGpKvbTCpQ@mail.gmail.com>
+References: <a068ddb6-fee1-76ac-c180-c02f51effa7f@Be-Logical.nl>
+ <CALEXWq0S=d3BXUAZCfcgbuh8SjCnyyk7QAzRuw0skGpKvbTCpQ@mail.gmail.com>
+Message-ID: <91b5c0af-bb3b-f111-8979-731d45e2a54a@Be-Logical.nl>
+
+
+
+Op 08-05-2022 om 17:55 schreef I?aki Ucar:
+> On Sat, 7 May 2022 at 23:25, Ben Engbers <Ben.Engbers at be-logical.nl> wrote:
+>>
+>> Hi,
+
+>> My first question is if there is a useful linux command to search all
+>> the source code of installed packages on my system.
+> 
+> Not sure what you mean here. The source code is not copied along with
+> your installed packages.
+
+Uh? I didn't know that. How does the compile process work? Does this 
+mean that the (C or C++) sources only live in the repository and that 
+the compile command accesses those files?
+
+>> The second question is if there is a command to search all packages at
+>> https://cran.r-project.org/web/packages/available_packages_by_name.html?
+>>
+>> This question is not only relevant to C++ examples. It would also be
+>> nice if you could search for occurrences of commands in R code.
+> 
+> There's a read-only mirror of CRAN on GitHub
+> (https://github.com/cran). Going there and using the search form
+> (i.e., specifying "org:cran <your_search_here>") is probably the best
+> bet to find what you're looking for.
+
+If I go to that site and enter "org:cran asio" in  the search field, I 
+am directed to https://github.com/cran/AsioHeaders. That's not what I am 
+looking for; I am looking for C sources which make use of org:cran asio.
+
+A R-example would be that I was looking for packages which make use of 
+the "socketConnection" function. Entering socketConnection in the search 
+form results in "We couldn?t find any repositories matching 'org:cran 
+socketConnection'". This doesn't help me...
+
+Ben
+> 
+> I?aki
+
+From |uc@r @end|ng |rom |edor@project@org  Sun May  8 21:14:13 2022
+From: |uc@r @end|ng |rom |edor@project@org (=?UTF-8?Q?I=C3=B1aki_Ucar?=)
+Date: Sun, 8 May 2022 21:14:13 +0200
+Subject: [R-pkg-devel] Searching examples in source code
+In-Reply-To: <91b5c0af-bb3b-f111-8979-731d45e2a54a@Be-Logical.nl>
+References: <a068ddb6-fee1-76ac-c180-c02f51effa7f@Be-Logical.nl>
+ <CALEXWq0S=d3BXUAZCfcgbuh8SjCnyyk7QAzRuw0skGpKvbTCpQ@mail.gmail.com>
+ <91b5c0af-bb3b-f111-8979-731d45e2a54a@Be-Logical.nl>
+Message-ID: <CALEXWq3rwSzmkghfjuzciu4bwmch3Pg8W8RwNGjTAg1iO_pn0A@mail.gmail.com>
+
+El dom., 8 may. 2022 21:03, Ben Engbers <ben.engbers at gmail.com> escribi?:
+
+>
+>
+> Op 08-05-2022 om 17:55 schreef I?aki Ucar:
+> > On Sat, 7 May 2022 at 23:25, Ben Engbers <Ben.Engbers at be-logical.nl>
+> wrote:
+> >>
+> >> Hi,
+>
+> >> My first question is if there is a useful linux command to search all
+> >> the source code of installed packages on my system.
+> >
+> > Not sure what you mean here. The source code is not copied along with
+> > your installed packages.
+>
+> Uh? I didn't know that. How does the compile process work? Does this
+> mean that the (C or C++) sources only live in the repository and that
+> the compile command accesses those files?
+>
+
+The installer downloads the source code, compiles it, and installs the
+resulting binary. The source code is not needed anymore.
+
+
+> >> The second question is if there is a command to search all packages at
+> >> https://cran.r-project.org/web/packages/available_packages_by_name.html
+> ?
+> >>
+> >> This question is not only relevant to C++ examples. It would also be
+> >> nice if you could search for occurrences of commands in R code.
+> >
+> > There's a read-only mirror of CRAN on GitHub
+> > (https://github.com/cran). Going there and using the search form
+> > (i.e., specifying "org:cran <your_search_here>") is probably the best
+> > bet to find what you're looking for.
+>
+> If I go to that site and enter "org:cran asio" in  the search field, I
+> am directed to https://github.com/cran/AsioHeaders. That's not what I am
+> looking for; I am looking for C sources which make use of org:cran asio.
+>
+> A R-example would be that I was looking for packages which make use of
+> the "socketConnection" function. Entering socketConnection in the search
+> form results in "We couldn?t find any repositories matching 'org:cran
+> socketConnection'". This doesn't help me...
+>
+
+Left menu, after you search for something. You have "code" there.
+
+I?aki
+
+
+
+> Ben
+> >
+> > I?aki
+>
+
+	[[alternative HTML version deleted]]
+
+
+From jo@h@m@u|r|ch @end|ng |rom gm@||@com  Sun May  8 21:15:57 2022
+From: jo@h@m@u|r|ch @end|ng |rom gm@||@com (Joshua Ulrich)
+Date: Sun, 8 May 2022 14:15:57 -0500
+Subject: [R-pkg-devel] Searching examples in source code
+In-Reply-To: <a068ddb6-fee1-76ac-c180-c02f51effa7f@Be-Logical.nl>
+References: <a068ddb6-fee1-76ac-c180-c02f51effa7f@Be-Logical.nl>
+Message-ID: <CAPPM_gTQYDofak+exPuVa-MK2xmy+6cPfv3re+Qoa_jgChPG+g@mail.gmail.com>
+
+Hi Ben,
+
+On Sat, May 7, 2022 at 4:24 PM Ben Engbers <Ben.Engbers at be-logical.nl> wrote:
+>
+> Hi,
+>
+> My package (RBaseX) is written entirely in R. The performance is not bad
+> but to further improve the performance I want to investigate to what
+> extent use of C++ makes sense. Problem is that I have little experience
+> with C++ and none with Rcpp. So I am looking for examples.
+> On my (linux) system I installed several packages that needed to be
+> compiled. So it is likely that I already have examples on my system.
+>
+I strongly recommend you profile your code to determine where there
+are performance bottlenecks before writing any new code. Especially
+before adding compiled code to your package.
+
+The infamous Knuth quote:
+"We should forget about small efficiencies, say about 97% of the time:
+premature optimization is the root of all evil. Yet we should not pass
+up our opportunities in that critical 3%. A good programmer will not
+be lulled into complacency by such reasoning, he will be wise to look
+carefully at the critical code; but only after that code has been
+identified."
+
+Best,
+Josh
+
+> My first question is if there is a useful linux command to search all
+> the source code of installed packages on my system.
+> The second question is if there is a command to search all packages at
+> https://cran.r-project.org/web/packages/available_packages_by_name.html?
+>
+> This question is not only relevant to C++ examples. It would also be
+> nice if you could search for occurrences of commands in R code.
+>
+> Ben
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+
+-- 
+Joshua Ulrich  |  about.me/joshuaulrich
+FOSS Trading  |  www.fosstrading.com
+
+
+From bbo|ker @end|ng |rom gm@||@com  Sun May  8 21:21:05 2022
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Sun, 8 May 2022 15:21:05 -0400
+Subject: [R-pkg-devel] Searching examples in source code
+In-Reply-To: <91b5c0af-bb3b-f111-8979-731d45e2a54a@Be-Logical.nl>
+References: <a068ddb6-fee1-76ac-c180-c02f51effa7f@Be-Logical.nl>
+ <CALEXWq0S=d3BXUAZCfcgbuh8SjCnyyk7QAzRuw0skGpKvbTCpQ@mail.gmail.com>
+ <91b5c0af-bb3b-f111-8979-731d45e2a54a@Be-Logical.nl>
+Message-ID: <334b0a13-b476-c72a-fc76-ff315b4a9faf@gmail.com>
+
+   Whenever you install a package from source you'll see a line at the 
+end of the output something like
+
+ > The downloaded source packages are in
+	?/tmp/Rtmp6ZRMH0/downloaded_packages?
+
+
+That is, the source tarball is downloaded to a *temporary file* (on most 
+Linux systems, the /tmp directory is cleared when rebooting).
+
+   You could do something like this (untested!)
+
+i1 <- installed.packages()
+for (i in seq(nrow(i1)) {
+   m <- i1[i,]
+ 
+download.file(sprintf("https://cran.r-project.org/src/contrib/"%s%s.tar.gz", 
+m$Package, m$Version), dest = "tmp.tgz")
+   system("tar zxvf tmp.tgz")
+}
+
+and then
+
+find . -name "*.c*" -exec grep -iH foo {} \;
+
+or
+
+find . -name "*.R" -exec grep -iH foo {} \;
+
+  would work.
+
+
+On 2022-05-08 3:02 p.m., Ben Engbers wrote:
+> 
+> 
+> Op 08-05-2022 om 17:55 schreef I?aki Ucar:
+>> On Sat, 7 May 2022 at 23:25, Ben Engbers <Ben.Engbers at be-logical.nl> 
+>> wrote:
+>>>
+>>> Hi,
+> 
+>>> My first question is if there is a useful linux command to search all
+>>> the source code of installed packages on my system.
+>>
+>> Not sure what you mean here. The source code is not copied along with
+>> your installed packages.
+> 
+> Uh? I didn't know that. How does the compile process work? Does this 
+> mean that the (C or C++) sources only live in the repository and that 
+> the compile command accesses those files?
+> 
+>>> The second question is if there is a command to search all packages at
+>>> https://cran.r-project.org/web/packages/available_packages_by_name.html?
+>>>
+>>> This question is not only relevant to C++ examples. It would also be
+>>> nice if you could search for occurrences of commands in R code.
+>>
+>> There's a read-only mirror of CRAN on GitHub
+>> (https://github.com/cran). Going there and using the search form
+>> (i.e., specifying "org:cran <your_search_here>") is probably the best
+>> bet to find what you're looking for.
+> 
+> If I go to that site and enter "org:cran asio" in? the search field, I 
+> am directed to https://github.com/cran/AsioHeaders. That's not what I am 
+> looking for; I am looking for C sources which make use of org:cran asio.
+> 
+> A R-example would be that I was looking for packages which make use of 
+> the "socketConnection" function. Entering socketConnection in the search 
+> form results in "We couldn?t find any repositories matching 'org:cran 
+> socketConnection'". This doesn't help me...
+> 
+> Ben
+>>
+>> I?aki
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+(Acting) Graduate chair, Mathematics & Statistics
+
+
+From murr@y@e||ord @end|ng |rom ot@go@@c@nz  Sun May  8 21:27:19 2022
+From: murr@y@e||ord @end|ng |rom ot@go@@c@nz (Murray Efford)
+Date: Sun, 8 May 2022 19:27:19 +0000
+Subject: [R-pkg-devel] DOI in Description (possibly) invalid
+In-Reply-To: <20220508142928.2b4f103c@trisector>
+References: <SY4PR01MB5658A1122354FF9D75FF594BACC79@SY4PR01MB5658.ausprd01.prod.outlook.com>
+ <20220508142928.2b4f103c@trisector>
+Message-ID: <SY4PR01MB5658E91890AFC2D18895EE60ACC79@SY4PR01MB5658.ausprd01.prod.outlook.com>
+
+Ivan
+Thanks for your detailed explanation that I'm sure will be useful to others as well. We can hope unnecessary obstacles like this become rarer; the reverse seems true.
+Murray
+
+________________________________________
+From: Ivan Krylov <krylov.r00t at gmail.com>
+Sent: 08 May 2022 23:29
+To: Murray Efford
+Cc: R-package-devel at r-project.org
+Subject: Re: [R-pkg-devel] DOI in Description (possibly) invalid
+
+On Sun, 8 May 2022 08:01:16 +0000
+Murray Efford <murray.efford at otago.ac.nz> wrote:
+
+> This results in checks reporting "Found the following (possibly)
+> invalid DOIs:... Service unavailable".
+
+This happens because there's Cloudflare sitting between the world and
+Wiley Online Library, and Cloudflare replies with the HTTP error code
+503 to requests it doesn't like. When checking DOIs for validity, R CMD
+check doesn't bother pretending to be a human operating a browser (it's
+hard and keeps getting harder), so Cloudflare classifies this request
+as automated and possibly malicious and refuses to serve it. On the
+other hand, when you follow the link manually with a browser,
+Cloudflare knows you're a human because it's been keeping track of your
+browsing patterns across other websites under Cloudflare protection,
+and they match typical human behaviour, so you get the content.
+
+It's a known problem. For now, you just have to mention it in the
+submission comment.
+
+There has been a suggestion to change the DOI check so that it would
+stop after one request to the https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fdoi.org%2F&amp;data=05%7C01%7Cmurray.efford%40otago.ac.nz%7C1e9f974f75ef4c6c952908da30e60702%7C0225efc578fe4928b1579ef24809e9ba%7C0%7C0%7C637876061769983877%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=2Y3FHbOqe0Hdz620FcT3oXmg5zBHHf7fZxJLgyu3XjE%3D&amp;reserved=0 server (which doesn't
+discriminate against such automated requests for now) and doesn't try
+to follow the link returned by doi.org (which might). Perhaps it would
+get implemented when this problem gets worse.
+
+--
+Best regards,
+Ivan
+
+
+From bbo|ker @end|ng |rom gm@||@com  Sun May  8 21:43:39 2022
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Sun, 8 May 2022 15:43:39 -0400
+Subject: [R-pkg-devel] DOI in Description (possibly) invalid
+In-Reply-To: <20220508142928.2b4f103c@trisector>
+References: <SY4PR01MB5658A1122354FF9D75FF594BACC79@SY4PR01MB5658.ausprd01.prod.outlook.com>
+ <20220508142928.2b4f103c@trisector>
+Message-ID: <b2bfdc52-74bb-1211-b2fe-ec9dee22f7e3@gmail.com>
+
+   I wonder if it would be possible for CRAN to use a DNS caching proxy 
+(something like Squid) for DOI requests? It seems like that solve most 
+of the problems (requests would only happen when a brand-new DOI was 
+encountered, most requests would be for DOIs that had been looked up 
+previously ...)
+
+On 2022-05-08 7:29 a.m., Ivan Krylov wrote:
+> On Sun, 8 May 2022 08:01:16 +0000
+> Murray Efford <murray.efford at otago.ac.nz> wrote:
+> 
+>> This results in checks reporting "Found the following (possibly)
+>> invalid DOIs:... Service unavailable".
+> 
+> This happens because there's Cloudflare sitting between the world and
+> Wiley Online Library, and Cloudflare replies with the HTTP error code
+> 503 to requests it doesn't like. When checking DOIs for validity, R CMD
+> check doesn't bother pretending to be a human operating a browser (it's
+> hard and keeps getting harder), so Cloudflare classifies this request
+> as automated and possibly malicious and refuses to serve it. On the
+> other hand, when you follow the link manually with a browser,
+> Cloudflare knows you're a human because it's been keeping track of your
+> browsing patterns across other websites under Cloudflare protection,
+> and they match typical human behaviour, so you get the content.
+> 
+> It's a known problem. For now, you just have to mention it in the
+> submission comment.
+> 
+> There has been a suggestion to change the DOI check so that it would
+> stop after one request to the https://doi.org/ server (which doesn't
+> discriminate against such automated requests for now) and doesn't try
+> to follow the link returned by doi.org (which might). Perhaps it would
+> get implemented when this problem gets worse.
+> 
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+(Acting) Graduate chair, Mathematics & Statistics
+
+
+From ben@engber@ @end|ng |rom gm@||@com  Sun May  8 21:52:41 2022
+From: ben@engber@ @end|ng |rom gm@||@com (Ben Engbers)
+Date: Sun, 8 May 2022 21:52:41 +0200
+Subject: [R-pkg-devel] Searching examples in source code
+In-Reply-To: <CAPPM_gTQYDofak+exPuVa-MK2xmy+6cPfv3re+Qoa_jgChPG+g@mail.gmail.com>
+References: <a068ddb6-fee1-76ac-c180-c02f51effa7f@Be-Logical.nl>
+ <CAPPM_gTQYDofak+exPuVa-MK2xmy+6cPfv3re+Qoa_jgChPG+g@mail.gmail.com>
+Message-ID: <9f7ca0f6-4c76-94f5-9753-85709037aea2@Be-Logical.nl>
+
+
+
+Op 08-05-2022 om 21:15 schreef Joshua Ulrich:
+> Hi Ben,
+> 
+> On Sat, May 7, 2022 at 4:24 PM Ben Engbers <Ben.Engbers at be-logical.nl> wrote:
+>>
+>> Hi,
+>>
+
+> I strongly recommend you profile your code to determine where there
+> are performance bottlenecks before writing any new code. Especially
+> before adding compiled code to your package.
+> 
+> The infamous Knuth quote:
+> "We should forget about small efficiencies, say about 97% of the time:
+> premature optimization is the root of all evil. Yet we should not pass
+> up our opportunities in that critical 3%. A good programmer will not
+> be lulled into complacency by such reasoning, he will be wise to look
+> carefully at the critical code; but only after that code has been
+> identified."
+
+This reminds me of Occams's razor ;-) If you have the choice between 
+good working simple code or more complex code which might perform 
+slightly better, the simple code is to be preferred.
+
+I don't remember if it was because the package is based on R6 object 
+orientation or if it was because the client is based on a client-server 
+architecture. I do know that profiling did not add much information.
+
+And a quick search for "R R6 profiling" shows that R6 applications 
+cannot yet be examined using a profiler ;-(.
+
+Ben
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sun May  8 22:29:10 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sun, 8 May 2022 16:29:10 -0400
+Subject: [R-pkg-devel] Searching examples in source code
+In-Reply-To: <9f7ca0f6-4c76-94f5-9753-85709037aea2@Be-Logical.nl>
+References: <a068ddb6-fee1-76ac-c180-c02f51effa7f@Be-Logical.nl>
+ <CAPPM_gTQYDofak+exPuVa-MK2xmy+6cPfv3re+Qoa_jgChPG+g@mail.gmail.com>
+ <9f7ca0f6-4c76-94f5-9753-85709037aea2@Be-Logical.nl>
+Message-ID: <ece592ab-105a-49d7-80b0-076226f20057@gmail.com>
+
+On 08/05/2022 3:52 p.m., Ben Engbers wrote:
+> 
+> 
+> Op 08-05-2022 om 21:15 schreef Joshua Ulrich:
+>> Hi Ben,
+>>
+>> On Sat, May 7, 2022 at 4:24 PM Ben Engbers <Ben.Engbers at be-logical.nl> wrote:
+>>>
+>>> Hi,
+>>>
+> 
+>> I strongly recommend you profile your code to determine where there
+>> are performance bottlenecks before writing any new code. Especially
+>> before adding compiled code to your package.
+>>
+>> The infamous Knuth quote:
+>> "We should forget about small efficiencies, say about 97% of the time:
+>> premature optimization is the root of all evil. Yet we should not pass
+>> up our opportunities in that critical 3%. A good programmer will not
+>> be lulled into complacency by such reasoning, he will be wise to look
+>> carefully at the critical code; but only after that code has been
+>> identified."
+> 
+> This reminds me of Occams's razor ;-) If you have the choice between
+> good working simple code or more complex code which might perform
+> slightly better, the simple code is to be preferred.
+> 
+> I don't remember if it was because the package is based on R6 object
+> orientation or if it was because the client is based on a client-server
+> architecture. I do know that profiling did not add much information.
+> 
+> And a quick search for "R R6 profiling" shows that R6 applications
+> cannot yet be examined using a profiler ;-(.
+
+I think that isn't completely true.  One link I read said that by 
+default the profiler code doesn't know function names, but it should 
+still know line numbers if you kept them in your source and set 
+`line.profiling` to TRUE when you run Rprof().  Setting that to TRUE 
+makes the profiling output contain much more information.
+
+I don't have a good example to demonstrate this, and I don't know if 
+RStudio's post-processing of profiler output knows how to interpret this 
+extra information, but the base summaryRprof() will show it if you ask 
+for it, and a bad example I ran that isn't easily sharable shows that it 
+does display line numbers in R6 source.
+
+
+Duncan Murdoch
+
+
+From ben@engber@ @end|ng |rom gm@||@com  Sun May  8 23:27:38 2022
+From: ben@engber@ @end|ng |rom gm@||@com (Ben Engbers)
+Date: Sun, 8 May 2022 23:27:38 +0200
+Subject: [R-pkg-devel] Searching examples in source code
+In-Reply-To: <ece592ab-105a-49d7-80b0-076226f20057@gmail.com>
+References: <a068ddb6-fee1-76ac-c180-c02f51effa7f@Be-Logical.nl>
+ <CAPPM_gTQYDofak+exPuVa-MK2xmy+6cPfv3re+Qoa_jgChPG+g@mail.gmail.com>
+ <9f7ca0f6-4c76-94f5-9753-85709037aea2@Be-Logical.nl>
+ <ece592ab-105a-49d7-80b0-076226f20057@gmail.com>
+Message-ID: <27226416-f986-7854-031a-c5c8fd6b7f4d@Be-Logical.nl>
+
+
+
+Op 08-05-2022 om 22:29 schreef Duncan Murdoch:
+> On 08/05/2022 3:52 p.m., Ben Engbers wrote:
+>>
+>>
+>> Op 08-05-2022 om 21:15 schreef Joshua Ulrich:
+>>> Hi Ben,
+>>>
+>>> On Sat, May 7, 2022 at 4:24 PM Ben Engbers 
+>>> <Ben.Engbers at be-logical.nl> wrote:
+>>>>
+>>>> Hi,
+>>>>
+
+>> I don't remember if it was because the package is based on R6 object
+>> orientation or if it was because the client is based on a client-server
+>> architecture. I do know that profiling did not add much information.
+>>
+>> And a quick search for "R R6 profiling" shows that R6 applications
+>> cannot yet be examined using a profiler ;-(.
+> 
+> I think that isn't completely true.? One link I read said that by 
+> default the profiler code doesn't know function names, but it should 
+> still know line numbers if you kept them in your source and set 
+> `line.profiling` to TRUE when you run Rprof().? Setting that to TRUE 
+> makes the profiling output contain much more information.
+> 
+> I don't have a good example to demonstrate this, and I don't know if 
+> RStudio's post-processing of profiler output knows how to interpret this 
+> extra information, but the base summaryRprof() will show it if you ask 
+> for it, and a bad example I ran that isn't easily sharable shows that it 
+> does display line numbers in R6 source.
+
+It will take a few days but I'll check in how far this is usefull.
+
+Ben
+
+From greg @end|ng |rom ||rm@n@y@h@com  Sun May  8 23:31:11 2022
+From: greg @end|ng |rom ||rm@n@y@h@com (Greg Hunt)
+Date: Mon, 9 May 2022 07:31:11 +1000
+Subject: [R-pkg-devel] Searching examples in source code
+In-Reply-To: <CAPPM_gTQYDofak+exPuVa-MK2xmy+6cPfv3re+Qoa_jgChPG+g@mail.gmail.com>
+References: <a068ddb6-fee1-76ac-c180-c02f51effa7f@Be-Logical.nl>
+ <CAPPM_gTQYDofak+exPuVa-MK2xmy+6cPfv3re+Qoa_jgChPG+g@mail.gmail.com>
+Message-ID: <CAAS8PAJEoY0P=L2u0qsoFpQGoxZzNdMf_xJ_ewQOQ07oiSDstQ@mail.gmail.com>
+
+Indeed, and since this is a database client, the question is not just the
+elapsed time of the client code, but the optimisation opportunities need to
+be viewed as a proportion of the overall request time: client time, network
+time, typical and minimum database server time.
+
+On Mon, 9 May 2022 at 05:24, Joshua Ulrich <josh.m.ulrich at gmail.com> wrote:
+
+> Hi Ben,
+>
+> On Sat, May 7, 2022 at 4:24 PM Ben Engbers <Ben.Engbers at be-logical.nl>
+> wrote:
+> >
+> > Hi,
+> >
+> > My package (RBaseX) is written entirely in R. The performance is not bad
+> > but to further improve the performance I want to investigate to what
+> > extent use of C++ makes sense. Problem is that I have little experience
+> > with C++ and none with Rcpp. So I am looking for examples.
+> > On my (linux) system I installed several packages that needed to be
+> > compiled. So it is likely that I already have examples on my system.
+> >
+> I strongly recommend you profile your code to determine where there
+> are performance bottlenecks before writing any new code. Especially
+> before adding compiled code to your package.
+>
+> The infamous Knuth quote:
+> "We should forget about small efficiencies, say about 97% of the time:
+> premature optimization is the root of all evil. Yet we should not pass
+> up our opportunities in that critical 3%. A good programmer will not
+> be lulled into complacency by such reasoning, he will be wise to look
+> carefully at the critical code; but only after that code has been
+> identified."
+>
+> Best,
+> Josh
+>
+> > My first question is if there is a useful linux command to search all
+> > the source code of installed packages on my system.
+> > The second question is if there is a command to search all packages at
+> > https://cran.r-project.org/web/packages/available_packages_by_name.html?
+> >
+> > This question is not only relevant to C++ examples. It would also be
+> > nice if you could search for occurrences of commands in R code.
+> >
+> > Ben
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+>
+>
+> --
+> Joshua Ulrich  |  about.me/joshuaulrich
+> FOSS Trading  |  www.fosstrading.com
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Mon May  9 00:13:11 2022
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Mon, 9 May 2022 10:13:11 +1200
+Subject: [R-pkg-devel] nit-picking about CRAN repository policy
+In-Reply-To: <1d04b066-4d72-16ae-6758-e8d5c81cb133@gmail.com>
+References: <1d04b066-4d72-16ae-6758-e8d5c81cb133@gmail.com>
+Message-ID: <C8334AC3-CD92-42EC-805A-FD84A6B50908@R-project.org>
+
+Ben,
+
+I fully agree with Dirk - it would be good to make the CRP more clear.
+
+The main problem with failing to the check conditional dependencies is in cases where there are circular dependencies: package A suggests B, and package B requires A. The correct resolution is to check A without B, then check B with A and then check A with B (that's what the macOS CRAN build system is doing). If A fails to check without B, the whole chain is doomed and none of the package will be available.
+
+So at the very least the examples and tests should be clearly conditional. Currently, the vignettes also required since there is no specific check with --no-build-vignettes.
+
+As for your package, the fact that it worked so far is due to the incremental nature of the builds: if your dependency is not circular then the build system will schedule dependencies for check before your package which is possible in that case, so the package is actually never checked without the suggests. In the macOS case we have no choice, because there are so many packages to build that checking every suggests-dependency twice would take too long. So from practical point of view, the suggests-must-be-conditional rule has been checked only for packages with circular dependencies since that is where it matters the most. However, the circular nature is not a function of the package itself, so it could make sense to make it global, since you don't know if the package you suggest may ever depend on your package and suddenly break your package that way. This is just my pragmatic view, I don't know any specific details on the noSuggests checks per se.
+
+Cheers,
+Simon
+
+
+
+> On 8/05/2022, at 10:43 AM, Ben Bolker <bbolker at gmail.com> wrote:
+> 
+> 
+>  Folks,
+> 
+>  CRAN has recently set up an auxiliary 'noSuggests' test platform that tests that packages are using suggested packages conditionally, as recommended in Writing R Extensions, and as (sort of) specified in the CRAN repository policy.
+> 
+>  Specifically, the CRP (revision 5236) says:
+> 
+> > A package listed in ?Suggests? or ?Enhances? should be used conditionally in examples or tests if it cannot straightforwardly be installed on the major R platforms. (?Writing R Extensions? recommends that they are always used conditionally.)
+> 
+>  One of my packages failed on the 'noSuggest' test platform <https://www.stats.ox.ac.uk/pub/bdr/noSuggests/bbmle.out> because two suggested packages were used unconditionally in the vignette. There are two reasons (IMO) that this should *not* have triggered a threat of archiving:
+> 
+>  (1) the unconditional package use was in a vignette, not in examples or tests
+>  (2) the relevant packages (AICcmodavg and MuMIn) are available on CRAN and install easily on Linux/Windows/MacOS (they are R-only, no compiled code or extra requirements, binaries are available on CRAN).
+> 
+>   Is it worth suggesting to CRAN maintainers that either they refine their 'noSuggests' test so that it conforms to the wording in the CRP, or that they change the CRP wording to something stricter like
+> 
+> > Any package listed in ?Suggests? or ?Enhances? should be used conditionally in examples, tests, and vignettes.
+> 
+> ?
+> 
+>  cheers
+>    Ben Bolker
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From bbo|ker @end|ng |rom gm@||@com  Mon May  9 00:39:58 2022
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Sun, 8 May 2022 18:39:58 -0400
+Subject: [R-pkg-devel] nit-picking about CRAN repository policy
+In-Reply-To: <25206.63668.47319.880585@rob.eddelbuettel.com>
+References: <1d04b066-4d72-16ae-6758-e8d5c81cb133@gmail.com>
+ <25206.63668.47319.880585@rob.eddelbuettel.com>
+Message-ID: <360b3e67-172d-c069-171e-344f8d294fe7@gmail.com>
+
+
+
+On 2022-05-07 6:54 p.m., Dirk Eddelbuettel wrote:
+> 
+> While I of course do not speak for CRAN, allow me (given I've harped on this
+> beat before [1]) to record a strong disagreement here: "unconditionally used"
+> is simply not reflecting the conditional nature of a Suggests, nomatter where
+> it happens in the package.  Vignettes are no different from examples.
+> 
+> So I say thanks to CRAN for having gradually sharpened the language in the
+> CRAN Repo Policu over the years and for now adding even more explicit tests.
+> 
+> Dirk
+> 
+> [1] One such post is "Suggests != Depends which is at
+> https://dirk.eddelbuettel.com/blog/2017/03/22/#suggests_is_not_depends
+> 
+
+   Dirk and Simon: to be clear, I'm not objecting to the new tests, just 
+to the fact that they don't match the published repository policy.
+
+(and conditioned on a mildly annoying CRAN interaction as described 
+elsewhere in the thread 
+<https://stat.ethz.ch/pipermail/r-package-devel/2022q2/008040.html>).
+
+   cheers
+    Ben
+
+
