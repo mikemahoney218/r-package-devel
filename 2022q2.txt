@@ -9573,3 +9573,469 @@ elsewhere in the thread
     Ben
 
 
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Mon May  9 08:54:25 2022
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Mon, 9 May 2022 08:54:25 +0200
+Subject: [R-pkg-devel] Searching examples in source code
+In-Reply-To: <334b0a13-b476-c72a-fc76-ff315b4a9faf@gmail.com>
+References: <a068ddb6-fee1-76ac-c180-c02f51effa7f@Be-Logical.nl>
+ <CALEXWq0S=d3BXUAZCfcgbuh8SjCnyyk7QAzRuw0skGpKvbTCpQ@mail.gmail.com>
+ <91b5c0af-bb3b-f111-8979-731d45e2a54a@Be-Logical.nl>
+ <334b0a13-b476-c72a-fc76-ff315b4a9faf@gmail.com>
+Message-ID: <f0085c07-e6c3-702c-5247-f658dc3bbbf9@statistik.tu-dortmund.de>
+
+... or simply download.packages("pkg", type="source")
+
+Best,
+Uwe Ligges
+
+On 08.05.2022 21:21, Ben Bolker wrote:
+>  ? Whenever you install a package from source you'll see a line at the 
+> end of the output something like
+> 
+>  > The downloaded source packages are in
+>  ?????/tmp/Rtmp6ZRMH0/downloaded_packages?
+> 
+> 
+> That is, the source tarball is downloaded to a *temporary file* (on most 
+> Linux systems, the /tmp directory is cleared when rebooting).
+> 
+>  ? You could do something like this (untested!)
+> 
+> i1 <- installed.packages()
+> for (i in seq(nrow(i1)) {
+>  ? m <- i1[i,]
+> 
+> download.file(sprintf("https://cran.r-project.org/src/contrib/"%s%s.tar.gz", 
+> m$Package, m$Version), dest = "tmp.tgz")
+>  ? system("tar zxvf tmp.tgz")
+> }
+> 
+> and then
+> 
+> find . -name "*.c*" -exec grep -iH foo {} \;
+> 
+> or
+> 
+> find . -name "*.R" -exec grep -iH foo {} \;
+> 
+>  ?would work.
+> 
+> 
+> On 2022-05-08 3:02 p.m., Ben Engbers wrote:
+>>
+>>
+>> Op 08-05-2022 om 17:55 schreef I?aki Ucar:
+>>> On Sat, 7 May 2022 at 23:25, Ben Engbers <Ben.Engbers at be-logical.nl> 
+>>> wrote:
+>>>>
+>>>> Hi,
+>>
+>>>> My first question is if there is a useful linux command to search all
+>>>> the source code of installed packages on my system.
+>>>
+>>> Not sure what you mean here. The source code is not copied along with
+>>> your installed packages.
+>>
+>> Uh? I didn't know that. How does the compile process work? Does this 
+>> mean that the (C or C++) sources only live in the repository and that 
+>> the compile command accesses those files?
+>>
+>>>> The second question is if there is a command to search all packages at
+>>>> https://cran.r-project.org/web/packages/available_packages_by_name.html? 
+>>>>
+>>>>
+>>>> This question is not only relevant to C++ examples. It would also be
+>>>> nice if you could search for occurrences of commands in R code.
+>>>
+>>> There's a read-only mirror of CRAN on GitHub
+>>> (https://github.com/cran). Going there and using the search form
+>>> (i.e., specifying "org:cran <your_search_here>") is probably the best
+>>> bet to find what you're looking for.
+>>
+>> If I go to that site and enter "org:cran asio" in? the search field, I 
+>> am directed to https://github.com/cran/AsioHeaders. That's not what I 
+>> am looking for; I am looking for C sources which make use of org:cran 
+>> asio.
+>>
+>> A R-example would be that I was looking for packages which make use of 
+>> the "socketConnection" function. Entering socketConnection in the 
+>> search form results in "We couldn?t find any repositories matching 
+>> 'org:cran socketConnection'". This doesn't help me...
+>>
+>> Ben
+>>>
+>>> I?aki
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+From ben@engber@ @end|ng |rom gm@||@com  Mon May  9 10:17:08 2022
+From: ben@engber@ @end|ng |rom gm@||@com (Ben Engbers)
+Date: Mon, 9 May 2022 10:17:08 +0200
+Subject: [R-pkg-devel] Searching examples in source code
+In-Reply-To: <f0085c07-e6c3-702c-5247-f658dc3bbbf9@statistik.tu-dortmund.de>
+References: <a068ddb6-fee1-76ac-c180-c02f51effa7f@Be-Logical.nl>
+ <CALEXWq0S=d3BXUAZCfcgbuh8SjCnyyk7QAzRuw0skGpKvbTCpQ@mail.gmail.com>
+ <91b5c0af-bb3b-f111-8979-731d45e2a54a@Be-Logical.nl>
+ <334b0a13-b476-c72a-fc76-ff315b4a9faf@gmail.com>
+ <f0085c07-e6c3-702c-5247-f658dc3bbbf9@statistik.tu-dortmund.de>
+Message-ID: <cef70ec9-868f-25e1-79dc-f327fdcd4367@Be-Logical.nl>
+
+
+
+Op 09-05-2022 om 08:54 schreef Uwe Ligges:
+> ... or simply download.packages("pkg", type="source")
+> 
+> Best,
+> Uwe Ligges
+
+I have done that with some packages. But there is still the problem that 
+I don't know in which packages the functionality I am looking for is 
+used. And manually selecting candidates takes a lot of time...
+
+Since my package is intended for use with an XML database, it would be a 
+fun test to see if I could store the meta information for each package 
+in that database. When I have time I will take a look at that.
+
+Ben
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Mon May  9 11:22:30 2022
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Mon, 9 May 2022 11:22:30 +0200
+Subject: [R-pkg-devel] DOI in Description (possibly) invalid
+In-Reply-To: <SY4PR01MB5658E91890AFC2D18895EE60ACC79@SY4PR01MB5658.ausprd01.prod.outlook.com>
+References: <SY4PR01MB5658A1122354FF9D75FF594BACC79@SY4PR01MB5658.ausprd01.prod.outlook.com>
+ <20220508142928.2b4f103c@trisector>
+ <SY4PR01MB5658E91890AFC2D18895EE60ACC79@SY4PR01MB5658.ausprd01.prod.outlook.com>
+Message-ID: <0fbb3c37-642e-51a5-3b03-aa19b53fddae@statistik.tu-dortmund.de>
+
+CRAN always let packages pass that shows this issue.
+
+Best,
+Uwe Ligges
+
+
+
+On 08.05.2022 21:27, Murray Efford wrote:
+> Ivan
+> Thanks for your detailed explanation that I'm sure will be useful to others as well. We can hope unnecessary obstacles like this become rarer; the reverse seems true.
+> Murray
+> 
+> ________________________________________
+> From: Ivan Krylov <krylov.r00t at gmail.com>
+> Sent: 08 May 2022 23:29
+> To: Murray Efford
+> Cc: R-package-devel at r-project.org
+> Subject: Re: [R-pkg-devel] DOI in Description (possibly) invalid
+> 
+> On Sun, 8 May 2022 08:01:16 +0000
+> Murray Efford <murray.efford at otago.ac.nz> wrote:
+> 
+>> This results in checks reporting "Found the following (possibly)
+>> invalid DOIs:... Service unavailable".
+> 
+> This happens because there's Cloudflare sitting between the world and
+> Wiley Online Library, and Cloudflare replies with the HTTP error code
+> 503 to requests it doesn't like. When checking DOIs for validity, R CMD
+> check doesn't bother pretending to be a human operating a browser (it's
+> hard and keeps getting harder), so Cloudflare classifies this request
+> as automated and possibly malicious and refuses to serve it. On the
+> other hand, when you follow the link manually with a browser,
+> Cloudflare knows you're a human because it's been keeping track of your
+> browsing patterns across other websites under Cloudflare protection,
+> and they match typical human behaviour, so you get the content.
+> 
+> It's a known problem. For now, you just have to mention it in the
+> submission comment.
+> 
+> There has been a suggestion to change the DOI check so that it would
+> stop after one request to the https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fdoi.org%2F&amp;data=05%7C01%7Cmurray.efford%40otago.ac.nz%7C1e9f974f75ef4c6c952908da30e60702%7C0225efc578fe4928b1579ef24809e9ba%7C0%7C0%7C637876061769983877%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=2Y3FHbOqe0Hdz620FcT3oXmg5zBHHf7fZxJLgyu3XjE%3D&amp;reserved=0 server (which doesn't
+> discriminate against such automated requests for now) and doesn't try
+> to follow the link returned by doi.org (which might). Perhaps it would
+> get implemented when this problem gets worse.
+> 
+> --
+> Best regards,
+> Ivan
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon May  9 19:07:43 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 9 May 2022 13:07:43 -0400
+Subject: [R-pkg-devel] vignette build failure on rhub macos-m1 platform
+ (missing pandoc?)
+In-Reply-To: <1938eefc-6efc-b508-6817-f1e8bad1e050@gmail.com>
+References: <1938eefc-6efc-b508-6817-f1e8bad1e050@gmail.com>
+Message-ID: <9ae7fbaf-e169-061b-d56a-0b8640ae389b@gmail.com>
+
+On 29/03/2022 8:58 p.m., Ben Bolker wrote:
+>       After a rather painful remote debugging process, I've figured out
+> (I think) that the 'macos-m1-bigsur-release' platform on r-hub doesn't
+> have pandoc, and doesn't have it in a way that breaks
+> rmarkdown::pandoc_available(), so that trying to build an Rmarkdown
+> vignette fails with a cryptic "subscript out of bounds" error.
+> 
+>     Is this something people have seen before?
+>     Recommendations about whether it's better to raise it as an issue
+> with (1) rmarkdown maintainers, (2) r-hub maintainers, or (3) both?
+
+Hi Ben.
+
+I'm seeing this now for rgl.  Did you find a resolution?
+
+Duncan
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon May  9 21:10:07 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 9 May 2022 15:10:07 -0400
+Subject: [R-pkg-devel] vignette build failure on rhub macos-m1 platform
+ (missing pandoc?)
+In-Reply-To: <9ae7fbaf-e169-061b-d56a-0b8640ae389b@gmail.com>
+References: <1938eefc-6efc-b508-6817-f1e8bad1e050@gmail.com>
+ <9ae7fbaf-e169-061b-d56a-0b8640ae389b@gmail.com>
+Message-ID: <75500a9a-a4d3-a7d1-f874-ad650de5977d@gmail.com>
+
+On 09/05/2022 1:07 p.m., Duncan Murdoch wrote:
+> On 29/03/2022 8:58 p.m., Ben Bolker wrote:
+>>        After a rather painful remote debugging process, I've figured out
+>> (I think) that the 'macos-m1-bigsur-release' platform on r-hub doesn't
+>> have pandoc, and doesn't have it in a way that breaks
+>> rmarkdown::pandoc_available(), so that trying to build an Rmarkdown
+>> vignette fails with a cryptic "subscript out of bounds" error.
+>>
+>>      Is this something people have seen before?
+>>      Recommendations about whether it's better to raise it as an issue
+>> with (1) rmarkdown maintainers, (2) r-hub maintainers, or (3) both?
+> 
+> Hi Ben.
+> 
+> I'm seeing this now for rgl.  Did you find a resolution?
+
+I've localized the issue.  In the function 
+rmarkdown:::get_pandoc_version (here: 
+https://github.com/rstudio/rmarkdown/blob/84dfc6674083f355d4f8c87dca8d85f85ca53bad/R/pandoc.R#L676-L693), 
+they think they know a path to pandoc, and run "pandoc --version" to get 
+the version number.  It appears they get a zero length result, so line 
+683 gets the subscript out of bounds error and everything dies.
+
+To reproduce, create a test package which imports rmarkdown and has this 
+single line of R code:
+
+     available <- rmarkdown::pandoc_available()
+
+then submit that package to rhub using
+
+     rhub::check(platform="macos-m1-bigsur-release")
+
+It will fail with a message like this:
+
+  248#> * installing *source* package ?testpkg3? ...
+
+  249#> ** using staged installation
+
+  250#> ** R
+
+  251#> ** byte-compile and prepare package for lazy loading
+
+  252#> Error in strsplit(info, "\n")[[1]] : subscript out of bounds
+
+  253#> Error: unable to load R code in package ?testpkg3?
+
+  254#> Execution halted
+
+  255#> ERROR: lazy loading failed for package ?testpkg3?
+
+  256#> * removing 
+?/Users/userDqIwNAjs/Rtemp/Rtmp6N8Dtr/Rinst146057d7e12c1/testpkg3?
+
+
+
+I've attached such a package, but it is probably going to be stripped 
+off when this is posted to R-package-devel.
+
+Duncan Murdoch
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: testpkg3_0.0.0.9000.tar.gz
+Type: application/x-gzip
+Size: 4293 bytes
+Desc: not available
+URL: <https://stat.ethz.ch/pipermail/r-package-devel/attachments/20220509/5eb5483a/attachment.bin>
+
+From bbo|ker @end|ng |rom gm@||@com  Mon May  9 21:16:33 2022
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Mon, 9 May 2022 15:16:33 -0400
+Subject: [R-pkg-devel] vignette build failure on rhub macos-m1 platform
+ (missing pandoc?)
+In-Reply-To: <75500a9a-a4d3-a7d1-f874-ad650de5977d@gmail.com>
+References: <1938eefc-6efc-b508-6817-f1e8bad1e050@gmail.com>
+ <9ae7fbaf-e169-061b-d56a-0b8640ae389b@gmail.com>
+ <75500a9a-a4d3-a7d1-f874-ad650de5977d@gmail.com>
+Message-ID: <4f57031b-1df6-684b-89d6-4de22fc34a0b@gmail.com>
+
+
+On 2022-05-09 3:10 p.m., Duncan Murdoch wrote:
+> On 09/05/2022 1:07 p.m., Duncan Murdoch wrote:
+>> On 29/03/2022 8:58 p.m., Ben Bolker wrote:
+>>> ?????? After a rather painful remote debugging process, I've figured out
+>>> (I think) that the 'macos-m1-bigsur-release' platform on r-hub doesn't
+>>> have pandoc, and doesn't have it in a way that breaks
+>>> rmarkdown::pandoc_available(), so that trying to build an Rmarkdown
+>>> vignette fails with a cryptic "subscript out of bounds" error.
+>>>
+>>> ???? Is this something people have seen before?
+>>> ???? Recommendations about whether it's better to raise it as an issue
+>>> with (1) rmarkdown maintainers, (2) r-hub maintainers, or (3) both?
+>>
+>> Hi Ben.
+>>
+>> I'm seeing this now for rgl.? Did you find a resolution?
+> 
+> I've localized the issue.? In the function 
+> rmarkdown:::get_pandoc_version (here: 
+> https://github.com/rstudio/rmarkdown/blob/84dfc6674083f355d4f8c87dca8d85f85ca53bad/R/pandoc.R#L676-L693), 
+> they think they know a path to pandoc, and run "pandoc --version" to get 
+> the version number.? It appears they get a zero length result, so line 
+> 683 gets the subscript out of bounds error and everything dies.
+> 
+> To reproduce, create a test package which imports rmarkdown and has this 
+> single line of R code:
+> 
+>  ??? available <- rmarkdown::pandoc_available()
+> 
+> then submit that package to rhub using
+> 
+>  ??? rhub::check(platform="macos-m1-bigsur-release")
+> 
+> It will fail with a message like this:
+> 
+>  ?248#> * installing *source* package ?testpkg3? ...
+> 
+>  ?249#> ** using staged installation
+> 
+>  ?250#> ** R
+> 
+>  ?251#> ** byte-compile and prepare package for lazy loading
+> 
+>  ?252#> Error in strsplit(info, "\n")[[1]] : subscript out of bounds
+> 
+>  ?253#> Error: unable to load R code in package ?testpkg3?
+> 
+>  ?254#> Execution halted
+> 
+>  ?255#> ERROR: lazy loading failed for package ?testpkg3?
+> 
+>  ?256#> * removing 
+> ?/Users/userDqIwNAjs/Rtemp/Rtmp6N8Dtr/Rinst146057d7e12c1/testpkg3?
+> 
+> 
+> 
+> I've attached such a package, but it is probably going to be stripped 
+> off when this is posted to R-package-devel.
+> 
+> Duncan Murdoch
+
+   I agree with the diagnosis. I never dug any deeper because some 
+combination of (1) I decided I didn't really need to check the M1 build 
+(I think the CRAN macbuilder is also on M1 now) and/or (2) I may have 
+found it non-reproducible, i.e. the problem seemed to stop happening? 
+TBH I don't remember.
+
+   Ben Bolker
+
+
+From @eb@meyer @end|ng |rom |@u@de  Tue May 10 00:57:57 2022
+From: @eb@meyer @end|ng |rom |@u@de (Sebastian Meyer)
+Date: Tue, 10 May 2022 00:57:57 +0200
+Subject: [R-pkg-devel] nit-picking about CRAN repository policy
+In-Reply-To: <C8334AC3-CD92-42EC-805A-FD84A6B50908@R-project.org>
+References: <1d04b066-4d72-16ae-6758-e8d5c81cb133@gmail.com>
+ <C8334AC3-CD92-42EC-805A-FD84A6B50908@R-project.org>
+Message-ID: <bb916d73-6cc9-d7a4-49e0-88c3177add03@fau.de>
+
+In my opinion, vignettes -- as opposed to examples and tests -- should 
+be allowed to depend on suggested packages without having to 
+conditionalize their use in the code (if they can straightforwardly be 
+installed on the major R platforms). The vignette system is already 
+prepared to handle \VignetteDepends metadata, which is checked to only 
+list packages from the DESCRIPTION Depends/*Suggests*/Imports entries. R 
+CMD check could skip vignette processing if the stated requirements are 
+not fulfilled -- possibly with a note citing WRE that suggested packages 
+are needed for a complete check, similar to the note that we'd already 
+get from the "checking package dependencies" step: "Package suggested 
+but not available for checking".
+
+I think such a setup would highlight the importance of vignette 
+reproducibility (whereas conditionalizing suggested packages would 
+simply give OK without having executed all the code), but reduces the 
+amount of failures on check servers when vignette dependencies become 
+unavailable.
+
+There is a related report in R's Bugzilla 
+<https://bugs.r-project.org/show_bug.cgi?id=18318>.
+
+Best regards,
+
+	Sebastian Meyer
+
+
+Am 09.05.22 um 00:13 schrieb Simon Urbanek:
+> Ben,
+> 
+> I fully agree with Dirk - it would be good to make the CRP more clear.
+> 
+> The main problem with failing to the check conditional dependencies is in cases where there are circular dependencies: package A suggests B, and package B requires A. The correct resolution is to check A without B, then check B with A and then check A with B (that's what the macOS CRAN build system is doing). If A fails to check without B, the whole chain is doomed and none of the package will be available.
+> 
+> So at the very least the examples and tests should be clearly conditional. Currently, the vignettes also required since there is no specific check with --no-build-vignettes.
+> 
+> As for your package, the fact that it worked so far is due to the incremental nature of the builds: if your dependency is not circular then the build system will schedule dependencies for check before your package which is possible in that case, so the package is actually never checked without the suggests. In the macOS case we have no choice, because there are so many packages to build that checking every suggests-dependency twice would take too long. So from practical point of view, the suggests-must-be-conditional rule has been checked only for packages with circular dependencies since that is where it matters the most. However, the circular nature is not a function of the package itself, so it could make sense to make it global, since you don't know if the package you suggest may ever depend on your package and suddenly break your package that way. This is just my pragmatic view, I don't know any specific details on the noSuggests checks per se.
+> 
+> Cheers,
+> Simon
+> 
+> 
+> 
+>> On 8/05/2022, at 10:43 AM, Ben Bolker <bbolker at gmail.com> wrote:
+>>
+>>
+>>   Folks,
+>>
+>>   CRAN has recently set up an auxiliary 'noSuggests' test platform that tests that packages are using suggested packages conditionally, as recommended in Writing R Extensions, and as (sort of) specified in the CRAN repository policy.
+>>
+>>   Specifically, the CRP (revision 5236) says:
+>>
+>>> A package listed in ?Suggests? or ?Enhances? should be used conditionally in examples or tests if it cannot straightforwardly be installed on the major R platforms. (?Writing R Extensions? recommends that they are always used conditionally.)
+>>
+>>   One of my packages failed on the 'noSuggest' test platform <https://www.stats.ox.ac.uk/pub/bdr/noSuggests/bbmle.out> because two suggested packages were used unconditionally in the vignette. There are two reasons (IMO) that this should *not* have triggered a threat of archiving:
+>>
+>>   (1) the unconditional package use was in a vignette, not in examples or tests
+>>   (2) the relevant packages (AICcmodavg and MuMIn) are available on CRAN and install easily on Linux/Windows/MacOS (they are R-only, no compiled code or extra requirements, binaries are available on CRAN).
+>>
+>>    Is it worth suggesting to CRAN maintainers that either they refine their 'noSuggests' test so that it conforms to the wording in the CRP, or that they change the CRP wording to something stricter like
+>>
+>>> Any package listed in ?Suggests? or ?Enhances? should be used conditionally in examples, tests, and vignettes.
+>>
+>> ?
+>>
+>>   cheers
+>>     Ben Bolker
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
