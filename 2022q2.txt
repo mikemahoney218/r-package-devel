@@ -11574,3 +11574,210 @@ Director, School of Computational Science and Engineering
 (Acting) Graduate chair, Mathematics & Statistics
 
 
+From jw||ey@p@ych @end|ng |rom gm@||@com  Wed May 18 04:06:03 2022
+From: jw||ey@p@ych @end|ng |rom gm@||@com (Joshua Wiley)
+Date: Wed, 18 May 2022 12:06:03 +1000
+Subject: [R-pkg-devel] DOI / URL issues in package vignettes
+Message-ID: <CANz9Z_JO=yVqm9dC1oO16232i6Hy05rd9WSP+Bdhd2dFLfuY5A@mail.gmail.com>
+
+Hi All,
+
+I've been stuck on how best to include DOIs in R package vignettes.
+I write the vignettes as R markdown files with knitr as the vignette
+builder, which all goes fine.
+
+I want to include references to relevant literature and use DOI links to
+make accessing the articles easier. For example:
+
+https://doi.org/10.1037/met0000434
+
+This is written as plain text in the .Rmd and ends up as a URL in the HTML
+file generated.
+It works fine for me across Chrome, Edge, and Safari.
+
+However,
+
+curl -I -L https://doi.org/10.1037/met0000434
+
+gives the below on my system, which (I think?) means you get the expected
+redirect for a DOI and then a 403 forbidden error.  On the
+win-builder.r-project.org service (which is fantastic) I get a status 400
+bad request.
+
+For other DOIs, I am regularly getting a 503 service unavailable status
+from both curl on my machine and winbuilder, but working fine in browser
+(e.g., for:   https://doi.org/10.1002/sim.7171).
+
+Is there a general recommendation for how to proceed?  I could just leave
+out the DOIs / URLs and give the rest of the journal article citation?
+
+Many thanks for any suggestions,
+
+Josh
+
+
+curl results on my system:
+
+HTTP/2 302
+date: Wed, 18 May 2022 01:53:47 GMT
+content-type: text/html;charset=utf-8
+content-length: 189
+location: http://doi.apa.org/getdoi.cfm?doi=10.1037/met0000434
+vary: Accept
+expires: Wed, 18 May 2022 02:30:38 GMT
+permissions-policy: interest-cohort=(),browsing-topics=()
+cf-cache-status: DYNAMIC
+expect-ct: max-age=604800, report-uri="
+https://report-uri.cloudflare.com/cdn-cgi/beacon/expect-ct"
+report-to: {"endpoints":[{"url":"https:\/\/a.nel.cloudflare.com
+\/report\/v3?s=AAEQKLp2NUIcaOqEhR0j05L49qqul40oBULIoJjX%2BE4DStgV6T7kO9IEw6Cvyi0YIpi00KhxEU6U4RVAmcL%2Bk99SSiUFi8C0zhbNVtMiP8fkAJ5hxjD45b0%3D"}],"group":"cf-nel","max_age":604800}
+nel: {"success_fraction":0,"report_to":"cf-nel","max_age":604800}
+strict-transport-security: max-age=31536000; includeSubDomains; preload
+server: cloudflare
+cf-ray: 70d0f611ed9117c8-MEL
+alt-svc: h3=":443"; ma=86400, h3-29=":443"; ma=86400
+
+HTTP/1.1 403 Forbidden
+Content-Type: text/html
+Cache-Control: no-cache, no-store
+Connection: close
+Content-Length: 831
+X-Iinfo: 12-17360972-0 NNNN RT(1652838827325 8) q(0 -1 -1 -1) r(0 -1)
+B15(14,0,0) U6
+Set-Cookie:
+visid_incap_2687304=x5XsfaekQlWXbrGsMojRaqtRhGIAAAAAQUIPAAAAAAAezC3HdC8AzCh9mM9hYUTR;
+expires=Wed, 17 May 2023 13:30:24 GMT; HttpOnly; path=/; Domain=.apa.org
+Set-Cookie:
+incap_ses_321_2687304=9FtWe+A0czc6K/rZlGx0BKtRhGIAAAAAhdbt7joIFE3lh9nZHhJSjQ==;
+path=/; Domain=.apa.org
+
+win-builder result:
+
+  URL: https://doi.org/10.1037/met0000434
+    From: inst/doc/mixed-effects-marginaleffects.html
+    Status: 400
+    Message: Bad Request
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed May 18 12:56:34 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 18 May 2022 13:56:34 +0300
+Subject: [R-pkg-devel] DOI / URL issues in package vignettes
+In-Reply-To: <CANz9Z_JO=yVqm9dC1oO16232i6Hy05rd9WSP+Bdhd2dFLfuY5A@mail.gmail.com>
+References: <CANz9Z_JO=yVqm9dC1oO16232i6Hy05rd9WSP+Bdhd2dFLfuY5A@mail.gmail.com>
+Message-ID: <20220518135634.37738a36@arachnoid>
+
+? Wed, 18 May 2022 12:06:03 +1000
+Joshua Wiley <jwiley.psych at gmail.com> ?????:
+
+> curl -I -L https://doi.org/10.1037/met0000434
+> 
+> gives the below on my system, which (I think?) means you get the
+> expected redirect for a DOI and then a 403 forbidden error.  On the
+> win-builder.r-project.org service (which is fantastic) I get a status
+> 400 bad request.
+> 
+> For other DOIs, I am regularly getting a 503 service unavailable
+> status from both curl on my machine and winbuilder, but working fine
+> in browser (e.g., for:   https://doi.org/10.1002/sim.7171).
+
+Many journals employ overzealous anti-robot protection systems that
+discriminate against URL checks performed by R, but as long as the DOI
+itself is correct, the package is likely to be accepted by CRAN despite
+the NOTE resulting from the failing check. You can mention it in the
+submission comment to be sure.
+
+-- 
+Best regards,
+Ivan
+
+
+From bbo|ker @end|ng |rom gm@||@com  Wed May 18 14:02:04 2022
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Wed, 18 May 2022 08:02:04 -0400
+Subject: [R-pkg-devel] DOI / URL issues in package vignettes
+In-Reply-To: <20220518135634.37738a36@arachnoid>
+References: <CANz9Z_JO=yVqm9dC1oO16232i6Hy05rd9WSP+Bdhd2dFLfuY5A@mail.gmail.com>
+ <20220518135634.37738a36@arachnoid>
+Message-ID: <0d69de2d-d68e-e92a-7924-f4b2a1eef529@gmail.com>
+
+
+
+On 2022-05-18 6:56 a.m., Ivan Krylov wrote:
+> ? Wed, 18 May 2022 12:06:03 +1000
+> Joshua Wiley <jwiley.psych at gmail.com> ?????:
+> 
+>> curl -I -L https://doi.org/10.1037/met0000434
+>>
+>> gives the below on my system, which (I think?) means you get the
+>> expected redirect for a DOI and then a 403 forbidden error.  On the
+>> win-builder.r-project.org service (which is fantastic) I get a status
+>> 400 bad request.
+>>
+>> For other DOIs, I am regularly getting a 503 service unavailable
+>> status from both curl on my machine and winbuilder, but working fine
+>> in browser (e.g., for:   https://doi.org/10.1002/sim.7171).
+> 
+> Many journals employ overzealous anti-robot protection systems that
+> discriminate against URL checks performed by R, but as long as the DOI
+> itself is correct, the package is likely to be accepted by CRAN despite
+> the NOTE resulting from the failing check. You can mention it in the
+> submission comment to be sure.
+
+   And there was a previous discussion on the list here:
+
+https://hypatia.math.ethz.ch/pipermail/r-package-devel/2022q2/008042.html
+
+
+From jw||ey@p@ych @end|ng |rom gm@||@com  Wed May 18 21:36:53 2022
+From: jw||ey@p@ych @end|ng |rom gm@||@com (Joshua Wiley)
+Date: Thu, 19 May 2022 05:36:53 +1000
+Subject: [R-pkg-devel] DOI / URL issues in package vignettes
+In-Reply-To: <0d69de2d-d68e-e92a-7924-f4b2a1eef529@gmail.com>
+References: <CANz9Z_JO=yVqm9dC1oO16232i6Hy05rd9WSP+Bdhd2dFLfuY5A@mail.gmail.com>
+ <20220518135634.37738a36@arachnoid>
+ <0d69de2d-d68e-e92a-7924-f4b2a1eef529@gmail.com>
+Message-ID: <CANz9Z_K=maKqX8r6pk29wyxzaDDNm23fUez6fZ77dneEM1YXmw@mail.gmail.com>
+
+Thanks & my apologies for missing this. I got caught up reading how CRAN
+checks URLs, HTTP status codes, etc. and forgot to search before asking.
+
+On Wed, May 18, 2022 at 10:02 PM Ben Bolker <bbolker at gmail.com> wrote:
+
+>
+>
+> On 2022-05-18 6:56 a.m., Ivan Krylov wrote:
+> > ? Wed, 18 May 2022 12:06:03 +1000
+> > Joshua Wiley <jwiley.psych at gmail.com> ?????:
+> >
+> >> curl -I -L https://doi.org/10.1037/met0000434
+> >>
+> >> gives the below on my system, which (I think?) means you get the
+> >> expected redirect for a DOI and then a 403 forbidden error.  On the
+> >> win-builder.r-project.org service (which is fantastic) I get a status
+> >> 400 bad request.
+> >>
+> >> For other DOIs, I am regularly getting a 503 service unavailable
+> >> status from both curl on my machine and winbuilder, but working fine
+> >> in browser (e.g., for:   https://doi.org/10.1002/sim.7171).
+> >
+> > Many journals employ overzealous anti-robot protection systems that
+> > discriminate against URL checks performed by R, but as long as the DOI
+> > itself is correct, the package is likely to be accepted by CRAN despite
+> > the NOTE resulting from the failing check. You can mention it in the
+> > submission comment to be sure.
+>
+>    And there was a previous discussion on the list here:
+>
+> https://hypatia.math.ethz.ch/pipermail/r-package-devel/2022q2/008042.html
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
