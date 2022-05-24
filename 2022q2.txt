@@ -11781,3 +11781,319 @@ On Wed, May 18, 2022 at 10:02 PM Ben Bolker <bbolker at gmail.com> wrote:
 	[[alternative HTML version deleted]]
 
 
+From je@n-m@tth|eu@monnet @end|ng |rom |nr@e@|r  Mon May 23 10:48:48 2022
+From: je@n-m@tth|eu@monnet @end|ng |rom |nr@e@|r (Jean-Matthieu Monnet)
+Date: Mon, 23 May 2022 10:48:48 +0200
+Subject: [R-pkg-devel] Excessive time of first example to be checked
+Message-ID: <73665695-7fe7-c3b1-1822-77fc463862f7@inrae.fr>
+
+I was asked by CRAN to fix NOTEs in the new version of the package lidaRtRee
+
+On Debian 
+(https://win-builder.r-project.org/incoming_pretest/lidaRtRee_4.0.0_20220520_163049/Debian/00check.log) 
+I have one note related to the maintainer :
+
+# -----
+* checking CRAN incoming feasibility ... NOTE
+Maintainer: ?Jean-Matthieu Monnet <jean-matthieu.monnet at inrae.fr>?
+# ------
+
+On Windows I also have another NOTE 
+(https://win-builder.r-project.org/incoming_pretest/lidaRtRee_4.0.0_20220520_163049/Windows/00check.log) 
+due to to the running time of the first example, which is my main concern.
+
+# ------
+* checking examples ... [78s] NOTE
+Examples with CPU (user + system) or elapsed time > 10s
+              user system elapsed
+aba_metrics 11.79   0.27   12.05
+# ------
+
+I do not have access to a windows machine for testing. On my machine 
+(Ubuntu 20.04) the example runs in ~ 4 sec after R startup, but in less 
+than 2 sec on the following calls (see details below). I am not sure if 
+  the excessive running of this example (which is the first to be 
+tested) is due to library loading. If it is the case, how can I fix it:
+- create a "virtual" example which purpose would be to just load 
+libraries, hoping that its running time would be less that 10 sec.
+- load libraries at start up using a different way.
+- ... ?
+
+Here is a link to the package tar.gz 
+(https://filesender.renater.fr/?s=download&token=163ca058-13ba-4cf5-8f4f-3514abd03ff8) 
+and below the code I run on my machine to estimate the example time.
+
+
+# --------------
+# install package
+# install.packages(file.choose(), repos=NULL)
+#
+# --------------
+# running time at first call
+system.time(example(aba_metrics, package = "lidaRtRee"))
+# Le chargement a n?cessit? le package : lidR (loading required)
+# lidR 4.0.1 using 6 threads. Help on <gis.stackexchange.com>. Bug 
+report on <github.com/r-lidar/lidR>.
+#
+# [...]
+# utilisateur     syst?me      ?coul?
+# 3.867       0.095       3.742
+#
+# --------------
+# running time at next call
+system.time(example(aba_metrics, package = "lidaRtRee"))
+#
+# [...]
+# utilisateur     syst?me      ?coul?
+# 0.182       0.000       0.082
+
+Thank you very much for your answers.
+
+
+-- 
+Jean-Matthieu Monnet
+UR LESSEM - INRAE Grenoble
+
+
+From jw||ey@p@ych @end|ng |rom gm@||@com  Mon May 23 12:04:47 2022
+From: jw||ey@p@ych @end|ng |rom gm@||@com (Joshua Wiley)
+Date: Mon, 23 May 2022 20:04:47 +1000
+Subject: [R-pkg-devel] Excessive time of first example to be checked
+In-Reply-To: <73665695-7fe7-c3b1-1822-77fc463862f7@inrae.fr>
+References: <73665695-7fe7-c3b1-1822-77fc463862f7@inrae.fr>
+Message-ID: <CANz9Z_+uekChaWy8-gARwAX8DD9xC7qVOWYU+A05OVuM+L_Fhg@mail.gmail.com>
+
+Hi Jean-Matthieu,
+
+Have you timed how long it takes to load your package (or all the packages
+loaded in the example)?  Most packages load quite rapidly, if yours is
+taking more than 2-3 seconds, perhaps you could explore what is taking the
+time?
+
+Another thought: are there parts of the example(s) you could mark as
+\dontrun{}?
+
+Lastly, https://win-builder.r-project.org/
+is a service that builds on Windows and will show notes etc. so if you
+think you have it solved, you can send there and see if it passes without
+notes.
+
+Cheers,
+
+Josh
+
+
+On Mon, May 23, 2022 at 7:34 PM Jean-Matthieu Monnet <
+jean-matthieu.monnet at inrae.fr> wrote:
+
+> I was asked by CRAN to fix NOTEs in the new version of the package
+> lidaRtRee
+>
+> On Debian
+> (
+> https://win-builder.r-project.org/incoming_pretest/lidaRtRee_4.0.0_20220520_163049/Debian/00check.log)
+>
+> I have one note related to the maintainer :
+>
+> # -----
+> * checking CRAN incoming feasibility ... NOTE
+> Maintainer: ?Jean-Matthieu Monnet <jean-matthieu.monnet at inrae.fr>?
+> # ------
+>
+> On Windows I also have another NOTE
+> (
+> https://win-builder.r-project.org/incoming_pretest/lidaRtRee_4.0.0_20220520_163049/Windows/00check.log)
+>
+> due to to the running time of the first example, which is my main concern.
+>
+> # ------
+> * checking examples ... [78s] NOTE
+> Examples with CPU (user + system) or elapsed time > 10s
+>               user system elapsed
+> aba_metrics 11.79   0.27   12.05
+> # ------
+>
+> I do not have access to a windows machine for testing. On my machine
+> (Ubuntu 20.04) the example runs in ~ 4 sec after R startup, but in less
+> than 2 sec on the following calls (see details below). I am not sure if
+>   the excessive running of this example (which is the first to be
+> tested) is due to library loading. If it is the case, how can I fix it:
+> - create a "virtual" example which purpose would be to just load
+> libraries, hoping that its running time would be less that 10 sec.
+> - load libraries at start up using a different way.
+> - ... ?
+>
+> Here is a link to the package tar.gz
+> (
+> https://filesender.renater.fr/?s=download&token=163ca058-13ba-4cf5-8f4f-3514abd03ff8)
+>
+> and below the code I run on my machine to estimate the example time.
+>
+>
+> # --------------
+> # install package
+> # install.packages(file.choose(), repos=NULL)
+> #
+> # --------------
+> # running time at first call
+> system.time(example(aba_metrics, package = "lidaRtRee"))
+> # Le chargement a n?cessit? le package : lidR (loading required)
+> # lidR 4.0.1 using 6 threads. Help on <gis.stackexchange.com>. Bug
+> report on <github.com/r-lidar/lidR>.
+> #
+> # [...]
+> # utilisateur     syst?me      ?coul?
+> # 3.867       0.095       3.742
+> #
+> # --------------
+> # running time at next call
+> system.time(example(aba_metrics, package = "lidaRtRee"))
+> #
+> # [...]
+> # utilisateur     syst?me      ?coul?
+> # 0.182       0.000       0.082
+>
+> Thank you very much for your answers.
+>
+>
+> --
+> Jean-Matthieu Monnet
+> UR LESSEM - INRAE Grenoble
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From gu|do@|ber @end|ng |rom gm@||@com  Mon May 23 11:56:57 2022
+From: gu|do@|ber @end|ng |rom gm@||@com (Guido Moreira)
+Date: Mon, 23 May 2022 10:56:57 +0100
+Subject: [R-pkg-devel] Excessive time of first example to be checked
+In-Reply-To: <73665695-7fe7-c3b1-1822-77fc463862f7@inrae.fr>
+References: <73665695-7fe7-c3b1-1822-77fc463862f7@inrae.fr>
+Message-ID: <CAG2v_MeGVWRS4=pxK9fGvWOHBHYGpoNn3kNkGUmMtR777Ws8Nw@mail.gmail.com>
+
+There's an useful tool for testing in Windows.
+Check out https://win-builder.r-project.org/ where you can upload your
+tarball and have it built on Windows and give your R CMD check --as-cran
+results. Also, you can use github actions to automatically run R CMD check
+--as-cran when you push to your repo.
+
+This may not help you directly root out your problem, but it should be
+quicker to get check results than uploading to CRAN and using their
+resources.
+
+Cheers!
+
+Jean-Matthieu Monnet <jean-matthieu.monnet at inrae.fr> escreveu no dia
+segunda, 23/05/2022 ?(s) 10:34:
+
+> I was asked by CRAN to fix NOTEs in the new version of the package
+> lidaRtRee
+>
+> On Debian
+> (
+> https://win-builder.r-project.org/incoming_pretest/lidaRtRee_4.0.0_20220520_163049/Debian/00check.log)
+>
+> I have one note related to the maintainer :
+>
+> # -----
+> * checking CRAN incoming feasibility ... NOTE
+> Maintainer: ?Jean-Matthieu Monnet <jean-matthieu.monnet at inrae.fr>?
+> # ------
+>
+> On Windows I also have another NOTE
+> (
+> https://win-builder.r-project.org/incoming_pretest/lidaRtRee_4.0.0_20220520_163049/Windows/00check.log)
+>
+> due to to the running time of the first example, which is my main concern.
+>
+> # ------
+> * checking examples ... [78s] NOTE
+> Examples with CPU (user + system) or elapsed time > 10s
+>               user system elapsed
+> aba_metrics 11.79   0.27   12.05
+> # ------
+>
+> I do not have access to a windows machine for testing. On my machine
+> (Ubuntu 20.04) the example runs in ~ 4 sec after R startup, but in less
+> than 2 sec on the following calls (see details below). I am not sure if
+>   the excessive running of this example (which is the first to be
+> tested) is due to library loading. If it is the case, how can I fix it:
+> - create a "virtual" example which purpose would be to just load
+> libraries, hoping that its running time would be less that 10 sec.
+> - load libraries at start up using a different way.
+> - ... ?
+>
+> Here is a link to the package tar.gz
+> (
+> https://filesender.renater.fr/?s=download&token=163ca058-13ba-4cf5-8f4f-3514abd03ff8)
+>
+> and below the code I run on my machine to estimate the example time.
+>
+>
+> # --------------
+> # install package
+> # install.packages(file.choose(), repos=NULL)
+> #
+> # --------------
+> # running time at first call
+> system.time(example(aba_metrics, package = "lidaRtRee"))
+> # Le chargement a n?cessit? le package : lidR (loading required)
+> # lidR 4.0.1 using 6 threads. Help on <gis.stackexchange.com>. Bug
+> report on <github.com/r-lidar/lidR>.
+> #
+> # [...]
+> # utilisateur     syst?me      ?coul?
+> # 3.867       0.095       3.742
+> #
+> # --------------
+> # running time at next call
+> system.time(example(aba_metrics, package = "lidaRtRee"))
+> #
+> # [...]
+> # utilisateur     syst?me      ?coul?
+> # 0.182       0.000       0.082
+>
+> Thank you very much for your answers.
+>
+>
+> --
+> Jean-Matthieu Monnet
+> UR LESSEM - INRAE Grenoble
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From M@ty@@@MESZAROS @end|ng |rom ec@europ@@eu  Mon May 23 23:15:43 2022
+From: M@ty@@@MESZAROS @end|ng |rom ec@europ@@eu (MESZAROS Matyas Tamas)
+Date: Mon, 23 May 2022 21:15:43 +0000
+Subject: [R-pkg-devel] CRAN check warning "MemoryChip - Alias wurde nicht
+ gefunden."
+Message-ID: <383632b433614feda9147e6b479605f2@ec.europa.eu>
+
+Hello everyone,
+
+Do anyone knows what this warning means?
+https://win-builder.r-project.org/incoming_pretest/restatapi_0.13.2_20220523_223118/Windows/00check.log
+In the code the word MemoryChip cannot be found, so I do not know where to start.
+If I run the check locally with  devtools::check(args = c('--as-cran','--run-donttest')) on Ubuntu linux with R4.2.0 I have no warnings, and the check on the r-hub builder as well provide no such result.
+https://builder.r-hub.io/status/restatapi_0.13.2.tar.gz-a4041877919d487897b14c4d8c1a3b7c
+
+Any advice would be helpful.
+
+Regards,
+
+Matyas
+
+	[[alternative HTML version deleted]]
+
+
