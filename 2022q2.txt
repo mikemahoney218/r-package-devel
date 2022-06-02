@@ -13631,3 +13631,586 @@ On May 31, 2022 3:53:57 PM PDT, Carl Schwarz <cschwarzstatsfuca at gmail.com> wr
 Sent from my phone. Please excuse my brevity.
 
 
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Wed Jun  1 09:37:00 2022
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Wed, 1 Jun 2022 09:37:00 +0200
+Subject: [R-pkg-devel] Package Deprecation Message
+In-Reply-To: <00db01d87532$e866dea0$b9349be0$@gmail.com>
+References: <00db01d87532$e866dea0$b9349be0$@gmail.com>
+Message-ID: <69409488-6cd3-590c-03de-f9ae9b3824c4@statistik.tu-dortmund.de>
+
+Please use .onAttach:
+Users who directly use yourt package will see it as they will attach 
+your package.
+Users who use your package via another one (which may load yours) cannot 
+do much, as the corresponding maintainer of the other package has to 
+change the code. So the idea would be to contact maintainers of reverse 
+dependencies explicitly via mail with the deprecation information and 
+inform direct users of your package via .onAttach.
+
+Best,
+Uwe Ligges
+
+
+
+
+On 31.05.2022 23:10, pikappa.devel at gmail.com wrote:
+> Dear all,
+> 
+>   
+> 
+> I am looking for a way to communicate the deprecation of a package as a
+> newer package supersedes it.
+> 
+>   
+> 
+> 1 ) My initial approach was to emit a warning message during the deprecated
+> package's loading, i.e., something like the following lines
+> 
+>   
+> 
+> .onLoad <- function(libname, pkgname) {
+> 
+>      message <- "Some deprecation message."
+> 
+>      rlang::warn(message)
+> 
+> }
+> 
+>   
+> 
+> This approach leads to the following warning during RCHECK
+> 
+>   
+> 
+> * checking whether package 'package_name' can be installed ... WARNING
+> 
+> Found the following significant warnings:
+> 
+>    Warning: Some deprecation message.
+> 
+>   
+> 
+> 2) My subsequent approach was to use packageStartupMessage, i.e.
+> 
+>   
+> 
+>   
+> 
+> .onLoad <- function(libname, pkgname) {
+> 
+>      message <- "Some deprecation message."
+> 
+>      packageStartupMessage(message, appendLF = TRUE)
+> 
+> }
+> 
+>   
+> 
+> This approach leads to a note
+> 
+>   
+> 
+> * checking R code for possible problems ... NOTE
+> 
+> File 'package_name/R/zzz.R': .onLoad calls: packageStartupMessage(message,
+> appendLF = TRUE)
+> 
+> See section 'Good practice' in '?.onAttach'.
+> 
+>   
+> 
+> Unfortunately, the package fails to pass the CRAN's automated incoming
+> checks with this note.
+> 
+>   
+> 
+> I have checked the 'Good practice' section of the .onAttach help page. It
+> starts with:
+> 
+>   
+> 
+> "Loading a namespace should where possible be silent, with startup messages
+> given by '.onAttach'.
+> 
+> These messages (and any essential ones from '.onLoad') should use
+> packageStartupMessage so they can be silenced where they would be a
+> distraction."
+> 
+>   
+> 
+>  From the above passage, I understand that essential messages can be
+> communicated from .onLoad. Should I consider the deprecation message as
+> essential and leave it in the body of .onLoad, or should I instead use
+> .onAttach in order to submit the package to CRAN?
+> 
+>   
+> 
+> Is there maybe a better way to communicate that the package is deprecated?
+> 
+>   
+> 
+> Kind regards,
+> 
+> Pantelis
+> 
+>   
+> 
+>   
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Wed Jun  1 10:04:43 2022
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Wed, 1 Jun 2022 10:04:43 +0200
+Subject: [R-pkg-devel] Sort order of vignette index?;
+ adding purl'ed Rcode from asis vignette to vignette index?
+In-Reply-To: <D29F12E5-B3EB-440F-92D8-F1C8D88020D1@dcn.davis.ca.us>
+References: <CADtpigb8i5fBcCOiJyMXD6hY6J4a4sofLMaf8XYoirM=5mDoXA@mail.gmail.com>
+ <CADtpigZQL7f6sex2gbieFaVuQ_ywVPKz7VnYW7wpTHTrJpd-rA@mail.gmail.com>
+ <CADtpigYBMaXgFTJin6y1SD5z_4uF-eAD4i0h=sxpF+KdL9hc-w@mail.gmail.com>
+ <8d467b58-4268-b856-44ed-d1bdd7b243dc@gmail.com>
+ <CADtpigYfhrdUhQtf4a_eEuXo+V_tns7kd9+UAxaGUfzFdWWfFw@mail.gmail.com>
+ <20220531100502.6ad5354a@Tarkus>
+ <YQXPR01MB4579C84C4B40232949F569C89ADC9@YQXPR01MB4579.CANPRD01.PROD.OUTLOOK.COM>
+ <CADtpigY-hp14wS=K8ob-STPDuZ1dwA8LWG5Nws08HkWz_0ysKg@mail.gmail.com>
+ <D29F12E5-B3EB-440F-92D8-F1C8D88020D1@dcn.davis.ca.us>
+Message-ID: <25239.7579.515401.430977@stat.math.ethz.ch>
+
+>>>>> Jeff Newmiller 
+>>>>>     on Tue, 31 May 2022 16:09:16 -0700 writes:
+
+    > FWIW the RStudio build is often not complete... it intentionally takes shortcuts that make test/run iteration faster... but you should make a habit of using the command line to build artifacts for sharing... it will help avoid gotchas.
+
+Yes, definitely.
+
+Notably, e.g., reloading the package sources (often via
+devtools) into a running R process instead of restarting R and
+loading/attaching the newly built and installed package (that
+you are developing) is much faster, but *NOT* equivalent and
+sometimes misleading -- because it's not easily possible to
+"revert" everything you did in your running R session {caches,
+method tables, DLLs, internal pointers, ...}.
+
+(read on, further down)
+
+    > On May 31, 2022 3:53:57 PM PDT, Carl Schwarz <cschwarzstatsfuca at gmail.com> wrote:
+    >> Success!
+    >> 
+    >> Building on MT's note that if the inst/doc has an index.html file, R does
+    >> NOT build a new index.
+    >> At the end of Writing R Extensions Section 1.4, it states
+    >> "  When R CMD build builds the vignettes, it copies these and the vignette
+    >> sources from directory vignettes to inst/doc. To install any other files
+    >> from the vignettes directory, include a file vignettes/.install_extras which
+    >> specifies these as Perl-like regular expressions on one or more lines.."
+    >> 
+    >> So I copied the existing inst/doc/index.html file from the installed
+    >> SighatbilityModel with the wrong sort order to my vignettes/index.html,
+    >> edited this index.html file to get the right sort order. The index.html is
+    >> just vanilla html so it is easy to modify "manually".
+    >> Then I created a vignettes/.install_extras with a single entry "index.html"
+    >> and now vignettes/index.html appears to be copied to inst/doc and so stops
+    >> the building of the wrongly sorted index.
+    >> 
+    >> Then I did a Rstudio -> Build -> BuildSourcePackage to create a tar.gz
+    >> file; installed from the tar.gz file, and now my vignette index is sorted
+    >> properly on my Mac machine.
+    >> Also tried using devtools::check_win_release() to generate a windoze zip
+    >> file; installed that; and the vignette index is again sorted properly on
+    >> Windows machines.
+    >> 
+    >> I'm hoping I can use this for (b) from my original query as well.
+    >> 
+    >> This will mean that I have to "manually'" maintain the vignettes/index.html
+    >> file, but that is straightforward.
+    >> 
+    >> I hope this works when I submit to CRAN.
+    >> 
+    >> How do I suggest to the R maintainers that an explicit section be added to
+    >> the Writing R Extensions manual with the above steps so that future package
+    >> writers don't repeat history? I'm willing to write the paragraph explaining
+    >> the steps, but don't know who/how to proceed to get it added to Writing R
+    >> Extensions.
+    >> 
+    >> Carl Schwarz
+
+The WRE manual is part of the R sources, so formally you are
+proposing to improve (the documentation part of) R.
+
+You can propose a patch against the "R-devel" sources.
+If the changes are quite small and compact (as here), even on by e-mail.
+The source file  is  doc/manual/R-exts.texi
+in R's SVN (source server)
+  https://svn.r-project.org/R/trunk/doc/manual/R-exts.texi
+or one of its mirrors (notably on github)
+
+
+From Je@n@Th|ou|ou@e @end|ng |rom un|v-|yon1@|r  Wed Jun  1 11:03:48 2022
+From: Je@n@Th|ou|ou@e @end|ng |rom un|v-|yon1@|r (THIOULOUSE JEAN)
+Date: Wed, 1 Jun 2022 11:03:48 +0200
+Subject: [R-pkg-devel] moving from C to C++ with Rcpp in R package
+Message-ID: <B05915C3-F374-41C2-9F46-D29AF8F4124F@univ-lyon1.fr>
+
+Hello
+
+I need some help to add C++ functions using Rcpp to the ade4 package.
+
+The ade4 package (on CRAN) already contains many C functions, mainly to perform randomization tests, and we would like to replace some of these functions by C++ ones using Rcpp, as well as add more new C++ functions, using also Rcpp.
+
+To start with, I have only one C++ function and one R wrapper function, named respectively RV.randtest and RVrandtestCpp. Both functions work fine, using sourceCpp("RVrandtestCpp.cpp") and calling it with RV.randtest in R from the command line, and I also checked that the RcppExamples package compiles without problem with my configuration. Everything is available in https://github.com/thioulouse/RVrandtest
+
+Now, I want to integrate these two functions in the ade4 package, so I have done the following things:
+
+- added Rcpp and RcppArmadillo to the Imports field in the DESCRIPTION file
+- added the LinkingTo field, with Rcpp and RcppArmadillo in the DESCRIPTION file
+- added importFrom("Rcpp", "sourceCpp") in the NAMESPACE file
+- added export("RV.randtest") and export("RVrandtestCpp") in the NAMESPACE file
+- added RV.randtest.Rd in the man directory and \alias{RVrandtestCpp} in ade4-internal.Rd
+- added RV.randtest.R in the R directory
+- added RVrandtestCpp.cpp in the src directory
+
+Then I used the Rcpp compileAttributes() function to add:
+
+- RcppExports.cpp in the src directory
+- RcppExports.R in the R directory
+
+But when I check the modified ade4 package (with R CMD BUILD / R CMD CHECK), I get the following notes:
+
+* checking R code for possible problems ... NOTE
+RVrandtestCpp: no visible binding for global variable
+  ?_ade4_RVrandtestCpp?
+Undefined global functions or variables:
+  _ade4_RVrandtestCpp
+
+And when running the examples I get the following error:
+
+> rv1 <- RV.randtest(pca1$tab, pca2$tab, 99)
+Error in RVrandtestCpp(X, Y, nrepet) : 
+  object '_ade4_RVrandtestCpp' not found
+Calls: RV.randtest -> RVrandtestCpp
+Execution halted
+
+So I am probably missing something, and I have the following questions:
+
+Do I have to modify the init.c file in the src directory ? It contains the reference to all the C functions called in the ade4 package, but not the C++ function from Rcpp. Should I add it here ? I tried to do it, with no luck.
+
+The NAMESPACE file contains this first line: 
+useDynLib(ade4, .registration = TRUE, .fixes = "C_")
+The .fixes argument is related to C function calls. Can this raise a problem for calling C++ functions ?
+
+Why is the _ade4_RVrandtestCpp function (defined by compileAttributes() in RcppExports.cpp) not visible in RVrandtestCpp and not found at runtime ?
+
+Sorry for the long message.
+Thank you for any help.
+
+Jean
+
+?-
+Jean THIOULOUSE - https://lbbe-web.univ-lyon1.fr/en/annuaires-des-membres/thioulouse-jean
+https://orcid.org/0000-0001-7664-0598 (ORCID page)
+https://www.springer.com/fr/book/9781493988488 (ade4 Book)
+https://pbil.univ-lyon1.fr/JTHome/Biblio/ThioulouseEB2021.pdf (Evol. Biol. paper)
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Jun  1 22:14:17 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 1 Jun 2022 23:14:17 +0300
+Subject: [R-pkg-devel] moving from C to C++ with Rcpp in R package
+In-Reply-To: <B05915C3-F374-41C2-9F46-D29AF8F4124F@univ-lyon1.fr>
+References: <B05915C3-F374-41C2-9F46-D29AF8F4124F@univ-lyon1.fr>
+Message-ID: <20220601231417.317a76f3@Tarkus>
+
+On Wed, 1 Jun 2022 11:03:48 +0200
+THIOULOUSE JEAN <Jean.Thioulouse at univ-lyon1.fr> wrote:
+
+> Do I have to modify the init.c file in the src directory ? It
+> contains the reference to all the C functions called in the ade4
+> package, but not the C++ function from Rcpp. Should I add it here ? I
+> tried to do it, with no luck.
+
+Yes, this is likely the right thing to do. Can you commit your pending
+modifications to ade4 in a separate branch to let everyone look at it?
+What you describe sounds right. There's probably some small detail
+you're missing.
+
+> Why is the _ade4_RVrandtestCpp function (defined by
+> compileAttributes() in RcppExports.cpp) not visible in RVrandtestCpp
+> and not found at runtime ?
+
+It has to be mentioned in a struct R_CallMethodDef entry, passed to the
+third argument of R_registerRoutines() in your R_init_ade4 function in
+src/init.c.
+
+-- 
+Best regards,
+Ivan
+
+
+From edd @end|ng |rom deb|@n@org  Wed Jun  1 22:18:47 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 1 Jun 2022 15:18:47 -0500
+Subject: [R-pkg-devel] moving from C to C++ with Rcpp in R package
+In-Reply-To: <B05915C3-F374-41C2-9F46-D29AF8F4124F@univ-lyon1.fr>
+References: <B05915C3-F374-41C2-9F46-D29AF8F4124F@univ-lyon1.fr>
+Message-ID: <25239.51623.251833.275516@rob.eddelbuettel.com>
+
+
+On 1 June 2022 at 11:03, THIOULOUSE JEAN wrote:
+| Hello
+| 
+| I need some help to add C++ functions using Rcpp to the ade4 package.
+| 
+| The ade4 package (on CRAN) already contains many C functions, mainly to perform randomization tests, and we would like to replace some of these functions by C++ ones using Rcpp, as well as add more new C++ functions, using also Rcpp.
+| 
+| To start with, I have only one C++ function and one R wrapper function, named respectively RV.randtest and RVrandtestCpp. Both functions work fine, using sourceCpp("RVrandtestCpp.cpp") and calling it with RV.randtest in R from the command line, and I also checked that the RcppExamples package compiles without problem with my configuration. Everything is available in https://github.com/thioulouse/RVrandtest
+| 
+| Now, I want to integrate these two functions in the ade4 package, so I have done the following things:
+| 
+| - added Rcpp and RcppArmadillo to the Imports field in the DESCRIPTION file
+| - added the LinkingTo field, with Rcpp and RcppArmadillo in the DESCRIPTION file
+| - added importFrom("Rcpp", "sourceCpp") in the NAMESPACE file
+| - added export("RV.randtest") and export("RVrandtestCpp") in the NAMESPACE file
+| - added RV.randtest.Rd in the man directory and \alias{RVrandtestCpp} in ade4-internal.Rd
+| - added RV.randtest.R in the R directory
+| - added RVrandtestCpp.cpp in the src directory
+| 
+| Then I used the Rcpp compileAttributes() function to add:
+| 
+| - RcppExports.cpp in the src directory
+| - RcppExports.R in the R directory
+| 
+| But when I check the modified ade4 package (with R CMD BUILD / R CMD CHECK), I get the following notes:
+| 
+| * checking R code for possible problems ... NOTE
+| RVrandtestCpp: no visible binding for global variable
+|   ?_ade4_RVrandtestCpp?
+| Undefined global functions or variables:
+|   _ade4_RVrandtestCpp
+| 
+| And when running the examples I get the following error:
+| 
+| > rv1 <- RV.randtest(pca1$tab, pca2$tab, 99)
+| Error in RVrandtestCpp(X, Y, nrepet) : 
+|   object '_ade4_RVrandtestCpp' not found
+| Calls: RV.randtest -> RVrandtestCpp
+| Execution halted
+| 
+| So I am probably missing something, and I have the following questions:
+| 
+| Do I have to modify the init.c file in the src directory ? It contains the reference to all the C functions called in the ade4 package, but not the C++ function from Rcpp. Should I add it here ? I tried to do it, with no luck.
+| 
+| The NAMESPACE file contains this first line: 
+| useDynLib(ade4, .registration = TRUE, .fixes = "C_")
+| The .fixes argument is related to C function calls. Can this raise a problem for calling C++ functions ?
+| 
+| Why is the _ade4_RVrandtestCpp function (defined by compileAttributes() in RcppExports.cpp) not visible in RVrandtestCpp and not found at runtime ?
+
+You most likely have an issue with the code commonly placed in src/init.c
+which registers entry points.
+
+Rcpp is rather good at autogenerating it for more standard packages
+containing only C++ code.  Mixing C and C++ code is not something the package
+is that well set up for.  I think I fought the same issue in the past on
+packages that transitioned, or just added a C++ file or two. I don't think
+there is a great solution.  I would suggest you
+ - use the init.c you have from the existing package
+ - create a new one-off package with the C++ functions you want to use 
+ - manually carry this over to your existing init.c
+ 
+I would generally recommend starting with Rcpp.package.skeleton("testpackage")
+(or a similar name) and try to move your package to a similar structure. The
+'all files in one directory' you have in https://github.com/thioulouse/RVrandtest
+is not what R prefers.
+
+Follow-up may be more suitable for the rcpp-devel list.  This list here is
+general interest, your question is a bit more specific to ins and outs of
+just one package.
+
+Best, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From c@chw@rz@t@t@|uc@ @end|ng |rom gm@||@com  Wed Jun  1 23:47:13 2022
+From: c@chw@rz@t@t@|uc@ @end|ng |rom gm@||@com (Carl Schwarz)
+Date: Wed, 1 Jun 2022 14:47:13 -0700
+Subject: [R-pkg-devel] Sort order of vignette index?;
+ adding purl'ed Rcode from asis vignette to vignette index?
+In-Reply-To: <25239.7579.515401.430977@stat.math.ethz.ch>
+References: <CADtpigb8i5fBcCOiJyMXD6hY6J4a4sofLMaf8XYoirM=5mDoXA@mail.gmail.com>
+ <CADtpigZQL7f6sex2gbieFaVuQ_ywVPKz7VnYW7wpTHTrJpd-rA@mail.gmail.com>
+ <CADtpigYBMaXgFTJin6y1SD5z_4uF-eAD4i0h=sxpF+KdL9hc-w@mail.gmail.com>
+ <8d467b58-4268-b856-44ed-d1bdd7b243dc@gmail.com>
+ <CADtpigYfhrdUhQtf4a_eEuXo+V_tns7kd9+UAxaGUfzFdWWfFw@mail.gmail.com>
+ <20220531100502.6ad5354a@Tarkus>
+ <YQXPR01MB4579C84C4B40232949F569C89ADC9@YQXPR01MB4579.CANPRD01.PROD.OUTLOOK.COM>
+ <CADtpigY-hp14wS=K8ob-STPDuZ1dwA8LWG5Nws08HkWz_0ysKg@mail.gmail.com>
+ <D29F12E5-B3EB-440F-92D8-F1C8D88020D1@dcn.davis.ca.us>
+ <25239.7579.515401.430977@stat.math.ethz.ch>
+Message-ID: <CADtpigYFiR=W_VDeDFmo=r95f-FfF4GGV=gDZCorL_020BQVKQ@mail.gmail.com>
+
+Here is some suggested text to be added to the Writing R Extensions manual.
+Any suggestions for changes?
+
+1.4.3. Customizing the vignette help index
+
+R provides two indices to the vignettes in a package  (a) the
+browseVignettes() function and (b) the html index of vignettes and other
+user documentation available when you use help(package=xxx). The latter is
+built when the package is installed.
+
+
+
+In some cases, customization of the html index is desirable. For example,
+currently the entries in the index  are sorted by the vignette engine used
+to build the vignette and then by the file name of the vignette and a
+different sort order may be desired. Or additional documents may wish to be
+included, e.g., the purl()?d code from an ?asis? vignette.
+
+
+
+Previous sections of this guide indicate that if an ?index.html? file is
+present in the inst/doc directory at the time of the build, then a new
+?index.html? file will not be built. Previous sections also indicate how to
+add additional files to the inst/doc directory. The following is then a
+summary of the steps needed to customize the html index to the vignettes in
+a package.
+
+
+
+1. Create a revised ?index.html? file in the vignettes directory. It may be
+easiest to copy an existing ?doc/index.html? file from an installed
+package. The vignettes/index.html file should be in plain html and can be
+modified to change the sort order or to add links to additional files to be
+available to users. Note that files are referred to using relative path
+names ? follow the pattern in the copied file.
+
+
+
+2. Add any other additional files to the vignettes directory that are to be
+available to the user via the vignette help index.
+
+
+
+3. Add an ?.install_extras? file to the vignettes directory (don?t forget
+the leading period in this file?s name). This is a text file with the names
+of the files in the vignettes directory to be added to the inst/doc
+directory. Each line can be coded as a regular expression. At a minimum,
+include ?index.html? to copy the vignettes/index.html file to the inst/doc
+directory.
+
+
+
+4. Check/build the package in the regular way.
+
+
+
+There is no evident way to modify the output of the browseVignettes()
+function; however, this function currently sorts by the vignette file name
+regardless of the vignette engine used.
+
+On Wed, Jun 1, 2022 at 1:04 AM Martin Maechler <maechler at stat.math.ethz.ch>
+wrote:
+
+> >>>>> Jeff Newmiller
+> >>>>>     on Tue, 31 May 2022 16:09:16 -0700 writes:
+>
+>     > FWIW the RStudio build is often not complete... it intentionally
+> takes shortcuts that make test/run iteration faster... but you should make
+> a habit of using the command line to build artifacts for sharing... it will
+> help avoid gotchas.
+>
+> Yes, definitely.
+>
+> Notably, e.g., reloading the package sources (often via
+> devtools) into a running R process instead of restarting R and
+> loading/attaching the newly built and installed package (that
+> you are developing) is much faster, but *NOT* equivalent and
+> sometimes misleading -- because it's not easily possible to
+> "revert" everything you did in your running R session {caches,
+> method tables, DLLs, internal pointers, ...}.
+>
+> (read on, further down)
+>
+>     > On May 31, 2022 3:53:57 PM PDT, Carl Schwarz <
+> cschwarzstatsfuca at gmail.com> wrote:
+>     >> Success!
+>     >>
+>     >> Building on MT's note that if the inst/doc has an index.html file,
+> R does
+>     >> NOT build a new index.
+>     >> At the end of Writing R Extensions Section 1.4, it states
+>     >> "  When R CMD build builds the vignettes, it copies these and the
+> vignette
+>     >> sources from directory vignettes to inst/doc. To install any other
+> files
+>     >> from the vignettes directory, include a file
+> vignettes/.install_extras which
+>     >> specifies these as Perl-like regular expressions on one or more
+> lines.."
+>     >>
+>     >> So I copied the existing inst/doc/index.html file from the installed
+>     >> SighatbilityModel with the wrong sort order to my
+> vignettes/index.html,
+>     >> edited this index.html file to get the right sort order. The
+> index.html is
+>     >> just vanilla html so it is easy to modify "manually".
+>     >> Then I created a vignettes/.install_extras with a single entry
+> "index.html"
+>     >> and now vignettes/index.html appears to be copied to inst/doc and
+> so stops
+>     >> the building of the wrongly sorted index.
+>     >>
+>     >> Then I did a Rstudio -> Build -> BuildSourcePackage to create a
+> tar.gz
+>     >> file; installed from the tar.gz file, and now my vignette index is
+> sorted
+>     >> properly on my Mac machine.
+>     >> Also tried using devtools::check_win_release() to generate a
+> windoze zip
+>     >> file; installed that; and the vignette index is again sorted
+> properly on
+>     >> Windows machines.
+>     >>
+>     >> I'm hoping I can use this for (b) from my original query as well.
+>     >>
+>     >> This will mean that I have to "manually'" maintain the
+> vignettes/index.html
+>     >> file, but that is straightforward.
+>     >>
+>     >> I hope this works when I submit to CRAN.
+>     >>
+>     >> How do I suggest to the R maintainers that an explicit section be
+> added to
+>     >> the Writing R Extensions manual with the above steps so that future
+> package
+>     >> writers don't repeat history? I'm willing to write the paragraph
+> explaining
+>     >> the steps, but don't know who/how to proceed to get it added to
+> Writing R
+>     >> Extensions.
+>     >>
+>     >> Carl Schwarz
+>
+> The WRE manual is part of the R sources, so formally you are
+> proposing to improve (the documentation part of) R.
+>
+> You can propose a patch against the "R-devel" sources.
+> If the changes are quite small and compact (as here), even on by e-mail.
+> The source file  is  doc/manual/R-exts.texi
+> in R's SVN (source server)
+>   https://svn.r-project.org/R/trunk/doc/manual/R-exts.texi
+> or one of its mirrors (notably on github)
+>
+
+	[[alternative HTML version deleted]]
+
+
