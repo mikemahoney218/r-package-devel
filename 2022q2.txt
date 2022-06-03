@@ -14214,3 +14214,966 @@ wrote:
 	[[alternative HTML version deleted]]
 
 
+From @eb@meyer @end|ng |rom |@u@de  Thu Jun  2 10:22:49 2022
+From: @eb@meyer @end|ng |rom |@u@de (Sebastian Meyer)
+Date: Thu, 2 Jun 2022 10:22:49 +0200
+Subject: [R-pkg-devel] Sort order of vignette index?;
+ adding purl'ed Rcode from asis vignette to vignette index?
+In-Reply-To: <CADtpigYFiR=W_VDeDFmo=r95f-FfF4GGV=gDZCorL_020BQVKQ@mail.gmail.com>
+References: <CADtpigb8i5fBcCOiJyMXD6hY6J4a4sofLMaf8XYoirM=5mDoXA@mail.gmail.com>
+ <CADtpigZQL7f6sex2gbieFaVuQ_ywVPKz7VnYW7wpTHTrJpd-rA@mail.gmail.com>
+ <CADtpigYBMaXgFTJin6y1SD5z_4uF-eAD4i0h=sxpF+KdL9hc-w@mail.gmail.com>
+ <8d467b58-4268-b856-44ed-d1bdd7b243dc@gmail.com>
+ <CADtpigYfhrdUhQtf4a_eEuXo+V_tns7kd9+UAxaGUfzFdWWfFw@mail.gmail.com>
+ <20220531100502.6ad5354a@Tarkus>
+ <YQXPR01MB4579C84C4B40232949F569C89ADC9@YQXPR01MB4579.CANPRD01.PROD.OUTLOOK.COM>
+ <CADtpigY-hp14wS=K8ob-STPDuZ1dwA8LWG5Nws08HkWz_0ysKg@mail.gmail.com>
+ <D29F12E5-B3EB-440F-92D8-F1C8D88020D1@dcn.davis.ca.us>
+ <25239.7579.515401.430977@stat.math.ethz.ch>
+ <CADtpigYFiR=W_VDeDFmo=r95f-FfF4GGV=gDZCorL_020BQVKQ@mail.gmail.com>
+Message-ID: <424d9afa-0e31-9254-e1e8-b3b3f570b87a@fau.de>
+
+Some quick comments:
+
+- You could place the index.html directly in the inst/doc folder of your 
+package sources, avoiding the need for .install_extras from the 
+vignettes folder. This approach is useful if there is additional 
+non-vignette material in inst/doc.
+
+- As you say, links in index.html need to be relative to the installed 
+*doc* dir, where the index file is located. For example, the simple links
+     <a href="template.R">template script</a>,
+     <a href="vignetteA.Rnw">source of vignette A</a>
+should work to reference a static Rscript inst/doc/template.R and a 
+vignette built from vignettes/vignetteA.Rnw (copied to inst/doc by R CMD 
+build), respectively.
+
+- It seems you could even generate the index.html via a vignette, 
+index.Rmd, say. The downside is that this index vignette will be listed 
+as a vignette (by browseVignettes(), for example) although it isn't 
+really a vignette.
+
+- browseVignettes() sorts by vignette title, not by file name. 
+Furthermore, its purpose is to browse *vignettes* also across packages, 
+so is unrelated to the *doc* index for a given package, which may 
+contain more than vignettes.
+
+Best regards,
+
+	Sebastian Meyer
+
+
+Am 01.06.22 um 23:47 schrieb Carl Schwarz:
+> Here is some suggested text to be added to the Writing R Extensions manual.
+> Any suggestions for changes?
+> 
+> 1.4.3. Customizing the vignette help index
+> 
+> R provides two indices to the vignettes in a package  (a) the
+> browseVignettes() function and (b) the html index of vignettes and other
+> user documentation available when you use help(package=xxx). The latter is
+> built when the package is installed.
+> 
+> 
+> 
+> In some cases, customization of the html index is desirable. For example,
+> currently the entries in the index  are sorted by the vignette engine used
+> to build the vignette and then by the file name of the vignette and a
+> different sort order may be desired. Or additional documents may wish to be
+> included, e.g., the purl()?d code from an ?asis? vignette.
+> 
+> 
+> 
+> Previous sections of this guide indicate that if an ?index.html? file is
+> present in the inst/doc directory at the time of the build, then a new
+> ?index.html? file will not be built. Previous sections also indicate how to
+> add additional files to the inst/doc directory. The following is then a
+> summary of the steps needed to customize the html index to the vignettes in
+> a package.
+> 
+> 
+> 
+> 1. Create a revised ?index.html? file in the vignettes directory. It may be
+> easiest to copy an existing ?doc/index.html? file from an installed
+> package. The vignettes/index.html file should be in plain html and can be
+> modified to change the sort order or to add links to additional files to be
+> available to users. Note that files are referred to using relative path
+> names ? follow the pattern in the copied file.
+> 
+> 
+> 
+> 2. Add any other additional files to the vignettes directory that are to be
+> available to the user via the vignette help index.
+> 
+> 
+> 
+> 3. Add an ?.install_extras? file to the vignettes directory (don?t forget
+> the leading period in this file?s name). This is a text file with the names
+> of the files in the vignettes directory to be added to the inst/doc
+> directory. Each line can be coded as a regular expression. At a minimum,
+> include ?index.html? to copy the vignettes/index.html file to the inst/doc
+> directory.
+> 
+> 
+> 
+> 4. Check/build the package in the regular way.
+> 
+> 
+> 
+> There is no evident way to modify the output of the browseVignettes()
+> function; however, this function currently sorts by the vignette file name
+> regardless of the vignette engine used.
+> 
+> On Wed, Jun 1, 2022 at 1:04 AM Martin Maechler <maechler at stat.math.ethz.ch>
+> wrote:
+> 
+>>>>>>> Jeff Newmiller
+>>>>>>>      on Tue, 31 May 2022 16:09:16 -0700 writes:
+>>
+>>      > FWIW the RStudio build is often not complete... it intentionally
+>> takes shortcuts that make test/run iteration faster... but you should make
+>> a habit of using the command line to build artifacts for sharing... it will
+>> help avoid gotchas.
+>>
+>> Yes, definitely.
+>>
+>> Notably, e.g., reloading the package sources (often via
+>> devtools) into a running R process instead of restarting R and
+>> loading/attaching the newly built and installed package (that
+>> you are developing) is much faster, but *NOT* equivalent and
+>> sometimes misleading -- because it's not easily possible to
+>> "revert" everything you did in your running R session {caches,
+>> method tables, DLLs, internal pointers, ...}.
+>>
+>> (read on, further down)
+>>
+>>      > On May 31, 2022 3:53:57 PM PDT, Carl Schwarz <
+>> cschwarzstatsfuca at gmail.com> wrote:
+>>      >> Success!
+>>      >>
+>>      >> Building on MT's note that if the inst/doc has an index.html file,
+>> R does
+>>      >> NOT build a new index.
+>>      >> At the end of Writing R Extensions Section 1.4, it states
+>>      >> "  When R CMD build builds the vignettes, it copies these and the
+>> vignette
+>>      >> sources from directory vignettes to inst/doc. To install any other
+>> files
+>>      >> from the vignettes directory, include a file
+>> vignettes/.install_extras which
+>>      >> specifies these as Perl-like regular expressions on one or more
+>> lines.."
+>>      >>
+>>      >> So I copied the existing inst/doc/index.html file from the installed
+>>      >> SighatbilityModel with the wrong sort order to my
+>> vignettes/index.html,
+>>      >> edited this index.html file to get the right sort order. The
+>> index.html is
+>>      >> just vanilla html so it is easy to modify "manually".
+>>      >> Then I created a vignettes/.install_extras with a single entry
+>> "index.html"
+>>      >> and now vignettes/index.html appears to be copied to inst/doc and
+>> so stops
+>>      >> the building of the wrongly sorted index.
+>>      >>
+>>      >> Then I did a Rstudio -> Build -> BuildSourcePackage to create a
+>> tar.gz
+>>      >> file; installed from the tar.gz file, and now my vignette index is
+>> sorted
+>>      >> properly on my Mac machine.
+>>      >> Also tried using devtools::check_win_release() to generate a
+>> windoze zip
+>>      >> file; installed that; and the vignette index is again sorted
+>> properly on
+>>      >> Windows machines.
+>>      >>
+>>      >> I'm hoping I can use this for (b) from my original query as well.
+>>      >>
+>>      >> This will mean that I have to "manually'" maintain the
+>> vignettes/index.html
+>>      >> file, but that is straightforward.
+>>      >>
+>>      >> I hope this works when I submit to CRAN.
+>>      >>
+>>      >> How do I suggest to the R maintainers that an explicit section be
+>> added to
+>>      >> the Writing R Extensions manual with the above steps so that future
+>> package
+>>      >> writers don't repeat history? I'm willing to write the paragraph
+>> explaining
+>>      >> the steps, but don't know who/how to proceed to get it added to
+>> Writing R
+>>      >> Extensions.
+>>      >>
+>>      >> Carl Schwarz
+>>
+>> The WRE manual is part of the R sources, so formally you are
+>> proposing to improve (the documentation part of) R.
+>>
+>> You can propose a patch against the "R-devel" sources.
+>> If the changes are quite small and compact (as here), even on by e-mail.
+>> The source file  is  doc/manual/R-exts.texi
+>> in R's SVN (source server)
+>>    https://svn.r-project.org/R/trunk/doc/manual/R-exts.texi
+>> or one of its mirrors (notably on github)
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From Je@n@Th|ou|ou@e @end|ng |rom un|v-|yon1@|r  Thu Jun  2 15:06:44 2022
+From: Je@n@Th|ou|ou@e @end|ng |rom un|v-|yon1@|r (THIOULOUSE JEAN)
+Date: Thu, 2 Jun 2022 15:06:44 +0200
+Subject: [R-pkg-devel] moving from C to C++ with Rcpp in R package
+In-Reply-To: <25239.51623.251833.275516@rob.eddelbuettel.com>
+References: <B05915C3-F374-41C2-9F46-D29AF8F4124F@univ-lyon1.fr>
+ <25239.51623.251833.275516@rob.eddelbuettel.com>
+Message-ID: <EB4BA05D-4EF0-43A3-ADE9-E524AAB8A74F@univ-lyon1.fr>
+
+
+Thank you Ivan and Dirk for your messages. I tried to follow your advice (modifying the src/init.c file by hand to add the things from the C++ function), but the function R_init_ade4 cannot be defined in both init.c and RcppExports.cpp. So I still have the same problem ("object '_ade4_RVrandtestCpp' not found").
+
+As suggested by Ivan Krylov, I have created a new branch of the ade4 package (called ade4-Rcpp on github: https://github.com/sdray/ade4/tree/ade4-Rcpp) with the modifications listed here.
+
+I am also cc-ing this message to rcpp-devel that may be more suitable for followups.
+
+Thank you again for your help,
+Jean
+
+
+> Le 1 juin 2022 ? 22:18, Dirk Eddelbuettel <edd at debian.org> a ?crit :
+> 
+> 
+> On 1 June 2022 at 11:03, THIOULOUSE JEAN wrote:
+> | Hello
+> | 
+> | I need some help to add C++ functions using Rcpp to the ade4 package.
+> | 
+> | The ade4 package (on CRAN) already contains many C functions, mainly to perform randomization tests, and we would like to replace some of these functions by C++ ones using Rcpp, as well as add more new C++ functions, using also Rcpp.
+> | 
+> | To start with, I have only one C++ function and one R wrapper function, named respectively RV.randtest and RVrandtestCpp. Both functions work fine, using sourceCpp("RVrandtestCpp.cpp") and calling it with RV.randtest in R from the command line, and I also checked that the RcppExamples package compiles without problem with my configuration. Everything is available in https://github.com/thioulouse/RVrandtest
+> | 
+> | Now, I want to integrate these two functions in the ade4 package, so I have done the following things:
+> | 
+> | - added Rcpp and RcppArmadillo to the Imports field in the DESCRIPTION file
+> | - added the LinkingTo field, with Rcpp and RcppArmadillo in the DESCRIPTION file
+> | - added importFrom("Rcpp", "sourceCpp") in the NAMESPACE file
+> | - added export("RV.randtest") and export("RVrandtestCpp") in the NAMESPACE file
+> | - added RV.randtest.Rd in the man directory and \alias{RVrandtestCpp} in ade4-internal.Rd
+> | - added RV.randtest.R in the R directory
+> | - added RVrandtestCpp.cpp in the src directory
+> | 
+> | Then I used the Rcpp compileAttributes() function to add:
+> | 
+> | - RcppExports.cpp in the src directory
+> | - RcppExports.R in the R directory
+> | 
+> | But when I check the modified ade4 package (with R CMD BUILD / R CMD CHECK), I get the following notes:
+> | 
+> | * checking R code for possible problems ... NOTE
+> | RVrandtestCpp: no visible binding for global variable
+> |   ?_ade4_RVrandtestCpp?
+> | Undefined global functions or variables:
+> |   _ade4_RVrandtestCpp
+> | 
+> | And when running the examples I get the following error:
+> | 
+> | > rv1 <- RV.randtest(pca1$tab, pca2$tab, 99)
+> | Error in RVrandtestCpp(X, Y, nrepet) : 
+> |   object '_ade4_RVrandtestCpp' not found
+> | Calls: RV.randtest -> RVrandtestCpp
+> | Execution halted
+> | 
+> | So I am probably missing something, and I have the following questions:
+> | 
+> | Do I have to modify the init.c file in the src directory ? It contains the reference to all the C functions called in the ade4 package, but not the C++ function from Rcpp. Should I add it here ? I tried to do it, with no luck.
+> | 
+> | The NAMESPACE file contains this first line: 
+> | useDynLib(ade4, .registration = TRUE, .fixes = "C_")
+> | The .fixes argument is related to C function calls. Can this raise a problem for calling C++ functions ?
+> | 
+> | Why is the _ade4_RVrandtestCpp function (defined by compileAttributes() in RcppExports.cpp) not visible in RVrandtestCpp and not found at runtime ?
+> 
+> You most likely have an issue with the code commonly placed in src/init.c
+> which registers entry points.
+> 
+> Rcpp is rather good at autogenerating it for more standard packages
+> containing only C++ code.  Mixing C and C++ code is not something the package
+> is that well set up for.  I think I fought the same issue in the past on
+> packages that transitioned, or just added a C++ file or two. I don't think
+> there is a great solution.  I would suggest you
+> - use the init.c you have from the existing package
+> - create a new one-off package with the C++ functions you want to use 
+> - manually carry this over to your existing init.c
+> 
+> I would generally recommend starting with Rcpp.package.skeleton("testpackage")
+> (or a similar name) and try to move your package to a similar structure. The
+> 'all files in one directory' you have in https://github.com/thioulouse/RVrandtest
+> is not what R prefers.
+> 
+> Follow-up may be more suitable for the rcpp-devel list.  This list here is
+> general interest, your question is a bit more specific to ins and outs of
+> just one package.
+> 
+> Best, Dirk
+> 
+> -- 
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Jun  2 15:24:20 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 2 Jun 2022 16:24:20 +0300
+Subject: [R-pkg-devel] moving from C to C++ with Rcpp in R package
+In-Reply-To: <EB4BA05D-4EF0-43A3-ADE9-E524AAB8A74F@univ-lyon1.fr>
+References: <B05915C3-F374-41C2-9F46-D29AF8F4124F@univ-lyon1.fr>
+ <25239.51623.251833.275516@rob.eddelbuettel.com>
+ <EB4BA05D-4EF0-43A3-ADE9-E524AAB8A74F@univ-lyon1.fr>
+Message-ID: <20220602162420.5ee5d711@arachnoid>
+
+? Thu, 2 Jun 2022 15:06:44 +0200
+THIOULOUSE JEAN <Jean.Thioulouse at univ-lyon1.fr> ?????:
+
+> "object '_ade4_RVrandtestCpp' not found").
+
+> static const R_CallMethodDef CallEntries[] = {
+>     {"_ade4_RVrandtestCpp", (DL_FUNC) &_ade4_RVrandtestCpp, 3},
+>     {NULL, NULL, 0}
+> };
+
+Almost there. Since you're using the fixes = 'C_' argument to
+useDynLib, you need to .Call() the variable called C__ade4_RVrandtestCpp
+in your R code, not _ade4_RVrandtestCpp.
+
+You can verify the symbol name by installing the package and searching
+for it in the package namespace:
+
+grep(
+ 'rv.*randtest', ls(loadNamespace('ade4'), all = TRUE),
+ ignore.case = TRUE, value = TRUE
+)
+
+Unfortunately, this means editing RcppExports.R, which (I think)
+prevents you from enjoying the way Rcpp::compileAttributes() sets
+everything up for you.
+
+-- 
+Best regards,
+Ivan
+
+
+From je@n@th|ou|ou@e @end|ng |rom un|v-|yon1@|r  Thu Jun  2 19:00:17 2022
+From: je@n@th|ou|ou@e @end|ng |rom un|v-|yon1@|r (Jean Thioulouse)
+Date: Thu, 2 Jun 2022 19:00:17 +0200
+Subject: [R-pkg-devel] moving from C to C++ with Rcpp in R package
+In-Reply-To: <20220602162420.5ee5d711@arachnoid>
+References: <B05915C3-F374-41C2-9F46-D29AF8F4124F@univ-lyon1.fr>
+ <25239.51623.251833.275516@rob.eddelbuettel.com>
+ <EB4BA05D-4EF0-43A3-ADE9-E524AAB8A74F@univ-lyon1.fr>
+ <20220602162420.5ee5d711@arachnoid>
+Message-ID: <459230A2-6DBE-4782-B0E2-E10263691952@univ-lyon1.fr>
+
+
+Thanks a lot ! Package compiles and runs fine now. I must keep the  .fixes = "C_" argument in the useDynLib function of the NAMESPACE file because there are still many C functions in the package. So adding C_ to Rcpp function names is a good workaround for now.
+
+Thanks again
+Jean
+
+
+> Le 2 juin 2022 ? 15:24, Ivan Krylov <krylov.r00t at gmail.com> a ?crit :
+> 
+> ? Thu, 2 Jun 2022 15:06:44 +0200
+> THIOULOUSE JEAN <Jean.Thioulouse at univ-lyon1.fr> ?????:
+> 
+>> "object '_ade4_RVrandtestCpp' not found").
+> 
+>> static const R_CallMethodDef CallEntries[] = {
+>>    {"_ade4_RVrandtestCpp", (DL_FUNC) &_ade4_RVrandtestCpp, 3},
+>>    {NULL, NULL, 0}
+>> };
+> 
+> Almost there. Since you're using the fixes = 'C_' argument to
+> useDynLib, you need to .Call() the variable called C__ade4_RVrandtestCpp
+> in your R code, not _ade4_RVrandtestCpp.
+> 
+> You can verify the symbol name by installing the package and searching
+> for it in the package namespace:
+> 
+> grep(
+> 'rv.*randtest', ls(loadNamespace('ade4'), all = TRUE),
+> ignore.case = TRUE, value = TRUE
+> )
+> 
+> Unfortunately, this means editing RcppExports.R, which (I think)
+> prevents you from enjoying the way Rcpp::compileAttributes() sets
+> everything up for you.
+> 
+> -- 
+> Best regards,
+> Ivan
+
+
+From c@chw@rz@t@t@|uc@ @end|ng |rom gm@||@com  Thu Jun  2 19:39:30 2022
+From: c@chw@rz@t@t@|uc@ @end|ng |rom gm@||@com (Carl Schwarz)
+Date: Thu, 2 Jun 2022 10:39:30 -0700
+Subject: [R-pkg-devel] Sort order of vignette index?;
+ adding purl'ed Rcode from asis vignette to vignette index?
+In-Reply-To: <424d9afa-0e31-9254-e1e8-b3b3f570b87a@fau.de>
+References: <CADtpigb8i5fBcCOiJyMXD6hY6J4a4sofLMaf8XYoirM=5mDoXA@mail.gmail.com>
+ <CADtpigZQL7f6sex2gbieFaVuQ_ywVPKz7VnYW7wpTHTrJpd-rA@mail.gmail.com>
+ <CADtpigYBMaXgFTJin6y1SD5z_4uF-eAD4i0h=sxpF+KdL9hc-w@mail.gmail.com>
+ <8d467b58-4268-b856-44ed-d1bdd7b243dc@gmail.com>
+ <CADtpigYfhrdUhQtf4a_eEuXo+V_tns7kd9+UAxaGUfzFdWWfFw@mail.gmail.com>
+ <20220531100502.6ad5354a@Tarkus>
+ <YQXPR01MB4579C84C4B40232949F569C89ADC9@YQXPR01MB4579.CANPRD01.PROD.OUTLOOK.COM>
+ <CADtpigY-hp14wS=K8ob-STPDuZ1dwA8LWG5Nws08HkWz_0ysKg@mail.gmail.com>
+ <D29F12E5-B3EB-440F-92D8-F1C8D88020D1@dcn.davis.ca.us>
+ <25239.7579.515401.430977@stat.math.ethz.ch>
+ <CADtpigYFiR=W_VDeDFmo=r95f-FfF4GGV=gDZCorL_020BQVKQ@mail.gmail.com>
+ <424d9afa-0e31-9254-e1e8-b3b3f570b87a@fau.de>
+Message-ID: <CADtpigaSyS_kZ-Sr3evT=6jaybsGiNGfxQVoVTLPZzE+zLPdHg@mail.gmail.com>
+
+Thanks for the suggestions.
+
+(a) Unfortunately, if you place the index.html directly into the inst/doc
+directory, it is overwritten when the package source file (*tar.gz) is
+created and then installed.
+This is using RStudio on a Mac.... I did not try this on a Windows machine.
+
+But other files that you place in the inst/doc file are left alone and are
+listed under the vignette index when you follow the "User guides, package
+vignettes and other documentation" link.
+
+So strange that the index is overwritten but other files are left alone.
+
+(b) The relative links that are generated are quite long, e.g. <a
+href="../../../library/SightabilityModel/doc/c-MoosePopR-SightabilityPopR-Demo.html">HTML</a>
+and I don't fully understand where the "current" directory is when you
+follow the "User guides, package vignettes and other
+documentation" requiring you to go back up the directory tree and then go
+back down.
+I copied and modified these odd links for my other files and it worked fine.
+
+(c) I have not tried the index.Rmd approach...
+
+Carl.
+
+On Thu, Jun 2, 2022 at 1:22 AM Sebastian Meyer <seb.meyer at fau.de> wrote:
+
+> Some quick comments:
+>
+> - You could place the index.html directly in the inst/doc folder of your
+> package sources, avoiding the need for .install_extras from the
+> vignettes folder. This approach is useful if there is additional
+> non-vignette material in inst/doc.
+>
+> - As you say, links in index.html need to be relative to the installed
+> *doc* dir, where the index file is located. For example, the simple links
+>      <a href="template.R">template script</a>,
+>      <a href="vignetteA.Rnw">source of vignette A</a>
+> should work to reference a static Rscript inst/doc/template.R and a
+> vignette built from vignettes/vignetteA.Rnw (copied to inst/doc by R CMD
+> build), respectively.
+>
+> - It seems you could even generate the index.html via a vignette,
+> index.Rmd, say. The downside is that this index vignette will be listed
+> as a vignette (by browseVignettes(), for example) although it isn't
+> really a vignette.
+>
+> - browseVignettes() sorts by vignette title, not by file name.
+> Furthermore, its purpose is to browse *vignettes* also across packages,
+> so is unrelated to the *doc* index for a given package, which may
+> contain more than vignettes.
+>
+> Best regards,
+>
+>         Sebastian Meyer
+>
+>
+> Am 01.06.22 um 23:47 schrieb Carl Schwarz:
+> > Here is some suggested text to be added to the Writing R Extensions
+> manual.
+> > Any suggestions for changes?
+> >
+> > 1.4.3. Customizing the vignette help index
+> >
+> > R provides two indices to the vignettes in a package  (a) the
+> > browseVignettes() function and (b) the html index of vignettes and other
+> > user documentation available when you use help(package=xxx). The latter
+> is
+> > built when the package is installed.
+> >
+> >
+> >
+> > In some cases, customization of the html index is desirable. For example,
+> > currently the entries in the index  are sorted by the vignette engine
+> used
+> > to build the vignette and then by the file name of the vignette and a
+> > different sort order may be desired. Or additional documents may wish to
+> be
+> > included, e.g., the purl()?d code from an ?asis? vignette.
+> >
+> >
+> >
+> > Previous sections of this guide indicate that if an ?index.html? file is
+> > present in the inst/doc directory at the time of the build, then a new
+> > ?index.html? file will not be built. Previous sections also indicate how
+> to
+> > add additional files to the inst/doc directory. The following is then a
+> > summary of the steps needed to customize the html index to the vignettes
+> in
+> > a package.
+> >
+> >
+> >
+> > 1. Create a revised ?index.html? file in the vignettes directory. It may
+> be
+> > easiest to copy an existing ?doc/index.html? file from an installed
+> > package. The vignettes/index.html file should be in plain html and can be
+> > modified to change the sort order or to add links to additional files to
+> be
+> > available to users. Note that files are referred to using relative path
+> > names ? follow the pattern in the copied file.
+> >
+> >
+> >
+> > 2. Add any other additional files to the vignettes directory that are to
+> be
+> > available to the user via the vignette help index.
+> >
+> >
+> >
+> > 3. Add an ?.install_extras? file to the vignettes directory (don?t forget
+> > the leading period in this file?s name). This is a text file with the
+> names
+> > of the files in the vignettes directory to be added to the inst/doc
+> > directory. Each line can be coded as a regular expression. At a minimum,
+> > include ?index.html? to copy the vignettes/index.html file to the
+> inst/doc
+> > directory.
+> >
+> >
+> >
+> > 4. Check/build the package in the regular way.
+> >
+> >
+> >
+> > There is no evident way to modify the output of the browseVignettes()
+> > function; however, this function currently sorts by the vignette file
+> name
+> > regardless of the vignette engine used.
+> >
+> > On Wed, Jun 1, 2022 at 1:04 AM Martin Maechler <
+> maechler at stat.math.ethz.ch>
+> > wrote:
+> >
+> >>>>>>> Jeff Newmiller
+> >>>>>>>      on Tue, 31 May 2022 16:09:16 -0700 writes:
+> >>
+> >>      > FWIW the RStudio build is often not complete... it intentionally
+> >> takes shortcuts that make test/run iteration faster... but you should
+> make
+> >> a habit of using the command line to build artifacts for sharing... it
+> will
+> >> help avoid gotchas.
+> >>
+> >> Yes, definitely.
+> >>
+> >> Notably, e.g., reloading the package sources (often via
+> >> devtools) into a running R process instead of restarting R and
+> >> loading/attaching the newly built and installed package (that
+> >> you are developing) is much faster, but *NOT* equivalent and
+> >> sometimes misleading -- because it's not easily possible to
+> >> "revert" everything you did in your running R session {caches,
+> >> method tables, DLLs, internal pointers, ...}.
+> >>
+> >> (read on, further down)
+> >>
+> >>      > On May 31, 2022 3:53:57 PM PDT, Carl Schwarz <
+> >> cschwarzstatsfuca at gmail.com> wrote:
+> >>      >> Success!
+> >>      >>
+> >>      >> Building on MT's note that if the inst/doc has an index.html
+> file,
+> >> R does
+> >>      >> NOT build a new index.
+> >>      >> At the end of Writing R Extensions Section 1.4, it states
+> >>      >> "  When R CMD build builds the vignettes, it copies these and
+> the
+> >> vignette
+> >>      >> sources from directory vignettes to inst/doc. To install any
+> other
+> >> files
+> >>      >> from the vignettes directory, include a file
+> >> vignettes/.install_extras which
+> >>      >> specifies these as Perl-like regular expressions on one or more
+> >> lines.."
+> >>      >>
+> >>      >> So I copied the existing inst/doc/index.html file from the
+> installed
+> >>      >> SighatbilityModel with the wrong sort order to my
+> >> vignettes/index.html,
+> >>      >> edited this index.html file to get the right sort order. The
+> >> index.html is
+> >>      >> just vanilla html so it is easy to modify "manually".
+> >>      >> Then I created a vignettes/.install_extras with a single entry
+> >> "index.html"
+> >>      >> and now vignettes/index.html appears to be copied to inst/doc
+> and
+> >> so stops
+> >>      >> the building of the wrongly sorted index.
+> >>      >>
+> >>      >> Then I did a Rstudio -> Build -> BuildSourcePackage to create a
+> >> tar.gz
+> >>      >> file; installed from the tar.gz file, and now my vignette index
+> is
+> >> sorted
+> >>      >> properly on my Mac machine.
+> >>      >> Also tried using devtools::check_win_release() to generate a
+> >> windoze zip
+> >>      >> file; installed that; and the vignette index is again sorted
+> >> properly on
+> >>      >> Windows machines.
+> >>      >>
+> >>      >> I'm hoping I can use this for (b) from my original query as
+> well.
+> >>      >>
+> >>      >> This will mean that I have to "manually'" maintain the
+> >> vignettes/index.html
+> >>      >> file, but that is straightforward.
+> >>      >>
+> >>      >> I hope this works when I submit to CRAN.
+> >>      >>
+> >>      >> How do I suggest to the R maintainers that an explicit section
+> be
+> >> added to
+> >>      >> the Writing R Extensions manual with the above steps so that
+> future
+> >> package
+> >>      >> writers don't repeat history? I'm willing to write the paragraph
+> >> explaining
+> >>      >> the steps, but don't know who/how to proceed to get it added to
+> >> Writing R
+> >>      >> Extensions.
+> >>      >>
+> >>      >> Carl Schwarz
+> >>
+> >> The WRE manual is part of the R sources, so formally you are
+> >> proposing to improve (the documentation part of) R.
+> >>
+> >> You can propose a patch against the "R-devel" sources.
+> >> If the changes are quite small and compact (as here), even on by e-mail.
+> >> The source file  is  doc/manual/R-exts.texi
+> >> in R's SVN (source server)
+> >>    https://svn.r-project.org/R/trunk/doc/manual/R-exts.texi
+> >> or one of its mirrors (notably on github)
+> >>
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Jun  2 21:53:58 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 2 Jun 2022 15:53:58 -0400
+Subject: [R-pkg-devel] Sort order of vignette index?;
+ adding purl'ed Rcode from asis vignette to vignette index?
+In-Reply-To: <CADtpigaSyS_kZ-Sr3evT=6jaybsGiNGfxQVoVTLPZzE+zLPdHg@mail.gmail.com>
+References: <CADtpigb8i5fBcCOiJyMXD6hY6J4a4sofLMaf8XYoirM=5mDoXA@mail.gmail.com>
+ <CADtpigZQL7f6sex2gbieFaVuQ_ywVPKz7VnYW7wpTHTrJpd-rA@mail.gmail.com>
+ <CADtpigYBMaXgFTJin6y1SD5z_4uF-eAD4i0h=sxpF+KdL9hc-w@mail.gmail.com>
+ <8d467b58-4268-b856-44ed-d1bdd7b243dc@gmail.com>
+ <CADtpigYfhrdUhQtf4a_eEuXo+V_tns7kd9+UAxaGUfzFdWWfFw@mail.gmail.com>
+ <20220531100502.6ad5354a@Tarkus>
+ <YQXPR01MB4579C84C4B40232949F569C89ADC9@YQXPR01MB4579.CANPRD01.PROD.OUTLOOK.COM>
+ <CADtpigY-hp14wS=K8ob-STPDuZ1dwA8LWG5Nws08HkWz_0ysKg@mail.gmail.com>
+ <D29F12E5-B3EB-440F-92D8-F1C8D88020D1@dcn.davis.ca.us>
+ <25239.7579.515401.430977@stat.math.ethz.ch>
+ <CADtpigYFiR=W_VDeDFmo=r95f-FfF4GGV=gDZCorL_020BQVKQ@mail.gmail.com>
+ <424d9afa-0e31-9254-e1e8-b3b3f570b87a@fau.de>
+ <CADtpigaSyS_kZ-Sr3evT=6jaybsGiNGfxQVoVTLPZzE+zLPdHg@mail.gmail.com>
+Message-ID: <b80f569e-5edc-3352-d603-6e42cf15042e@gmail.com>
+
+On 02/06/2022 1:39 p.m., Carl Schwarz wrote:
+> Thanks for the suggestions.
+> 
+> (a) Unfortunately, if you place the index.html directly into the inst/doc
+> directory, it is overwritten when the package source file (*tar.gz) is
+> created and then installed.
+> This is using RStudio on a Mac.... I did not try this on a Windows machine.
+> 
+> But other files that you place in the inst/doc file are left alone and are
+> listed under the vignette index when you follow the "User guides, package
+> vignettes and other documentation" link.
+> 
+> So strange that the index is overwritten but other files are left alone.
+
+That does sound like a bug...
+
+> (b) The relative links that are generated are quite long, e.g. <a
+> href="../../../library/SightabilityModel/doc/c-MoosePopR-SightabilityPopR-Demo.html">HTML</a>
+> and I don't fully understand where the "current" directory is when you
+> follow the "User guides, package vignettes and other
+> documentation" requiring you to go back up the directory tree and then go
+> back down.
+> I copied and modified these odd links for my other files and it worked fine.
+
+To see the links the help system is using, you can run it in an external 
+browser using "help.start()".  When I do that for rgl I see this link on 
+the vignettes page:
+
+   http://127.0.0.1:17854/library/rgl/doc/index.html
+
+and the first vignette is at
+
+   http://127.0.0.1:17854/library/rgl/doc/WebGL.html
+
+generated from <a href="../../../library/rgl/doc/WebGL.html">.
+
+I forget why the index doesn't just use <a href="WebGL.html"> which 
+would appear to be equivalent in this case, but I vaguely recall that 
+there's a good reason for that.  It might be because the links generated 
+for static documentation are different.
+
+Duncan Murdoch
+
+> 
+> (c) I have not tried the index.Rmd approach...
+> 
+> Carl.
+> 
+> On Thu, Jun 2, 2022 at 1:22 AM Sebastian Meyer <seb.meyer at fau.de> wrote:
+> 
+>> Some quick comments:
+>>
+>> - You could place the index.html directly in the inst/doc folder of your
+>> package sources, avoiding the need for .install_extras from the
+>> vignettes folder. This approach is useful if there is additional
+>> non-vignette material in inst/doc.
+>>
+>> - As you say, links in index.html need to be relative to the installed
+>> *doc* dir, where the index file is located. For example, the simple links
+>>       <a href="template.R">template script</a>,
+>>       <a href="vignetteA.Rnw">source of vignette A</a>
+>> should work to reference a static Rscript inst/doc/template.R and a
+>> vignette built from vignettes/vignetteA.Rnw (copied to inst/doc by R CMD
+>> build), respectively.
+>>
+>> - It seems you could even generate the index.html via a vignette,
+>> index.Rmd, say. The downside is that this index vignette will be listed
+>> as a vignette (by browseVignettes(), for example) although it isn't
+>> really a vignette.
+>>
+>> - browseVignettes() sorts by vignette title, not by file name.
+>> Furthermore, its purpose is to browse *vignettes* also across packages,
+>> so is unrelated to the *doc* index for a given package, which may
+>> contain more than vignettes.
+>>
+>> Best regards,
+>>
+>>          Sebastian Meyer
+>>
+>>
+>> Am 01.06.22 um 23:47 schrieb Carl Schwarz:
+>>> Here is some suggested text to be added to the Writing R Extensions
+>> manual.
+>>> Any suggestions for changes?
+>>>
+>>> 1.4.3. Customizing the vignette help index
+>>>
+>>> R provides two indices to the vignettes in a package  (a) the
+>>> browseVignettes() function and (b) the html index of vignettes and other
+>>> user documentation available when you use help(package=xxx). The latter
+>> is
+>>> built when the package is installed.
+>>>
+>>>
+>>>
+>>> In some cases, customization of the html index is desirable. For example,
+>>> currently the entries in the index  are sorted by the vignette engine
+>> used
+>>> to build the vignette and then by the file name of the vignette and a
+>>> different sort order may be desired. Or additional documents may wish to
+>> be
+>>> included, e.g., the purl()?d code from an ?asis? vignette.
+>>>
+>>>
+>>>
+>>> Previous sections of this guide indicate that if an ?index.html? file is
+>>> present in the inst/doc directory at the time of the build, then a new
+>>> ?index.html? file will not be built. Previous sections also indicate how
+>> to
+>>> add additional files to the inst/doc directory. The following is then a
+>>> summary of the steps needed to customize the html index to the vignettes
+>> in
+>>> a package.
+>>>
+>>>
+>>>
+>>> 1. Create a revised ?index.html? file in the vignettes directory. It may
+>> be
+>>> easiest to copy an existing ?doc/index.html? file from an installed
+>>> package. The vignettes/index.html file should be in plain html and can be
+>>> modified to change the sort order or to add links to additional files to
+>> be
+>>> available to users. Note that files are referred to using relative path
+>>> names ? follow the pattern in the copied file.
+>>>
+>>>
+>>>
+>>> 2. Add any other additional files to the vignettes directory that are to
+>> be
+>>> available to the user via the vignette help index.
+>>>
+>>>
+>>>
+>>> 3. Add an ?.install_extras? file to the vignettes directory (don?t forget
+>>> the leading period in this file?s name). This is a text file with the
+>> names
+>>> of the files in the vignettes directory to be added to the inst/doc
+>>> directory. Each line can be coded as a regular expression. At a minimum,
+>>> include ?index.html? to copy the vignettes/index.html file to the
+>> inst/doc
+>>> directory.
+>>>
+>>>
+>>>
+>>> 4. Check/build the package in the regular way.
+>>>
+>>>
+>>>
+>>> There is no evident way to modify the output of the browseVignettes()
+>>> function; however, this function currently sorts by the vignette file
+>> name
+>>> regardless of the vignette engine used.
+>>>
+>>> On Wed, Jun 1, 2022 at 1:04 AM Martin Maechler <
+>> maechler at stat.math.ethz.ch>
+>>> wrote:
+>>>
+>>>>>>>>> Jeff Newmiller
+>>>>>>>>>       on Tue, 31 May 2022 16:09:16 -0700 writes:
+>>>>
+>>>>       > FWIW the RStudio build is often not complete... it intentionally
+>>>> takes shortcuts that make test/run iteration faster... but you should
+>> make
+>>>> a habit of using the command line to build artifacts for sharing... it
+>> will
+>>>> help avoid gotchas.
+>>>>
+>>>> Yes, definitely.
+>>>>
+>>>> Notably, e.g., reloading the package sources (often via
+>>>> devtools) into a running R process instead of restarting R and
+>>>> loading/attaching the newly built and installed package (that
+>>>> you are developing) is much faster, but *NOT* equivalent and
+>>>> sometimes misleading -- because it's not easily possible to
+>>>> "revert" everything you did in your running R session {caches,
+>>>> method tables, DLLs, internal pointers, ...}.
+>>>>
+>>>> (read on, further down)
+>>>>
+>>>>       > On May 31, 2022 3:53:57 PM PDT, Carl Schwarz <
+>>>> cschwarzstatsfuca at gmail.com> wrote:
+>>>>       >> Success!
+>>>>       >>
+>>>>       >> Building on MT's note that if the inst/doc has an index.html
+>> file,
+>>>> R does
+>>>>       >> NOT build a new index.
+>>>>       >> At the end of Writing R Extensions Section 1.4, it states
+>>>>       >> "  When R CMD build builds the vignettes, it copies these and
+>> the
+>>>> vignette
+>>>>       >> sources from directory vignettes to inst/doc. To install any
+>> other
+>>>> files
+>>>>       >> from the vignettes directory, include a file
+>>>> vignettes/.install_extras which
+>>>>       >> specifies these as Perl-like regular expressions on one or more
+>>>> lines.."
+>>>>       >>
+>>>>       >> So I copied the existing inst/doc/index.html file from the
+>> installed
+>>>>       >> SighatbilityModel with the wrong sort order to my
+>>>> vignettes/index.html,
+>>>>       >> edited this index.html file to get the right sort order. The
+>>>> index.html is
+>>>>       >> just vanilla html so it is easy to modify "manually".
+>>>>       >> Then I created a vignettes/.install_extras with a single entry
+>>>> "index.html"
+>>>>       >> and now vignettes/index.html appears to be copied to inst/doc
+>> and
+>>>> so stops
+>>>>       >> the building of the wrongly sorted index.
+>>>>       >>
+>>>>       >> Then I did a Rstudio -> Build -> BuildSourcePackage to create a
+>>>> tar.gz
+>>>>       >> file; installed from the tar.gz file, and now my vignette index
+>> is
+>>>> sorted
+>>>>       >> properly on my Mac machine.
+>>>>       >> Also tried using devtools::check_win_release() to generate a
+>>>> windoze zip
+>>>>       >> file; installed that; and the vignette index is again sorted
+>>>> properly on
+>>>>       >> Windows machines.
+>>>>       >>
+>>>>       >> I'm hoping I can use this for (b) from my original query as
+>> well.
+>>>>       >>
+>>>>       >> This will mean that I have to "manually'" maintain the
+>>>> vignettes/index.html
+>>>>       >> file, but that is straightforward.
+>>>>       >>
+>>>>       >> I hope this works when I submit to CRAN.
+>>>>       >>
+>>>>       >> How do I suggest to the R maintainers that an explicit section
+>> be
+>>>> added to
+>>>>       >> the Writing R Extensions manual with the above steps so that
+>> future
+>>>> package
+>>>>       >> writers don't repeat history? I'm willing to write the paragraph
+>>>> explaining
+>>>>       >> the steps, but don't know who/how to proceed to get it added to
+>>>> Writing R
+>>>>       >> Extensions.
+>>>>       >>
+>>>>       >> Carl Schwarz
+>>>>
+>>>> The WRE manual is part of the R sources, so formally you are
+>>>> proposing to improve (the documentation part of) R.
+>>>>
+>>>> You can propose a patch against the "R-devel" sources.
+>>>> If the changes are quite small and compact (as here), even on by e-mail.
+>>>> The source file  is  doc/manual/R-exts.texi
+>>>> in R's SVN (source server)
+>>>>     https://svn.r-project.org/R/trunk/doc/manual/R-exts.texi
+>>>> or one of its mirrors (notably on github)
+>>>>
+>>>
+>>>        [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
