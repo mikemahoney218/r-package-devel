@@ -16336,3 +16336,2081 @@ I?aki
 I?aki ?car
 
 
+From jo@ephp@rk @end|ng |rom |eee@org  Sat Jun 11 11:02:23 2022
+From: jo@ephp@rk @end|ng |rom |eee@org (Joseph Park)
+Date: Sat, 11 Jun 2022 05:02:23 -0400
+Subject: [R-pkg-devel] Windows R 4.2.0 package will not load with UTF-8
+ encoding
+Message-ID: <CALE8kTFaQE9CvbjBHdExQ+oY9SV_r_jCN5pQ8Crqoj2K6oLp+Q@mail.gmail.com>
+
+Dear R package developers,
+
+Starting with R 4.2.0 package rEDM (https://cran.r-project.org/package=rEDM)
+will not load [library( rEDM )] on Windows with the default UTF-8 encoding.
+
+When the locale is changed from UTF-8 to non UTF-8, the package loads and
+runs. One can also change the locale to non-UTF-8, load the package, detach
+and unload the package, change the locale back to UTF-8, then load and run
+without issue.
+
+Note that installation from source reports:
+   ** testing if installed package can be loaded from temporary location
+and completes (record below).
+
+This package uses Rcpp to wrap a C++ API.
+
+Having searched here and in general, I don't find that others experiencing
+this issue.
+
+I have tried
+  Ensure all source files are UTF-8 encoded
+  Removed non-ASCII characters from all source files
+  Specify non-ASCII characters with \uXXXX
+  Checked vignette encoding
+  Added "Encoding : UTF-8" to DESCRIPTION
+
+Please excuse my encoding and Windows naivety.
+
+Here is a demonstration changing the encoding to load the package, along
+with unloading & reloading under UTF-8:
+--
+> sessionInfo()
+R version 4.2.0 (2022-04-22 ucrt)
+Platform: x86_64-w64-mingw32/x64 (64-bit)
+Running under: Windows 10 x64 (build 19044)
+
+Matrix products: default
+
+locale:
+[1] LC_COLLATE=English_United States.utf8  LC_CTYPE=English_United
+States.utf8
+[3] LC_MONETARY=English_United States.utf8 LC_NUMERIC=C
+
+[5] LC_TIME=English_United States.utf8
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base
+
+loaded via a namespace (and not attached):
+[1] compiler_4.2.0
+>
+> Sys.setlocale('LC_ALL','English')
+[1] "LC_COLLATE=English_United States.1252;LC_CTYPE=English_United
+States.1252;LC_MONETARY=English_United
+States.1252;LC_NUMERIC=C;LC_TIME=English_United States.1252"
+Warning message:
+In Sys.setlocale("LC_ALL", "English") :
+  using locale code page other than 65001 ("UTF-8") may cause problems
+>
+> sessionInfo()
+R version 4.2.0 (2022-04-22 ucrt)
+Platform: x86_64-w64-mingw32/x64 (64-bit)
+Running under: Windows 10 x64 (build 19044)
+
+Matrix products: default
+
+locale:
+[1] LC_COLLATE=English_United States.1252  LC_CTYPE=English_United
+States.1252
+[3] LC_MONETARY=English_United States.1252 LC_NUMERIC=C
+
+[5] LC_TIME=English_United States.1252
+system code page: 65001
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base
+
+loaded via a namespace (and not attached):
+[1] compiler_4.2.0
+>
+> library( rEDM )
+>
+> sessionInfo()
+R version 4.2.0 (2022-04-22 ucrt)
+Platform: x86_64-w64-mingw32/x64 (64-bit)
+Running under: Windows 10 x64 (build 19044)
+
+Matrix products: default
+
+locale:
+[1] LC_COLLATE=English_United States.1252  LC_CTYPE=English_United
+States.1252
+[3] LC_MONETARY=English_United States.1252 LC_NUMERIC=C
+
+[5] LC_TIME=English_United States.1252
+system code page: 65001
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base
+
+other attached packages:
+[1] rEDM_1.12.2.1.0
+
+loaded via a namespace (and not attached):
+[1] compiler_4.2.0 Rcpp_1.0.8.3
+>
+
+### All package tests pass....
+### Now detach and unload, change to UTF-8, and load
+
+> detach( 'package:rEDM', unload = TRUE )
+>
+> Simplex( dataFrame = Lorenz5D, columns = 'V1', target = 'V2', lib = "1
+500", pred = "501 505", E = 5 )
+Error in Simplex(dataFrame = Lorenz5D, columns = "V1", target = "V2",  :
+  could not find function "Simplex"
+
+> Sys.setlocale()
+[1] "LC_COLLATE=English_United States.utf8;LC_CTYPE=English_United
+States.utf8;LC_MONETARY=English_United
+States.utf8;LC_NUMERIC=C;LC_TIME=English_United States.utf8"
+>
+> sessionInfo()
+R version 4.2.0 (2022-04-22 ucrt)
+Platform: x86_64-w64-mingw32/x64 (64-bit)
+Running under: Windows 10 x64 (build 19044)
+
+Matrix products: default
+
+locale:
+[1] LC_COLLATE=English_United States.utf8  LC_CTYPE=English_United
+States.utf8
+[3] LC_MONETARY=English_United States.utf8 LC_NUMERIC=C
+
+[5] LC_TIME=English_United States.utf8
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base
+
+other attached packages:
+[1] devtools_2.4.3 usethis_2.1.6
+
+loaded via a namespace (and not attached):
+ [1] Rcpp_1.0.8.3      magrittr_2.0.3    pkgload_1.2.4     R6_2.5.1
+ rlang_1.0.2       fastmap_1.1.0
+ [7] fansi_1.0.3       tools_4.2.0       pkgbuild_1.3.1
+ sessioninfo_1.2.2 utf8_1.2.2        cli_3.3.0
+[13] withr_2.5.0       ellipsis_0.3.2    remotes_2.4.2     rprojroot_2.0.3
+  tibble_3.1.7      lifecycle_1.0.1
+[19] crayon_1.5.1      brio_1.1.3        processx_3.6.0    purrr_0.3.4
+  callr_3.7.0       vctrs_0.4.1
+[25] fs_1.5.2          ps_1.7.0          testthat_3.1.4    memoise_2.0.1
+  glue_1.6.2        cachem_1.0.6
+[31] pillar_1.7.0      compiler_4.2.0    desc_1.4.1
+ prettyunits_1.1.1 pkgconfig_2.0.3
+>
+>
+> library( rEDM )
+
+### All tests pass
+
+
+-- 
+Installation log:
+> devtools::install()
+   checking for file 'C:\Users\\rEDM/DESCRIPTION' ...
+   checking for file 'C:\Users\\rEDM/DESCRIPTION' ...
+?  checking for file 'C:\Users\\rEDM/DESCRIPTION' (1.8s)
+?  preparing 'rEDM': (853ms)
+   checking DESCRIPTION meta-information ...
+?  checking DESCRIPTION meta-information
+?  cleaning src
+
+?  building 'rEDM_1.12.2.1.0.tar.gz'
+
+Running "C:/Apps/R/R-4.2.0/bin/x64/Rcmd.exe" INSTALL \
+  "C:\Users\AppData\Local\Temp\RtmpcdP2Nx/rEDM_1.12.2.1.0.tar.gz"
+--install-tests
+* installing to library 'C:/Apps/R/R-4.2.0/library'
+* installing *source* package 'rEDM' ...
+** using staged installation
+** libs
+
+g++  -std=gnu++11 -I"C:/Apps/R/R-4.2.0/include" -DNDEBUG -I./cppEDM/src
+-I../ -I'C:/Apps/R/R-4.2.0/library/Rcpp/include'
+-I'C:/Apps/R/R-4.2.0/library/RcppThread/include'
+-I"C:/Apps/rtools42/x86_64-w64-mingw32.static.posix/include"     -O2 -Wall
+ -mfpmath=sse -msse2 -mstackrealign  -c CCM.cpp -o CCM.o
+g++  -std=gnu++11 -I"C:/Apps/R/R-4.2.0/include" -DNDEBUG -I./cppEDM/src
+-I../ -I'C:/Apps/R/R-4.2.0/library/Rcpp/include'
+-I'C:/Apps/R/R-4.2.0/library/RcppThread/include'
+-I"C:/Apps/rtools42/x86_64-w64-mingw32.static.posix/include"     -O2 -Wall
+ -mfpmath=sse -msse2 -mstackrealign  -c ComputeError.cpp -o ComputeError.o
+g++  -std=gnu++11 -I"C:/Apps/R/R-4.2.0/include" -DNDEBUG -I./cppEDM/src
+-I../ -I'C:/Apps/R/R-4.2.0/library/Rcpp/include'
+-I'C:/Apps/R/R-4.2.0/library/RcppThread/include'
+-I"C:/Apps/rtools42/x86_64-w64-mingw32.static.posix/include"     -O2 -Wall
+ -mfpmath=sse -msse2 -mstackrealign  -c DataFrame.cpp -o DataFrame.o
+g++  -std=gnu++11 -I"C:/Apps/R/R-4.2.0/include" -DNDEBUG -I./cppEDM/src
+-I../ -I'C:/Apps/R/R-4.2.0/library/Rcpp/include'
+-I'C:/Apps/R/R-4.2.0/library/RcppThread/include'
+-I"C:/Apps/rtools42/x86_64-w64-mingw32.static.posix/include"     -O2 -Wall
+ -mfpmath=sse -msse2 -mstackrealign  -c Embed.cpp -o Embed.o
+g++  -std=gnu++11 -I"C:/Apps/R/R-4.2.0/include" -DNDEBUG -I./cppEDM/src
+-I../ -I'C:/Apps/R/R-4.2.0/library/Rcpp/include'
+-I'C:/Apps/R/R-4.2.0/library/RcppThread/include'
+-I"C:/Apps/rtools42/x86_64-w64-mingw32.static.posix/include"     -O2 -Wall
+ -mfpmath=sse -msse2 -mstackrealign  -c EmbedDim.cpp -o EmbedDim.o
+g++  -std=gnu++11 -I"C:/Apps/R/R-4.2.0/include" -DNDEBUG -I./cppEDM/src
+-I../ -I'C:/Apps/R/R-4.2.0/library/Rcpp/include'
+-I'C:/Apps/R/R-4.2.0/library/RcppThread/include'
+-I"C:/Apps/rtools42/x86_64-w64-mingw32.static.posix/include"     -O2 -Wall
+ -mfpmath=sse -msse2 -mstackrealign  -c Multiview.cpp -o Multiview.o
+g++  -std=gnu++11 -I"C:/Apps/R/R-4.2.0/include" -DNDEBUG -I./cppEDM/src
+-I../ -I'C:/Apps/R/R-4.2.0/library/Rcpp/include'
+-I'C:/Apps/R/R-4.2.0/library/RcppThread/include'
+-I"C:/Apps/rtools42/x86_64-w64-mingw32.static.posix/include"     -O2 -Wall
+ -mfpmath=sse -msse2 -mstackrealign  -c ParameterList.cpp -o ParameterList.o
+g++  -std=gnu++11 -I"C:/Apps/R/R-4.2.0/include" -DNDEBUG -I./cppEDM/src
+-I../ -I'C:/Apps/R/R-4.2.0/library/Rcpp/include'
+-I'C:/Apps/R/R-4.2.0/library/RcppThread/include'
+-I"C:/Apps/rtools42/x86_64-w64-mingw32.static.posix/include"     -O2 -Wall
+ -mfpmath=sse -msse2 -mstackrealign  -c PredictInterval.cpp -o
+PredictInterval.o
+g++  -std=gnu++11 -I"C:/Apps/R/R-4.2.0/include" -DNDEBUG -I./cppEDM/src
+-I../ -I'C:/Apps/R/R-4.2.0/library/Rcpp/include'
+-I'C:/Apps/R/R-4.2.0/library/RcppThread/include'
+-I"C:/Apps/rtools42/x86_64-w64-mingw32.static.posix/include"     -O2 -Wall
+ -mfpmath=sse -msse2 -mstackrealign  -c PredictNL.cpp -o PredictNL.o
+g++  -std=gnu++11 -I"C:/Apps/R/R-4.2.0/include" -DNDEBUG -I./cppEDM/src
+-I../ -I'C:/Apps/R/R-4.2.0/library/Rcpp/include'
+-I'C:/Apps/R/R-4.2.0/library/RcppThread/include'
+-I"C:/Apps/rtools42/x86_64-w64-mingw32.static.posix/include"     -O2 -Wall
+ -mfpmath=sse -msse2 -mstackrealign  -c RcppEDMCommon.cpp -o RcppEDMCommon.o
+g++  -std=gnu++11 -I"C:/Apps/R/R-4.2.0/include" -DNDEBUG -I./cppEDM/src
+-I../ -I'C:/Apps/R/R-4.2.0/library/Rcpp/include'
+-I'C:/Apps/R/R-4.2.0/library/RcppThread/include'
+-I"C:/Apps/rtools42/x86_64-w64-mingw32.static.posix/include"     -O2 -Wall
+ -mfpmath=sse -msse2 -mstackrealign  -c RcppExports.cpp -o RcppExports.o
+g++  -std=gnu++11 -I"C:/Apps/R/R-4.2.0/include" -DNDEBUG -I./cppEDM/src
+-I../ -I'C:/Apps/R/R-4.2.0/library/Rcpp/include'
+-I'C:/Apps/R/R-4.2.0/library/RcppThread/include'
+-I"C:/Apps/rtools42/x86_64-w64-mingw32.static.posix/include"     -O2 -Wall
+ -mfpmath=sse -msse2 -mstackrealign  -c SMap.cpp -o SMap.o
+g++  -std=gnu++11 -I"C:/Apps/R/R-4.2.0/include" -DNDEBUG -I./cppEDM/src
+-I../ -I'C:/Apps/R/R-4.2.0/library/Rcpp/include'
+-I'C:/Apps/R/R-4.2.0/library/RcppThread/include'
+-I"C:/Apps/rtools42/x86_64-w64-mingw32.static.posix/include"     -O2 -Wall
+ -mfpmath=sse -msse2 -mstackrealign  -c Simplex.cpp -o Simplex.o
+make[1]: Entering directory
+'/c/Users/jpark/AppData/Local/Temp/Rtmp0UDIkt/R.INSTALL2d3c6fa91a0b/rEDM/src/cppEDM/src'
+gcc  -std=c++11 -DCCM_THREADED -DMULTIVIEW_VALUES_OVERLOAD -I../  -c API.cc
+gcc  -std=c++11 -DCCM_THREADED -DMULTIVIEW_VALUES_OVERLOAD -I../  -c CCM.cc
+gcc  -std=c++11 -DCCM_THREADED -DMULTIVIEW_VALUES_OVERLOAD -I../  -c
+Common.cc
+gcc  -std=c++11 -DCCM_THREADED -DMULTIVIEW_VALUES_OVERLOAD -I../  -c
+DateTime.cc
+gcc  -std=c++11 -DCCM_THREADED -DMULTIVIEW_VALUES_OVERLOAD -I../  -c EDM.cc
+gcc  -std=c++11 -DCCM_THREADED -DMULTIVIEW_VALUES_OVERLOAD -I../  -c
+EDM_Formatting.cc
+gcc  -std=c++11 -DCCM_THREADED -DMULTIVIEW_VALUES_OVERLOAD -I../  -c
+EDM_Neighbors.cc
+gcc  -std=c++11 -DCCM_THREADED -DMULTIVIEW_VALUES_OVERLOAD -I../  -c Eval.cc
+gcc  -std=c++11 -DCCM_THREADED -DMULTIVIEW_VALUES_OVERLOAD -I../  -c
+Multiview.cc
+gcc  -std=c++11 -DCCM_THREADED -DMULTIVIEW_VALUES_OVERLOAD -I../  -c
+Parameter.cc
+gcc  -std=c++11 -DCCM_THREADED -DMULTIVIEW_VALUES_OVERLOAD -I../  -c
+Simplex.cc
+gcc  -std=c++11 -DCCM_THREADED -DMULTIVIEW_VALUES_OVERLOAD -I../  -c SMap.cc
+ar -rcs libEDM.a API.o CCM.o Common.o DateTime.o EDM.o EDM_Formatting.o
+EDM_Neighbors.o Eval.o Multiview.o Parameter.o Simplex.o SMap.o
+cp libEDM.a ../lib/
+make[1]: Leaving directory
+'/c/Users//AppData/Local/Temp/Rtmp0UDIkt/R.INSTALL2d3c6fa91a0b/rEDM/src/cppEDM/src'
+g++ -shared -s -static-libgcc -o rEDM.dll tmp.def CCM.o ComputeError.o
+DataFrame.o Embed.o EmbedDim.o Multiview.o ParameterList.o
+PredictInterval.o PredictNL.o RcppEDMCommon.o RcppExports.o SMap.o
+Simplex.o -L./cppEDM/src/ -lEDM -LC:/Apps/R/R-4.2.0/bin/x64 -lRlapack
+-LC:/Apps/rtools42/x86_64-w64-mingw32.static.posix/lib/x64
+-LC:/Apps/rtools42/x86_64-w64-mingw32.static.posix/lib
+-LC:/Apps/R/R-4.2.0/bin/x64 -lR
+installing to C:/Apps/R/R-4.2.0/library/00LOCK-rEDM/00new/rEDM/libs/x64
+
+** R
+** data
+*** moving datasets to lazyload DB
+** byte-compile and prepare package for lazy loading
+** help
+*** installing help indices
+*** copying figures
+** building package indices
+** installing vignettes
+** testing if installed package can be loaded from temporary location
+** testing if installed package can be loaded from final location
+** testing if installed package keeps a record of temporary installation
+path
+* DONE (rEDM)
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Jun 11 12:16:38 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 11 Jun 2022 06:16:38 -0400
+Subject: [R-pkg-devel] Windows R 4.2.0 package will not load with UTF-8
+ encoding
+In-Reply-To: <CALE8kTFaQE9CvbjBHdExQ+oY9SV_r_jCN5pQ8Crqoj2K6oLp+Q@mail.gmail.com>
+References: <CALE8kTFaQE9CvbjBHdExQ+oY9SV_r_jCN5pQ8Crqoj2K6oLp+Q@mail.gmail.com>
+Message-ID: <8abc1685-cb6b-78df-b3e0-b289e9f6cc8d@gmail.com>
+
+On 11/06/2022 5:02 a.m., Joseph Park wrote:
+> Dear R package developers,
+> 
+> Starting with R 4.2.0 package rEDM (https://cran.r-project.org/package=rEDM)
+> will not load [library( rEDM )] on Windows with the default UTF-8 encoding.
+> 
+> When the locale is changed from UTF-8 to non UTF-8, the package loads and
+> runs. One can also change the locale to non-UTF-8, load the package, detach
+> and unload the package, change the locale back to UTF-8, then load and run
+> without issue.
+> 
+> Note that installation from source reports:
+>     ** testing if installed package can be loaded from temporary location
+> and completes (record below).
+> 
+> This package uses Rcpp to wrap a C++ API.
+> 
+> Having searched here and in general, I don't find that others experiencing
+> this issue.
+> 
+> I have tried
+>    Ensure all source files are UTF-8 encoded
+>    Removed non-ASCII characters from all source files
+>    Specify non-ASCII characters with \uXXXX
+>    Checked vignette encoding
+>    Added "Encoding : UTF-8" to DESCRIPTION
+> 
+> Please excuse my encoding and Windows naivety.
+> 
+> Here is a demonstration changing the encoding to load the package, along
+> with unloading & reloading under UTF-8:
+> --
+>> sessionInfo()
+> R version 4.2.0 (2022-04-22 ucrt)
+> Platform: x86_64-w64-mingw32/x64 (64-bit)
+> Running under: Windows 10 x64 (build 19044)
+> 
+> Matrix products: default
+> 
+> locale:
+> [1] LC_COLLATE=English_United States.utf8  LC_CTYPE=English_United
+> States.utf8
+> [3] LC_MONETARY=English_United States.utf8 LC_NUMERIC=C
+> 
+> [5] LC_TIME=English_United States.utf8
+> 
+> attached base packages:
+> [1] stats     graphics  grDevices utils     datasets  methods   base
+> 
+> loaded via a namespace (and not attached):
+> [1] compiler_4.2.0
+>>
+>> Sys.setlocale('LC_ALL','English')
+> [1] "LC_COLLATE=English_United States.1252;LC_CTYPE=English_United
+> States.1252;LC_MONETARY=English_United
+> States.1252;LC_NUMERIC=C;LC_TIME=English_United States.1252"
+> Warning message:
+> In Sys.setlocale("LC_ALL", "English") :
+>    using locale code page other than 65001 ("UTF-8") may cause problems
+>>
+>> sessionInfo()
+> R version 4.2.0 (2022-04-22 ucrt)
+> Platform: x86_64-w64-mingw32/x64 (64-bit)
+> Running under: Windows 10 x64 (build 19044)
+> 
+> Matrix products: default
+> 
+> locale:
+> [1] LC_COLLATE=English_United States.1252  LC_CTYPE=English_United
+> States.1252
+> [3] LC_MONETARY=English_United States.1252 LC_NUMERIC=C
+> 
+> [5] LC_TIME=English_United States.1252
+> system code page: 65001
+> 
+> attached base packages:
+> [1] stats     graphics  grDevices utils     datasets  methods   base
+> 
+> loaded via a namespace (and not attached):
+> [1] compiler_4.2.0
+>>
+>> library( rEDM )
+>>
+>> sessionInfo()
+> R version 4.2.0 (2022-04-22 ucrt)
+> Platform: x86_64-w64-mingw32/x64 (64-bit)
+> Running under: Windows 10 x64 (build 19044)
+> 
+> Matrix products: default
+> 
+> locale:
+> [1] LC_COLLATE=English_United States.1252  LC_CTYPE=English_United
+> States.1252
+> [3] LC_MONETARY=English_United States.1252 LC_NUMERIC=C
+> 
+> [5] LC_TIME=English_United States.1252
+> system code page: 65001
+> 
+> attached base packages:
+> [1] stats     graphics  grDevices utils     datasets  methods   base
+> 
+> other attached packages:
+> [1] rEDM_1.12.2.1.0
+> 
+> loaded via a namespace (and not attached):
+> [1] compiler_4.2.0 Rcpp_1.0.8.3
+>>
+> 
+> ### All package tests pass....
+> ### Now detach and unload, change to UTF-8, and load
+> 
+>> detach( 'package:rEDM', unload = TRUE )
+>>
+>> Simplex( dataFrame = Lorenz5D, columns = 'V1', target = 'V2', lib = "1
+> 500", pred = "501 505", E = 5 )
+> Error in Simplex(dataFrame = Lorenz5D, columns = "V1", target = "V2",  :
+>    could not find function "Simplex"
+
+I don't see any attempt to load the package.  You attempted to use the 
+function Simplex and it was not found.  That indicates the package is 
+not loaded, but not why.
+
+What you should show are the messages you get when you start a clean 
+copy of R and immediately attempt to load the package using library(). 
+It's helpful that you posted sessionInfo(); I'd include that again with 
+the new information, in case anything is different.
+
+Duncan Murdoch
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sat Jun 11 12:26:02 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sat, 11 Jun 2022 13:26:02 +0300
+Subject: [R-pkg-devel] Windows R 4.2.0 package will not load with UTF-8
+ encoding
+In-Reply-To: <CALE8kTFaQE9CvbjBHdExQ+oY9SV_r_jCN5pQ8Crqoj2K6oLp+Q@mail.gmail.com>
+References: <CALE8kTFaQE9CvbjBHdExQ+oY9SV_r_jCN5pQ8Crqoj2K6oLp+Q@mail.gmail.com>
+Message-ID: <20220611132602.12b7437a@trisector>
+
+On Sat, 11 Jun 2022 05:02:23 -0400
+Joseph Park <josephpark at ieee.org> wrote:
+
+> Starting with R 4.2.0 package rEDM
+> (https://cran.r-project.org/package=rEDM) will not load [library(
+> rEDM )] on Windows with the default UTF-8 encoding.
+
+Could you please explain what happens instead of the expected behaviour?
+
+Your examples seem to work without errors on CRAN machines running
+Windows with R ? 4.2.0 and UTF-8 encoding:
+
+https://www.r-project.org/nosvn/R.check/r-release-windows-x86_64/rEDM-00check.html
+https://www.r-project.org/nosvn/R.check/r-devel-windows-x86_64/rEDM-00check.html
+
+-- 
+Best regards,
+Ivan
+
+
+From jo@ephp@rk @end|ng |rom |eee@org  Sat Jun 11 12:33:53 2022
+From: jo@ephp@rk @end|ng |rom |eee@org (Joseph Park)
+Date: Sat, 11 Jun 2022 06:33:53 -0400
+Subject: [R-pkg-devel] Windows R 4.2.0 package will not load with UTF-8
+ encoding
+In-Reply-To: <8abc1685-cb6b-78df-b3e0-b289e9f6cc8d@gmail.com>
+References: <CALE8kTFaQE9CvbjBHdExQ+oY9SV_r_jCN5pQ8Crqoj2K6oLp+Q@mail.gmail.com>
+ <8abc1685-cb6b-78df-b3e0-b289e9f6cc8d@gmail.com>
+Message-ID: <CALE8kTHGY0b7E4jq75fZu73w9=Uch4ZN86sqmHzuvRym8X3gzQ@mail.gmail.com>
+
+Apologies for the pages of minutia.  I endeavored to post reproduceable
+example. I'm unable to show the failure since it simply hangs at the prompt
+with CPU spinning and memory cyclically ramping and declining.  One has to
+kill R. The posted commands show the workaround, not the failure.
+
+I since found that just changing the LC_COLLATE is enough to allow the
+library to load :
+> Sys.setlocale('LC_COLLATE','English')
+[1] "English_United States.1252"
+> Sys.getlocale()
+[1] "LC_COLLATE=English_United States.1252;LC_CTYPE=English_United
+States.utf8;LC_MONETARY=English_United
+States.utf8;LC_NUMERIC=C;LC_TIME=English_United States.utf8"
+
+Again, apologies for my naivety.
+
+On Sat, Jun 11, 2022 at 6:16 AM Duncan Murdoch <murdoch.duncan at gmail.com>
+wrote:
+
+> On 11/06/2022 5:02 a.m., Joseph Park wrote:
+> > Dear R package developers,
+> >
+> > Starting with R 4.2.0 package rEDM (
+> https://cran.r-project.org/package=rEDM)
+> > will not load [library( rEDM )] on Windows with the default UTF-8
+> encoding.
+> >
+> > When the locale is changed from UTF-8 to non UTF-8, the package loads and
+> > runs. One can also change the locale to non-UTF-8, load the package,
+> detach
+> > and unload the package, change the locale back to UTF-8, then load and
+> run
+> > without issue.
+> >
+> > Note that installation from source reports:
+> >     ** testing if installed package can be loaded from temporary location
+> > and completes (record below).
+> >
+> > This package uses Rcpp to wrap a C++ API.
+> >
+> > Having searched here and in general, I don't find that others
+> experiencing
+> > this issue.
+> >
+> > I have tried
+> >    Ensure all source files are UTF-8 encoded
+> >    Removed non-ASCII characters from all source files
+> >    Specify non-ASCII characters with \uXXXX
+> >    Checked vignette encoding
+> >    Added "Encoding : UTF-8" to DESCRIPTION
+> >
+> > Please excuse my encoding and Windows naivety.
+> >
+> > Here is a demonstration changing the encoding to load the package, along
+> > with unloading & reloading under UTF-8:
+> > --
+> >> sessionInfo()
+> > R version 4.2.0 (2022-04-22 ucrt)
+> > Platform: x86_64-w64-mingw32/x64 (64-bit)
+> > Running under: Windows 10 x64 (build 19044)
+> >
+> > Matrix products: default
+> >
+> > locale:
+> > [1] LC_COLLATE=English_United States.utf8  LC_CTYPE=English_United
+> > States.utf8
+> > [3] LC_MONETARY=English_United States.utf8 LC_NUMERIC=C
+> >
+> > [5] LC_TIME=English_United States.utf8
+> >
+> > attached base packages:
+> > [1] stats     graphics  grDevices utils     datasets  methods   base
+> >
+> > loaded via a namespace (and not attached):
+> > [1] compiler_4.2.0
+> >>
+> >> Sys.setlocale('LC_ALL','English')
+> > [1] "LC_COLLATE=English_United States.1252;LC_CTYPE=English_United
+> > States.1252;LC_MONETARY=English_United
+> > States.1252;LC_NUMERIC=C;LC_TIME=English_United States.1252"
+> > Warning message:
+> > In Sys.setlocale("LC_ALL", "English") :
+> >    using locale code page other than 65001 ("UTF-8") may cause problems
+> >>
+> >> sessionInfo()
+> > R version 4.2.0 (2022-04-22 ucrt)
+> > Platform: x86_64-w64-mingw32/x64 (64-bit)
+> > Running under: Windows 10 x64 (build 19044)
+> >
+> > Matrix products: default
+> >
+> > locale:
+> > [1] LC_COLLATE=English_United States.1252  LC_CTYPE=English_United
+> > States.1252
+> > [3] LC_MONETARY=English_United States.1252 LC_NUMERIC=C
+> >
+> > [5] LC_TIME=English_United States.1252
+> > system code page: 65001
+> >
+> > attached base packages:
+> > [1] stats     graphics  grDevices utils     datasets  methods   base
+> >
+> > loaded via a namespace (and not attached):
+> > [1] compiler_4.2.0
+> >>
+> >> library( rEDM )
+> >>
+> >> sessionInfo()
+> > R version 4.2.0 (2022-04-22 ucrt)
+> > Platform: x86_64-w64-mingw32/x64 (64-bit)
+> > Running under: Windows 10 x64 (build 19044)
+> >
+> > Matrix products: default
+> >
+> > locale:
+> > [1] LC_COLLATE=English_United States.1252  LC_CTYPE=English_United
+> > States.1252
+> > [3] LC_MONETARY=English_United States.1252 LC_NUMERIC=C
+> >
+> > [5] LC_TIME=English_United States.1252
+> > system code page: 65001
+> >
+> > attached base packages:
+> > [1] stats     graphics  grDevices utils     datasets  methods   base
+> >
+> > other attached packages:
+> > [1] rEDM_1.12.2.1.0
+> >
+> > loaded via a namespace (and not attached):
+> > [1] compiler_4.2.0 Rcpp_1.0.8.3
+> >>
+> >
+> > ### All package tests pass....
+> > ### Now detach and unload, change to UTF-8, and load
+> >
+> >> detach( 'package:rEDM', unload = TRUE )
+> >>
+> >> Simplex( dataFrame = Lorenz5D, columns = 'V1', target = 'V2', lib = "1
+> > 500", pred = "501 505", E = 5 )
+> > Error in Simplex(dataFrame = Lorenz5D, columns = "V1", target = "V2",  :
+> >    could not find function "Simplex"
+>
+> I don't see any attempt to load the package.  You attempted to use the
+> function Simplex and it was not found.  That indicates the package is
+> not loaded, but not why.
+>
+> What you should show are the messages you get when you start a clean
+> copy of R and immediately attempt to load the package using library().
+> It's helpful that you posted sessionInfo(); I'd include that again with
+> the new information, in case anything is different.
+>
+> Duncan Murdoch
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From jo@ephp@rk @end|ng |rom |eee@org  Sat Jun 11 12:43:03 2022
+From: jo@ephp@rk @end|ng |rom |eee@org (Joseph Park)
+Date: Sat, 11 Jun 2022 06:43:03 -0400
+Subject: [R-pkg-devel] Windows R 4.2.0 package will not load with UTF-8
+ encoding
+In-Reply-To: <CALE8kTHGY0b7E4jq75fZu73w9=Uch4ZN86sqmHzuvRym8X3gzQ@mail.gmail.com>
+References: <CALE8kTFaQE9CvbjBHdExQ+oY9SV_r_jCN5pQ8Crqoj2K6oLp+Q@mail.gmail.com>
+ <8abc1685-cb6b-78df-b3e0-b289e9f6cc8d@gmail.com>
+ <CALE8kTHGY0b7E4jq75fZu73w9=Uch4ZN86sqmHzuvRym8X3gzQ@mail.gmail.com>
+Message-ID: <CALE8kTFxthEET8fGoA7MdeM_-ZuJrG4D=8wT7J_C350+VJHRxQ@mail.gmail.com>
+
+Thank you for the check of the CRAN builds.  I also checked that as a first
+step.  Perhaps there is some difference between the CRAN setups, as I have
+reproduced this on 3 Windows 10 machines with clean installs of R 4.2.0,
+and it has been reported by other users.  I also noted in the post that
+building and installing via devtools reports success (  ** testing if
+installed package can be loaded from temporary location ), however, a
+subsequent attempt to load hangs.
+
+On Sat, Jun 11, 2022 at 6:33 AM Joseph Park <josephpark at ieee.org> wrote:
+
+> Apologies for the pages of minutia.  I endeavored to post reproduceable
+> example. I'm unable to show the failure since it simply hangs at the prompt
+> with CPU spinning and memory cyclically ramping and declining.  One has to
+> kill R. The posted commands show the workaround, not the failure.
+>
+> I since found that just changing the LC_COLLATE is enough to allow the
+> library to load :
+> > Sys.setlocale('LC_COLLATE','English')
+> [1] "English_United States.1252"
+> > Sys.getlocale()
+> [1] "LC_COLLATE=English_United States.1252;LC_CTYPE=English_United
+> States.utf8;LC_MONETARY=English_United
+> States.utf8;LC_NUMERIC=C;LC_TIME=English_United States.utf8"
+>
+> Again, apologies for my naivety.
+>
+> On Sat, Jun 11, 2022 at 6:16 AM Duncan Murdoch <murdoch.duncan at gmail.com>
+> wrote:
+>
+>> On 11/06/2022 5:02 a.m., Joseph Park wrote:
+>> > Dear R package developers,
+>> >
+>> > Starting with R 4.2.0 package rEDM (
+>> https://cran.r-project.org/package=rEDM)
+>> > will not load [library( rEDM )] on Windows with the default UTF-8
+>> encoding.
+>> >
+>> > When the locale is changed from UTF-8 to non UTF-8, the package loads
+>> and
+>> > runs. One can also change the locale to non-UTF-8, load the package,
+>> detach
+>> > and unload the package, change the locale back to UTF-8, then load and
+>> run
+>> > without issue.
+>> >
+>> > Note that installation from source reports:
+>> >     ** testing if installed package can be loaded from temporary
+>> location
+>> > and completes (record below).
+>> >
+>> > This package uses Rcpp to wrap a C++ API.
+>> >
+>> > Having searched here and in general, I don't find that others
+>> experiencing
+>> > this issue.
+>> >
+>> > I have tried
+>> >    Ensure all source files are UTF-8 encoded
+>> >    Removed non-ASCII characters from all source files
+>> >    Specify non-ASCII characters with \uXXXX
+>> >    Checked vignette encoding
+>> >    Added "Encoding : UTF-8" to DESCRIPTION
+>> >
+>> > Please excuse my encoding and Windows naivety.
+>> >
+>> > Here is a demonstration changing the encoding to load the package, along
+>> > with unloading & reloading under UTF-8:
+>> > --
+>> >> sessionInfo()
+>> > R version 4.2.0 (2022-04-22 ucrt)
+>> > Platform: x86_64-w64-mingw32/x64 (64-bit)
+>> > Running under: Windows 10 x64 (build 19044)
+>> >
+>> > Matrix products: default
+>> >
+>> > locale:
+>> > [1] LC_COLLATE=English_United States.utf8  LC_CTYPE=English_United
+>> > States.utf8
+>> > [3] LC_MONETARY=English_United States.utf8 LC_NUMERIC=C
+>> >
+>> > [5] LC_TIME=English_United States.utf8
+>> >
+>> > attached base packages:
+>> > [1] stats     graphics  grDevices utils     datasets  methods   base
+>> >
+>> > loaded via a namespace (and not attached):
+>> > [1] compiler_4.2.0
+>> >>
+>> >> Sys.setlocale('LC_ALL','English')
+>> > [1] "LC_COLLATE=English_United States.1252;LC_CTYPE=English_United
+>> > States.1252;LC_MONETARY=English_United
+>> > States.1252;LC_NUMERIC=C;LC_TIME=English_United States.1252"
+>> > Warning message:
+>> > In Sys.setlocale("LC_ALL", "English") :
+>> >    using locale code page other than 65001 ("UTF-8") may cause problems
+>> >>
+>> >> sessionInfo()
+>> > R version 4.2.0 (2022-04-22 ucrt)
+>> > Platform: x86_64-w64-mingw32/x64 (64-bit)
+>> > Running under: Windows 10 x64 (build 19044)
+>> >
+>> > Matrix products: default
+>> >
+>> > locale:
+>> > [1] LC_COLLATE=English_United States.1252  LC_CTYPE=English_United
+>> > States.1252
+>> > [3] LC_MONETARY=English_United States.1252 LC_NUMERIC=C
+>> >
+>> > [5] LC_TIME=English_United States.1252
+>> > system code page: 65001
+>> >
+>> > attached base packages:
+>> > [1] stats     graphics  grDevices utils     datasets  methods   base
+>> >
+>> > loaded via a namespace (and not attached):
+>> > [1] compiler_4.2.0
+>> >>
+>> >> library( rEDM )
+>> >>
+>> >> sessionInfo()
+>> > R version 4.2.0 (2022-04-22 ucrt)
+>> > Platform: x86_64-w64-mingw32/x64 (64-bit)
+>> > Running under: Windows 10 x64 (build 19044)
+>> >
+>> > Matrix products: default
+>> >
+>> > locale:
+>> > [1] LC_COLLATE=English_United States.1252  LC_CTYPE=English_United
+>> > States.1252
+>> > [3] LC_MONETARY=English_United States.1252 LC_NUMERIC=C
+>> >
+>> > [5] LC_TIME=English_United States.1252
+>> > system code page: 65001
+>> >
+>> > attached base packages:
+>> > [1] stats     graphics  grDevices utils     datasets  methods   base
+>> >
+>> > other attached packages:
+>> > [1] rEDM_1.12.2.1.0
+>> >
+>> > loaded via a namespace (and not attached):
+>> > [1] compiler_4.2.0 Rcpp_1.0.8.3
+>> >>
+>> >
+>> > ### All package tests pass....
+>> > ### Now detach and unload, change to UTF-8, and load
+>> >
+>> >> detach( 'package:rEDM', unload = TRUE )
+>> >>
+>> >> Simplex( dataFrame = Lorenz5D, columns = 'V1', target = 'V2', lib = "1
+>> > 500", pred = "501 505", E = 5 )
+>> > Error in Simplex(dataFrame = Lorenz5D, columns = "V1", target = "V2",  :
+>> >    could not find function "Simplex"
+>>
+>> I don't see any attempt to load the package.  You attempted to use the
+>> function Simplex and it was not found.  That indicates the package is
+>> not loaded, but not why.
+>>
+>> What you should show are the messages you get when you start a clean
+>> copy of R and immediately attempt to load the package using library().
+>> It's helpful that you posted sessionInfo(); I'd include that again with
+>> the new information, in case anything is different.
+>>
+>> Duncan Murdoch
+>>
+>>
+
+	[[alternative HTML version deleted]]
+
+
+From yut@n|@|n| @end|ng |rom gm@||@com  Sat Jun 11 13:13:55 2022
+From: yut@n|@|n| @end|ng |rom gm@||@com (Hiroaki Yutani)
+Date: Sat, 11 Jun 2022 20:13:55 +0900
+Subject: [R-pkg-devel] Windows R 4.2.0 package will not load with UTF-8
+ encoding
+In-Reply-To: <CALE8kTFxthEET8fGoA7MdeM_-ZuJrG4D=8wT7J_C350+VJHRxQ@mail.gmail.com>
+References: <CALE8kTFaQE9CvbjBHdExQ+oY9SV_r_jCN5pQ8Crqoj2K6oLp+Q@mail.gmail.com>
+ <8abc1685-cb6b-78df-b3e0-b289e9f6cc8d@gmail.com>
+ <CALE8kTHGY0b7E4jq75fZu73w9=Uch4ZN86sqmHzuvRym8X3gzQ@mail.gmail.com>
+ <CALE8kTFxthEET8fGoA7MdeM_-ZuJrG4D=8wT7J_C350+VJHRxQ@mail.gmail.com>
+Message-ID: <CALyqOb_vC9MvqVFpyNT48PgTKR=sz5h=e7V5V4mYP5U4=7oypw@mail.gmail.com>
+
+Hi,
+
+As your package seems to use std::regex [1], you might hit this bug in GCC.
+
+https://gcc.gnu.org/bugzilla/show_bug.cgi?id=98723
+
+This thread might also help:
+
+https://github.com/tesseract-ocr/tesseract/issues/3830
+
+Best,
+Yutani
+
+[1]: https://github.com/SugiharaLab/rEDM/blob/be6d81fb586ceac3dab59b061b5ed867e276dd83/src/cppEDM/src/DateTime.cc#L16
+
+2022?6?11?(?) 19:48 Joseph Park <josephpark at ieee.org>:
+>
+> Thank you for the check of the CRAN builds.  I also checked that as a first
+> step.  Perhaps there is some difference between the CRAN setups, as I have
+> reproduced this on 3 Windows 10 machines with clean installs of R 4.2.0,
+> and it has been reported by other users.  I also noted in the post that
+> building and installing via devtools reports success (  ** testing if
+> installed package can be loaded from temporary location ), however, a
+> subsequent attempt to load hangs.
+>
+> On Sat, Jun 11, 2022 at 6:33 AM Joseph Park <josephpark at ieee.org> wrote:
+>
+> > Apologies for the pages of minutia.  I endeavored to post reproduceable
+> > example. I'm unable to show the failure since it simply hangs at the prompt
+> > with CPU spinning and memory cyclically ramping and declining.  One has to
+> > kill R. The posted commands show the workaround, not the failure.
+> >
+> > I since found that just changing the LC_COLLATE is enough to allow the
+> > library to load :
+> > > Sys.setlocale('LC_COLLATE','English')
+> > [1] "English_United States.1252"
+> > > Sys.getlocale()
+> > [1] "LC_COLLATE=English_United States.1252;LC_CTYPE=English_United
+> > States.utf8;LC_MONETARY=English_United
+> > States.utf8;LC_NUMERIC=C;LC_TIME=English_United States.utf8"
+> >
+> > Again, apologies for my naivety.
+> >
+> > On Sat, Jun 11, 2022 at 6:16 AM Duncan Murdoch <murdoch.duncan at gmail.com>
+> > wrote:
+> >
+> >> On 11/06/2022 5:02 a.m., Joseph Park wrote:
+> >> > Dear R package developers,
+> >> >
+> >> > Starting with R 4.2.0 package rEDM (
+> >> https://cran.r-project.org/package=rEDM)
+> >> > will not load [library( rEDM )] on Windows with the default UTF-8
+> >> encoding.
+> >> >
+> >> > When the locale is changed from UTF-8 to non UTF-8, the package loads
+> >> and
+> >> > runs. One can also change the locale to non-UTF-8, load the package,
+> >> detach
+> >> > and unload the package, change the locale back to UTF-8, then load and
+> >> run
+> >> > without issue.
+> >> >
+> >> > Note that installation from source reports:
+> >> >     ** testing if installed package can be loaded from temporary
+> >> location
+> >> > and completes (record below).
+> >> >
+> >> > This package uses Rcpp to wrap a C++ API.
+> >> >
+> >> > Having searched here and in general, I don't find that others
+> >> experiencing
+> >> > this issue.
+> >> >
+> >> > I have tried
+> >> >    Ensure all source files are UTF-8 encoded
+> >> >    Removed non-ASCII characters from all source files
+> >> >    Specify non-ASCII characters with \uXXXX
+> >> >    Checked vignette encoding
+> >> >    Added "Encoding : UTF-8" to DESCRIPTION
+> >> >
+> >> > Please excuse my encoding and Windows naivety.
+> >> >
+> >> > Here is a demonstration changing the encoding to load the package, along
+> >> > with unloading & reloading under UTF-8:
+> >> > --
+> >> >> sessionInfo()
+> >> > R version 4.2.0 (2022-04-22 ucrt)
+> >> > Platform: x86_64-w64-mingw32/x64 (64-bit)
+> >> > Running under: Windows 10 x64 (build 19044)
+> >> >
+> >> > Matrix products: default
+> >> >
+> >> > locale:
+> >> > [1] LC_COLLATE=English_United States.utf8  LC_CTYPE=English_United
+> >> > States.utf8
+> >> > [3] LC_MONETARY=English_United States.utf8 LC_NUMERIC=C
+> >> >
+> >> > [5] LC_TIME=English_United States.utf8
+> >> >
+> >> > attached base packages:
+> >> > [1] stats     graphics  grDevices utils     datasets  methods   base
+> >> >
+> >> > loaded via a namespace (and not attached):
+> >> > [1] compiler_4.2.0
+> >> >>
+> >> >> Sys.setlocale('LC_ALL','English')
+> >> > [1] "LC_COLLATE=English_United States.1252;LC_CTYPE=English_United
+> >> > States.1252;LC_MONETARY=English_United
+> >> > States.1252;LC_NUMERIC=C;LC_TIME=English_United States.1252"
+> >> > Warning message:
+> >> > In Sys.setlocale("LC_ALL", "English") :
+> >> >    using locale code page other than 65001 ("UTF-8") may cause problems
+> >> >>
+> >> >> sessionInfo()
+> >> > R version 4.2.0 (2022-04-22 ucrt)
+> >> > Platform: x86_64-w64-mingw32/x64 (64-bit)
+> >> > Running under: Windows 10 x64 (build 19044)
+> >> >
+> >> > Matrix products: default
+> >> >
+> >> > locale:
+> >> > [1] LC_COLLATE=English_United States.1252  LC_CTYPE=English_United
+> >> > States.1252
+> >> > [3] LC_MONETARY=English_United States.1252 LC_NUMERIC=C
+> >> >
+> >> > [5] LC_TIME=English_United States.1252
+> >> > system code page: 65001
+> >> >
+> >> > attached base packages:
+> >> > [1] stats     graphics  grDevices utils     datasets  methods   base
+> >> >
+> >> > loaded via a namespace (and not attached):
+> >> > [1] compiler_4.2.0
+> >> >>
+> >> >> library( rEDM )
+> >> >>
+> >> >> sessionInfo()
+> >> > R version 4.2.0 (2022-04-22 ucrt)
+> >> > Platform: x86_64-w64-mingw32/x64 (64-bit)
+> >> > Running under: Windows 10 x64 (build 19044)
+> >> >
+> >> > Matrix products: default
+> >> >
+> >> > locale:
+> >> > [1] LC_COLLATE=English_United States.1252  LC_CTYPE=English_United
+> >> > States.1252
+> >> > [3] LC_MONETARY=English_United States.1252 LC_NUMERIC=C
+> >> >
+> >> > [5] LC_TIME=English_United States.1252
+> >> > system code page: 65001
+> >> >
+> >> > attached base packages:
+> >> > [1] stats     graphics  grDevices utils     datasets  methods   base
+> >> >
+> >> > other attached packages:
+> >> > [1] rEDM_1.12.2.1.0
+> >> >
+> >> > loaded via a namespace (and not attached):
+> >> > [1] compiler_4.2.0 Rcpp_1.0.8.3
+> >> >>
+> >> >
+> >> > ### All package tests pass....
+> >> > ### Now detach and unload, change to UTF-8, and load
+> >> >
+> >> >> detach( 'package:rEDM', unload = TRUE )
+> >> >>
+> >> >> Simplex( dataFrame = Lorenz5D, columns = 'V1', target = 'V2', lib = "1
+> >> > 500", pred = "501 505", E = 5 )
+> >> > Error in Simplex(dataFrame = Lorenz5D, columns = "V1", target = "V2",  :
+> >> >    could not find function "Simplex"
+> >>
+> >> I don't see any attempt to load the package.  You attempted to use the
+> >> function Simplex and it was not found.  That indicates the package is
+> >> not loaded, but not why.
+> >>
+> >> What you should show are the messages you get when you start a clean
+> >> copy of R and immediately attempt to load the package using library().
+> >> It's helpful that you posted sessionInfo(); I'd include that again with
+> >> the new information, in case anything is different.
+> >>
+> >> Duncan Murdoch
+> >>
+> >>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From ||y@oyong85 @end|ng |rom gm@||@com  Sat Jun 11 13:29:25 2022
+From: ||y@oyong85 @end|ng |rom gm@||@com (Yaoyong Li)
+Date: Sat, 11 Jun 2022 12:29:25 +0100
+Subject: [R-pkg-devel] a problem with the underscore in a R function document
+Message-ID: <CAMb-knn+o+sDtLsLGX9Q7xQN6LjvEVf90DAWo_n8kgereiMbPA@mail.gmail.com>
+
+Hello,
+
+I just got a problem in a function document in a package I developed.The
+file containing the document is generatingCDSaaFile.Rd. The problem is
+related to the underscore I used in the following sentence
+
+      and the last part is ?\_AAseq.txt.gz?
+
+I got a 'note' message when the package was checked in the CRAN:
+
+checkRd: (-1) generatingCDSaaFile.Rd:72: Escaped LaTeX specials: \_
+
+I don't think I saw this kind of message in the past (say six months
+ago). A copy of the check result in CRAN is appended below. As you can
+see, I also got the same problem in other places in the document. I
+have been trying to fix the problem via searching Google. I have tried
+to replace "\_" with "\textunderscore " as some internet post
+suggested, but this did not solve the problem.
+
+So I just wonder if anyone can help me with the problem. Please let me
+know if any more information is needed.
+
+
+Best regards,
+
+Yaoyong
+
+#####################################################
+
+CRAN Package Check Results for Package geno2proteo
+<https://cran.r-project.org/web/packages/geno2proteo/index.html>
+
+Last updated on 2022-06-11 11:52:26 CEST.
+FlavorVersionTinstallTcheckTtotalStatusFlags
+r-devel-linux-x86_64-debian-clang
+<https://cran.r-project.org/web/checks/check_flavors.html#r-devel-linux-x86_64-debian-clang>
+0.0.5 17.31 170.54 187.85 NOTE
+<https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-debian-clang/geno2proteo-00check.html>
+r-devel-linux-x86_64-debian-gcc
+<https://cran.r-project.org/web/checks/check_flavors.html#r-devel-linux-x86_64-debian-gcc>
+0.0.5 12.00 130.58 142.58 NOTE
+<https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-debian-gcc/geno2proteo-00check.html>
+r-devel-linux-x86_64-fedora-clang
+<https://cran.r-project.org/web/checks/check_flavors.html#r-devel-linux-x86_64-fedora-clang>
+0.0.5 220.04 NOTE
+<https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-fedora-clang/geno2proteo-00check.html>
+r-devel-linux-x86_64-fedora-gcc
+<https://cran.r-project.org/web/checks/check_flavors.html#r-devel-linux-x86_64-fedora-gcc>
+0.0.5 229.54 NOTE
+<https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-fedora-gcc/geno2proteo-00check.html>
+r-devel-windows-x86_64
+<https://cran.r-project.org/web/checks/check_flavors.html#r-devel-windows-x86_64>
+0.0.5 242.00 470.00 712.00 NOTE
+<https://www.r-project.org/nosvn/R.check/r-devel-windows-x86_64/geno2proteo-00check.html>
+r-patched-linux-x86_64
+<https://cran.r-project.org/web/checks/check_flavors.html#r-patched-linux-x86_64>
+0.0.5 12.58 164.99 177.57 OK
+<https://www.r-project.org/nosvn/R.check/r-patched-linux-x86_64/geno2proteo-00check.html>
+r-release-linux-x86_64
+<https://cran.r-project.org/web/checks/check_flavors.html#r-release-linux-x86_64>
+0.0.5 OK
+<https://www.r-project.org/nosvn/R.check/r-release-linux-x86_64/geno2proteo-00check.html>
+r-release-macos-arm64
+<https://cran.r-project.org/web/checks/check_flavors.html#r-release-macos-arm64>
+0.0.5 65.00 OK
+<https://www.r-project.org/nosvn/R.check/r-release-macos-arm64/geno2proteo-00check.html>
+r-release-macos-x86_64
+<https://cran.r-project.org/web/checks/check_flavors.html#r-release-macos-x86_64>
+0.0.5 89.00 OK
+<https://www.r-project.org/nosvn/R.check/r-release-macos-x86_64/geno2proteo-00check.html>
+r-release-windows-x86_64
+<https://cran.r-project.org/web/checks/check_flavors.html#r-release-windows-x86_64>
+0.0.5 195.00 363.00 558.00 OK
+<https://www.r-project.org/nosvn/R.check/r-release-windows-x86_64/geno2proteo-00check.html>
+r-oldrel-macos-arm64
+<https://cran.r-project.org/web/checks/check_flavors.html#r-oldrel-macos-arm64>
+0.0.5 57.00 OK
+<https://www.r-project.org/nosvn/R.check/r-oldrel-macos-arm64/geno2proteo-00check.html>
+r-oldrel-macos-x86_64
+<https://cran.r-project.org/web/checks/check_flavors.html#r-oldrel-macos-x86_64>
+0.0.5 84.00 OK
+<https://www.r-project.org/nosvn/R.check/r-oldrel-macos-x86_64/geno2proteo-00check.html>
+r-oldrel-windows-ix86+x86_64
+<https://cran.r-project.org/web/checks/check_flavors.html#r-oldrel-windows-ix86_x86_64>
+0.0.5 32.00 145.00 177.00 OK
+<https://www.r-project.org/nosvn/R.check/r-oldrel-windows-ix86+x86_64/geno2proteo-00check.html>
+Check
+Details
+
+Version: 0.0.5
+Check: Rd files
+Result: NOTE
+    checkRd: (-1) generatingCDSaaFile.Rd:23: Escaped LaTeX specials: \_ \_
+    checkRd: (-1) generatingCDSaaFile.Rd:72: Escaped LaTeX specials: \_
+
+Flavors: r-devel-linux-x86_64-debian-clang
+<https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-debian-clang/geno2proteo-00check.html>,
+r-devel-linux-x86_64-debian-gcc
+<https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-debian-gcc/geno2proteo-00check.html>,
+r-devel-linux-x86_64-fedora-clang
+<https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-fedora-clang/geno2proteo-00check.html>,
+r-devel-linux-x86_64-fedora-gcc
+<https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-fedora-gcc/geno2proteo-00check.html>,
+r-devel-windows-x86_64
+<https://www.r-project.org/nosvn/R.check/r-devel-windows-x86_64/geno2proteo-00check.html>
+
+##########################################################################
+
+	[[alternative HTML version deleted]]
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Sat Jun 11 14:29:47 2022
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Sat, 11 Jun 2022 14:29:47 +0200
+Subject: [R-pkg-devel] a problem with the underscore in a R function
+ document
+In-Reply-To: <CAMb-knn+o+sDtLsLGX9Q7xQN6LjvEVf90DAWo_n8kgereiMbPA@mail.gmail.com>
+References: <CAMb-knn+o+sDtLsLGX9Q7xQN6LjvEVf90DAWo_n8kgereiMbPA@mail.gmail.com>
+Message-ID: <25252.35515.375379.168772@stat.math.ethz.ch>
+
+>>>>> Yaoyong Li 
+>>>>>     on Sat, 11 Jun 2022 12:29:25 +0100 writes:
+
+    > Hello,
+
+    > I just got a problem in a function document in a package I developed.The
+    > file containing the document is generatingCDSaaFile.Rd. The problem is
+    > related to the underscore I used in the following sentence
+
+    > and the last part is ?\_AAseq.txt.gz?
+
+    > I got a 'note' message when the package was checked in the CRAN:
+
+    > checkRd: (-1) generatingCDSaaFile.Rd:72: Escaped LaTeX specials: \_
+
+    > I don't think I saw this kind of message in the past (say six months
+    > ago). 
+
+Yes, you are right.. this is quite new.  Some of my
+<pkg>/man/*.Rd  files have been affected similarly.
+
+AFAIK there is a history behind, where the   Rd -> LaTeX
+translation code was partly buggy  for quite a long time, and hence
+such  `\`-escapes where necessary in *.Rd such that the produced
+*.tex was LaTeX-able.
+
+However, these Rd2latex bugs/problems have been fixed and now
+almost all such \-escapes are not only unneeded but actually the
+`\` become visible, hence ugly looking
+==> hence the NOTE.
+
+    > A copy of the check result in CRAN is appended below. As you can
+    > see, I also got the same problem in other places in the document. I
+    > have been trying to fix the problem via searching Google. I have tried
+    > to replace "\_" with "\textunderscore " as some internet post
+    > suggested, but this did not solve the problem.
+
+    > So I just wonder if anyone can help me with the problem. Please let me
+    > know if any more information is needed.
+
+In all cases in my packages,  just removing the `\` (or
+sometimes `\\` ?)  was perfect, so I think you can and should do
+just that.
+
+Best,
+Martin
+
+
+    > Best regards,
+
+    > Yaoyong
+
+    > #####################################################
+
+    > CRAN Package Check Results for Package geno2proteo
+    > <https://cran.r-project.org/web/packages/geno2proteo/index.html>
+
+    > Last updated on 2022-06-11 11:52:26 CEST.
+    > FlavorVersionTinstallTcheckTtotalStatusFlags
+    > r-devel-linux-x86_64-debian-clang
+    > <https://cran.r-project.org/web/checks/check_flavors.html#r-devel-linux-x86_64-debian-clang>
+    > 0.0.5 17.31 170.54 187.85 NOTE
+    > <https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-debian-clang/geno2proteo-00check.html>
+    > r-devel-linux-x86_64-debian-gcc
+    > <https://cran.r-project.org/web/checks/check_flavors.html#r-devel-linux-x86_64-debian-gcc>
+    > 0.0.5 12.00 130.58 142.58 NOTE
+    > <https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-debian-gcc/geno2proteo-00check.html>
+    > r-devel-linux-x86_64-fedora-clang
+    > <https://cran.r-project.org/web/checks/check_flavors.html#r-devel-linux-x86_64-fedora-clang>
+    > 0.0.5 220.04 NOTE
+    > <https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-fedora-clang/geno2proteo-00check.html>
+    > r-devel-linux-x86_64-fedora-gcc
+    > <https://cran.r-project.org/web/checks/check_flavors.html#r-devel-linux-x86_64-fedora-gcc>
+    > 0.0.5 229.54 NOTE
+    > <https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-fedora-gcc/geno2proteo-00check.html>
+    > r-devel-windows-x86_64
+    > <https://cran.r-project.org/web/checks/check_flavors.html#r-devel-windows-x86_64>
+    > 0.0.5 242.00 470.00 712.00 NOTE
+    > <https://www.r-project.org/nosvn/R.check/r-devel-windows-x86_64/geno2proteo-00check.html>
+    > r-patched-linux-x86_64
+    > <https://cran.r-project.org/web/checks/check_flavors.html#r-patched-linux-x86_64>
+    > 0.0.5 12.58 164.99 177.57 OK
+    > <https://www.r-project.org/nosvn/R.check/r-patched-linux-x86_64/geno2proteo-00check.html>
+    > r-release-linux-x86_64
+    > <https://cran.r-project.org/web/checks/check_flavors.html#r-release-linux-x86_64>
+    > 0.0.5 OK
+    > <https://www.r-project.org/nosvn/R.check/r-release-linux-x86_64/geno2proteo-00check.html>
+    > r-release-macos-arm64
+    > <https://cran.r-project.org/web/checks/check_flavors.html#r-release-macos-arm64>
+    > 0.0.5 65.00 OK
+    > <https://www.r-project.org/nosvn/R.check/r-release-macos-arm64/geno2proteo-00check.html>
+    > r-release-macos-x86_64
+    > <https://cran.r-project.org/web/checks/check_flavors.html#r-release-macos-x86_64>
+    > 0.0.5 89.00 OK
+    > <https://www.r-project.org/nosvn/R.check/r-release-macos-x86_64/geno2proteo-00check.html>
+    > r-release-windows-x86_64
+    > <https://cran.r-project.org/web/checks/check_flavors.html#r-release-windows-x86_64>
+    > 0.0.5 195.00 363.00 558.00 OK
+    > <https://www.r-project.org/nosvn/R.check/r-release-windows-x86_64/geno2proteo-00check.html>
+    > r-oldrel-macos-arm64
+    > <https://cran.r-project.org/web/checks/check_flavors.html#r-oldrel-macos-arm64>
+    > 0.0.5 57.00 OK
+    > <https://www.r-project.org/nosvn/R.check/r-oldrel-macos-arm64/geno2proteo-00check.html>
+    > r-oldrel-macos-x86_64
+    > <https://cran.r-project.org/web/checks/check_flavors.html#r-oldrel-macos-x86_64>
+    > 0.0.5 84.00 OK
+    > <https://www.r-project.org/nosvn/R.check/r-oldrel-macos-x86_64/geno2proteo-00check.html>
+    > r-oldrel-windows-ix86+x86_64
+    > <https://cran.r-project.org/web/checks/check_flavors.html#r-oldrel-windows-ix86_x86_64>
+    > 0.0.5 32.00 145.00 177.00 OK
+    > <https://www.r-project.org/nosvn/R.check/r-oldrel-windows-ix86+x86_64/geno2proteo-00check.html>
+    > Check
+    > Details
+
+    > Version: 0.0.5
+    > Check: Rd files
+    > Result: NOTE
+    > checkRd: (-1) generatingCDSaaFile.Rd:23: Escaped LaTeX specials: \_ \_
+    > checkRd: (-1) generatingCDSaaFile.Rd:72: Escaped LaTeX specials: \_
+
+    > Flavors: r-devel-linux-x86_64-debian-clang
+    > <https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-debian-clang/geno2proteo-00check.html>,
+    > r-devel-linux-x86_64-debian-gcc
+    > <https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-debian-gcc/geno2proteo-00check.html>,
+    > r-devel-linux-x86_64-fedora-clang
+    > <https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-fedora-clang/geno2proteo-00check.html>,
+    > r-devel-linux-x86_64-fedora-gcc
+    > <https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-fedora-gcc/geno2proteo-00check.html>,
+    > r-devel-windows-x86_64
+    > <https://www.r-project.org/nosvn/R.check/r-devel-windows-x86_64/geno2proteo-00check.html>
+
+    > ##########################################################################
+
+    > [[alternative HTML version deleted]]
+
+    > ______________________________________________
+    > R-package-devel at r-project.org mailing list
+    > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Jun 11 14:38:29 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 11 Jun 2022 08:38:29 -0400
+Subject: [R-pkg-devel] a problem with the underscore in a R function
+ document
+In-Reply-To: <25252.35515.375379.168772@stat.math.ethz.ch>
+References: <CAMb-knn+o+sDtLsLGX9Q7xQN6LjvEVf90DAWo_n8kgereiMbPA@mail.gmail.com>
+ <25252.35515.375379.168772@stat.math.ethz.ch>
+Message-ID: <2a26a082-75c8-1a6c-43fe-497c551918aa@gmail.com>
+
+As Martin said, just remove the \.
+
+The other thing I'd do is use \sQuote{_AAseq.txt.gz} instead of entering 
+the quotes yourself.  Then you don't need to worry about the difference 
+between plain quotes and directional quotes, R will use whichever is 
+appropriate.
+
+Duncan Murdoch
+
+On 11/06/2022 8:29 a.m., Martin Maechler wrote:
+>>>>>> Yaoyong Li
+>>>>>>      on Sat, 11 Jun 2022 12:29:25 +0100 writes:
+> 
+>      > Hello,
+> 
+>      > I just got a problem in a function document in a package I developed.The
+>      > file containing the document is generatingCDSaaFile.Rd. The problem is
+>      > related to the underscore I used in the following sentence
+> 
+>      > and the last part is ?\_AAseq.txt.gz?
+> 
+>      > I got a 'note' message when the package was checked in the CRAN:
+> 
+>      > checkRd: (-1) generatingCDSaaFile.Rd:72: Escaped LaTeX specials: \_
+> 
+>      > I don't think I saw this kind of message in the past (say six months
+>      > ago).
+> 
+> Yes, you are right.. this is quite new.  Some of my
+> <pkg>/man/*.Rd  files have been affected similarly.
+> 
+> AFAIK there is a history behind, where the   Rd -> LaTeX
+> translation code was partly buggy  for quite a long time, and hence
+> such  `\`-escapes where necessary in *.Rd such that the produced
+> *.tex was LaTeX-able.
+> 
+> However, these Rd2latex bugs/problems have been fixed and now
+> almost all such \-escapes are not only unneeded but actually the
+> `\` become visible, hence ugly looking
+> ==> hence the NOTE.
+> 
+>      > A copy of the check result in CRAN is appended below. As you can
+>      > see, I also got the same problem in other places in the document. I
+>      > have been trying to fix the problem via searching Google. I have tried
+>      > to replace "\_" with "\textunderscore " as some internet post
+>      > suggested, but this did not solve the problem.
+> 
+>      > So I just wonder if anyone can help me with the problem. Please let me
+>      > know if any more information is needed.
+> 
+> In all cases in my packages,  just removing the `\` (or
+> sometimes `\\` ?)  was perfect, so I think you can and should do
+> just that.
+> 
+> Best,
+> Martin
+> 
+> 
+>      > Best regards,
+> 
+>      > Yaoyong
+> 
+>      > #####################################################
+> 
+>      > CRAN Package Check Results for Package geno2proteo
+>      > <https://cran.r-project.org/web/packages/geno2proteo/index.html>
+> 
+>      > Last updated on 2022-06-11 11:52:26 CEST.
+>      > FlavorVersionTinstallTcheckTtotalStatusFlags
+>      > r-devel-linux-x86_64-debian-clang
+>      > <https://cran.r-project.org/web/checks/check_flavors.html#r-devel-linux-x86_64-debian-clang>
+>      > 0.0.5 17.31 170.54 187.85 NOTE
+>      > <https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-debian-clang/geno2proteo-00check.html>
+>      > r-devel-linux-x86_64-debian-gcc
+>      > <https://cran.r-project.org/web/checks/check_flavors.html#r-devel-linux-x86_64-debian-gcc>
+>      > 0.0.5 12.00 130.58 142.58 NOTE
+>      > <https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-debian-gcc/geno2proteo-00check.html>
+>      > r-devel-linux-x86_64-fedora-clang
+>      > <https://cran.r-project.org/web/checks/check_flavors.html#r-devel-linux-x86_64-fedora-clang>
+>      > 0.0.5 220.04 NOTE
+>      > <https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-fedora-clang/geno2proteo-00check.html>
+>      > r-devel-linux-x86_64-fedora-gcc
+>      > <https://cran.r-project.org/web/checks/check_flavors.html#r-devel-linux-x86_64-fedora-gcc>
+>      > 0.0.5 229.54 NOTE
+>      > <https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-fedora-gcc/geno2proteo-00check.html>
+>      > r-devel-windows-x86_64
+>      > <https://cran.r-project.org/web/checks/check_flavors.html#r-devel-windows-x86_64>
+>      > 0.0.5 242.00 470.00 712.00 NOTE
+>      > <https://www.r-project.org/nosvn/R.check/r-devel-windows-x86_64/geno2proteo-00check.html>
+>      > r-patched-linux-x86_64
+>      > <https://cran.r-project.org/web/checks/check_flavors.html#r-patched-linux-x86_64>
+>      > 0.0.5 12.58 164.99 177.57 OK
+>      > <https://www.r-project.org/nosvn/R.check/r-patched-linux-x86_64/geno2proteo-00check.html>
+>      > r-release-linux-x86_64
+>      > <https://cran.r-project.org/web/checks/check_flavors.html#r-release-linux-x86_64>
+>      > 0.0.5 OK
+>      > <https://www.r-project.org/nosvn/R.check/r-release-linux-x86_64/geno2proteo-00check.html>
+>      > r-release-macos-arm64
+>      > <https://cran.r-project.org/web/checks/check_flavors.html#r-release-macos-arm64>
+>      > 0.0.5 65.00 OK
+>      > <https://www.r-project.org/nosvn/R.check/r-release-macos-arm64/geno2proteo-00check.html>
+>      > r-release-macos-x86_64
+>      > <https://cran.r-project.org/web/checks/check_flavors.html#r-release-macos-x86_64>
+>      > 0.0.5 89.00 OK
+>      > <https://www.r-project.org/nosvn/R.check/r-release-macos-x86_64/geno2proteo-00check.html>
+>      > r-release-windows-x86_64
+>      > <https://cran.r-project.org/web/checks/check_flavors.html#r-release-windows-x86_64>
+>      > 0.0.5 195.00 363.00 558.00 OK
+>      > <https://www.r-project.org/nosvn/R.check/r-release-windows-x86_64/geno2proteo-00check.html>
+>      > r-oldrel-macos-arm64
+>      > <https://cran.r-project.org/web/checks/check_flavors.html#r-oldrel-macos-arm64>
+>      > 0.0.5 57.00 OK
+>      > <https://www.r-project.org/nosvn/R.check/r-oldrel-macos-arm64/geno2proteo-00check.html>
+>      > r-oldrel-macos-x86_64
+>      > <https://cran.r-project.org/web/checks/check_flavors.html#r-oldrel-macos-x86_64>
+>      > 0.0.5 84.00 OK
+>      > <https://www.r-project.org/nosvn/R.check/r-oldrel-macos-x86_64/geno2proteo-00check.html>
+>      > r-oldrel-windows-ix86+x86_64
+>      > <https://cran.r-project.org/web/checks/check_flavors.html#r-oldrel-windows-ix86_x86_64>
+>      > 0.0.5 32.00 145.00 177.00 OK
+>      > <https://www.r-project.org/nosvn/R.check/r-oldrel-windows-ix86+x86_64/geno2proteo-00check.html>
+>      > Check
+>      > Details
+> 
+>      > Version: 0.0.5
+>      > Check: Rd files
+>      > Result: NOTE
+>      > checkRd: (-1) generatingCDSaaFile.Rd:23: Escaped LaTeX specials: \_ \_
+>      > checkRd: (-1) generatingCDSaaFile.Rd:72: Escaped LaTeX specials: \_
+> 
+>      > Flavors: r-devel-linux-x86_64-debian-clang
+>      > <https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-debian-clang/geno2proteo-00check.html>,
+>      > r-devel-linux-x86_64-debian-gcc
+>      > <https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-debian-gcc/geno2proteo-00check.html>,
+>      > r-devel-linux-x86_64-fedora-clang
+>      > <https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-fedora-clang/geno2proteo-00check.html>,
+>      > r-devel-linux-x86_64-fedora-gcc
+>      > <https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-fedora-gcc/geno2proteo-00check.html>,
+>      > r-devel-windows-x86_64
+>      > <https://www.r-project.org/nosvn/R.check/r-devel-windows-x86_64/geno2proteo-00check.html>
+> 
+>      > ##########################################################################
+> 
+>      > [[alternative HTML version deleted]]
+> 
+>      > ______________________________________________
+>      > R-package-devel at r-project.org mailing list
+>      > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Jun 11 14:49:40 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 11 Jun 2022 08:49:40 -0400
+Subject: [R-pkg-devel] Windows R 4.2.0 package will not load with UTF-8
+ encoding
+In-Reply-To: <CALE8kTFxthEET8fGoA7MdeM_-ZuJrG4D=8wT7J_C350+VJHRxQ@mail.gmail.com>
+References: <CALE8kTFaQE9CvbjBHdExQ+oY9SV_r_jCN5pQ8Crqoj2K6oLp+Q@mail.gmail.com>
+ <8abc1685-cb6b-78df-b3e0-b289e9f6cc8d@gmail.com>
+ <CALE8kTHGY0b7E4jq75fZu73w9=Uch4ZN86sqmHzuvRym8X3gzQ@mail.gmail.com>
+ <CALE8kTFxthEET8fGoA7MdeM_-ZuJrG4D=8wT7J_C350+VJHRxQ@mail.gmail.com>
+Message-ID: <13df2764-9f0f-8b7d-e81e-e801ad1b8fd1@gmail.com>
+
+On 11/06/2022 6:43 a.m., Joseph Park wrote:
+> Thank you for the check of the CRAN builds.  I also checked that as a first
+> step.  Perhaps there is some difference between the CRAN setups, as I have
+> reproduced this on 3 Windows 10 machines with clean installs of R 4.2.0,
+> and it has been reported by other users.  I also noted in the post that
+> building and installing via devtools reports success (  ** testing if
+> installed package can be loaded from temporary location ), however, a
+> subsequent attempt to load hangs.
+
+One possible difference is the version of Windows 10.  The UTF8 handling 
+was described in the NEWS file this way:
+
+"R uses UTF-8 as the native encoding on recent Windows systems (at least 
+Windows 10 version 1903, Windows Server 2022 or Windows Server 1903). As 
+a part of this change, R uses UCRT as the C runtime. UCRT should be 
+installed manually on systems older than Windows 10 or Windows Server 
+2016 before installing R."
+
+Conceivably the systems where this fails don't have the new UCRT 
+runtime.  I believe running Windows Update should get it.
+
+If it doesn't, or for users on an older Windows version, this page lets 
+you download it: 
+https://www.microsoft.com/en-us/download/details.aspx?id=48234 .
+
+
+Duncan Murdoch
+
+> 
+> On Sat, Jun 11, 2022 at 6:33 AM Joseph Park <josephpark at ieee.org> wrote:
+> 
+>> Apologies for the pages of minutia.  I endeavored to post reproduceable
+>> example. I'm unable to show the failure since it simply hangs at the prompt
+>> with CPU spinning and memory cyclically ramping and declining.  One has to
+>> kill R. The posted commands show the workaround, not the failure.
+>>
+>> I since found that just changing the LC_COLLATE is enough to allow the
+>> library to load :
+>>> Sys.setlocale('LC_COLLATE','English')
+>> [1] "English_United States.1252"
+>>> Sys.getlocale()
+>> [1] "LC_COLLATE=English_United States.1252;LC_CTYPE=English_United
+>> States.utf8;LC_MONETARY=English_United
+>> States.utf8;LC_NUMERIC=C;LC_TIME=English_United States.utf8"
+>>
+>> Again, apologies for my naivety.
+>>
+>> On Sat, Jun 11, 2022 at 6:16 AM Duncan Murdoch <murdoch.duncan at gmail.com>
+>> wrote:
+>>
+>>> On 11/06/2022 5:02 a.m., Joseph Park wrote:
+>>>> Dear R package developers,
+>>>>
+>>>> Starting with R 4.2.0 package rEDM (
+>>> https://cran.r-project.org/package=rEDM)
+>>>> will not load [library( rEDM )] on Windows with the default UTF-8
+>>> encoding.
+>>>>
+>>>> When the locale is changed from UTF-8 to non UTF-8, the package loads
+>>> and
+>>>> runs. One can also change the locale to non-UTF-8, load the package,
+>>> detach
+>>>> and unload the package, change the locale back to UTF-8, then load and
+>>> run
+>>>> without issue.
+>>>>
+>>>> Note that installation from source reports:
+>>>>      ** testing if installed package can be loaded from temporary
+>>> location
+>>>> and completes (record below).
+>>>>
+>>>> This package uses Rcpp to wrap a C++ API.
+>>>>
+>>>> Having searched here and in general, I don't find that others
+>>> experiencing
+>>>> this issue.
+>>>>
+>>>> I have tried
+>>>>     Ensure all source files are UTF-8 encoded
+>>>>     Removed non-ASCII characters from all source files
+>>>>     Specify non-ASCII characters with \uXXXX
+>>>>     Checked vignette encoding
+>>>>     Added "Encoding : UTF-8" to DESCRIPTION
+>>>>
+>>>> Please excuse my encoding and Windows naivety.
+>>>>
+>>>> Here is a demonstration changing the encoding to load the package, along
+>>>> with unloading & reloading under UTF-8:
+>>>> --
+>>>>> sessionInfo()
+>>>> R version 4.2.0 (2022-04-22 ucrt)
+>>>> Platform: x86_64-w64-mingw32/x64 (64-bit)
+>>>> Running under: Windows 10 x64 (build 19044)
+>>>>
+>>>> Matrix products: default
+>>>>
+>>>> locale:
+>>>> [1] LC_COLLATE=English_United States.utf8  LC_CTYPE=English_United
+>>>> States.utf8
+>>>> [3] LC_MONETARY=English_United States.utf8 LC_NUMERIC=C
+>>>>
+>>>> [5] LC_TIME=English_United States.utf8
+>>>>
+>>>> attached base packages:
+>>>> [1] stats     graphics  grDevices utils     datasets  methods   base
+>>>>
+>>>> loaded via a namespace (and not attached):
+>>>> [1] compiler_4.2.0
+>>>>>
+>>>>> Sys.setlocale('LC_ALL','English')
+>>>> [1] "LC_COLLATE=English_United States.1252;LC_CTYPE=English_United
+>>>> States.1252;LC_MONETARY=English_United
+>>>> States.1252;LC_NUMERIC=C;LC_TIME=English_United States.1252"
+>>>> Warning message:
+>>>> In Sys.setlocale("LC_ALL", "English") :
+>>>>     using locale code page other than 65001 ("UTF-8") may cause problems
+>>>>>
+>>>>> sessionInfo()
+>>>> R version 4.2.0 (2022-04-22 ucrt)
+>>>> Platform: x86_64-w64-mingw32/x64 (64-bit)
+>>>> Running under: Windows 10 x64 (build 19044)
+>>>>
+>>>> Matrix products: default
+>>>>
+>>>> locale:
+>>>> [1] LC_COLLATE=English_United States.1252  LC_CTYPE=English_United
+>>>> States.1252
+>>>> [3] LC_MONETARY=English_United States.1252 LC_NUMERIC=C
+>>>>
+>>>> [5] LC_TIME=English_United States.1252
+>>>> system code page: 65001
+>>>>
+>>>> attached base packages:
+>>>> [1] stats     graphics  grDevices utils     datasets  methods   base
+>>>>
+>>>> loaded via a namespace (and not attached):
+>>>> [1] compiler_4.2.0
+>>>>>
+>>>>> library( rEDM )
+>>>>>
+>>>>> sessionInfo()
+>>>> R version 4.2.0 (2022-04-22 ucrt)
+>>>> Platform: x86_64-w64-mingw32/x64 (64-bit)
+>>>> Running under: Windows 10 x64 (build 19044)
+>>>>
+>>>> Matrix products: default
+>>>>
+>>>> locale:
+>>>> [1] LC_COLLATE=English_United States.1252  LC_CTYPE=English_United
+>>>> States.1252
+>>>> [3] LC_MONETARY=English_United States.1252 LC_NUMERIC=C
+>>>>
+>>>> [5] LC_TIME=English_United States.1252
+>>>> system code page: 65001
+>>>>
+>>>> attached base packages:
+>>>> [1] stats     graphics  grDevices utils     datasets  methods   base
+>>>>
+>>>> other attached packages:
+>>>> [1] rEDM_1.12.2.1.0
+>>>>
+>>>> loaded via a namespace (and not attached):
+>>>> [1] compiler_4.2.0 Rcpp_1.0.8.3
+>>>>>
+>>>>
+>>>> ### All package tests pass....
+>>>> ### Now detach and unload, change to UTF-8, and load
+>>>>
+>>>>> detach( 'package:rEDM', unload = TRUE )
+>>>>>
+>>>>> Simplex( dataFrame = Lorenz5D, columns = 'V1', target = 'V2', lib = "1
+>>>> 500", pred = "501 505", E = 5 )
+>>>> Error in Simplex(dataFrame = Lorenz5D, columns = "V1", target = "V2",  :
+>>>>     could not find function "Simplex"
+>>>
+>>> I don't see any attempt to load the package.  You attempted to use the
+>>> function Simplex and it was not found.  That indicates the package is
+>>> not loaded, but not why.
+>>>
+>>> What you should show are the messages you get when you start a clean
+>>> copy of R and immediately attempt to load the package using library().
+>>> It's helpful that you posted sessionInfo(); I'd include that again with
+>>> the new information, in case anything is different.
+>>>
+>>> Duncan Murdoch
+>>>
+>>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From jepu@to @end|ng |rom gm@||@com  Sat Jun 11 17:10:01 2022
+From: jepu@to @end|ng |rom gm@||@com (James Pustejovsky)
+Date: Sat, 11 Jun 2022 10:10:01 -0500
+Subject: [R-pkg-devel] Examples that require Suggested packages
+Message-ID: <CAFUVuJyx0-P6+wrZK1VyVQ6bD=228OC3TRuktmZSKy2buDc6pg@mail.gmail.com>
+
+Dear package developers,
+
+I have a package (clubSandwich) that provides methods for a range of
+different models implemented in other packages (nlme::lme, lme4::lmer,
+metafor::rma.mv, etc.). These other packages are listed in SUGGESTS because
+one need not have all of them in order to use the methods for any given
+model. I'm working on re-writing examples for the function documentation
+that a) run conditional on the presence of the suggested package and b) are
+legible and aesthetically attractive to read.
+
+The problem I'm encountering is examples that include more than one line
+that prints to the console. If I follow the standard approach of wrapping
+the entire example in a conditional that checks for the suggested package,
+then only the last line prints to the console. For example:
+
+library(clubSandwich)
+if (requireNamespace("metafor", quietly = TRUE) &&
+requireNamespace("metadat", quietly = TRUE)) {
+library(metafor)
+data(dat.assink2016, package = "metadat")
+mfor_fit <- rma.uni(yi ~ year + deltype, vi = vi, data = dat.assink2016)
+mfor_fit
+
+mfor_CR2 <- vcovCR(mfor_fit, type = "CR2", cluster = dat.assink2016$study)
+mfor_CR2
+}
+
+When run interactively, only mfor_CR2 is printed in the console.
+Alternately, I could wrap each chunk of the code in a separate conditional,
+as in:
+
+pkgs_available <- requireNamespace("metafor", quietly = TRUE) &&
+requireNamespace("metadat", quietly = TRUE)
+
+if (pkgs_available) {
+  library(metafor)
+  data(dat.assink2016, package = "metadat")
+  mfor_fit <- rma.uni(yi ~ year + deltype, vi = vi, data = dat.assink2016)
+  mfor_fit
+}
+
+if (pkgs_available) {
+  mfor_CR2 <- vcovCR(mfor_fit, type = "CR2", cluster = dat.assink2016$study)
+  mfor_CR2
+}
+
+But this is awkward and distracts from the content of the example. A
+further possibility is to wrap the entire example in withAutoprint(), as in:
+
+if (requireNamespace("metafor", quietly = TRUE) &&
+requireNamespace("metadat", quietly = TRUE)) withAutoprint({
+library(metafor)
+data(dat.assink2016, package = "metadat")
+mfor_fit <- rma.uni(yi ~ year + deltype, vi = vi, data = dat.assink2016)
+mfor_fit
+
+mfor_CR2 <- vcovCR(mfor_fit, type = "CR2", cluster = dat.assink2016$study)
+mfor_CR2
+})
+
+With this approach, we can see all of the output in the console, but the
+code and output are not inter-woven as they would be if run outside of the
+conditional. Instead, the entire example is printed in the console, then
+each line of the example is re-printed with output inter-woven. I like this
+solution better than the other approaches above, but it's still not great.
+
+Does anyone have suggestions or pointers to examples of package
+documentation that handles this issue in a more elegant way? Is there any
+way to check whether suggested packages are loaded at the beginning of the
+example script and stop execution of the remainder if they are not
+available similar to testthat::skip_if_not_installed()?
+
+James
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Jun 11 17:37:56 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 11 Jun 2022 11:37:56 -0400
+Subject: [R-pkg-devel] Examples that require Suggested packages
+In-Reply-To: <CAFUVuJyx0-P6+wrZK1VyVQ6bD=228OC3TRuktmZSKy2buDc6pg@mail.gmail.com>
+References: <CAFUVuJyx0-P6+wrZK1VyVQ6bD=228OC3TRuktmZSKy2buDc6pg@mail.gmail.com>
+Message-ID: <a27fbd83-03bc-11c1-6199-aab1f69c95da@gmail.com>
+
+On 11/06/2022 11:10 a.m., James Pustejovsky wrote:
+> Dear package developers,
+> 
+> I have a package (clubSandwich) that provides methods for a range of
+> different models implemented in other packages (nlme::lme, lme4::lmer,
+> metafor::rma.mv, etc.). These other packages are listed in SUGGESTS because
+> one need not have all of them in order to use the methods for any given
+> model. I'm working on re-writing examples for the function documentation
+> that a) run conditional on the presence of the suggested package and b) are
+> legible and aesthetically attractive to read.
+> 
+> The problem I'm encountering is examples that include more than one line
+> that prints to the console. If I follow the standard approach of wrapping
+> the entire example in a conditional that checks for the suggested package,
+> then only the last line prints to the console. For example:
+> 
+> library(clubSandwich)
+> if (requireNamespace("metafor", quietly = TRUE) &&
+> requireNamespace("metadat", quietly = TRUE)) {
+> library(metafor)
+> data(dat.assink2016, package = "metadat")
+> mfor_fit <- rma.uni(yi ~ year + deltype, vi = vi, data = dat.assink2016)
+> mfor_fit
+> 
+> mfor_CR2 <- vcovCR(mfor_fit, type = "CR2", cluster = dat.assink2016$study)
+> mfor_CR2
+> }
+> 
+> When run interactively, only mfor_CR2 is printed in the console.
+> Alternately, I could wrap each chunk of the code in a separate conditional,
+> as in:
+> 
+> pkgs_available <- requireNamespace("metafor", quietly = TRUE) &&
+> requireNamespace("metadat", quietly = TRUE)
+> 
+> if (pkgs_available) {
+>    library(metafor)
+>    data(dat.assink2016, package = "metadat")
+>    mfor_fit <- rma.uni(yi ~ year + deltype, vi = vi, data = dat.assink2016)
+>    mfor_fit
+> }
+> 
+> if (pkgs_available) {
+>    mfor_CR2 <- vcovCR(mfor_fit, type = "CR2", cluster = dat.assink2016$study)
+>    mfor_CR2
+> }
+> 
+> But this is awkward and distracts from the content of the example. A
+> further possibility is to wrap the entire example in withAutoprint(), as in:
+> 
+> if (requireNamespace("metafor", quietly = TRUE) &&
+> requireNamespace("metadat", quietly = TRUE)) withAutoprint({
+> library(metafor)
+> data(dat.assink2016, package = "metadat")
+> mfor_fit <- rma.uni(yi ~ year + deltype, vi = vi, data = dat.assink2016)
+> mfor_fit
+> 
+> mfor_CR2 <- vcovCR(mfor_fit, type = "CR2", cluster = dat.assink2016$study)
+> mfor_CR2
+> })
+> 
+> With this approach, we can see all of the output in the console, but the
+> code and output are not inter-woven as they would be if run outside of the
+> conditional. Instead, the entire example is printed in the console, then
+> each line of the example is re-printed with output inter-woven. I like this
+> solution better than the other approaches above, but it's still not great.
+> 
+> Does anyone have suggestions or pointers to examples of package
+> documentation that handles this issue in a more elegant way? Is there any
+> way to check whether suggested packages are loaded at the beginning of the
+> example script and stop execution of the remainder if they are not
+> available similar to testthat::skip_if_not_installed()?
+
+You can call print() explicitly rather than relying on auto-printing, 
+but I don't think there's a way to do this elegantly.  I posted a 
+suggestion to add something to Bugzilla recently (see 
+https://bugs.r-project.org/show_bug.cgi?id=18352), and haven't had any 
+response to it.  (It is certainly not the first time this issue has been 
+raised, but I couldn't spot a previous bug/enhancement request about it.)
+
+Duncan Murdoch
+
+
+From jo@ephp@rk @end|ng |rom |eee@org  Sat Jun 11 20:19:49 2022
+From: jo@ephp@rk @end|ng |rom |eee@org (Joseph Park)
+Date: Sat, 11 Jun 2022 14:19:49 -0400
+Subject: [R-pkg-devel] Windows R 4.2.0 package will not load with UTF-8
+ encoding
+In-Reply-To: <13df2764-9f0f-8b7d-e81e-e801ad1b8fd1@gmail.com>
+References: <CALE8kTFaQE9CvbjBHdExQ+oY9SV_r_jCN5pQ8Crqoj2K6oLp+Q@mail.gmail.com>
+ <8abc1685-cb6b-78df-b3e0-b289e9f6cc8d@gmail.com>
+ <CALE8kTHGY0b7E4jq75fZu73w9=Uch4ZN86sqmHzuvRym8X3gzQ@mail.gmail.com>
+ <CALE8kTFxthEET8fGoA7MdeM_-ZuJrG4D=8wT7J_C350+VJHRxQ@mail.gmail.com>
+ <13df2764-9f0f-8b7d-e81e-e801ad1b8fd1@gmail.com>
+Message-ID: <CALE8kTHz=V_AbFbB-4H34V9mwqeigGvS3rzngd3xea5+pU-3AA@mail.gmail.com>
+
+It looks like Hiroaki identified the issue.
+
+When the C++ std::regex code is removed from the underlying API, the
+problem seems solved. Thank you!
+
+The symptoms observed match those described in the tesseract issue thread.
+The solution outlined in the gcc bug report seems the most prudent course:
+Don't use std::regex.  I'll work on that and see if it resolves the issue.
+
+Comment #6 seems relevant:
+https://gcc.gnu.org/bugzilla/show_bug.cgi?id=98723#c6
+
+Again: Thank you!
+
+On Sat, Jun 11, 2022 at 8:49 AM Duncan Murdoch <murdoch.duncan at gmail.com>
+wrote:
+
+> On 11/06/2022 6:43 a.m., Joseph Park wrote:
+> > Thank you for the check of the CRAN builds.  I also checked that as a
+> first
+> > step.  Perhaps there is some difference between the CRAN setups, as I
+> have
+> > reproduced this on 3 Windows 10 machines with clean installs of R 4.2.0,
+> > and it has been reported by other users.  I also noted in the post that
+> > building and installing via devtools reports success (  ** testing if
+> > installed package can be loaded from temporary location ), however, a
+> > subsequent attempt to load hangs.
+>
+> One possible difference is the version of Windows 10.  The UTF8 handling
+> was described in the NEWS file this way:
+>
+> "R uses UTF-8 as the native encoding on recent Windows systems (at least
+> Windows 10 version 1903, Windows Server 2022 or Windows Server 1903). As
+> a part of this change, R uses UCRT as the C runtime. UCRT should be
+> installed manually on systems older than Windows 10 or Windows Server
+> 2016 before installing R."
+>
+> Conceivably the systems where this fails don't have the new UCRT
+> runtime.  I believe running Windows Update should get it.
+>
+> If it doesn't, or for users on an older Windows version, this page lets
+> you download it:
+> https://www.microsoft.com/en-us/download/details.aspx?id=48234 .
+>
+>
+> Duncan Murdoch
+>
+> >
+> > On Sat, Jun 11, 2022 at 6:33 AM Joseph Park <josephpark at ieee.org> wrote:
+> >
+> >> Apologies for the pages of minutia.  I endeavored to post reproduceable
+> >> example. I'm unable to show the failure since it simply hangs at the
+> prompt
+> >> with CPU spinning and memory cyclically ramping and declining.  One has
+> to
+> >> kill R. The posted commands show the workaround, not the failure.
+> >>
+> >> I since found that just changing the LC_COLLATE is enough to allow the
+> >> library to load :
+> >>> Sys.setlocale('LC_COLLATE','English')
+> >> [1] "English_United States.1252"
+> >>> Sys.getlocale()
+> >> [1] "LC_COLLATE=English_United States.1252;LC_CTYPE=English_United
+> >> States.utf8;LC_MONETARY=English_United
+> >> States.utf8;LC_NUMERIC=C;LC_TIME=English_United States.utf8"
+> >>
+> >> Again, apologies for my naivety.
+> >>
+> >> On Sat, Jun 11, 2022 at 6:16 AM Duncan Murdoch <
+> murdoch.duncan at gmail.com>
+> >> wrote:
+> >>
+> >>> On 11/06/2022 5:02 a.m., Joseph Park wrote:
+> >>>> Dear R package developers,
+> >>>>
+> >>>> Starting with R 4.2.0 package rEDM (
+> >>> https://cran.r-project.org/package=rEDM)
+> >>>> will not load [library( rEDM )] on Windows with the default UTF-8
+> >>> encoding.
+> >>>>
+> >>>> When the locale is changed from UTF-8 to non UTF-8, the package loads
+> >>> and
+> >>>> runs. One can also change the locale to non-UTF-8, load the package,
+> >>> detach
+> >>>> and unload the package, change the locale back to UTF-8, then load and
+> >>> run
+> >>>> without issue.
+> >>>>
+> >>>> Note that installation from source reports:
+> >>>>      ** testing if installed package can be loaded from temporary
+> >>> location
+> >>>> and completes (record below).
+> >>>>
+> >>>> This package uses Rcpp to wrap a C++ API.
+> >>>>
+> >>>> Having searched here and in general, I don't find that others
+> >>> experiencing
+> >>>> this issue.
+> >>>>
+> >>>> I have tried
+> >>>>     Ensure all source files are UTF-8 encoded
+> >>>>     Removed non-ASCII characters from all source files
+> >>>>     Specify non-ASCII characters with \uXXXX
+> >>>>     Checked vignette encoding
+> >>>>     Added "Encoding : UTF-8" to DESCRIPTION
+> >>>>
+> >>>> Please excuse my encoding and Windows naivety.
+> >>>>
+> >>>> Here is a demonstration changing the encoding to load the package,
+> along
+> >>>> with unloading & reloading under UTF-8:
+> >>>> --
+> >>>>> sessionInfo()
+> >>>> R version 4.2.0 (2022-04-22 ucrt)
+> >>>> Platform: x86_64-w64-mingw32/x64 (64-bit)
+> >>>> Running under: Windows 10 x64 (build 19044)
+> >>>>
+> >>>> Matrix products: default
+> >>>>
+> >>>> locale:
+> >>>> [1] LC_COLLATE=English_United States.utf8  LC_CTYPE=English_United
+> >>>> States.utf8
+> >>>> [3] LC_MONETARY=English_United States.utf8 LC_NUMERIC=C
+> >>>>
+> >>>> [5] LC_TIME=English_United States.utf8
+> >>>>
+> >>>> attached base packages:
+> >>>> [1] stats     graphics  grDevices utils     datasets  methods   base
+> >>>>
+> >>>> loaded via a namespace (and not attached):
+> >>>> [1] compiler_4.2.0
+> >>>>>
+> >>>>> Sys.setlocale('LC_ALL','English')
+> >>>> [1] "LC_COLLATE=English_United States.1252;LC_CTYPE=English_United
+> >>>> States.1252;LC_MONETARY=English_United
+> >>>> States.1252;LC_NUMERIC=C;LC_TIME=English_United States.1252"
+> >>>> Warning message:
+> >>>> In Sys.setlocale("LC_ALL", "English") :
+> >>>>     using locale code page other than 65001 ("UTF-8") may cause
+> problems
+> >>>>>
+> >>>>> sessionInfo()
+> >>>> R version 4.2.0 (2022-04-22 ucrt)
+> >>>> Platform: x86_64-w64-mingw32/x64 (64-bit)
+> >>>> Running under: Windows 10 x64 (build 19044)
+> >>>>
+> >>>> Matrix products: default
+> >>>>
+> >>>> locale:
+> >>>> [1] LC_COLLATE=English_United States.1252  LC_CTYPE=English_United
+> >>>> States.1252
+> >>>> [3] LC_MONETARY=English_United States.1252 LC_NUMERIC=C
+> >>>>
+> >>>> [5] LC_TIME=English_United States.1252
+> >>>> system code page: 65001
+> >>>>
+> >>>> attached base packages:
+> >>>> [1] stats     graphics  grDevices utils     datasets  methods   base
+> >>>>
+> >>>> loaded via a namespace (and not attached):
+> >>>> [1] compiler_4.2.0
+> >>>>>
+> >>>>> library( rEDM )
+> >>>>>
+> >>>>> sessionInfo()
+> >>>> R version 4.2.0 (2022-04-22 ucrt)
+> >>>> Platform: x86_64-w64-mingw32/x64 (64-bit)
+> >>>> Running under: Windows 10 x64 (build 19044)
+> >>>>
+> >>>> Matrix products: default
+> >>>>
+> >>>> locale:
+> >>>> [1] LC_COLLATE=English_United States.1252  LC_CTYPE=English_United
+> >>>> States.1252
+> >>>> [3] LC_MONETARY=English_United States.1252 LC_NUMERIC=C
+> >>>>
+> >>>> [5] LC_TIME=English_United States.1252
+> >>>> system code page: 65001
+> >>>>
+> >>>> attached base packages:
+> >>>> [1] stats     graphics  grDevices utils     datasets  methods   base
+> >>>>
+> >>>> other attached packages:
+> >>>> [1] rEDM_1.12.2.1.0
+> >>>>
+> >>>> loaded via a namespace (and not attached):
+> >>>> [1] compiler_4.2.0 Rcpp_1.0.8.3
+> >>>>>
+> >>>>
+> >>>> ### All package tests pass....
+> >>>> ### Now detach and unload, change to UTF-8, and load
+> >>>>
+> >>>>> detach( 'package:rEDM', unload = TRUE )
+> >>>>>
+> >>>>> Simplex( dataFrame = Lorenz5D, columns = 'V1', target = 'V2', lib =
+> "1
+> >>>> 500", pred = "501 505", E = 5 )
+> >>>> Error in Simplex(dataFrame = Lorenz5D, columns = "V1", target =
+> "V2",  :
+> >>>>     could not find function "Simplex"
+> >>>
+> >>> I don't see any attempt to load the package.  You attempted to use the
+> >>> function Simplex and it was not found.  That indicates the package is
+> >>> not loaded, but not why.
+> >>>
+> >>> What you should show are the messages you get when you start a clean
+> >>> copy of R and immediately attempt to load the package using library().
+> >>> It's helpful that you posted sessionInfo(); I'd include that again with
+> >>> the new information, in case anything is different.
+> >>>
+> >>> Duncan Murdoch
+> >>>
+> >>>
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
