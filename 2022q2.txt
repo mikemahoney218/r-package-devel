@@ -21000,3 +21000,139 @@ int *icode);
 >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From @w@y @end|ng |rom empowerph@rm@cy@com  Wed Jun 22 14:34:26 2022
+From: @w@y @end|ng |rom empowerph@rm@cy@com (Shawn Way)
+Date: Wed, 22 Jun 2022 12:34:26 +0000
+Subject: [R-pkg-devel] Troubleshooting Fortran type mismatch and
+ --enable-lto
+In-Reply-To: <d48fed2e-bf08-c4ba-ae65-5b14fbfe6fe8@gmail.com>
+References: <SA1PR13MB48789C58DDB4CC7F3FD06B9AC3B39@SA1PR13MB4878.namprd13.prod.outlook.com>
+ <38fcb5ad-e1bc-995a-25ab-8885ba4bf27a@gmail.com>
+ <SA1PR13MB48787F0FA59F78DEEDA950D9C3B39@SA1PR13MB4878.namprd13.prod.outlook.com>
+ <d48fed2e-bf08-c4ba-ae65-5b14fbfe6fe8@gmail.com>
+Message-ID: <SA1PR13MB48782BD9CFDEC6A8888E0D9BC3B29@SA1PR13MB4878.namprd13.prod.outlook.com>
+
+I had to make the modifications you suggested to the .C file and it worked like a charm.  I also had to make the following changes to my ~/.R/Makevar file:
+
+LTO_OPT=-flto -ffat-lto-objects
+
+Doing this seems to have worked well!  Thank you very much!  I would not have been able to do this without your help.
+
+Shawn Way
+
+-----Original Message-----
+From: Tomas Kalibera <tomas.kalibera at gmail.com> 
+Sent: Tuesday, June 21, 2022 3:48 PM
+To: Shawn Way <sway at empowerpharmacy.com>; r-package-devel at r-project.org
+Subject: Re: [R-pkg-devel] Troubleshooting Fortran type mismatch and --enable-lto
+
+
+On 6/21/22 22:12, Shawn Way wrote:
+> Thanks!  The package I'm trying to get working is IAPWS95.  It can compile and work just fine, however, CRAN moderators are reporting the following:
+>
+> Thanks, with  LTO checks enabled we still see
+>
+>
+>
+> IAPWS95_init.c:37:13: warning: type of ?dth_? does not match original 
+> declaration [-Wlto-type-mismatch]
+>      37 | extern void F77_NAME(dth)(double *T, double *h, double *D, 
+> int *icode);
+>        |            ^
+> IAPWS9521D.f90:2344:31: note: return value type mismatch
+>    2344 |      REAL(KIND=8) function DTh( T, h, D, Dupp, icode)
+>        |                              ^
+> IAPWS9521D.f90:2344:31: note: type ?double? should match type ?void?
+> IAPWS9521D.f90:2344:31: note: ?dth? was previously declared here
+> IAPWS9521D.f90:2344:31: note: code may be misoptimized unless 
+> ?-fno-strict-aliasing? is used
+> IAPWS95_init.c:58:13: warning: type of ?phi0dt_? does not match 
+> original declaration [-Wlto-type-mismatch]
+>      58 | extern void F77_NAME(phi0dt)(double *D, double *fhizdT, int 
+> *icode);
+>        |            ^
+> IAPWS9521D.f90:1250:34: note: return value type mismatch
+>    1250 |      REAL(KIND=8) function PHI0DT(fhizdt, icode)
+>        |                                  ^
+> IAPWS9521D.f90:1250:34: note: type ?double? should match type ?void?
+> IAPWS9521D.f90:1250:34: note: ?phi0dt? was previously declared here
+> IAPWS9521D.f90:1250:34: note: code may be misoptimized unless 
+> ?-fno-strict-aliasing? is used
+>
+>
+> Please fix and resubmit.
+> Best,
+> Uwe Ligges
+>
+>
+> I'm trying to enable the LTO checks on windows and then reproduce the errors.  Once I have that, then I can try to figure out the code errors. Not that I know exactly know how to do that right now, but I need to try to fix it.
+
+I can reproduce as described in WRE. I've modified my etc/x64/Makeconf to have LTO_OPT=-flto and then ran
+
+R CMD INSTALL --use-LTO IAPWS95_1.1.0.tar.gz
+
+and I got the errors as reported. Editing the C file as shown below, to match the Fortran definitions, makes the compiler happy.
+
+Best
+Tomas
+
+diff -Nru orig/IAPWS95/src/IAPWS95_init.c patched/IAPWS95/src/IAPWS95_init.c
+--- orig/IAPWS95/src/IAPWS95_init.c???? 2018-06-18 13:38:21.000000000 +0200
++++ patched/IAPWS95/src/IAPWS95_init.c? 2022-06-21 22:41:52.628001900 
++++ +0200
+@@ -34,7 +34,7 @@
+ ?extern void F77_NAME(dph)(double *p, double *h, double *D, int *icode);
+ ?extern void F77_NAME(dps)(double *p, double *s, double *D, int *icode);
+ ?extern void F77_NAME(dptctetab)(int *np, double *T, double *p, double *y); -extern void F77_NAME(dth)(double *T, double *h, double *D, int *icode);
++extern double F77_NAME(dth)(double *T, double *h, double *D, double
+*Dupp, int *icode);
+ ?extern void F77_NAME(dtp)(double *T, double *p, double *D, int *icode);
+ ?extern void F77_NAME(dtpctetab)(int *nT, double *p, double *T, double *y);
+ ?extern void F77_NAME(dts)(double *T, double *s, double *D, int *icode); @@ -55,7 +55,7 @@
+ ?extern void F77_NAME(kvisctd)(double *T, double *D, double *KVscty, int *icode);
+ ?extern void F77_NAME(phi0dd)(double *D, double *fhizd, int *icode);
+ ?extern void F77_NAME(phi0ddd)(double *D, double *fhizd, int *icode); -extern void F77_NAME(phi0dt)(double *D, double *fhizdT, int *icode);
++extern double F77_NAME(phi0dt)(double *fhizdT, int *icode);
+ ?extern void F77_NAME(phi0td)(double *T, double *D, double *fhiztd, int *icode);
+ ?extern void F77_NAME(phi0ttd)(double *T, double *D, double *fhizttd, int *icode);
+ ?extern void F77_NAME(phi0tttd)(double *T, double *D, double *fhiztttd, int *icode);
+
+
+>
+> Thank you kindly!
+>
+> Shawn Way
+>
+> -----Original Message-----
+> From: Tomas Kalibera <tomas.kalibera at gmail.com>
+> Sent: Tuesday, June 21, 2022 2:54 PM
+> To: Shawn Way <sway at empowerpharmacy.com>; 
+> r-package-devel at r-project.org
+> Subject: Re: [R-pkg-devel] Troubleshooting Fortran type mismatch and 
+> --enable-lto
+>
+>
+> On 6/21/22 20:38, Shawn Way wrote:
+>> I've gotten a response from the build team that I have a type mis-match between my fortran code and it was discovered using the -enable-lto option for compilation.  I'm trying to even be able to reproduce the error so that I can fix the error.  I've read the R Admin and the Writing R extensions and it has muddied the waters for building using a Windows machine.
+>>
+>> Can someone please give me a hint how to "enable-lto" for building R packages using R 4.2.0?  I would really love understand how to troubleshoot combined R and fortran code.
+> Please try following 4.5 of Writing R Extensions and if you run into problems, ask specifically, providing an exact description what you did and key parts of outputs, so that others can help.
+>> Just FYI, I'm taking over the package as a maintainer as the original package creator died a couple of years ago.  It's a new experience for me.
+> Please also give the name of the package - it may be possible to tell from the outputs what is the problem.
+>
+> Best
+> Tomas
+>
+>> Thank you kindly,
+>>
+>> Shawn Way
+>>
+>>
+>>
+>>
+>> 	[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list 
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
