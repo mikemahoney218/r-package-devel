@@ -1,0 +1,653 @@
+From greg @end|ng |rom ||rm@n@y@h@com  Fri Jul  1 00:31:15 2022
+From: greg @end|ng |rom ||rm@n@y@h@com (Greg Hunt)
+Date: Fri, 1 Jul 2022 08:31:15 +1000
+Subject: [R-pkg-devel] Slowdown running examples since 4.2 on Windows
+In-Reply-To: <d76c5510-7f48-8a47-afff-5dd35d0c825d@mtholyoke.edu>
+References: <be553b98-2057-49e0-1922-37679544eb81@mtholyoke.edu>
+ <676322ff-0d24-ece2-ae0d-e7c536373dea@gmail.com>
+ <d76c5510-7f48-8a47-afff-5dd35d0c825d@mtholyoke.edu>
+Message-ID: <CAAS8PA+EO-ZqdZm0az4_9KMLo04oMD6TxtZNwin7kRwmn3QARw@mail.gmail.com>
+
+Tomas,
+Do you have any logging in the build environment that could tell you
+whether the environment is running into resource constraints?  I can
+imagine IO (disk or network) or CPU contention with that kind of workload
+and memory pressure would be easy to identify.
+
+Greg
+
+On Fri, 1 Jul 2022 at 01:45, Barbara Lerner <blerner at mtholyoke.edu> wrote:
+
+> Thanks for these suggestions.  I attempted to submit a slightly earlier
+> version of my package a few weeks ago and saw the slowdown on winbuilder
+> then, too.  I did not look into any further at that point.
+>
+> I have tested it on a local Windows computer running 4.2.0 and I did not
+> see the slowdown there.  Here are those results:
+>
+> Name         user    system   elapsed
+>
+> prov.json 1.11   0.24 2.19
+>
+> prov.run    0.99    0.06 1.93
+>
+> version  R version 4.2.0 (2022-04-22 ucrt)
+>
+> os       Windows 10 x64 (build 19044)
+>
+> system   x86_64, mingw32
+>
+>
+> Tomas Kalibera wrote on 6/30/22 10:09 AM:
+> >
+> > On 6/29/22 22:25, Barbara Lerner wrote:
+> >> I have a package that I want to submit an updated version for but the
+> >> examples run too slowly on win-builder since 4.2 came out.  I just
+> >> submitted the exact same tar.gz file to all 3 versions of R available on
+> >> win-builder and got the results shown below.  Notice the dramatic
+> >> slowdown from 4.1.3 to 4.2.1.
+> >>
+> >> I don't know how to go about tracking down the cause of this slowdown.
+> >> The examples are quite small.  I am reluctant to use \dontrun, but I am
+> >> not sure what else to do.
+> >
+> > Could you perhaps submit to Winbuilder several times (with some
+> > non-trivial delay between the runs) to see if the very long execution
+> > is reproducible?
+> >
+> > If so, the next step could be trying on a Windows machine with
+> > interactive access, to reproduce, and if it is still so slow, checking
+> > where the time is spent, using an R profiler, using some C profiler
+> > (e.g. VerySleepy is free), comparing possibly to 4.1.3. It might be
+> > useful or necessary to also do the profiling with a debug build of
+> > Windows and/or the package, while the performance numbers will be
+> > skewed, one would see the symbol names.
+> >
+> > If you wanted specific help, please send a reproducible example -
+> > instructions how to run the code and which code.
+> >
+> > Best
+> > Tomas
+> >
+> >>
+> >> June 29 2:33 PM  - old release
+> >> * using R version 4.1.3 (2022-03-10)
+> >> i386 timings
+> >> name    user    system    elapsed
+> >> prov.json    3.28    0.33    5.19
+> >> prov.run    2.70    0.27    4.18
+> >>
+> >> x64 timings
+> >> name    user    system    elapsed
+> >> prov.json    3.51    0.27    4.93
+> >> prov.run    3.05    0.28    4.48
+> >>
+> >>
+> >> June 29 2:19 PM  - release
+> >> * using R version 4.2.1 (2022-06-23 ucrt)
+> >> * using platform: x86_64-w64-mingw32 (64-bit)
+> >> name    user    system    elapsed
+> >> prov.json    16.98    8.81    26.82
+> >> prov.run    3.53    0.42    4.89
+> >>
+> >>
+> >> June 29  1:52 PM - devel
+> >> * using R Under development (unstable) (2022-06-28 r82534 ucrt)
+> >> * using platform: x86_64-w64-mingw32 (64-bit)
+> >> name    user    system    elapsed
+> >> prov.json    16.60     9.09    26.66
+> >> prov.run    3.57    0.22    4.70 I then ran the same timing script as
+> >> win-builder uses on my Mac,
+> >> using Rscript and got these results: name    user    system  elapsed
+> >> prov.json       1.105   0.159   1.329 prov.run        0.890   0.103
+> >> 1.053 session_info reports:  version  R version 4.2.0 (2022-04-22)
+> >>    os       macOS Catalina 10.15.7  system   x86_64, darwin17.0 I then
+> >> installed 4.2.1 on my Mac. The time is a little slower but nothing like
+> >> the slowdown on Windows.
+> >> name    user    system  elapsed prov.json       1.286   0.230 3.080
+> >> prov.run        0.940   0.108   1.131  version  R version 4.2.1
+> >> (2022-06-23)  os       macOS Catalina 10.15.7  system   x86_64,
+> >> darwin17.0
+> >>
+>
+> --
+> <http://www.getpostbox.com>Barbara Lerner (she / her)
+> Professor
+> Computer Science Department
+> Mount Holyoke College
+>
+> <http://www.getpostbox.com>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Fri Jul  1 09:23:30 2022
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Fri, 1 Jul 2022 09:23:30 +0200
+Subject: [R-pkg-devel] Slowdown running examples since 4.2 on Windows
+In-Reply-To: <d76c5510-7f48-8a47-afff-5dd35d0c825d@mtholyoke.edu>
+References: <be553b98-2057-49e0-1922-37679544eb81@mtholyoke.edu>
+ <676322ff-0d24-ece2-ae0d-e7c536373dea@gmail.com>
+ <d76c5510-7f48-8a47-afff-5dd35d0c825d@mtholyoke.edu>
+Message-ID: <9e64db22-a8ee-977b-e0d5-394cb8805bab@gmail.com>
+
+
+On 6/30/22 17:45, Barbara Lerner wrote:
+> Thanks for these suggestions.? I attempted to submit a slightly 
+> earlier version of my package a few weeks ago and saw the slowdown on 
+> winbuilder then, too.? I did not look into any further at that point.
+
+I was curious about repeatability to rule out the option that it was 
+simply that Winbuilder was overloaded at the time of checking the package.
+
+Is the current version that also caused the problem available anywhere?
+
+>
+> I have tested it on a local Windows computer running 4.2.0 and I did 
+> not see the slowdown there.? Here are those results:
+>
+> Name ????????user?? ?system elapsed
+>
+> prov.json 1.11 ??0.24 2.19
+>
+> prov.run??? 0.99? ??0.06 1.93
+>
+> version? R version 4.2.0 (2022-04-22 ucrt)
+>
+> os?????? Windows 10 x64 (build 19044)
+>
+> system?? x86_64, mingw32
+
+It would be difficult to profile without being able to reproduce on a 
+machine that can be used interactively and exclusively for the profiling.
+Still, you could try narrowing it down by instrumenting the package - 
+adding some timings, printing the outputs, and sending such instrumented 
+package to Winbuilder
+
+Tomas
+
+
+>
+>
+> Tomas Kalibera wrote on 6/30/22 10:09 AM:
+>>
+>> On 6/29/22 22:25, Barbara Lerner wrote:
+>>> I have a package that I want to submit an updated version for but the
+>>> examples run too slowly on win-builder since 4.2 came out.? I just
+>>> submitted the exact same tar.gz file to all 3 versions of R 
+>>> available on
+>>> win-builder and got the results shown below.? Notice the dramatic
+>>> slowdown from 4.1.3 to 4.2.1.
+>>>
+>>> I don't know how to go about tracking down the cause of this slowdown.
+>>> The examples are quite small.? I am reluctant to use \dontrun, but I am
+>>> not sure what else to do.
+>>
+>> Could you perhaps submit to Winbuilder several times (with some 
+>> non-trivial delay between the runs) to see if the very long execution 
+>> is reproducible?
+>>
+>> If so, the next step could be trying on a Windows machine with 
+>> interactive access, to reproduce, and if it is still so slow, 
+>> checking where the time is spent, using an R profiler, using some C 
+>> profiler (e.g. VerySleepy is free), comparing possibly to 4.1.3. It 
+>> might be useful or necessary to also do the profiling with a debug 
+>> build of Windows and/or the package, while the performance numbers 
+>> will be skewed, one would see the symbol names.
+>>
+>> If you wanted specific help, please send a reproducible example - 
+>> instructions how to run the code and which code.
+>>
+>> Best
+>> Tomas
+>>
+>>>
+>>> June 29 2:33 PM? - old release
+>>> * using R version 4.1.3 (2022-03-10)
+>>> i386 timings
+>>> name??? user??? system??? elapsed
+>>> prov.json??? 3.28??? 0.33??? 5.19
+>>> prov.run??? 2.70??? 0.27??? 4.18
+>>>
+>>> x64 timings
+>>> name??? user??? system??? elapsed
+>>> prov.json??? 3.51??? 0.27??? 4.93
+>>> prov.run??? 3.05??? 0.28??? 4.48
+>>>
+>>>
+>>> June 29 2:19 PM? - release
+>>> * using R version 4.2.1 (2022-06-23 ucrt)
+>>> * using platform: x86_64-w64-mingw32 (64-bit)
+>>> name??? user??? system??? elapsed
+>>> prov.json??? 16.98??? 8.81??? 26.82
+>>> prov.run??? 3.53??? 0.42??? 4.89
+>>>
+>>>
+>>> June 29? 1:52 PM - devel
+>>> * using R Under development (unstable) (2022-06-28 r82534 ucrt)
+>>> * using platform: x86_64-w64-mingw32 (64-bit)
+>>> name??? user??? system??? elapsed
+>>> prov.json??? 16.60???? 9.09??? 26.66
+>>> prov.run??? 3.57??? 0.22??? 4.70 I then ran the same timing script 
+>>> as win-builder uses on my Mac,
+>>> using Rscript and got these results: name??? user??? system elapsed
+>>> prov.json?????? 1.105?? 0.159?? 1.329 prov.run??????? 0.890 0.103
+>>> 1.053 session_info reports: ?version? R version 4.2.0 (2022-04-22)
+>>> ? ?os?????? macOS Catalina 10.15.7 ?system?? x86_64, darwin17.0 I then
+>>> installed 4.2.1 on my Mac. The time is a little slower but nothing like
+>>> the slowdown on Windows.
+>>> name??? user??? system? elapsed prov.json?????? 1.286 0.230?? 3.080
+>>> prov.run??????? 0.940?? 0.108?? 1.131 ?version? R version 4.2.1
+>>> (2022-06-23) ?os?????? macOS Catalina 10.15.7 ?system x86_64, 
+>>> darwin17.0
+>>>
+>
+> -- 
+> <http://www.getpostbox.com>Barbara Lerner (she / her)
+> Professor
+> Computer Science Department
+> Mount Holyoke College
+>
+> <http://www.getpostbox.com>
+	[[alternative HTML version deleted]]
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Fri Jul  1 09:49:23 2022
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Fri, 1 Jul 2022 09:49:23 +0200
+Subject: [R-pkg-devel] Slowdown running examples since 4.2 on Windows
+In-Reply-To: <9e64db22-a8ee-977b-e0d5-394cb8805bab@gmail.com>
+References: <be553b98-2057-49e0-1922-37679544eb81@mtholyoke.edu>
+ <676322ff-0d24-ece2-ae0d-e7c536373dea@gmail.com>
+ <d76c5510-7f48-8a47-afff-5dd35d0c825d@mtholyoke.edu>
+ <9e64db22-a8ee-977b-e0d5-394cb8805bab@gmail.com>
+Message-ID: <47e31581-1866-e06c-b6fb-83f6a98b7149@statistik.tu-dortmund.de>
+
+And if you told us what the package is you are tasking about or gave us 
+access to the package sources, we could easily check that. Without 
+reproducible examples we really cannot help.
+
+Best,
+Uwe Ligges
+
+
+On 01.07.2022 09:23, Tomas Kalibera wrote:
+> 
+> On 6/30/22 17:45, Barbara Lerner wrote:
+>> Thanks for these suggestions.? I attempted to submit a slightly
+>> earlier version of my package a few weeks ago and saw the slowdown on
+>> winbuilder then, too.? I did not look into any further at that point.
+> 
+> I was curious about repeatability to rule out the option that it was
+> simply that Winbuilder was overloaded at the time of checking the package.
+> 
+> Is the current version that also caused the problem available anywhere?
+> 
+>>
+>> I have tested it on a local Windows computer running 4.2.0 and I did
+>> not see the slowdown there.? Here are those results:
+>>
+>> Name ????????user?? ?system elapsed
+>>
+>> prov.json 1.11 ??0.24 2.19
+>>
+>> prov.run??? 0.99? ??0.06 1.93
+>>
+>> version? R version 4.2.0 (2022-04-22 ucrt)
+>>
+>> os?????? Windows 10 x64 (build 19044)
+>>
+>> system?? x86_64, mingw32
+> 
+> It would be difficult to profile without being able to reproduce on a
+> machine that can be used interactively and exclusively for the profiling.
+> Still, you could try narrowing it down by instrumenting the package -
+> adding some timings, printing the outputs, and sending such instrumented
+> package to Winbuilder
+> 
+> Tomas
+> 
+> 
+>>
+>>
+>> Tomas Kalibera wrote on 6/30/22 10:09 AM:
+>>>
+>>> On 6/29/22 22:25, Barbara Lerner wrote:
+>>>> I have a package that I want to submit an updated version for but the
+>>>> examples run too slowly on win-builder since 4.2 came out.? I just
+>>>> submitted the exact same tar.gz file to all 3 versions of R
+>>>> available on
+>>>> win-builder and got the results shown below.? Notice the dramatic
+>>>> slowdown from 4.1.3 to 4.2.1.
+>>>>
+>>>> I don't know how to go about tracking down the cause of this slowdown.
+>>>> The examples are quite small.? I am reluctant to use \dontrun, but I am
+>>>> not sure what else to do.
+>>>
+>>> Could you perhaps submit to Winbuilder several times (with some
+>>> non-trivial delay between the runs) to see if the very long execution
+>>> is reproducible?
+>>>
+>>> If so, the next step could be trying on a Windows machine with
+>>> interactive access, to reproduce, and if it is still so slow,
+>>> checking where the time is spent, using an R profiler, using some C
+>>> profiler (e.g. VerySleepy is free), comparing possibly to 4.1.3. It
+>>> might be useful or necessary to also do the profiling with a debug
+>>> build of Windows and/or the package, while the performance numbers
+>>> will be skewed, one would see the symbol names.
+>>>
+>>> If you wanted specific help, please send a reproducible example -
+>>> instructions how to run the code and which code.
+>>>
+>>> Best
+>>> Tomas
+>>>
+>>>>
+>>>> June 29 2:33 PM? - old release
+>>>> * using R version 4.1.3 (2022-03-10)
+>>>> i386 timings
+>>>> name??? user??? system??? elapsed
+>>>> prov.json??? 3.28??? 0.33??? 5.19
+>>>> prov.run??? 2.70??? 0.27??? 4.18
+>>>>
+>>>> x64 timings
+>>>> name??? user??? system??? elapsed
+>>>> prov.json??? 3.51??? 0.27??? 4.93
+>>>> prov.run??? 3.05??? 0.28??? 4.48
+>>>>
+>>>>
+>>>> June 29 2:19 PM? - release
+>>>> * using R version 4.2.1 (2022-06-23 ucrt)
+>>>> * using platform: x86_64-w64-mingw32 (64-bit)
+>>>> name??? user??? system??? elapsed
+>>>> prov.json??? 16.98??? 8.81??? 26.82
+>>>> prov.run??? 3.53??? 0.42??? 4.89
+>>>>
+>>>>
+>>>> June 29? 1:52 PM - devel
+>>>> * using R Under development (unstable) (2022-06-28 r82534 ucrt)
+>>>> * using platform: x86_64-w64-mingw32 (64-bit)
+>>>> name??? user??? system??? elapsed
+>>>> prov.json??? 16.60???? 9.09??? 26.66
+>>>> prov.run??? 3.57??? 0.22??? 4.70 I then ran the same timing script
+>>>> as win-builder uses on my Mac,
+>>>> using Rscript and got these results: name??? user??? system elapsed
+>>>> prov.json?????? 1.105?? 0.159?? 1.329 prov.run??????? 0.890 0.103
+>>>> 1.053 session_info reports: ?version? R version 4.2.0 (2022-04-22)
+>>>>  ? ?os?????? macOS Catalina 10.15.7 ?system?? x86_64, darwin17.0 I then
+>>>> installed 4.2.1 on my Mac. The time is a little slower but nothing like
+>>>> the slowdown on Windows.
+>>>> name??? user??? system? elapsed prov.json?????? 1.286 0.230?? 3.080
+>>>> prov.run??????? 0.940?? 0.108?? 1.131 ?version? R version 4.2.1
+>>>> (2022-06-23) ?os?????? macOS Catalina 10.15.7 ?system x86_64,
+>>>> darwin17.0
+>>>>
+>>
+>> -- 
+>> <http://www.getpostbox.com>Barbara Lerner (she / her)
+>> Professor
+>> Computer Science Department
+>> Mount Holyoke College
+>>
+>> <http://www.getpostbox.com>
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From b|erner @end|ng |rom mtho|yoke@edu  Fri Jul  1 18:04:57 2022
+From: b|erner @end|ng |rom mtho|yoke@edu (Barbara Lerner)
+Date: Fri, 1 Jul 2022 12:04:57 -0400
+Subject: [R-pkg-devel] Slowdown running examples since 4.2 on Windows
+In-Reply-To: <47e31581-1866-e06c-b6fb-83f6a98b7149@statistik.tu-dortmund.de>
+References: <be553b98-2057-49e0-1922-37679544eb81@mtholyoke.edu>
+ <676322ff-0d24-ece2-ae0d-e7c536373dea@gmail.com>
+ <d76c5510-7f48-8a47-afff-5dd35d0c825d@mtholyoke.edu>
+ <9e64db22-a8ee-977b-e0d5-394cb8805bab@gmail.com>
+ <47e31581-1866-e06c-b6fb-83f6a98b7149@statistik.tu-dortmund.de>
+Message-ID: <0253c20b-11ab-4855-096e-74720586d228@mtholyoke.edu>
+
+The package can be downloaded from github:
+
+https://github.com/End-to-end-provenance/rdtLite
+
+Barbara
+
+Uwe Ligges wrote on 7/1/22 3:49 AM:
+> And if you told us what the package is you are tasking about or gave 
+> us access to the package sources, we could easily check that. Without 
+> reproducible examples we really cannot help.
+>
+> Best,
+> Uwe Ligges
+>
+>
+> On 01.07.2022 09:23, Tomas Kalibera wrote:
+>>
+>> On 6/30/22 17:45, Barbara Lerner wrote:
+>>> Thanks for these suggestions.? I attempted to submit a slightly
+>>> earlier version of my package a few weeks ago and saw the slowdown on
+>>> winbuilder then, too.? I did not look into any further at that point.
+>>
+>> I was curious about repeatability to rule out the option that it was
+>> simply that Winbuilder was overloaded at the time of checking the 
+>> package.
+>>
+>> Is the current version that also caused the problem available anywhere?
+>>
+>>>
+>>> I have tested it on a local Windows computer running 4.2.0 and I did
+>>> not see the slowdown there.? Here are those results:
+>>>
+>>> Name ????????user?? ?system elapsed
+>>>
+>>> prov.json 1.11 ??0.24 2.19
+>>>
+>>> prov.run??? 0.99? ??0.06 1.93
+>>>
+>>> version? R version 4.2.0 (2022-04-22 ucrt)
+>>>
+>>> os?????? Windows 10 x64 (build 19044)
+>>>
+>>> system?? x86_64, mingw32
+>>
+>> It would be difficult to profile without being able to reproduce on a
+>> machine that can be used interactively and exclusively for the 
+>> profiling.
+>> Still, you could try narrowing it down by instrumenting the package -
+>> adding some timings, printing the outputs, and sending such instrumented
+>> package to Winbuilder
+>>
+>> Tomas
+>>
+>>
+>>>
+>>>
+>>> Tomas Kalibera wrote on 6/30/22 10:09 AM:
+>>>>
+>>>> On 6/29/22 22:25, Barbara Lerner wrote:
+>>>>> I have a package that I want to submit an updated version for but the
+>>>>> examples run too slowly on win-builder since 4.2 came out.? I just
+>>>>> submitted the exact same tar.gz file to all 3 versions of R
+>>>>> available on
+>>>>> win-builder and got the results shown below.? Notice the dramatic
+>>>>> slowdown from 4.1.3 to 4.2.1.
+>>>>>
+>>>>> I don't know how to go about tracking down the cause of this 
+>>>>> slowdown.
+>>>>> The examples are quite small.? I am reluctant to use \dontrun, but 
+>>>>> I am
+>>>>> not sure what else to do.
+>>>>
+>>>> Could you perhaps submit to Winbuilder several times (with some
+>>>> non-trivial delay between the runs) to see if the very long execution
+>>>> is reproducible?
+>>>>
+>>>> If so, the next step could be trying on a Windows machine with
+>>>> interactive access, to reproduce, and if it is still so slow,
+>>>> checking where the time is spent, using an R profiler, using some C
+>>>> profiler (e.g. VerySleepy is free), comparing possibly to 4.1.3. It
+>>>> might be useful or necessary to also do the profiling with a debug
+>>>> build of Windows and/or the package, while the performance numbers
+>>>> will be skewed, one would see the symbol names.
+>>>>
+>>>> If you wanted specific help, please send a reproducible example -
+>>>> instructions how to run the code and which code.
+>>>>
+>>>> Best
+>>>> Tomas
+>>>>
+>>>>>
+>>>>> June 29 2:33 PM? - old release
+>>>>> * using R version 4.1.3 (2022-03-10)
+>>>>> i386 timings
+>>>>> name??? user??? system??? elapsed
+>>>>> prov.json??? 3.28??? 0.33??? 5.19
+>>>>> prov.run??? 2.70??? 0.27??? 4.18
+>>>>>
+>>>>> x64 timings
+>>>>> name??? user??? system??? elapsed
+>>>>> prov.json??? 3.51??? 0.27??? 4.93
+>>>>> prov.run??? 3.05??? 0.28??? 4.48
+>>>>>
+>>>>>
+>>>>> June 29 2:19 PM? - release
+>>>>> * using R version 4.2.1 (2022-06-23 ucrt)
+>>>>> * using platform: x86_64-w64-mingw32 (64-bit)
+>>>>> name??? user??? system??? elapsed
+>>>>> prov.json??? 16.98??? 8.81??? 26.82
+>>>>> prov.run??? 3.53??? 0.42??? 4.89
+>>>>>
+>>>>>
+>>>>> June 29? 1:52 PM - devel
+>>>>> * using R Under development (unstable) (2022-06-28 r82534 ucrt)
+>>>>> * using platform: x86_64-w64-mingw32 (64-bit)
+>>>>> name??? user??? system??? elapsed
+>>>>> prov.json??? 16.60???? 9.09??? 26.66
+>>>>> prov.run??? 3.57??? 0.22??? 4.70 I then ran the same timing script
+>>>>> as win-builder uses on my Mac,
+>>>>> using Rscript and got these results: name??? user??? system elapsed
+>>>>> prov.json?????? 1.105?? 0.159?? 1.329 prov.run??????? 0.890 0.103
+>>>>> 1.053 session_info reports: ?version? R version 4.2.0 (2022-04-22)
+>>>>> ?? ?os?????? macOS Catalina 10.15.7 ?system?? x86_64, darwin17.0 I 
+>>>>> then
+>>>>> installed 4.2.1 on my Mac. The time is a little slower but nothing 
+>>>>> like
+>>>>> the slowdown on Windows.
+>>>>> name??? user??? system? elapsed prov.json?????? 1.286 0.230?? 3.080
+>>>>> prov.run??????? 0.940?? 0.108?? 1.131 ?version? R version 4.2.1
+>>>>> (2022-06-23) ?os?????? macOS Catalina 10.15.7 ?system x86_64,
+>>>>> darwin17.0
+>>>>>
+>>>
+>>> -- 
+>>> <http://www.getpostbox.com>Barbara Lerner (she / her)
+>>> Professor
+>>> Computer Science Department
+>>> Mount Holyoke College
+>>>
+>>> <http://www.getpostbox.com>
+>> ????[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+<http://www.getpostbox.com>Barbara Lerner (she / her)
+Professor
+Computer Science Department
+Mount Holyoke College
+
+<http://www.getpostbox.com>
+
+	[[alternative HTML version deleted]]
+
+
+From joh@nne@@r@nke @end|ng |rom jrwb@de  Fri Jul  1 11:10:03 2022
+From: joh@nne@@r@nke @end|ng |rom jrwb@de (Johannes Ranke)
+Date: Fri, 01 Jul 2022 11:10:03 +0200
+Subject: [R-pkg-devel] Slow down in R 4.2.x
+Message-ID: <13505960.q0Az33yFfb@ryz>
+
+Dear list,
+
+independent of the thread on this list about slow examples on R 4.2 on windows 
+I have discovered over the last few days that some of my benchmarks (look for 
+t4 and t9) run by a factor of 3 slower on R 4.2.x than on R 4.1.3 [1].
+
+This is on Linux, using my own backported R packages for R 4.2.x and locally 
+compiled versions (with default configure options) of R-4-1-branch on two 
+different CPUs. The results for R 4.2.1 are only slightly modulated by the use 
+of different BLAS version (openblas-serial versus atlas versus lapack).
+
+I also tested the R 4.0.4 version that is part of Debian bullseye, it is as 
+fast as the locally compiled R 4.1.3.
+
+I went through the NEWS for R 4.2.0 (because the first slow results were 
+obtained using that version), but the only change I could imagine causing such 
+a change is the additional check of the length of the arguments && and ||.
+
+Any other thoughts?
+
+Johannes
+
+[1] https://pkgdown.jrwb.de/mkin/articles/web_only/benchmarks.html#results 
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From t@r@@@z@kh@rko @end|ng |rom uzh@ch  Fri Jul  1 14:59:22 2022
+From: t@r@@@z@kh@rko @end|ng |rom uzh@ch (Taras Zakharko)
+Date: Fri, 1 Jul 2022 12:59:22 +0000
+Subject: [R-pkg-devel] Seeking feedback on a package before submitting to
+ CRAN
+Message-ID: <GV0P278MB0417D418D560D7E2519E6BEAECBD9@GV0P278MB0417.CHEP278.PROD.OUTLOOK.COM>
+
+Dear all,?
+
+I have written a small?lightweight utility package for R developers that implements opinionated assertion checking routines. This is mostly a drop-in replacement for base::stopifnot() but with some additional features that simplify debugging and error location. Before submitting the package on CRAN I was hoping that someone here would be so kind to have a quick look and maybe offer some feedback. The package is called "precondition" and can be found on GitHub here:
+
+? https://github.com/tzakharko/precondition?
+
+If you would like to leave some feedback I have created a GitHub issue just for that:?
+
+  https://github.com/tzakharko/precondition/issues/1
+
+Here is a quick summary as to what this package is about: it implements a thematic collection of assertion routines that check some conditions and report an informative error if the conditions are not TRUE. The routines have been inspired by similar mechanisms in the Swift programming language and discussion on the Swift design mailing lists. There are three assertion routines:
+
+- precondition(x>0) to check inputs/environment before executing some code (to be used to check function arguments, for example)
+
+- postcondition(.value. > 0) to check the function result?
+
+- sanity_check(!is.null(x)) to check internal assumptions/invariants of the algorithm and guard against bugs, will immediately abort the program bypassing error handling when failed. Sanity checks are internal assertions and failing them always mean that there is a critical bug ?in the code which would make any attempt at error recovery futile
+
+Parts of the assertion predicate can be "embraced", which will print them on assertion failure, making it easier to see what went wrong, e.g.?
+
+? x <- 0
+? precondition({{x}} > 0)
+??# Error:
+? # ! precondition failure
+? # ! `x > 0` is not TRUE
+? # ?
+? # ?`x` = dbl 10
+
+The package README has some usage examples and background discussion.?
+
+Thank you in advance for your help,?
+
+Taras
+
+P.S. To anticipate the mandatory (and justified) question, the reason why I decided to roll my own solution instead of using one of the existing packages (like the popular assertthat) is because I needed something very simple and with low performance overhead to help me debug my code and document program invariants.?
+
