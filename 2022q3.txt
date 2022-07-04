@@ -814,3 +814,297 @@ Best regards,
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From r@||@hero|d @end|ng |rom gmx@net  Sun Jul  3 08:27:28 2022
+From: r@||@hero|d @end|ng |rom gmx@net (Ralf Herold)
+Date: Sun, 3 Jul 2022 08:27:28 +0200
+Subject: [R-pkg-devel] R CMD checks URLs formatted for LaTeX instead of
+ using the non-LaTeX URLs, and fails
+In-Reply-To: <f4be4bbf-4ae8-e2fc-1d12-bf56bffab6b1@fau.de>
+References: <DBA296A1-ABF8-496E-A3D2-6A2FF8B4294A@gmx.net>
+ <f4be4bbf-4ae8-e2fc-1d12-bf56bffab6b1@fau.de>
+Message-ID: <F44171D0-CCE4-4049-9C52-BCC3625C2B2A@gmx.net>
+
+Thanks Sebastian, 
+
+but not only hash, also ampersand in \href in a tabular environment does need to be escaped, otherwise it does not latex (example below). I was not aware it is a known limitation for .Rd files despite searching for it. 
+
+My use case (with eventually more meaningful query parameters and possibly anchors) would work if the existing R code block for handling \ifelse in urltools.R was activated as shown below, and this is my suggestion. How could I propose this? 
+
+Kind regards,
+Ralf
+
+
+\name{mre}
+\title{mre}
+\description{mre}
+\details{
+\tabular{l}{
+  \href{https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With}{link}
+}}
+
+
+LaTeX errors:
+
+! Argument of \href at split has an extra }.
+<inserted text> 
+                \par 
+l.24 }
+      
+Runaway argument?
+https://clinicaltrials.gov/ct2/results?cond=Infections\unskip \hfil 
+! Paragraph ended before \href at split was complete.
+<to be read again> 
+                   \par 
+l.24 }
+      
+! Extra }, or forgotten \endgroup.
+<recently read> }
+
+
+> Am 03.07.2022 um 01:51 schrieb Sebastian Meyer <seb.meyer at fau.de>:
+> 
+> Am 02.07.22 um 12:01 schrieb Ralf Herold:
+>> Hello, in my package documentation I want to include URLs with query string parameters and anchors, within a table. A minimally reproducible example is this content in file "man/mre.Rd":
+>> \name{mre}
+>> \title{mre}
+>> \description{mre}
+>> \details{
+>> \tabular{l}{
+>>   \ifelse{latex}{\href{https://clinicaltrials.gov/ct2/results?cond=Infections\&rslt=With\#tableTop}{latex link}}{\href{https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With#tableTop}{non-latex link}}
+>> }}
+>> The ifelse{}{}{} construct is necessary since ampersands in a table need to be escaped for LaTeX rendering.
+> 
+> This is a red herring. Ampersands do *not* need to be escaped in \href URLs. The problem is the hash symbol, which needs to be escaped if \href is nested within another markup macro, here \Tabular (from Rd.sty). This is a known limitation; Rd2latex will probably do the escaping in the future. It's good to see a use case.
+> 
+> I think currently the best solutions for you are to simply omit the #tableTop part in the LaTeX version or to not use such URLs inside a \tabular.
+> 
+> Hope this helps.
+> Best regards,
+> 
+> 	Sebastian Meyer
+> 
+>> Each of the following commands checks and renders the respective output correctly:
+>> tools::checkRd("man/mre.Rd")
+>> tools::Rd2txt("man/mre.Rd")
+>> tools::Rd2latex("man/mre.Rd")
+>> tools::Rd2HTML("man/mre.Rd")
+>> system2("R", c("CMD", "Rd2pdf", "man/mre.Rd"))
+>> However, rhub::check_for_cran() results in NOTES:
+>> Found the following (possibly) invalid URLs:
+>>   URL: https://clinicaltrials.gov/ct2/results?cond=Infections\&rslt=With\#tableTop
+>>     From: man/mre.Rd
+>>     Status: 400
+>>     Message: Bad Request
+>> Subsequently, CRAN maintainers refused accepting the package.
+>> However, the underlying cause is that, during such checks, all apparent URLs are extracted from .Rd files, irrespective of any \ifelse{}{}{} constructs. This in turn is due to such checks involving calls to function ".get_urls_from_Rd" without setting its argument "ifdef" to TRUE.
+>> Here is how to see this behaviour:
+>> db <- tools::Rd_db(dir = ".")
+>> # get functions
+>> source("https://svn.r-project.org/R/trunk/src/library/tools/R/urltools.R")
+>> source("https://svn.r-project.org/R/trunk/src/library/tools/R/utils.R")
+>> .Rd_deparse <- tools:::.Rd_deparse
+>> RdTags <- tools:::RdTags
+>> # default, leading to invalid url in [1]
+>> # > .get_urls_from_Rd(db)
+>> # [1] "https://clinicaltrials.gov/ct2/results?cond=Infections\\&rslt=With\\#tableTop"
+>> # [2] "https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With#tableTop"
+>> # returning relevant valid url
+>> #> .get_urls_from_Rd(db, ifdef = TRUE)
+>> # [1] "https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With#tableTop"
+>> This can be addressed by either:
+>> -- changing the signature of ".get_urls_from_Rd" in line 50 in https://svn.r-project.org/R/trunk/src/library/tools/R/urltools.R to read "ifdef = TRUE". Of note, this function has a code block to handle such ifdef constructs which indicates it should be possible to use them in Rd files.
+>> -- changing the calling function "url_db_from_package_Rd_db" to include "ifdef = TRUE" on line 178 in https://svn.r-project.org/R/trunk/src/library/tools/R/urltools.R
+>> Please advise how to advance on this issue, thank you very much.
+>> Greetings
+>> Ralf
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+	[[alternative HTML version deleted]]
+
+
+From @eb@meyer @end|ng |rom |@u@de  Mon Jul  4 00:08:01 2022
+From: @eb@meyer @end|ng |rom |@u@de (Sebastian Meyer)
+Date: Mon, 4 Jul 2022 00:08:01 +0200
+Subject: [R-pkg-devel] R CMD checks URLs formatted for LaTeX instead of
+ using the non-LaTeX URLs, and fails
+In-Reply-To: <F44171D0-CCE4-4049-9C52-BCC3625C2B2A@gmx.net>
+References: <DBA296A1-ABF8-496E-A3D2-6A2FF8B4294A@gmx.net>
+ <f4be4bbf-4ae8-e2fc-1d12-bf56bffab6b1@fau.de>
+ <F44171D0-CCE4-4049-9C52-BCC3625C2B2A@gmx.net>
+Message-ID: <a6797515-d9ce-06b4-ef49-83f473954e5f@fau.de>
+
+Am 03.07.22 um 08:27 schrieb Ralf Herold:
+> Thanks Sebastian,
+> 
+> but not only hash, also ampersand in \href in a tabular environment does 
+> need to be escaped, otherwise it does not latex (example below). I was 
+> not aware it is a known limitation for .Rd files despite searching for it.
+
+I stumbled over that problem a while ago and found that the escaping 
+issue for the hash symbol is documented in the hyperref manual (but 
+currently not accounted for by Rd2latex):
+
+> The special characters # and ~ do *not* need to be escaped in any way (unless the command is used in the argument of another command). 
+
+For example, this LaTeX code fails to compile:
+\emph{\href{https://example.org/#}{hash}}
+In contrast, an ampersand would not need to be escaped in that LaTeX 
+example.
+
+However, I can confirm that a LaTeX error results if an ampersand is 
+used in a \href URL (but not in \url} that is passed to the special 
+\Tabular LaTeX command from Rd.sty that is used by Rd2latex() for 
+\tabular Rd input. Thank you for the heads-up.
+
+I think it would be good to improve Rd2latex() / Rd.sty for URLs in 
+\tabular that contain & or # rather than require special LaTeX treatment 
+in the Rd source. My preliminary testing shows that hyperref is happy if 
+[&%#] are always escaped in URLs (sometimes it is not necessary but it 
+also does not seem to hurt).
+
+Best regards,
+
+	Sebastian Meyer
+
+> 
+> My use case (with eventually more meaningful query parameters and 
+> possibly anchors) would work if the existing R code block for handling 
+> \ifelse in urltools.R was activated as shown below, and this is my 
+> suggestion. How could I propose this?
+> 
+> Kind regards,
+> Ralf
+> 
+> 
+> \name{mre}
+> \title{mre}
+> \description{mre}
+> \details{
+> \tabular{l}{
+>    
+> \href{https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With 
+> <https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With>}{link}
+> }}
+> 
+> 
+> LaTeX errors:
+> 
+> ! Argument of \href at split has an extra }.
+> <inserted text>
+>  ? ? ? ? ? ? ? ? \par
+> l.24 }
+> Runaway argument?
+> https://clinicaltrials.gov/ct2/results?cond=Infections\unskip 
+> <https://clinicaltrials.gov/ct2/results?cond=Infections\unskip> \hfil
+> ! Paragraph ended before \href at split was complete.
+> <to be read again>
+>  ? ? ? ? ? ? ? ? ? ?\par
+> l.24 }
+> ! Extra }, or forgotten \endgroup.
+> <recently read> }
+> 
+> 
+>> Am 03.07.2022 um 01:51 schrieb Sebastian Meyer <seb.meyer at fau.de 
+>> <mailto:seb.meyer at fau.de>>:
+>>
+>> Am 02.07.22 um 12:01 schrieb Ralf Herold:
+>>> Hello, in my package documentation I want to include URLs with query 
+>>> string parameters and anchors, within a table. A minimally 
+>>> reproducible example is this content in file "man/mre.Rd":
+>>> \name{mre}
+>>> \title{mre}
+>>> \description{mre}
+>>> \details{
+>>> \tabular{l}{
+>>> ??\ifelse{latex}{\href{https://clinicaltrials.gov/ct2/results?cond=Infections\&rslt=With\#tableTop 
+>>> <https://clinicaltrials.gov/ct2/results?cond=Infections\&rslt=With\#tableTop>}{latex 
+>>> link}}{\href{https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With#tableTop 
+>>> <https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With#tableTop>}{non-latex 
+>>> link}}
+>>> }}
+>>> The ifelse{}{}{} construct is necessary since ampersands in a table 
+>>> need to be escaped for LaTeX rendering.
+>>
+>> This is a red herring. Ampersands do *not* need to be escaped in \href 
+>> URLs. The problem is the hash symbol, which needs to be escaped if 
+>> \href is nested within another markup macro, here \Tabular (from 
+>> Rd.sty). This is a known limitation; Rd2latex will probably do the 
+>> escaping in the future. It's good to see a use case.
+>>
+>> I think currently the best solutions for you are to simply omit the 
+>> #tableTop part in the LaTeX version or to not use such URLs inside a 
+>> \tabular.
+>>
+>> Hope this helps.
+>> Best regards,
+>>
+>> Sebastian Meyer
+>>
+>>> Each of the following commands checks and renders the respective 
+>>> output correctly:
+>>> tools::checkRd("man/mre.Rd")
+>>> tools::Rd2txt("man/mre.Rd")
+>>> tools::Rd2latex("man/mre.Rd")
+>>> tools::Rd2HTML("man/mre.Rd")
+>>> system2("R", c("CMD", "Rd2pdf", "man/mre.Rd"))
+>>> However, rhub::check_for_cran() results in NOTES:
+>>> Found the following (possibly) invalid URLs:
+>>> ??URL: 
+>>> https://clinicaltrials.gov/ct2/results?cond=Infections\&rslt=With\#tableTop 
+>>> <https://clinicaltrials.gov/ct2/results?cond=Infections\&rslt=With\#tableTop>
+>>> ????From: man/mre.Rd
+>>> ????Status: 400
+>>> ????Message: Bad Request
+>>> Subsequently, CRAN maintainers refused accepting the package.
+>>> However, the underlying cause is that, during such checks, all 
+>>> apparent URLs are extracted from .Rd files, irrespective of any 
+>>> \ifelse{}{}{} constructs. This in turn is due to such checks 
+>>> involving calls to function ".get_urls_from_Rd" without setting its 
+>>> argument "ifdef" to TRUE.
+>>> Here is how to see this behaviour:
+>>> db <- tools::Rd_db(dir = ".")
+>>> # get functions
+>>> source("https://svn.r-project.org/R/trunk/src/library/tools/R/urltools.R 
+>>> <https://svn.r-project.org/R/trunk/src/library/tools/R/urltools.R>")
+>>> source("https://svn.r-project.org/R/trunk/src/library/tools/R/utils.R 
+>>> <https://svn.r-project.org/R/trunk/src/library/tools/R/utils.R>")
+>>> .Rd_deparse <- tools:::.Rd_deparse
+>>> RdTags <- tools:::RdTags
+>>> # default, leading to invalid url in [1]
+>>> # > .get_urls_from_Rd(db)
+>>> # [1] 
+>>> "https://clinicaltrials.gov/ct2/results?cond=Infections\\&rslt=With\\#tableTop 
+>>> <https://clinicaltrials.gov/ct2/results?cond=Infections\\&rslt=With\\#tableTop>"
+>>> # [2] 
+>>> "https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With#tableTop 
+>>> <https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With#tableTop>"
+>>> # returning relevant valid url
+>>> #> .get_urls_from_Rd(db, ifdef = TRUE)
+>>> # [1] 
+>>> "https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With#tableTop 
+>>> <https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With#tableTop>"
+>>> This can be addressed by either:
+>>> -- changing the signature of ".get_urls_from_Rd" in line 50 in 
+>>> https://svn.r-project.org/R/trunk/src/library/tools/R/urltools.R 
+>>> <https://svn.r-project.org/R/trunk/src/library/tools/R/urltools.R> to 
+>>> read "ifdef = TRUE". Of note, this function has a code block to 
+>>> handle such ifdef constructs which indicates it should be possible to 
+>>> use them in Rd files.
+>>> -- changing the calling function "url_db_from_package_Rd_db" to 
+>>> include "ifdef = TRUE" on line 178 in 
+>>> https://svn.r-project.org/R/trunk/src/library/tools/R/urltools.R 
+>>> <https://svn.r-project.org/R/trunk/src/library/tools/R/urltools.R>
+>>> Please advise how to advance on this issue, thank you very much.
+>>> Greetings
+>>> Ralf
+>>> ______________________________________________
+>>> R-package-devel at r-project.org <mailto:R-package-devel at r-project.org> 
+>>> mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel 
+>>> <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+>
+
+
