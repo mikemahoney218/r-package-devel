@@ -2418,3 +2418,1350 @@ Best regards,
 Ivan
 
 
+From r@||@hero|d @end|ng |rom gmx@net  Fri Jul  8 07:17:59 2022
+From: r@||@hero|d @end|ng |rom gmx@net (Ralf Herold)
+Date: Fri, 8 Jul 2022 07:17:59 +0200
+Subject: [R-pkg-devel] R CMD checks URLs formatted for LaTeX instead of
+ using the non-LaTeX URLs, and fails
+In-Reply-To: <bb4e57b8-088f-3d40-1150-125c3194ec6b@fau.de>
+References: <DBA296A1-ABF8-496E-A3D2-6A2FF8B4294A@gmx.net>
+ <f4be4bbf-4ae8-e2fc-1d12-bf56bffab6b1@fau.de>
+ <F44171D0-CCE4-4049-9C52-BCC3625C2B2A@gmx.net>
+ <a6797515-d9ce-06b4-ef49-83f473954e5f@fau.de>
+ <B0D5C060-C722-46D0-BFE5-5888D352BE17@gmx.net>
+ <bb4e57b8-088f-3d40-1150-125c3194ec6b@fau.de>
+Message-ID: <DF257022-0396-45E5-9840-A1EE4FD9ADF0@gmx.net>
+
+Great, thanks -- 
+
+using \out{} to wrap \href{} in .Rd for latex rendering does circumvent the issue that I reported, which is that .get_urls_from_Rd() is called such that it cannot handle \ifelse{} even though there is code in that R function for handling \ifelse{}.
+
+The \out{} wrapper is useful, thanks. 
+
+Not sure if the issue or the code is obsolete, but thanks again and happy to close this thread. 
+
+Best,
+Ralf
+
+
+> Am 07.07.2022 um 22:41 schrieb Sebastian Meyer <seb.meyer at fau.de>:
+> 
+> Am 05.07.22 um 19:56 schrieb Ralf Herold:
+>> Thanks and I would like to define the follow-up actions:
+>> 1) change function "writeURL" on line 207 to read, for example, url <- fsub("([%#&])", "\\\\1",  url) in https://svn.r-project.org/R/trunk/src/library/tools/R/Rd2latex.R <https://svn.r-project.org/R/trunk/src/library/tools/R/Rd2latex.R> to always escape URLs as you mention.
+>> How can this be moved forward? This seems R core code, thus needs to be reported in R Bugzilla by one of its members (I am not one): https://www.r-project.org/bugs.html#where-to-submit-bug-reports-and-patches <https://www.r-project.org/bugs.html#where-to-submit-bug-reports-and-patches>. 
+> 
+> A Bugzilla entry would have been nice for future reference but is no longer necessary. The Rd2latex() bug is now fixed in the development version of R (>= r82557) such that URLs with & or # characters can then also be used inside \tabular and give the same link as in the HTML version: \tabular{l}{\url{https://example.org/a&b#c}} should just work.
+> In other words, Rd2latex() now correctly handles the input URL as 'verbatim' text (as specified in WRE Section 2.3), which also means that backslashes in the input that do not escape percent or braces (Rd specials) are preserved in the output (as was already the case for HTML).
+> 
+> It is planned to port the fix to R-patched (future R 4.2.2).
+> 
+> In package development I'd probably avoid such URLs inside \tabular until after that release. Otherwise, if you want to support building the PDF manual in current and future R, you'd need to use \out{} and do all the escaping there yourself, for example:
+> 
+> \name{test}
+> \title{test}
+> \description{
+> \tabular{l}{
+>   \ifelse{latex}{
+>     \out{\href{https://example.org/a\&b\#c}{link}}
+>   }{
+>     \href{https://example.org/a&b#c}{link}
+>   }
+> }
+> }
+> 
+> AFAICS, the below points are obsolete.
+> 
+> Best regards,
+> 
+> 	Sebastian Meyer
+> 
+>> Could someone from this list do this? Many thanks
+>> 2) change function "url_db_from_package_Rd_db" to call   ".get_urls_from_Rd" with parameter "ifdef = TRUE" on line 178 in https://svn.r-project.org/R/trunk/src/library/tools/R/urltools.R <https://svn.r-project.org/R/trunk/src/library/tools/R/urltools.R>. This will activate the existing code that is intended to handle ifdef{}{}{}. This seems important for the issue I have reported and beyond. Same procedure as above?
+>> 3) change Rd.sty, not sure, 1) seems more relevant.
+>> Please advise, thanks
+>> Ralf
+>>> Am 04.07.2022 um 00:08 schrieb Sebastian Meyer <seb.meyer at fau.de <mailto:seb.meyer at fau.de>>:
+>>> 
+>>> Am 03.07.22 um 08:27 schrieb Ralf Herold:
+>>>> Thanks Sebastian,
+>>>> but not only hash, also ampersand in \href in a tabular environment does need to be escaped, otherwise it does not latex (example below). I was not aware it is a known limitation for .Rd files despite searching for it.
+>>> 
+>>> I stumbled over that problem a while ago and found that the escaping issue for the hash symbol is documented in the hyperref manual (but currently not accounted for by Rd2latex):
+>>> 
+>>>> The special characters # and ~ do *not* need to be escaped in any way (unless the command is used in the argument of another command).
+>>> 
+>>> For example, this LaTeX code fails to compile:
+>>> \emph{\href{https://example.org/# <https://example.org/#>}{hash}}
+>>> In contrast, an ampersand would not need to be escaped in that LaTeX example.
+>>> 
+>>> However, I can confirm that a LaTeX error results if an ampersand is used in a \href URL (but not in \url} that is passed to the special \Tabular LaTeX command from Rd.sty that is used by Rd2latex() for \tabular Rd input. Thank you for the heads-up.
+>>> 
+>>> I think it would be good to improve Rd2latex() / Rd.sty for URLs in \tabular that contain & or # rather than require special LaTeX treatment in the Rd source. My preliminary testing shows that hyperref is happy if [&%#] are always escaped in URLs (sometimes it is not necessary but it also does not seem to hurt).
+>>> 
+>>> Best regards,
+>>> 
+>>> Sebastian Meyer
+>>> 
+>>>> My use case (with eventually more meaningful query parameters and possibly anchors) would work if the existing R code block for handling \ifelse in urltools.R was activated as shown below, and this is my suggestion. How could I propose this?
+>>>> Kind regards,
+>>>> Ralf
+>>>> \name{mre}
+>>>> \title{mre}
+>>>> \description{mre}
+>>>> \details{
+>>>> \tabular{l}{
+>>>>   \href{https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With <https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With> <https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With <https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With>>}{link}
+>>>> }}
+>>>> LaTeX errors:
+>>>> ! Argument of \href at split has an extra }.
+>>>> <inserted text>
+>>>>                 \par
+>>>> l.24 }
+>>>> Runaway argument?
+>>>> https://clinicaltrials.gov/ct2/results?cond=Infections\unskip <https://clinicaltrials.gov/ct2/results?cond=Infections\unskip> <https://clinicaltrials.gov/ct2/results?cond=Infections\unskip <https://clinicaltrials.gov/ct2/results?cond=Infections\unskip>> \hfil
+>>>> ! Paragraph ended before \href at split was complete.
+>>>> <to be read again>
+>>>>                    \par
+>>>> l.24 }
+>>>> ! Extra }, or forgotten \endgroup.
+>>>> <recently read> }
+>>>>> Am 03.07.2022 um 01:51 schrieb Sebastian Meyer <seb.meyer at fau.de <mailto:seb.meyer at fau.de> <mailto:seb.meyer at fau.de <mailto:seb.meyer at fau.de>>>:
+>>>>> 
+>>>>> Am 02.07.22 um 12:01 schrieb Ralf Herold:
+>>>>>> Hello, in my package documentation I want to include URLs with query string parameters and anchors, within a table. A minimally reproducible example is this content in file "man/mre.Rd":
+>>>>>> \name{mre}
+>>>>>> \title{mre}
+>>>>>> \description{mre}
+>>>>>> \details{
+>>>>>> \tabular{l}{
+>>>>>>   \ifelse{latex}{\href{https://clinicaltrials.gov/ct2/results?cond=Infections\&rslt=With\#tableTop <https://clinicaltrials.gov/ct2/results?cond=Infections\&rslt=With\#tableTop> <https://clinicaltrials.gov/ct2/results?cond=Infections\&rslt=With\#tableTop <https://clinicaltrials.gov/ct2/results?cond=Infections\&rslt=With\#tableTop>>}{latex link}}{\href{https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With#tableTop <https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With#tableTop> <https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With#tableTop <https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With#tableTop>>}{non-latex link}}
+>>>>>> }}
+>>>>>> The ifelse{}{}{} construct is necessary since ampersands in a table need to be escaped for LaTeX rendering.
+>>>>> 
+>>>>> This is a red herring. Ampersands do *not* need to be escaped in \href URLs. The problem is the hash symbol, which needs to be escaped if \href is nested within another markup macro, here \Tabular (from Rd.sty). This is a known limitation; Rd2latex will probably do the escaping in the future. It's good to see a use case.
+>>>>> 
+>>>>> I think currently the best solutions for you are to simply omit the #tableTop part in the LaTeX version or to not use such URLs inside a \tabular.
+>>>>> 
+>>>>> Hope this helps.
+>>>>> Best regards,
+>>>>> 
+>>>>> Sebastian Meyer
+>>>>> 
+>>>>>> Each of the following commands checks and renders the respective output correctly:
+>>>>>> tools::checkRd("man/mre.Rd")
+>>>>>> tools::Rd2txt("man/mre.Rd")
+>>>>>> tools::Rd2latex("man/mre.Rd")
+>>>>>> tools::Rd2HTML("man/mre.Rd")
+>>>>>> system2("R", c("CMD", "Rd2pdf", "man/mre.Rd"))
+>>>>>> However, rhub::check_for_cran() results in NOTES:
+>>>>>> Found the following (possibly) invalid URLs:
+>>>>>>   URL: https://clinicaltrials.gov/ct2/results?cond=Infections\&rslt=With\#tableTop <https://clinicaltrials.gov/ct2/results?cond=Infections\&rslt=With\#tableTop> <https://clinicaltrials.gov/ct2/results?cond=Infections\&rslt=With\#tableTop <https://clinicaltrials.gov/ct2/results?cond=Infections\&rslt=With\#tableTop>>
+>>>>>>     From: man/mre.Rd
+>>>>>>     Status: 400
+>>>>>>     Message: Bad Request
+>>>>>> Subsequently, CRAN maintainers refused accepting the package.
+>>>>>> However, the underlying cause is that, during such checks, all apparent URLs are extracted from .Rd files, irrespective of any \ifelse{}{}{} constructs. This in turn is due to such checks involving calls to function ".get_urls_from_Rd" without setting its argument "ifdef" to TRUE.
+>>>>>> Here is how to see this behaviour:
+>>>>>> db <- tools::Rd_db(dir = ".")
+>>>>>> # get functions
+>>>>>> source("https://svn.r-project.org/R/trunk/src/library/tools/R/urltools.R <https://svn.r-project.org/R/trunk/src/library/tools/R/urltools.R> <https://svn.r-project.org/R/trunk/src/library/tools/R/urltools.R <https://svn.r-project.org/R/trunk/src/library/tools/R/urltools.R>>")
+>>>>>> source("https://svn.r-project.org/R/trunk/src/library/tools/R/utils.R <https://svn.r-project.org/R/trunk/src/library/tools/R/utils.R> <https://svn.r-project.org/R/trunk/src/library/tools/R/utils.R <https://svn.r-project.org/R/trunk/src/library/tools/R/utils.R>>")
+>>>>>> .Rd_deparse <- tools:::.Rd_deparse
+>>>>>> RdTags <- tools:::RdTags
+>>>>>> # default, leading to invalid url in [1]
+>>>>>> # > .get_urls_from_Rd(db)
+>>>>>> # [1] "https://clinicaltrials.gov/ct2/results?cond=Infections\\&rslt=With\\#tableTop <https://clinicaltrials.gov/ct2/results?cond=Infections\\&rslt=With\\#tableTop> <https://clinicaltrials.gov/ct2/results?cond=Infections\\&rslt=With\\#tableTop <https://clinicaltrials.gov/ct2/results?cond=Infections\\&rslt=With\\#tableTop>>"
+>>>>>> # [2] "https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With#tableTop <https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With#tableTop> <https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With#tableTop <https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With#tableTop>>"
+>>>>>> # returning relevant valid url
+>>>>>> #> .get_urls_from_Rd(db, ifdef = TRUE)
+>>>>>> # [1] "https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With#tableTop <https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With#tableTop> <https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With#tableTop <https://clinicaltrials.gov/ct2/results?cond=Infections&rslt=With#tableTop>>"
+>>>>>> This can be addressed by either:
+>>>>>> -- changing the signature of ".get_urls_from_Rd" in line 50 in https://svn.r-project.org/R/trunk/src/library/tools/R/urltools.R <https://svn.r-project.org/R/trunk/src/library/tools/R/urltools.R> <https://svn.r-project.org/R/trunk/src/library/tools/R/urltools.R <https://svn.r-project.org/R/trunk/src/library/tools/R/urltools.R>> to read "ifdef = TRUE". Of note, this function has a code block to handle such ifdef constructs which indicates it should be possible to use them in Rd files.
+>>>>>> -- changing the calling function "url_db_from_package_Rd_db" to include "ifdef = TRUE" on line 178 in https://svn.r-project.org/R/trunk/src/library/tools/R/urltools.R <https://svn.r-project.org/R/trunk/src/library/tools/R/urltools.R> <https://svn.r-project.org/R/trunk/src/library/tools/R/urltools.R <https://svn.r-project.org/R/trunk/src/library/tools/R/urltools.R>>
+>>>>>> Please advise how to advance on this issue, thank you very much.
+>>>>>> Greetings
+>>>>>> Ralf
+>>>>>> ______________________________________________
+>>>>>> R-package-devel at r-project.org <mailto:R-package-devel at r-project.org> <mailto:R-package-devel at r-project.org <mailto:R-package-devel at r-project.org>> mailing list
+>>>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel <https://stat.ethz.ch/mailman/listinfo/r-package-devel> <https://stat.ethz.ch/mailman/listinfo/r-package-devel <https://stat.ethz.ch/mailman/listinfo/r-package-devel>>
+> 
+
+
+	[[alternative HTML version deleted]]
+
+
+From p|@men@m|r@zch|y@k| @end|ng |rom |ner|@org  Fri Jul  8 14:23:14 2022
+From: p|@men@m|r@zch|y@k| @end|ng |rom |ner|@org (Plamen Mirazchiyski)
+Date: Fri, 8 Jul 2022 14:23:14 +0200
+Subject: [R-pkg-devel] No news entries found
+In-Reply-To: <CAFDcVCRidRMRdB7_nJprrXYsKZ=Y1ES7YHUmRohm5k-2Lu+u1g@mail.gmail.com>
+References: <45a5fb16-f07e-7760-ed2e-bfe67a93946e@ineri.org>
+ <2216f174-35ec-08cf-89da-87f9f4dbaca4@gmail.com>
+ <CAFDcVCRidRMRdB7_nJprrXYsKZ=Y1ES7YHUmRohm5k-2Lu+u1g@mail.gmail.com>
+Message-ID: <00068109-285b-ce42-282a-2632915f7c7e@ineri.org>
+
+Thank you all for your help.
+
+I have found the problem - I had accented characters in names of people 
+I was thanking for discovering bugs. After replacing them with 
+non-accented characters everything went just fine and the package is on 
+its way to CRAN.
+
+I do find, though, the message "No news entries found." quite 
+misleading. Yes, there is a problem, but the message is not even close 
+to what actual the problem is. Unfortunately, the r-svn repository on 
+GitHub does not have the possibility to report this as an issue.
+
+Thank you once again.
+
+Best,
+Plamen
+
+On 7/8/2022 12:21 AM, Henrik Bengtsson wrote:
+> )There's been recent updates in R-devel
+> (https://github.com/wch/r-source/commit/baf375d8b65414daebf85e226a1e5103a93ab138
+> that do more validation of the syntax/format in NEWS and NEWS.md
+> files. This was done to make sure news() works in more cases (e.g. it
+> may return just NULL if the NEWS.md file is not formatted as the tool
+> expect).  I guess it will also help render NEWS/NEWS.md files on the
+> CRAN package pages.
+>
+> If you run,
+>
+> news(package = "RALSA")
+>
+> and see the NEWS entries, then the format should be correct, otherwise
+> not.  You can use:
+>
+> news <- tools:::.build_news_db_from_package_NEWS_md("NEWS.md")
+> if (is.null(news)) stop("Syntax error in NEWS.md")
+>
+> to troubleshoot.  If you get an error, i.e. 'news' is NULL, then you
+> need to fix up your NEWS.md file.  I don't think the format is
+> documented yet, so you might have to do some trial error to figure it
+> out.  Although it's not an official format, if you follow
+> https://pkgdown.r-lib.org/reference/build_news.html, it typically
+> works.  When I did it some weeks ago, I started with a minimal
+> NEWS.md, e.g. the top version, and then I added the other entries back
+> to find which ones were problematic.  See
+> https://raw.githubusercontent.com/HenrikBengtsson/progressr/0.10.1/NEWS.md
+> for an example that works on CRAN
+> (https://cran.r-project.org/web/packages/progressr/news/news.html) and
+> with news(package = "progressr").
+>
+> Hope this helps,
+>
+> Henrik
+>
+> On Thu, Jul 7, 2022 at 11:37 PM Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>> On 07/07/2022 3:55 p.m., Plamen Mirazchiyski wrote:
+>>> Hi,
+>>>
+>>> Today I have submitted a new version of the RALSA package. Soon after I
+>>> received an automatic email letting me know that the package did not
+>>> pass some of the pre-tests:
+>> It would be helpful to let us know where to see the troublesome NEWS.md
+>> file.  Maybe a small change in formatting is causing these false positives.
+>>
+>> Duncan Murdoch
+>>
+>>
+>>>> package RALSA_1.3.0.tar.gz does not pass the incoming checks automatically, please see the following pre-tests:
+>>>> Windows:<https://win-builder.r-project.org/incoming_pretest/RALSA_1.3.0_20220707_190307/Windows/00check.log>
+>>>> Status: 2 NOTEs
+>>>> Debian:<https://win-builder.r-project.org/incoming_pretest/RALSA_1.3.0_20220707_190307/Debian/00check.log>
+>>>> Status: 1 NOTE
+>>>>
+>>>> Last released version's CRAN status: OK: 9, NOTE: 4
+>>>> See:<https://CRAN.R-project.org/web/checks/check_results_RALSA.html>
+>>> To summarize:
+>>>
+>>> 1. Windows checks found possibly invalid DOIs. This is to be ignored, as
+>>> stated here:
+>>> https://www.mail-archive.com/r-package-devel at r-project.org/msg07116.html
+>>>
+>>> 2. Windows, Debian (gcc) and Fedora (clang and gcc) drop the following note:
+>>>
+>>> checking package subdirectories ... NOTE
+>>> Problems with news in 'NEWS.md':
+>>> No news entries found.
+>>>
+>>> This is rather strange because I have added one of the largest news
+>>> updates I ever made for this package in the NEWS.md file with this
+>>> submission. Further, this note appears only in these four of the 13
+>>> platforms where the package is checked.
+>>>
+>>> Apparently, this is beyond my control and I can do nothing to fix it on
+>>> my end. I have already replied to the email to notify the
+>>> CRAN-submissions at R-project.org this is a false-positive as advised in
+>>> the email itself, but I thought the mailing list should also be aware of
+>>> this issue.
+>>>
+>>> Best,
+>>> Plamen
+>>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+======================
+Plamen Mirazchiyski, PhD
+International Educational Research and Evaluation Institute
+24 Tehnolo?ki park
+SI-1000 Ljubljana
+Slovenia
+tel.: +386 51 303 817
+email: plamen.mirazchiyski at ineri.org
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Fri Jul  8 14:30:39 2022
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Fri, 8 Jul 2022 14:30:39 +0200
+Subject: [R-pkg-devel] No news entries found
+In-Reply-To: <00068109-285b-ce42-282a-2632915f7c7e@ineri.org>
+References: <45a5fb16-f07e-7760-ed2e-bfe67a93946e@ineri.org>
+ <2216f174-35ec-08cf-89da-87f9f4dbaca4@gmail.com>
+ <CAFDcVCRidRMRdB7_nJprrXYsKZ=Y1ES7YHUmRohm5k-2Lu+u1g@mail.gmail.com>
+ <00068109-285b-ce42-282a-2632915f7c7e@ineri.org>
+Message-ID: <CAFDcVCTJpwoaTbHO5gNkBsS5h2kGndwssumC0DDXjqSdX+D4dQ@mail.gmail.com>
+
+Good you figured it out. If you can share a minimal NEWS.md illustrating
+the problem here, it'll probably help lots of others who run into the same
+problem. It might even be bug that your have discovered, but without
+details no one can improve on it.
+
+/Henrik
+
+On Fri, Jul 8, 2022, 14:23 Plamen Mirazchiyski <
+plamen.mirazchiyski at ineri.org> wrote:
+
+> Thank you all for your help.
+>
+> I have found the problem - I had accented characters in names of people
+> I was thanking for discovering bugs. After replacing them with
+> non-accented characters everything went just fine and the package is on
+> its way to CRAN.
+>
+> I do find, though, the message "No news entries found." quite
+> misleading. Yes, there is a problem, but the message is not even close
+> to what actual the problem is. Unfortunately, the r-svn repository on
+> GitHub does not have the possibility to report this as an issue.
+>
+> Thank you once again.
+>
+> Best,
+> Plamen
+>
+> On 7/8/2022 12:21 AM, Henrik Bengtsson wrote:
+> > )There's been recent updates in R-devel
+> > (
+> https://github.com/wch/r-source/commit/baf375d8b65414daebf85e226a1e5103a93ab138
+> > that do more validation of the syntax/format in NEWS and NEWS.md
+> > files. This was done to make sure news() works in more cases (e.g. it
+> > may return just NULL if the NEWS.md file is not formatted as the tool
+> > expect).  I guess it will also help render NEWS/NEWS.md files on the
+> > CRAN package pages.
+> >
+> > If you run,
+> >
+> > news(package = "RALSA")
+> >
+> > and see the NEWS entries, then the format should be correct, otherwise
+> > not.  You can use:
+> >
+> > news <- tools:::.build_news_db_from_package_NEWS_md("NEWS.md")
+> > if (is.null(news)) stop("Syntax error in NEWS.md")
+> >
+> > to troubleshoot.  If you get an error, i.e. 'news' is NULL, then you
+> > need to fix up your NEWS.md file.  I don't think the format is
+> > documented yet, so you might have to do some trial error to figure it
+> > out.  Although it's not an official format, if you follow
+> > https://pkgdown.r-lib.org/reference/build_news.html, it typically
+> > works.  When I did it some weeks ago, I started with a minimal
+> > NEWS.md, e.g. the top version, and then I added the other entries back
+> > to find which ones were problematic.  See
+> >
+> https://raw.githubusercontent.com/HenrikBengtsson/progressr/0.10.1/NEWS.md
+> > for an example that works on CRAN
+> > (https://cran.r-project.org/web/packages/progressr/news/news.html) and
+> > with news(package = "progressr").
+> >
+> > Hope this helps,
+> >
+> > Henrik
+> >
+> > On Thu, Jul 7, 2022 at 11:37 PM Duncan Murdoch <murdoch.duncan at gmail.com>
+> wrote:
+> >> On 07/07/2022 3:55 p.m., Plamen Mirazchiyski wrote:
+> >>> Hi,
+> >>>
+> >>> Today I have submitted a new version of the RALSA package. Soon after I
+> >>> received an automatic email letting me know that the package did not
+> >>> pass some of the pre-tests:
+> >> It would be helpful to let us know where to see the troublesome NEWS.md
+> >> file.  Maybe a small change in formatting is causing these false
+> positives.
+> >>
+> >> Duncan Murdoch
+> >>
+> >>
+> >>>> package RALSA_1.3.0.tar.gz does not pass the incoming checks
+> automatically, please see the following pre-tests:
+> >>>> Windows:<
+> https://win-builder.r-project.org/incoming_pretest/RALSA_1.3.0_20220707_190307/Windows/00check.log
+> >
+> >>>> Status: 2 NOTEs
+> >>>> Debian:<
+> https://win-builder.r-project.org/incoming_pretest/RALSA_1.3.0_20220707_190307/Debian/00check.log
+> >
+> >>>> Status: 1 NOTE
+> >>>>
+> >>>> Last released version's CRAN status: OK: 9, NOTE: 4
+> >>>> See:<https://CRAN.R-project.org/web/checks/check_results_RALSA.html>
+> >>> To summarize:
+> >>>
+> >>> 1. Windows checks found possibly invalid DOIs. This is to be ignored,
+> as
+> >>> stated here:
+> >>>
+> https://www.mail-archive.com/r-package-devel at r-project.org/msg07116.html
+> >>>
+> >>> 2. Windows, Debian (gcc) and Fedora (clang and gcc) drop the following
+> note:
+> >>>
+> >>> checking package subdirectories ... NOTE
+> >>> Problems with news in 'NEWS.md':
+> >>> No news entries found.
+> >>>
+> >>> This is rather strange because I have added one of the largest news
+> >>> updates I ever made for this package in the NEWS.md file with this
+> >>> submission. Further, this note appears only in these four of the 13
+> >>> platforms where the package is checked.
+> >>>
+> >>> Apparently, this is beyond my control and I can do nothing to fix it on
+> >>> my end. I have already replied to the email to notify the
+> >>> CRAN-submissions at R-project.org this is a false-positive as advised in
+> >>> the email itself, but I thought the mailing list should also be aware
+> of
+> >>> this issue.
+> >>>
+> >>> Best,
+> >>> Plamen
+> >>>
+> >> ______________________________________________
+> >> R-package-devel at r-project.org mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+> --
+> ======================
+> Plamen Mirazchiyski, PhD
+> International Educational Research and Evaluation Institute
+> 24 Tehnolo?ki park
+> SI-1000 Ljubljana
+> Slovenia
+> tel.: +386 51 303 817
+> email: plamen.mirazchiyski at ineri.org
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Fri Jul  8 14:52:27 2022
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Fri, 8 Jul 2022 14:52:27 +0200
+Subject: [R-pkg-devel] Slow down in R 4.2.x
+In-Reply-To: <13505960.q0Az33yFfb@ryz>
+References: <13505960.q0Az33yFfb@ryz>
+Message-ID: <f110f828-c011-8a15-3236-f2ccb4e9e6ee@gmail.com>
+
+
+On 7/1/22 11:10, Johannes Ranke wrote:
+> Dear list,
+>
+> independent of the thread on this list about slow examples on R 4.2 on windows
+> I have discovered over the last few days that some of my benchmarks (look for
+> t4 and t9) run by a factor of 3 slower on R 4.2.x than on R 4.1.3 [1].
+>
+> This is on Linux, using my own backported R packages for R 4.2.x and locally
+> compiled versions (with default configure options) of R-4-1-branch on two
+> different CPUs. The results for R 4.2.1 are only slightly modulated by the use
+> of different BLAS version (openblas-serial versus atlas versus lapack).
+>
+> I also tested the R 4.0.4 version that is part of Debian bullseye, it is as
+> fast as the locally compiled R 4.1.3.
+>
+> I went through the NEWS for R 4.2.0 (because the first slow results were
+> obtained using that version), but the only change I could imagine causing such
+> a change is the additional check of the length of the arguments && and ||.
+>
+> Any other thoughts?
+
+I can reproduce slowdown in one of your tests:
+
+library(mkin)
+FOCUS_D <- subset(FOCUS_2006_D, value != 0)
+SFO_SFO <- mkinmod(
+ ? parent = mkinsub("SFO", "m1"),
+ ? m1 = mkinsub("SFO"))
+FOMC_SFO <- mkinmod(
+ ? parent = mkinsub("FOMC", "m1"),
+ ? m1 = mkinsub("SFO"))
+DFOP_SFO <- mkinmod(
+ ? parent = mkinsub("FOMC", "m1"),
+ ? m1 = mkinsub("SFO"))
+
+mmkin_bench <- function(models, datasets, error_model = "const") {
+ ? mmkin(models, datasets, error_model = error_model, cores = 1, quiet = 
+TRUE)
+}
+
+t4 <- system.time(mmkin_bench(list(SFO_SFO, FOMC_SFO, DFOP_SFO), 
+list(FOCUS_D), error_model = "tc"))[["elapsed"]]
+
+This is slower in R 4-devel than R 4.1 because of bug fixes in DLL info 
+interface (PR#16446, r80285). "perf" tool on Linux shows extra time 
+spent in R_registerSymbolEptr and R_WeakRefKey. This is because of 
+repeated calls to getLoadedDLLs(), via repeated calls to 
+inline::getDynLib(x$cf)[["name"]]
+
+Perhaps one could save dll_info, once computed in mkin, alongside "cf" 
+in the model, instead of re-computing it every time?
+
+Best
+Tomas
+
+
+>
+> Johannes
+>
+> [1] https://pkgdown.jrwb.de/mkin/articles/web_only/benchmarks.html#results
+>
+>
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From edd @end|ng |rom deb|@n@org  Fri Jul  8 14:55:40 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 8 Jul 2022 07:55:40 -0500
+Subject: [R-pkg-devel] No news entries found
+In-Reply-To: <00068109-285b-ce42-282a-2632915f7c7e@ineri.org>
+References: <45a5fb16-f07e-7760-ed2e-bfe67a93946e@ineri.org>
+ <2216f174-35ec-08cf-89da-87f9f4dbaca4@gmail.com>
+ <CAFDcVCRidRMRdB7_nJprrXYsKZ=Y1ES7YHUmRohm5k-2Lu+u1g@mail.gmail.com>
+ <00068109-285b-ce42-282a-2632915f7c7e@ineri.org>
+Message-ID: <25288.10572.792507.993341@rob.eddelbuettel.com>
+
+
+On 8 July 2022 at 14:23, Plamen Mirazchiyski wrote:
+| to what actual the problem is. Unfortunately, the r-svn repository on 
+| GitHub does not have the possibility to report this as an issue.
+
+Please see  https://bugs.r-project.org/    but also see old mailing list (and
+elsewhere) posts on how to create a bugzilla account for which you need a human.
+
+The R FAQ is also there for you:
+
+  9.2 How to report a bug
+      https://cran.r-project.org/doc/FAQ/R-FAQ.html#How-to-report-a-bug
+
+which could arguably do with a paragraph on how to get a bugzilla account ...
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From p|@men@m|r@zch|y@k| @end|ng |rom |ner|@org  Fri Jul  8 14:58:37 2022
+From: p|@men@m|r@zch|y@k| @end|ng |rom |ner|@org (Plamen Mirazchiyski)
+Date: Fri, 8 Jul 2022 14:58:37 +0200
+Subject: [R-pkg-devel] No news entries found
+In-Reply-To: <CAFDcVCTJpwoaTbHO5gNkBsS5h2kGndwssumC0DDXjqSdX+D4dQ@mail.gmail.com>
+References: <45a5fb16-f07e-7760-ed2e-bfe67a93946e@ineri.org>
+ <2216f174-35ec-08cf-89da-87f9f4dbaca4@gmail.com>
+ <CAFDcVCRidRMRdB7_nJprrXYsKZ=Y1ES7YHUmRohm5k-2Lu+u1g@mail.gmail.com>
+ <00068109-285b-ce42-282a-2632915f7c7e@ineri.org>
+ <CAFDcVCTJpwoaTbHO5gNkBsS5h2kGndwssumC0DDXjqSdX+D4dQ@mail.gmail.com>
+Message-ID: <23691b0e-10e8-fb57-bad7-652a3dd3c37a@ineri.org>
+
+Yes, here is an excerpt from the NEWS.md with a problematic case at the end:
+
+#######################################################
+
+# RALSA v1.3.0 (2022-07-08)
+
+This update focuses mainly on bugfixes and improvements in the GUI and 
+its workflow, but also introduces some new features.
+
+## Bug fixes
+* All analysis functions, as well `lsa.data.diag`, `lsa.recode.vars` and 
+`lsa.vars.dict` crash with an error message `Error in 
+exists(all.vars(match.call())) : first argument has length > 1` when any 
+of the arguments specifying analysis variables point to objects which 
+contain character vectors containing them. Thanks to Rodolfo Ilizaliturri.
+
+* `lsa.prctls` - The percentiles on the x-axis are not properly added 
+for every percentile computed. Thanks to Someone ?ome?ne.
+
+#######################################################
+
+If I remove the accented characters at the very last word, it all works 
+fine when the package is submitted at CRAN.
+
+Best,
+Plamen
+
+On 7/8/2022 2:30 PM, Henrik Bengtsson wrote:
+> Good you figured it out. If you can share a minimal NEWS.md 
+> illustrating the problem here, it'll probably help lots of others who 
+> run into the same problem. It might even be bug that your have 
+> discovered, but without details no one can improve on it.
+>
+> /Henrik
+>
+> On Fri, Jul 8, 2022, 14:23 Plamen Mirazchiyski 
+> <plamen.mirazchiyski at ineri.org> wrote:
+>
+>     Thank you all for your help.
+>
+>     I have found the problem - I had accented characters in names of
+>     people
+>     I was thanking for discovering bugs. After replacing them with
+>     non-accented characters everything went just fine and the package
+>     is on
+>     its way to CRAN.
+>
+>     I do find, though, the message "No news entries found." quite
+>     misleading. Yes, there is a problem, but the message is not even
+>     close
+>     to what actual the problem is. Unfortunately, the r-svn repository on
+>     GitHub does not have the possibility to report this as an issue.
+>
+>     Thank you once again.
+>
+>     Best,
+>     Plamen
+>
+>     On 7/8/2022 12:21 AM, Henrik Bengtsson wrote:
+>     > )There's been recent updates in R-devel
+>     >
+>     (https://github.com/wch/r-source/commit/baf375d8b65414daebf85e226a1e5103a93ab138
+>     > that do more validation of the syntax/format in NEWS and NEWS.md
+>     > files. This was done to make sure news() works in more cases
+>     (e.g. it
+>     > may return just NULL if the NEWS.md file is not formatted as the
+>     tool
+>     > expect).? I guess it will also help render NEWS/NEWS.md files on the
+>     > CRAN package pages.
+>     >
+>     > If you run,
+>     >
+>     > news(package = "RALSA")
+>     >
+>     > and see the NEWS entries, then the format should be correct,
+>     otherwise
+>     > not.? You can use:
+>     >
+>     > news <- tools:::.build_news_db_from_package_NEWS_md("NEWS.md")
+>     > if (is.null(news)) stop("Syntax error in NEWS.md")
+>     >
+>     > to troubleshoot.? If you get an error, i.e. 'news' is NULL, then you
+>     > need to fix up your NEWS.md file.? I don't think the format is
+>     > documented yet, so you might have to do some trial error to
+>     figure it
+>     > out.? Although it's not an official format, if you follow
+>     > https://pkgdown.r-lib.org/reference/build_news.html, it typically
+>     > works.? When I did it some weeks ago, I started with a minimal
+>     > NEWS.md, e.g. the top version, and then I added the other
+>     entries back
+>     > to find which ones were problematic.? See
+>     >
+>     https://raw.githubusercontent.com/HenrikBengtsson/progressr/0.10.1/NEWS.md
+>     > for an example that works on CRAN
+>     >
+>     (https://cran.r-project.org/web/packages/progressr/news/news.html) and
+>     > with news(package = "progressr").
+>     >
+>     > Hope this helps,
+>     >
+>     > Henrik
+>     >
+>     > On Thu, Jul 7, 2022 at 11:37 PM Duncan Murdoch
+>     <murdoch.duncan at gmail.com> wrote:
+>     >> On 07/07/2022 3:55 p.m., Plamen Mirazchiyski wrote:
+>     >>> Hi,
+>     >>>
+>     >>> Today I have submitted a new version of the RALSA package.
+>     Soon after I
+>     >>> received an automatic email letting me know that the package
+>     did not
+>     >>> pass some of the pre-tests:
+>     >> It would be helpful to let us know where to see the troublesome
+>     NEWS.md
+>     >> file.? Maybe a small change in formatting is causing these
+>     false positives.
+>     >>
+>     >> Duncan Murdoch
+>     >>
+>     >>
+>     >>>> package RALSA_1.3.0.tar.gz does not pass the incoming checks
+>     automatically, please see the following pre-tests:
+>     >>>>
+>     Windows:<https://win-builder.r-project.org/incoming_pretest/RALSA_1.3.0_20220707_190307/Windows/00check.log>
+>     >>>> Status: 2 NOTEs
+>     >>>>
+>     Debian:<https://win-builder.r-project.org/incoming_pretest/RALSA_1.3.0_20220707_190307/Debian/00check.log>
+>     >>>> Status: 1 NOTE
+>     >>>>
+>     >>>> Last released version's CRAN status: OK: 9, NOTE: 4
+>     >>>>
+>     See:<https://CRAN.R-project.org/web/checks/check_results_RALSA.html
+>     <https://CRAN.R-project.org/web/checks/check_results_RALSA.html>>
+>     >>> To summarize:
+>     >>>
+>     >>> 1. Windows checks found possibly invalid DOIs. This is to be
+>     ignored, as
+>     >>> stated here:
+>     >>>
+>     https://www.mail-archive.com/r-package-devel at r-project.org/msg07116.html
+>     >>>
+>     >>> 2. Windows, Debian (gcc) and Fedora (clang and gcc) drop the
+>     following note:
+>     >>>
+>     >>> checking package subdirectories ... NOTE
+>     >>> Problems with news in 'NEWS.md':
+>     >>> No news entries found.
+>     >>>
+>     >>> This is rather strange because I have added one of the largest
+>     news
+>     >>> updates I ever made for this package in the NEWS.md file with this
+>     >>> submission. Further, this note appears only in these four of
+>     the 13
+>     >>> platforms where the package is checked.
+>     >>>
+>     >>> Apparently, this is beyond my control and I can do nothing to
+>     fix it on
+>     >>> my end. I have already replied to the email to notify the
+>     >>> CRAN-submissions at R-project.org this is a false-positive as
+>     advised in
+>     >>> the email itself, but I thought the mailing list should also
+>     be aware of
+>     >>> this issue.
+>     >>>
+>     >>> Best,
+>     >>> Plamen
+>     >>>
+>     >> ______________________________________________
+>     >> R-package-devel at r-project.org mailing list
+>     >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+>     -- 
+>     ======================
+>     Plamen Mirazchiyski, PhD
+>     International Educational Research and Evaluation Institute
+>     24 Tehnolo?ki park
+>     SI-1000 Ljubljana
+>     Slovenia
+>     tel.: +386 51 303 817
+>     email: plamen.mirazchiyski at ineri.org
+>
+
+-- 
+======================
+Plamen Mirazchiyski, PhD
+International Educational Research and Evaluation Institute
+24 Tehnolo?ki park
+SI-1000 Ljubljana
+Slovenia
+tel.: +386 51 303 817
+email:plamen.mirazchiyski at ineri.org
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Jul  8 15:00:57 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 8 Jul 2022 16:00:57 +0300
+Subject: [R-pkg-devel] No news entries found
+In-Reply-To: <25288.10572.792507.993341@rob.eddelbuettel.com>
+References: <45a5fb16-f07e-7760-ed2e-bfe67a93946e@ineri.org>
+ <2216f174-35ec-08cf-89da-87f9f4dbaca4@gmail.com>
+ <CAFDcVCRidRMRdB7_nJprrXYsKZ=Y1ES7YHUmRohm5k-2Lu+u1g@mail.gmail.com>
+ <00068109-285b-ce42-282a-2632915f7c7e@ineri.org>
+ <25288.10572.792507.993341@rob.eddelbuettel.com>
+Message-ID: <20220708160057.3092a69c@arachnoid>
+
+On Fri, 8 Jul 2022 07:55:40 -0500
+Dirk Eddelbuettel <edd at debian.org> wrote:
+
+> which could arguably do with a paragraph on how to get a bugzilla
+> account ...
+
+Perhaps the FAQ could link to the https://www.r-project.org/bugs.html
+web page, which is also linked from the front page.
+
+-- 
+Best regards,
+Ivan
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Jul  8 15:28:25 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 8 Jul 2022 16:28:25 +0300
+Subject: [R-pkg-devel] No news entries found
+In-Reply-To: <23691b0e-10e8-fb57-bad7-652a3dd3c37a@ineri.org>
+References: <45a5fb16-f07e-7760-ed2e-bfe67a93946e@ineri.org>
+ <2216f174-35ec-08cf-89da-87f9f4dbaca4@gmail.com>
+ <CAFDcVCRidRMRdB7_nJprrXYsKZ=Y1ES7YHUmRohm5k-2Lu+u1g@mail.gmail.com>
+ <00068109-285b-ce42-282a-2632915f7c7e@ineri.org>
+ <CAFDcVCTJpwoaTbHO5gNkBsS5h2kGndwssumC0DDXjqSdX+D4dQ@mail.gmail.com>
+ <23691b0e-10e8-fb57-bad7-652a3dd3c37a@ineri.org>
+Message-ID: <20220708162825.28e16346@arachnoid>
+
+On Fri, 8 Jul 2022 14:58:37 +0200
+Plamen Mirazchiyski <plamen.mirazchiyski at ineri.org> wrote:
+
+> Yes, here is an excerpt from the NEWS.md with a problematic case at
+> the end:
+
+Interesting. The "No news entries found." branch is taken by R CMD
+check in case when the news-reading function returns something that
+doesn't inherit from 'news_db' or has zero rows without producing any
+warning or error messages. Yet if I save this excerpt to a file and
+feed it to tools:::.build_news_db_from_package_NEWS_md, I get a valid
+news_db object. Can you see any difference in its output between the
+NEWS.md that causes a NOTE and the one that doesn't?
+
+-- 
+Best regards,
+Ivan
+
+
+From @@mue|@gr@nje@ud @end|ng |rom |n@erm@|r  Fri Jul  8 15:50:07 2022
+From: @@mue|@gr@nje@ud @end|ng |rom |n@erm@|r (Samuel Granjeaud)
+Date: Fri, 8 Jul 2022 15:50:07 +0200
+Subject: [R-pkg-devel] Unused data is silently kept in the environment of a
+ function
+Message-ID: <81e9fea1-5752-6e8a-097e-44acf079ec7d@inserm.fr>
+
+Dear all,
+
+I want to compute processing functions to apply to the data.
+I apply the functions to the data in a second step.
+proc_0 increases the memory, proc_1 is safe.
+reprex below.
+
+If this behavior is known, could you tell me a workaround before I try 
+to guess the best one?
+
+Best,
+Samuel
+
+``` r
+# for memory tracking
+library(pryr)
+
+# a class
+setClass(
+ ? "fb",
+ ? slots = list(d = "numeric", f = "list"),
+ ? prototype=list(d = NULL, f = NULL)
+)
+
+# memory increased: keep dat somewhere and link it back to the returned 
+value
+proc_0 <- function(x) {
+ ? dat = sample(x at d)
+ ? cofactors = c(mean(dat), median(dat), IQR(dat))
+ ? model = sapply(cofactors, function(cofactor) function(z) z / cofactor)
+ ? x at f = list(model)
+ ? x
+}
+
+# init data
+mem_used()
+#> 47 MB
+a = new("fb")
+a at d = sample(rnorm(1e7))
+a at f = list()
+mem_used()
+#> 127 MB
+# memory increased of 80 MB
+# process
+b = proc_0(a)
+mem_used()
+#> 207 MB
+# memory increased of 80 MB again
+rm(a)
+mem_used()
+#> 207 MB
+# memory didn't decreased
+b at d = b at d + 1
+mem_used()
+#> 287 MB
+# memory increased
+# b at d was really pointing to a at d before increment
+sapply(1:3, function(i) ls(environment(b at f[[1]][[i]])))
+#> [1] "cofactor" "cofactor" "cofactor"
+sapply(1:3, function(i) get("cofactor", environment(b at f[[1]][[i]])))
+#> [1] -0.0003085559? 0.0001107148? 1.3485980291
+# environments look fine
+rm(b)
+mem_used()
+#> 47.5 MB
+# memory released back
+
+
+# memory safe
+proc_1 <- function(x) {
+ ? cofactors = c(mean(x at d), median(x at d), IQR(x at d))
+ ? model = sapply(cofactors, function(cofactor) function(z) z / cofactor)
+ ? x at f = list(model)
+ ? x
+}
+
+# init data
+mem_used()
+#> 47.5 MB
+a = new("fb")
+a at d = sample(rnorm(1e7))
+a at f = list()
+mem_used()
+#> 128 MB
+b = proc_1(a)
+mem_used()
+#> 128 MB
+# memory didn't increased; b at d points to a at d; functions weight a few KB
+rm(a)
+mem_used()
+#> 128 MB
+sapply(1:3, function(i) ls(environment(b at f[[1]][[i]])))
+#> [1] "cofactor" "cofactor" "cofactor"
+sapply(1:3, function(i) get("cofactor", environment(b at f[[1]][[i]])))
+#> [1] -0.0003133312 -0.0002510665? 1.3491459433
+
+rm(b)
+mem_used()
+#> 47.5 MB
+
+```
+
+<sup>Created on 2022-07-08 by the [reprex 
+package](https://reprex.tidyverse.org) (v2.0.1)</sup>
+
+<details style="margin-bottom:10px;">
+<summary>
+Session info
+</summary>
+
+``` r
+sessionInfo()
+#> R version 4.2.1 (2022-06-23 ucrt)
+#> Platform: x86_64-w64-mingw32/x64 (64-bit)
+#> Running under: Windows 10 x64 (build 19044)
+#>
+#> Matrix products: default
+#>
+#> locale:
+#> [1] LC_COLLATE=French_France.utf8 LC_CTYPE=French_France.utf8
+#> [3] LC_MONETARY=French_France.utf8 LC_NUMERIC=C
+#> [5] LC_TIME=French_France.utf8
+#>
+#> attached base packages:
+#> [1] stats???? graphics? grDevices utils???? datasets methods?? base
+#>
+#> other attached packages:
+#> [1] pryr_0.1.5
+#>
+#> loaded via a namespace (and not attached):
+#>? [1] Rcpp_1.0.8.3???? codetools_0.2-18 digest_0.6.29 withr_2.5.0
+#>? [5] magrittr_2.0.3?? reprex_2.0.1???? evaluate_0.15 highr_0.9
+#>? [9] stringi_1.7.6??? rlang_1.0.3????? cli_3.3.0 rstudioapi_0.13
+#> [13] fs_1.5.2???????? lobstr_1.1.2???? rmarkdown_2.14 tools_4.2.1
+#> [17] stringr_1.4.0??? glue_1.6.2?????? xfun_0.31 yaml_2.3.5
+#> [21] fastmap_1.1.0??? compiler_4.2.1?? htmltools_0.5.2 knitr_1.39
+```
+
+</details>
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Jul  8 17:01:23 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 8 Jul 2022 11:01:23 -0400
+Subject: [R-pkg-devel] 
+ Unused data is silently kept in the environment of a function
+In-Reply-To: <81e9fea1-5752-6e8a-097e-44acf079ec7d@inserm.fr>
+References: <81e9fea1-5752-6e8a-097e-44acf079ec7d@inserm.fr>
+Message-ID: <ef370207-e029-1916-36f6-eb406dd48c4f@gmail.com>
+
+I accidentally replied privately to this message.  Here is the reply 
+that I intended to send to the list, along with an addition based on 
+Samuel's reply to me.
+
+On 08/07/2022 9:50 a.m., Samuel Granjeaud wrote:
+ > > Dear all,
+ > >
+ > > I want to compute processing functions to apply to the data.
+ > > I apply the functions to the data in a second step.
+ > > proc_0 increases the memory, proc_1 is safe.
+ > > reprex below.
+ > >
+ > > If this behavior is known, could you tell me a workaround before I try
+ > > to guess the best one?
+
+When a function is called, it creates an environment that holds the
+arguments and all local variables.  If the function returns that
+environment, or a value that references it, all the local variables will
+still be there.
+
+In your function I believe the anonymous functions you create in `model`
+are catching the environment.  Since those functions are created as part
+of the evaluation of proc_0, each of them will have the evaluation
+environment attached.
+
+NEW addition:  In R, functions have an associated environment set as the 
+parent of the evaluation environment mentioned above.  Those are called 
+"the environment of the function", and can be retrieved from function fn 
+using `environment(fn)`.  For top-level functions like proc_0, 
+environment(proc_0) would be the global environment, but for functions 
+created within another function, it would be the evaluation environment 
+active at the time of creation.
+
+Your code has
+
+   sapply(cofactors, function(cofactor) function(z) z / cofactor)
+
+This creates the function with definition
+
+   function(cofactor) function(z) z / cofactor
+
+The environment of that function will be the evaluation environment of 
+proc_0.  When that function is called by sapply(), it will create an 
+evaluation environment holding cofactor, and that environment will be 
+used by the function returned, i.e. the result of
+
+   function(z) z / cofactor
+
+So you'll end up with this chain of environments:
+
+   environment(function(z) z / cofactor) is the evaluation environment 
+of function(cofactor) function(z) z / cofactor;
+
+   its parent is the evaluation environment of proc_0, containing dat;
+
+   its parent is environment(proc_0), which is the global environment.
+
+The global environment isn't captured, but the others are, so you save a 
+copy of dat every time you call proc_0.
+
+But none of those functions need access to dat, so there's no need to 
+keep it, and after your last use of it in proc_0, just run rm(dat) to 
+get rid of it.
+
+OLD part again:
+
+By the way, mem_used() isn't a great way to measure memory use, because
+it will count things that will be cleaned up in a future garbage
+collection.  When I added "rm(dat)" to your function, I saw this:
+
+  > a = new("fb")
+  > a at d = sample(rnorm(1e7))
+  > a at f = list()
+  > mem_used()
+363 MB
+  > b = proc_0(a)
+  > mem_used()
+283 MB
+
+i.e. *less* memory was used after b was created, presumably because a gc
+happened.
+
+It's better to use object.size() or pryr::object_size() to measure the
+size of individual objects.  Neither one is perfect: they use different
+rules to decide what to include, and in some cases, memory used in one
+object is counted again as part of another.  The way R allocated memory
+means there is *no* perfect definition of the size of an object.
+
+Duncan Murdoch
+
+
+ > >
+ > > Best,
+ > > Samuel
+ > >
+ > > ``` r
+ > > # for memory tracking
+ > > library(pryr)
+ > >
+ > > # a class
+ > > setClass(
+ > >     "fb",
+ > >     slots = list(d = "numeric", f = "list"),
+ > >     prototype=list(d = NULL, f = NULL)
+ > > )
+ > >
+ > > # memory increased: keep dat somewhere and link it back to the returned
+ > > value
+ > > proc_0 <- function(x) {
+ > >     dat = sample(x at d)
+ > >     cofactors = c(mean(dat), median(dat), IQR(dat))
+ > >     model = sapply(cofactors, function(cofactor) function(z) z / 
+cofactor)
+ > >     x at f = list(model)
+ > >     x
+ > > }
+ > >
+ > > # init data
+ > > mem_used()
+ > > #> 47 MB
+ > > a = new("fb")
+ > > a at d = sample(rnorm(1e7))
+ > > a at f = list()
+ > > mem_used()
+ > > #> 127 MB
+ > > # memory increased of 80 MB
+ > > # process
+ > > b = proc_0(a)
+ > > mem_used()
+ > > #> 207 MB
+ > > # memory increased of 80 MB again
+ > > rm(a)
+ > > mem_used()
+ > > #> 207 MB
+ > > # memory didn't decreased
+ > > b at d = b at d + 1
+ > > mem_used()
+ > > #> 287 MB
+ > > # memory increased
+ > > # b at d was really pointing to a at d before increment
+ > > sapply(1:3, function(i) ls(environment(b at f[[1]][[i]])))
+ > > #> [1] "cofactor" "cofactor" "cofactor"
+ > > sapply(1:3, function(i) get("cofactor", environment(b at f[[1]][[i]])))
+ > > #> [1] -0.0003085559  0.0001107148  1.3485980291
+ > > # environments look fine
+ > > rm(b)
+ > > mem_used()
+ > > #> 47.5 MB
+ > > # memory released back
+ > >
+ > >
+ > > # memory safe
+ > > proc_1 <- function(x) {
+ > >     cofactors = c(mean(x at d), median(x at d), IQR(x at d))
+ > >     model = sapply(cofactors, function(cofactor) function(z) z / 
+cofactor)
+ > >     x at f = list(model)
+ > >     x
+ > > }
+ > >
+ > > # init data
+ > > mem_used()
+ > > #> 47.5 MB
+ > > a = new("fb")
+ > > a at d = sample(rnorm(1e7))
+ > > a at f = list()
+ > > mem_used()
+ > > #> 128 MB
+ > > b = proc_1(a)
+ > > mem_used()
+ > > #> 128 MB
+ > > # memory didn't increased; b at d points to a at d; functions weight a few KB
+ > > rm(a)
+ > > mem_used()
+ > > #> 128 MB
+ > > sapply(1:3, function(i) ls(environment(b at f[[1]][[i]])))
+ > > #> [1] "cofactor" "cofactor" "cofactor"
+ > > sapply(1:3, function(i) get("cofactor", environment(b at f[[1]][[i]])))
+ > > #> [1] -0.0003133312 -0.0002510665  1.3491459433
+ > >
+ > > rm(b)
+ > > mem_used()
+ > > #> 47.5 MB
+ > >
+ > > ```
+ > >
+ > > <sup>Created on 2022-07-08 by the [reprex
+ > > package](https://reprex.tidyverse.org) (v2.0.1)</sup>
+ > >
+ > > <details style="margin-bottom:10px;">
+ > > <summary>
+ > > Session info
+ > > </summary>
+ > >
+ > > ``` r
+ > > sessionInfo()
+ > > #> R version 4.2.1 (2022-06-23 ucrt)
+ > > #> Platform: x86_64-w64-mingw32/x64 (64-bit)
+ > > #> Running under: Windows 10 x64 (build 19044)
+ > > #>
+ > > #> Matrix products: default
+ > > #>
+ > > #> locale:
+ > > #> [1] LC_COLLATE=French_France.utf8 LC_CTYPE=French_France.utf8
+ > > #> [3] LC_MONETARY=French_France.utf8 LC_NUMERIC=C
+ > > #> [5] LC_TIME=French_France.utf8
+ > > #>
+ > > #> attached base packages:
+ > > #> [1] stats     graphics  grDevices utils     datasets methods   base
+ > > #>
+ > > #> other attached packages:
+ > > #> [1] pryr_0.1.5
+ > > #>
+ > > #> loaded via a namespace (and not attached):
+ > > #>  [1] Rcpp_1.0.8.3     codetools_0.2-18 digest_0.6.29 withr_2.5.0
+ > > #>  [5] magrittr_2.0.3   reprex_2.0.1     evaluate_0.15 highr_0.9
+ > > #>  [9] stringi_1.7.6    rlang_1.0.3      cli_3.3.0 rstudioapi_0.13
+ > > #> [13] fs_1.5.2         lobstr_1.1.2     rmarkdown_2.14 tools_4.2.1
+ > > #> [17] stringr_1.4.0    glue_1.6.2       xfun_0.31 yaml_2.3.5
+ > > #> [21] fastmap_1.1.0    compiler_4.2.1   htmltools_0.5.2 knitr_1.39
+ > > ```
+ > >
+ > > </details>
+ > >
+ > > ______________________________________________
+ > > R-package-devel at r-project.org mailing list
+ > > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Jul  8 17:10:20 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 8 Jul 2022 11:10:20 -0400
+Subject: [R-pkg-devel] 
+ Unused data is silently kept in the environment of a function
+In-Reply-To: <ef370207-e029-1916-36f6-eb406dd48c4f@gmail.com>
+References: <81e9fea1-5752-6e8a-097e-44acf079ec7d@inserm.fr>
+ <ef370207-e029-1916-36f6-eb406dd48c4f@gmail.com>
+Message-ID: <235a9cc8-5b3a-d02d-dc50-3943f9beb177@gmail.com>
+
+On 08/07/2022 11:01 a.m., Duncan Murdoch wrote:
+  ... lots deleted
+
+> So you'll end up with this chain of environments:
+> 
+>     environment(function(z) z / cofactor) is the evaluation environment
+> of function(cofactor) function(z) z / cofactor;
+> 
+>     its parent is the evaluation environment of proc_0, containing dat;
+> 
+>     its parent is environment(proc_0), which is the global environment.
+> 
+> The global environment isn't captured, but the others are, so you save a
+> copy of dat every time you call proc_0.
+
+This may be misleading.  The reference to the global environment will be 
+there; what I meant is that there's no extra copy of the global 
+environment.  If we didn't have the references in the chain above, the 
+evaluation environments would all have been garbage collected after 
+proc_0 finished, but because we still have references to them, they are 
+"captured", so we keep a copy until those references go away when the 
+result of the proc_0 call is deleted.
+
+Duncan Murdoch
+
+
+From @@mue|@gr@nje@ud @end|ng |rom |n@erm@|r  Fri Jul  8 17:34:24 2022
+From: @@mue|@gr@nje@ud @end|ng |rom |n@erm@|r (Samuel Granjeaud)
+Date: Fri, 8 Jul 2022 17:34:24 +0200
+Subject: [R-pkg-devel] 
+ Unused data is silently kept in the environment of a function
+In-Reply-To: <235a9cc8-5b3a-d02d-dc50-3943f9beb177@gmail.com>
+References: <81e9fea1-5752-6e8a-097e-44acf079ec7d@inserm.fr>
+ <ef370207-e029-1916-36f6-eb406dd48c4f@gmail.com>
+ <235a9cc8-5b3a-d02d-dc50-3943f9beb177@gmail.com>
+Message-ID: <67f9adfc-7675-cd62-06c9-c2457073a231@inserm.fr>
+
+Great answer. I think I missed the point on the parent environment 
+although I did my best to care about the environment.
+
+What Ducan removed from my reply is the following and I share it with you:
+
+> Great to have feedback from persons like you,
+> Samuel
+
+
+From joh@nne@@r@nke @end|ng |rom jrwb@de  Fri Jul  8 19:39:32 2022
+From: joh@nne@@r@nke @end|ng |rom jrwb@de (Johannes Ranke)
+Date: Fri, 08 Jul 2022 19:39:32 +0200
+Subject: [R-pkg-devel] Slow down in R 4.2.x; Solved
+In-Reply-To: <f110f828-c011-8a15-3236-f2ccb4e9e6ee@gmail.com>
+References: <13505960.q0Az33yFfb@ryz>
+ <f110f828-c011-8a15-3236-f2ccb4e9e6ee@gmail.com>
+Message-ID: <15645492.6oDDn9FRUE@tux>
+
+Am Freitag, 8. Juli 2022, 14:52:27 CEST schrieb Tomas Kalibera:
+> On 7/1/22 11:10, Johannes Ranke wrote:
+> > Dear list,
+> > 
+> > independent of the thread on this list about slow examples on R 4.2 on
+> > windows I have discovered over the last few days that some of my
+> > benchmarks (look for t4 and t9) run by a factor of 3 slower on R 4.2.x
+> > than on R 4.1.3 [1].
+> > 
+> > This is on Linux, using my own backported R packages for R 4.2.x and
+> > locally compiled versions (with default configure options) of
+> > R-4-1-branch on two different CPUs. The results for R 4.2.1 are only
+> > slightly modulated by the use of different BLAS version (openblas-serial
+> > versus atlas versus lapack).
+> > 
+> > I also tested the R 4.0.4 version that is part of Debian bullseye, it is
+> > as
+> > fast as the locally compiled R 4.1.3.
+> > 
+> > I went through the NEWS for R 4.2.0 (because the first slow results were
+> > obtained using that version), but the only change I could imagine causing
+> > such a change is the additional check of the length of the arguments &&
+> > and ||.
+> > 
+> > Any other thoughts?
+> 
+> I can reproduce slowdown in one of your tests:
+> 
+> library(mkin)
+> FOCUS_D <- subset(FOCUS_2006_D, value != 0)
+> SFO_SFO <- mkinmod(
+>    parent = mkinsub("SFO", "m1"),
+>    m1 = mkinsub("SFO"))
+> FOMC_SFO <- mkinmod(
+>    parent = mkinsub("FOMC", "m1"),
+>    m1 = mkinsub("SFO"))
+> DFOP_SFO <- mkinmod(
+>    parent = mkinsub("FOMC", "m1"),
+>    m1 = mkinsub("SFO"))
+> 
+> mmkin_bench <- function(models, datasets, error_model = "const") {
+>    mmkin(models, datasets, error_model = error_model, cores = 1, quiet =
+> TRUE)
+> }
+> 
+> t4 <- system.time(mmkin_bench(list(SFO_SFO, FOMC_SFO, DFOP_SFO),
+> list(FOCUS_D), error_model = "tc"))[["elapsed"]]
+> 
+> This is slower in R 4-devel than R 4.1 because of bug fixes in DLL info
+> interface (PR#16446, r80285). "perf" tool on Linux shows extra time
+> spent in R_registerSymbolEptr and R_WeakRefKey. This is because of
+> repeated calls to getLoadedDLLs(), via repeated calls to
+> inline::getDynLib(x$cf)[["name"]]
+
+Thanks a lot for this concise analysis...
+
+> Perhaps one could save dll_info, once computed in mkin, alongside "cf"
+> in the model, instead of re-computing it every time?
+
+... and for this excellent suggestion - I did so and the benchmarks are better 
+than ever [1].
+ 
+Cheers
+
+Johannes
+
+[1] https://pkgdown.jrwb.de/mkin/articles/web_only/benchmarks.html#results
+
+
