@@ -3810,3 +3810,419 @@ https://github.com/r-gregmisc/gtools
     Ben Bolker
 
 
+From p|@men@m|r@zch|y@k| @end|ng |rom |ner|@org  Sun Jul 10 13:08:21 2022
+From: p|@men@m|r@zch|y@k| @end|ng |rom |ner|@org (Plamen Mirazchiyski)
+Date: Sun, 10 Jul 2022 13:08:21 +0200
+Subject: [R-pkg-devel] No news entries found
+In-Reply-To: <25288.10572.792507.993341@rob.eddelbuettel.com>
+References: <45a5fb16-f07e-7760-ed2e-bfe67a93946e@ineri.org>
+ <2216f174-35ec-08cf-89da-87f9f4dbaca4@gmail.com>
+ <CAFDcVCRidRMRdB7_nJprrXYsKZ=Y1ES7YHUmRohm5k-2Lu+u1g@mail.gmail.com>
+ <00068109-285b-ce42-282a-2632915f7c7e@ineri.org>
+ <25288.10572.792507.993341@rob.eddelbuettel.com>
+Message-ID: <fda4f633-a583-f852-ce75-483eed35a4f1@ineri.org>
+
+Thank you, I contacted R-Bugzilla to create an account for me, 
+explaining the reason. The answer was that this is related with CRAN 
+incoming packages' checks which does not mean it is an R bug which is to 
+be reported and that the CRAN checks are performed using R-devel 
+version, not the released, so it is not a bug that shall be reported.
+
+I actually agree with the answer, especially given that the issue I 
+encountered was with four out of the 10 platforms where the package was 
+checked and not all, so I don't really think it is an R-bug that should 
+be reported to R-Bugzilla.
+
+Plamen
+
+On 7/8/2022 2:55 PM, Dirk Eddelbuettel wrote:
+> On 8 July 2022 at 14:23, Plamen Mirazchiyski wrote:
+> | to what actual the problem is. Unfortunately, the r-svn repository on
+> | GitHub does not have the possibility to report this as an issue.
+>
+> Please see  https://bugs.r-project.org/    but also see old mailing list (and
+> elsewhere) posts on how to create a bugzilla account for which you need a human.
+>
+> The R FAQ is also there for you:
+>
+>    9.2 How to report a bug
+>        https://cran.r-project.org/doc/FAQ/R-FAQ.html#How-to-report-a-bug
+>
+> which could arguably do with a paragraph on how to get a bugzilla account ...
+>
+> Dirk
+>
+
+-- 
+======================
+Plamen Mirazchiyski, PhD
+International Educational Research and Evaluation Institute
+24 Tehnolo?ki park
+SI-1000 Ljubljana
+Slovenia
+tel.: +386 51 303 817
+email: plamen.mirazchiyski at ineri.org
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sun Jul 10 17:54:16 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sun, 10 Jul 2022 18:54:16 +0300
+Subject: [R-pkg-devel] help/advice on debugging
+In-Reply-To: <d2a61bd8-1b87-a2b2-8f24-14ba72b9e6f0@mcmaster.ca>
+References: <d2a61bd8-1b87-a2b2-8f24-14ba72b9e6f0@mcmaster.ca>
+Message-ID: <20220710185416.6ad0a7ea@trisector>
+
+On Sat, 9 Jul 2022 16:29:57 -0400
+Ben Bolker <bbolker at gmail.com> wrote:
+
+>    The problem is in vignette rebuilding, errors of this form in both
+> of the package vignettes:
+> 
+>    Can't join on `x$entrezgene_id` x `y$entrezgene_id` because of
+>    incompatible types.
+>    ? `x$entrezgene_id` is of type <double>>.
+>    ? `y$entrezgene_id` is of type <character>>.
+
+I'd hazard a guess that both vignettes crash in a call to
+entrez_to_symbol (a direct one or via rename_genes). Specifically, its
+first argument (`x`) is converted to numeric, then the following
+happens:
+
+    df <- data.frame(entrezgene_id = x)
+    df <- dplyr::left_join(df, gene_info, by = "entrezgene_id")
+
+gene_info is obtained above, using the following:
+
+  gene_info <- get_biomart_mapping(species, symbol_name, dir_save,
+                                   verbose) %>%
+    dplyr::group_by(entrezgene_id) %>%
+    dplyr::summarise(dplyr::across(dplyr::everything(), dplyr::first))
+
+get_biomart_mapping accesses the Internet using biomaRt::getBM if it
+can, but otherwise uses a copy of the information for human genome
+cached inside the package.
+
+There doesn't seem to be any mention of special cases for
+"entrezgene_id" in the code of the biomaRt package. biomaRt::getBM
+POSTs XML queries to ensembl.org/biomart/martservice?... and parses the
+resulting tab-separated values using read.table.
+
+My guess is, ensembl.org started returning something that isn't a
+number in the entrezgene_id column, and you were the first one to
+rebuild the vignette and notice that.
+
+-- 
+Best regards,
+Ivan
+
+
+From edwwe|2020 @end|ng |rom gm@||@com  Sun Jul 10 22:41:12 2022
+From: edwwe|2020 @end|ng |rom gm@||@com (Edward Wei)
+Date: Sun, 10 Jul 2022 13:41:12 -0700
+Subject: [R-pkg-devel] Unsure why my package failed pre-check
+Message-ID: <CAEf_eRBeAnOw3DY-Rt_UmN_tD5XabDUL89ovTm05AMQAoHuqNg@mail.gmail.com>
+
+Is the reason my package failed because the functions assign global
+variables? If this is the case, can I see where it says that functions
+should not assign global variables?
+
+
+
+* using log directory 'd:/RCompile/CRANincoming/R-devel/avfintools.Rcheck'
+* using R Under development (unstable) (2022-07-09 r82572 ucrt)
+* using platform: x86_64-w64-mingw32 (64-bit)
+* using session charset: UTF-8
+* checking for file 'avfintools/DESCRIPTION' ... OK
+* checking extension type ... Package
+* this is package 'avfintools' version '0.1.0'
+* package encoding: UTF-8
+* checking CRAN incoming feasibility ... NOTE
+Maintainer: 'Edward Wei <edwwei2020 at gmail.com>'
+
+New submission
+
+Possibly misspelled words in DESCRIPTION:
+  Avfintools (10:18)
+  CRAN (9:34)
+  Vantager (3:55, 10:46, 11:56)
+  alphavantager (8:3, 9:7)
+  api (7:49)
+* checking package namespace information ... OK
+* checking package dependencies ... OK
+* checking if this is a source package ... OK
+* checking if there is a namespace ... OK
+* checking for hidden files and directories ... OK
+* checking for portable file names ... OK
+* checking whether package 'avfintools' can be installed ... OK
+* checking installed package size ... OK
+* checking package directory ... OK
+* checking for future file timestamps ... OK
+* checking DESCRIPTION meta-information ... OK
+* checking top-level files ... OK
+* checking for left-over files ... OK
+* checking index information ... OK
+* checking package subdirectories ... OK
+* checking R files for non-ASCII characters ... OK
+* checking R files for syntax errors ... OK
+* checking whether the package can be loaded ... OK
+* checking whether the package can be loaded with stated dependencies ... OK
+* checking whether the package can be unloaded cleanly ... OK
+* checking whether the namespace can be loaded with stated dependencies ... OK
+* checking whether the namespace can be unloaded cleanly ... OK
+* checking loading without being on the library search path ... OK
+* checking use of S3 registration ... OK
+* checking dependencies in R code ... OK
+* checking S3 generic/method consistency ... OK
+* checking replacement functions ... OK
+* checking foreign function calls ... OK
+* checking R code for possible problems ... [8s] NOTE
+Found the following assignments to the global environment:
+File 'avfintools/R/avfintools.R':
+  assign(paste0(ticker, "daily"), addreturns(retdata), envir = .GlobalEnv)
+  assign(paste0(ticker, "15"), addreturns(retdata), envir = .GlobalEnv)
+  assign(paste0(ticker, "15"), addreturns(retdata), envir = .GlobalEnv)
+  assign(paste0(ticker, "wk"), addreturns(retdata), envir = .GlobalEnv)
+  assign(paste0(ticker, "60"), addreturns(retdata), envir = .GlobalEnv)
+  assign(paste0(ticker, "60"), addreturns(retdata), envir = .GlobalEnv)
+  assign(paste0(ticker, "5"), addreturns(retdata), envir = .GlobalEnv)
+  assign(paste0(ticker, "5"), addreturns(retdata), envir = .GlobalEnv)
+  assign(paste0(coin_name, "60"), addreturns(retdata), envir = .GlobalEnv)
+  assign(paste0(coin_name, "daily"), retdata, envir = .GlobalEnv)
+* checking Rd files ... [1s] OK
+* checking Rd metadata ... OK
+* checking Rd line widths ... OK
+* checking Rd cross-references ... OK
+* checking for missing documentation entries ... OK
+* checking for code/documentation mismatches ... OK
+* checking Rd \usage sections ... OK
+* checking Rd contents ... OK
+* checking for unstated dependencies in examples ... OK
+* checking contents of 'data' directory ... OK
+* checking data for non-ASCII characters ... OK
+* checking LazyData ... OK
+* checking data for ASCII and uncompressed saves ... OK
+* checking examples ... [9s] OK
+* checking PDF version of manual ... OK
+* checking for detritus in the temp directory ... OK
+* DONE
+Status: 2 NOTEs
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Sun Jul 10 23:11:19 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Sun, 10 Jul 2022 14:11:19 -0700
+Subject: [R-pkg-devel] Unsure why my package failed pre-check
+In-Reply-To: <CAEf_eRBeAnOw3DY-Rt_UmN_tD5XabDUL89ovTm05AMQAoHuqNg@mail.gmail.com>
+References: <CAEf_eRBeAnOw3DY-Rt_UmN_tD5XabDUL89ovTm05AMQAoHuqNg@mail.gmail.com>
+Message-ID: <B677D5C8-0435-456A-ABA4-ECFDF0C63549@dcn.davis.ca.us>
+
+https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Package-namespaces
+
+Namespaces are sealed after loading. Workaround is to create a global variable that is an environment in an `.onLoad` hook, and modify variables in that environment instead.
+
+On July 10, 2022 1:41:12 PM PDT, Edward Wei <edwwei2020 at gmail.com> wrote:
+>Is the reason my package failed because the functions assign global
+>variables? If this is the case, can I see where it says that functions
+>should not assign global variables?
+>
+>
+>
+>* using log directory 'd:/RCompile/CRANincoming/R-devel/avfintools.Rcheck'
+>* using R Under development (unstable) (2022-07-09 r82572 ucrt)
+>* using platform: x86_64-w64-mingw32 (64-bit)
+>* using session charset: UTF-8
+>* checking for file 'avfintools/DESCRIPTION' ... OK
+>* checking extension type ... Package
+>* this is package 'avfintools' version '0.1.0'
+>* package encoding: UTF-8
+>* checking CRAN incoming feasibility ... NOTE
+>Maintainer: 'Edward Wei <edwwei2020 at gmail.com>'
+>
+>New submission
+>
+>Possibly misspelled words in DESCRIPTION:
+>  Avfintools (10:18)
+>  CRAN (9:34)
+>  Vantager (3:55, 10:46, 11:56)
+>  alphavantager (8:3, 9:7)
+>  api (7:49)
+>* checking package namespace information ... OK
+>* checking package dependencies ... OK
+>* checking if this is a source package ... OK
+>* checking if there is a namespace ... OK
+>* checking for hidden files and directories ... OK
+>* checking for portable file names ... OK
+>* checking whether package 'avfintools' can be installed ... OK
+>* checking installed package size ... OK
+>* checking package directory ... OK
+>* checking for future file timestamps ... OK
+>* checking DESCRIPTION meta-information ... OK
+>* checking top-level files ... OK
+>* checking for left-over files ... OK
+>* checking index information ... OK
+>* checking package subdirectories ... OK
+>* checking R files for non-ASCII characters ... OK
+>* checking R files for syntax errors ... OK
+>* checking whether the package can be loaded ... OK
+>* checking whether the package can be loaded with stated dependencies ... OK
+>* checking whether the package can be unloaded cleanly ... OK
+>* checking whether the namespace can be loaded with stated dependencies ... OK
+>* checking whether the namespace can be unloaded cleanly ... OK
+>* checking loading without being on the library search path ... OK
+>* checking use of S3 registration ... OK
+>* checking dependencies in R code ... OK
+>* checking S3 generic/method consistency ... OK
+>* checking replacement functions ... OK
+>* checking foreign function calls ... OK
+>* checking R code for possible problems ... [8s] NOTE
+>Found the following assignments to the global environment:
+>File 'avfintools/R/avfintools.R':
+>  assign(paste0(ticker, "daily"), addreturns(retdata), envir = .GlobalEnv)
+>  assign(paste0(ticker, "15"), addreturns(retdata), envir = .GlobalEnv)
+>  assign(paste0(ticker, "15"), addreturns(retdata), envir = .GlobalEnv)
+>  assign(paste0(ticker, "wk"), addreturns(retdata), envir = .GlobalEnv)
+>  assign(paste0(ticker, "60"), addreturns(retdata), envir = .GlobalEnv)
+>  assign(paste0(ticker, "60"), addreturns(retdata), envir = .GlobalEnv)
+>  assign(paste0(ticker, "5"), addreturns(retdata), envir = .GlobalEnv)
+>  assign(paste0(ticker, "5"), addreturns(retdata), envir = .GlobalEnv)
+>  assign(paste0(coin_name, "60"), addreturns(retdata), envir = .GlobalEnv)
+>  assign(paste0(coin_name, "daily"), retdata, envir = .GlobalEnv)
+>* checking Rd files ... [1s] OK
+>* checking Rd metadata ... OK
+>* checking Rd line widths ... OK
+>* checking Rd cross-references ... OK
+>* checking for missing documentation entries ... OK
+>* checking for code/documentation mismatches ... OK
+>* checking Rd \usage sections ... OK
+>* checking Rd contents ... OK
+>* checking for unstated dependencies in examples ... OK
+>* checking contents of 'data' directory ... OK
+>* checking data for non-ASCII characters ... OK
+>* checking LazyData ... OK
+>* checking data for ASCII and uncompressed saves ... OK
+>* checking examples ... [9s] OK
+>* checking PDF version of manual ... OK
+>* checking for detritus in the temp directory ... OK
+>* DONE
+>Status: 2 NOTEs
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-package-devel at r-project.org mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon Jul 11 01:31:36 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sun, 10 Jul 2022 19:31:36 -0400
+Subject: [R-pkg-devel] Unsure why my package failed pre-check
+In-Reply-To: <CAEf_eRBeAnOw3DY-Rt_UmN_tD5XabDUL89ovTm05AMQAoHuqNg@mail.gmail.com>
+References: <CAEf_eRBeAnOw3DY-Rt_UmN_tD5XabDUL89ovTm05AMQAoHuqNg@mail.gmail.com>
+Message-ID: <f0b1843c-d3a7-bc60-a9da-ee9c0c73b383@gmail.com>
+
+On 10/07/2022 4:41 p.m., Edward Wei wrote:
+> Is the reason my package failed because the functions assign global
+> variables? If this is the case, can I see where it says that functions
+> should not assign global variables?
+
+It's in the CRAN repository policy:
+
+"- Packages should not modify the global environment (user?s workspace)."
+
+Duncan Murdoch
+
+> 
+> 
+> 
+> * using log directory 'd:/RCompile/CRANincoming/R-devel/avfintools.Rcheck'
+> * using R Under development (unstable) (2022-07-09 r82572 ucrt)
+> * using platform: x86_64-w64-mingw32 (64-bit)
+> * using session charset: UTF-8
+> * checking for file 'avfintools/DESCRIPTION' ... OK
+> * checking extension type ... Package
+> * this is package 'avfintools' version '0.1.0'
+> * package encoding: UTF-8
+> * checking CRAN incoming feasibility ... NOTE
+> Maintainer: 'Edward Wei <edwwei2020 at gmail.com>'
+> 
+> New submission
+> 
+> Possibly misspelled words in DESCRIPTION:
+>    Avfintools (10:18)
+>    CRAN (9:34)
+>    Vantager (3:55, 10:46, 11:56)
+>    alphavantager (8:3, 9:7)
+>    api (7:49)
+> * checking package namespace information ... OK
+> * checking package dependencies ... OK
+> * checking if this is a source package ... OK
+> * checking if there is a namespace ... OK
+> * checking for hidden files and directories ... OK
+> * checking for portable file names ... OK
+> * checking whether package 'avfintools' can be installed ... OK
+> * checking installed package size ... OK
+> * checking package directory ... OK
+> * checking for future file timestamps ... OK
+> * checking DESCRIPTION meta-information ... OK
+> * checking top-level files ... OK
+> * checking for left-over files ... OK
+> * checking index information ... OK
+> * checking package subdirectories ... OK
+> * checking R files for non-ASCII characters ... OK
+> * checking R files for syntax errors ... OK
+> * checking whether the package can be loaded ... OK
+> * checking whether the package can be loaded with stated dependencies ... OK
+> * checking whether the package can be unloaded cleanly ... OK
+> * checking whether the namespace can be loaded with stated dependencies ... OK
+> * checking whether the namespace can be unloaded cleanly ... OK
+> * checking loading without being on the library search path ... OK
+> * checking use of S3 registration ... OK
+> * checking dependencies in R code ... OK
+> * checking S3 generic/method consistency ... OK
+> * checking replacement functions ... OK
+> * checking foreign function calls ... OK
+> * checking R code for possible problems ... [8s] NOTE
+> Found the following assignments to the global environment:
+> File 'avfintools/R/avfintools.R':
+>    assign(paste0(ticker, "daily"), addreturns(retdata), envir = .GlobalEnv)
+>    assign(paste0(ticker, "15"), addreturns(retdata), envir = .GlobalEnv)
+>    assign(paste0(ticker, "15"), addreturns(retdata), envir = .GlobalEnv)
+>    assign(paste0(ticker, "wk"), addreturns(retdata), envir = .GlobalEnv)
+>    assign(paste0(ticker, "60"), addreturns(retdata), envir = .GlobalEnv)
+>    assign(paste0(ticker, "60"), addreturns(retdata), envir = .GlobalEnv)
+>    assign(paste0(ticker, "5"), addreturns(retdata), envir = .GlobalEnv)
+>    assign(paste0(ticker, "5"), addreturns(retdata), envir = .GlobalEnv)
+>    assign(paste0(coin_name, "60"), addreturns(retdata), envir = .GlobalEnv)
+>    assign(paste0(coin_name, "daily"), retdata, envir = .GlobalEnv)
+> * checking Rd files ... [1s] OK
+> * checking Rd metadata ... OK
+> * checking Rd line widths ... OK
+> * checking Rd cross-references ... OK
+> * checking for missing documentation entries ... OK
+> * checking for code/documentation mismatches ... OK
+> * checking Rd \usage sections ... OK
+> * checking Rd contents ... OK
+> * checking for unstated dependencies in examples ... OK
+> * checking contents of 'data' directory ... OK
+> * checking data for non-ASCII characters ... OK
+> * checking LazyData ... OK
+> * checking data for ASCII and uncompressed saves ... OK
+> * checking examples ... [9s] OK
+> * checking PDF version of manual ... OK
+> * checking for detritus in the temp directory ... OK
+> * DONE
+> Status: 2 NOTEs
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
