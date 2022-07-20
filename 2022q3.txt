@@ -4415,3 +4415,2218 @@ Uwe
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From @n248 @end|ng |rom corne||@edu  Tue Jul 19 05:22:52 2022
+From: @n248 @end|ng |rom corne||@edu (Satyaprakash Nayak)
+Date: Mon, 18 Jul 2022 23:22:52 -0400
+Subject: [R-pkg-devel] Fwd: cmake based compilation works on macOS but fails
+ on Linux machines
+In-Reply-To: <CAM3Cqv+4HXyrxVDzLw9k2J6j1iRLXM9o2Tdr6RyDBa54XHdrwg@mail.gmail.com>
+References: <CAM3Cqv+4HXyrxVDzLw9k2J6j1iRLXM9o2Tdr6RyDBa54XHdrwg@mail.gmail.com>
+Message-ID: <CAM3CqvKLLuQxbV_5zXM5aJ58SGGWSzDDT3hQC2mM3J2+KYyHFA@mail.gmail.com>
+
+Hi everyone
+
+I am trying to compile a package which provides an interface to the Ceres
+solver <http://ceres-solver.org/> C++ library for large-scale,
+unconstrained optimization. The requirements for compiling this library are
+non-trivial and I am using cmake based compilation into static libraries,
+following the steps in the excellent nloptr package
+<https://github.com/astamm/nloptr>
+
+The package code can be found here <https://github.com/sn248/ceres>
+
+The package requires Eigen
+<https://eigen.tuxfamily.org/index.php?title=Main_Page>, gflags
+<https://gflags.github.io/gflags/> and glog <https://github.com/google/glog>
+as requirements and they are all compiled from source before compiling
+ceres from source using cmake. The package successfully compiles and I am
+able to run the helloworld example in the library on my macOS (10.15.7),
+see the example on the github page <https://github.com/sn248/ceres>. I am
+also able to compile on rhub's mac OS machines (i.e., macOS 10.13.6 High
+Sierra, R-release, brew AND macOS 10.13.6 High Sierra, R-release, CRAN's
+setup). However, _exactly_ the same package fails to compile on Ubuntu and
+Debian machines on rhub.
+
+In summary,
+
+Case 1 - When my Makevars is the following, the package compiles
+successfully on my local macOS and rhub's macOS (all except Apple Silicon,
+M1).
+
+CXX_STD = CXX17
+> PKG_CPPFLAGS = -I../inst/include
+> PKG_LDFLAGS = ../inst/
+> PKG_LIBS = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) -L$(PKG_LDFLAGS)
+> ../inst/libceres.a ../inst/libgflags.a ../inst/libgflags_nothreads.a
+> ../inst/libglog.a
+
+
+But I get the following error on Linux machines (e.g., Debian Linux,
+R-devel, GCC)
+
+Error: package or namespace load failed for 'ceres' in dyn.load(file,
+> DLLpath = DLLpath, ...):
+>  unable to load shared object
+> '/home/docker/R/00LOCK-ceres/00new/ceres/libs/ceres.so':
+>   /home/docker/R/00LOCK-ceres/00new/ceres/libs/ceres.so: undefined symbol:
+> _ZN6google14FlagRegistererC1IiEEPKcS3_S3_PT_S5_
+> Error: loading failed
+
+
+Case 2 - When my Makevars is the following, I get error shown below on my
+local machine (macOS 10.15.7)
+
+CXX_STD = CXX17
+> PKG_CPPFLAGS = -I../inst/include
+> PKG_LDFLAGS = ../inst/
+> PKG_LIBS = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) -L$(PKG_LDFLAGS) -lceres
+> -lgflags -lgflags_nothreads -lglog
+
+
+Error message:
+
+Error in dyn.load(dll_copy_file) :
+>   unable to load shared object
+> '/var/folders/nk/j257crk53f9__1tfl_r91gm40000gq/T//Rtmp75jns4/pkgloadfebd425b03cc/ceres.so':
+>
+> dlopen(/var/folders/nk/j257crk53f9__1tfl_r91gm40000gq/T//Rtmp75jns4/pkgloadfebd425b03cc/ceres.so,
+> 6): Library not loaded: @rpath/libglog.1.dylib
+>   Referenced from:
+> /private/var/folders/nk/j257crk53f9__1tfl_r91gm40000gq/T/Rtmp75jns4/pkgloadfebd425b03cc/ceres.so
+>   Reason: image not found
+
+
+I am thinking this is because of the fact that glog has the default cmake
+option of being built as a shared library (although a static library can
+also be built and is being built in the package).  However, I don't know
+how I can link the shared library libglog.dylib.
+
+To make the matters more interesting, if I install the packages on an
+Ubuntu system (i.e., rocker/rstudio <https://rocker-project.org/images/>
+with system installs of Eigen, glog and gflags), the package compiles
+successfully with Makevars as in Case 2.
+
+I would be very thankful if any help/pointers can be provided to compile
+the package on Linux machines. Additionally, it seems on Apple Mac (M1) and
+Solaris machines the compilation of package fails due to cmake
+non-availability, how can I compile on those platforms?
+
+Thanks
+Satya
+
+	[[alternative HTML version deleted]]
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Tue Jul 19 08:37:30 2022
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Tue, 19 Jul 2022 01:37:30 -0500
+Subject: [R-pkg-devel] Warning... unable to translate 'Ekstr<f8>m' to a wide
+ string; Error... input string 1 is invalid
+In-Reply-To: <62ce5960.r6Obj/obxw/7rU4A%ripley@stats.ox.ac.uk>
+References: <62ce5960.r6Obj/obxw/7rU4A%ripley@stats.ox.ac.uk>
+Message-ID: <b6adef1e-1003-c807-e543-b745070c7e0a@effectivedefense.org>
+
+Hello:
+
+
+	  What's the recommended fix for "?Warning in gsub(gsLi$pattern, 
+gsLi$replacement, xo) : unable to translate 'Ekstr<f8>m' to a wide 
+string; Error in gsub(gsLi$pattern, gsLi$replacement, xo) : input string 
+1 is invalid"?
+
+
+	  This is in:
+
+
+https://github.com/sbgraves237/Ecfun/blob/master/man/subNonStandardCharacters.Rd
+
+
+	  R-devel is now rejecting some non-ASCII characters that it previously 
+accepted;  see below.
+
+
+	  Thanks,
+	  Spencer Graves
+
+
+-------- Forwarded Message --------
+Subject: CRAN package Ecfun and its reverse dependencies
+Date: Wed, 13 Jul 2022 06:34:24 +0100
+From: Prof Brian Ripley <ripley at stats.ox.ac.uk>
+Reply-To: CRAN at R-project.org
+To: veronica.vinciotti at brunel.ac.uk, 
+spencer.graves at effectivedefense.org, hamedhaseli at gmail.com, 
+dennis.prangle at gmail.com
+CC: CRAN at R-project.org
+
+Dear maintainers,
+
+This concerns the CRAN packages
+
+   BDWreg DWreg Ecdat Ecfun gk
+
+maintained by one of you:
+
+   Dennis Prangle <dennis.prangle at gmail.com>: gk
+   Hamed Haselimashhadi <hamedhaseli at gmail.com>: BDWreg
+   Spencer Graves <spencer.graves at effectivedefense.org>: Ecfun Ecdat
+   Veronica Vinciotti<veronica.vinciotti at brunel.ac.uk>: DWreg
+
+We have asked for an update fixing the check problems shown at
+   <https://cran.r-project.org/web/checks/check_results_Ecfun.html>
+with no update from the maintainer thus far.
+
+Thus, package Ecfun is now scheduled for archival on 2022-08-08, and
+archiving this will necessitate also archiving its CRAN strong reverse
+dependencies.
+
+Please negotiate the necessary actions.
+
+The CRAN Team
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Tue Jul 19 09:20:15 2022
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Tue, 19 Jul 2022 09:20:15 +0200
+Subject: [R-pkg-devel] 
+ Warning... unable to translate 'Ekstr<f8>m' to a wide
+ string; Error... input string 1 is invalid
+In-Reply-To: <b6adef1e-1003-c807-e543-b745070c7e0a@effectivedefense.org>
+References: <62ce5960.r6Obj/obxw/7rU4A%ripley@stats.ox.ac.uk>
+ <b6adef1e-1003-c807-e543-b745070c7e0a@effectivedefense.org>
+Message-ID: <4a79b027-45cb-5236-70a1-c6c5edeb03ec@gmail.com>
+
+
+On 7/19/22 08:37, Spencer Graves wrote:
+> Hello:
+>
+>
+> ????? What's the recommended fix for "?Warning in gsub(gsLi$pattern, 
+> gsLi$replacement, xo) : unable to translate 'Ekstr<f8>m' to a wide 
+> string; Error in gsub(gsLi$pattern, gsLi$replacement, xo) : input 
+> string 1 is invalid"?
+>
+>
+> ????? This is in:
+>
+>
+> https://github.com/sbgraves237/Ecfun/blob/master/man/subNonStandardCharacters.Rd 
+>
+>
+>
+> ????? R-devel is now rejecting some non-ASCII characters that it 
+> previously accepted;? see below.
+
+Please see 
+https://blog.r-project.org/2022/06/27/why-to-avoid-%5Cx-in-regular-expressions
+
+Looking at the code I guess you should change the strings in icx to use 
+\u escapes instead of \x. The use of \x as it is there was probably 
+correct when the code was ran in Latin-1 encoding, but not in other 
+encodings. Using \u would make it portable. Feel free to ask more if my 
+guess is wrong and reading the blog post doesn't help.
+
+Best
+Tomas
+
+
+
+>
+>
+> ????? Thanks,
+> ????? Spencer Graves
+>
+>
+> -------- Forwarded Message --------
+> Subject: CRAN package Ecfun and its reverse dependencies
+> Date: Wed, 13 Jul 2022 06:34:24 +0100
+> From: Prof Brian Ripley <ripley at stats.ox.ac.uk>
+> Reply-To: CRAN at R-project.org
+> To: veronica.vinciotti at brunel.ac.uk, 
+> spencer.graves at effectivedefense.org, hamedhaseli at gmail.com, 
+> dennis.prangle at gmail.com
+> CC: CRAN at R-project.org
+>
+> Dear maintainers,
+>
+> This concerns the CRAN packages
+>
+> ? BDWreg DWreg Ecdat Ecfun gk
+>
+> maintained by one of you:
+>
+> ? Dennis Prangle <dennis.prangle at gmail.com>: gk
+> ? Hamed Haselimashhadi <hamedhaseli at gmail.com>: BDWreg
+> ? Spencer Graves <spencer.graves at effectivedefense.org>: Ecfun Ecdat
+> ? Veronica Vinciotti<veronica.vinciotti at brunel.ac.uk>: DWreg
+>
+> We have asked for an update fixing the check problems shown at
+> <https://cran.r-project.org/web/checks/check_results_Ecfun.html>
+> with no update from the maintainer thus far.
+>
+> Thus, package Ecfun is now scheduled for archival on 2022-08-08, and
+> archiving this will necessitate also archiving its CRAN strong reverse
+> dependencies.
+>
+> Please negotiate the necessary actions.
+>
+> The CRAN Team
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Tue Jul 19 18:38:12 2022
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Tue, 19 Jul 2022 11:38:12 -0500
+Subject: [R-pkg-devel] 
+ Warning... unable to translate 'Ekstr<f8>m' to a wide
+ string; Error... input string 1 is invalid
+In-Reply-To: <4a79b027-45cb-5236-70a1-c6c5edeb03ec@gmail.com>
+References: <62ce5960.r6Obj/obxw/7rU4A%ripley@stats.ox.ac.uk>
+ <b6adef1e-1003-c807-e543-b745070c7e0a@effectivedefense.org>
+ <4a79b027-45cb-5236-70a1-c6c5edeb03ec@gmail.com>
+Message-ID: <f80c936b-8580-54db-66be-707ca49a8d25@effectivedefense.org>
+
+Hi, Tomas:
+
+
+On 7/19/22 2:20 AM, Tomas Kalibera wrote:
+> 
+> On 7/19/22 08:37, Spencer Graves wrote:
+>> Hello:
+>>
+>>
+>> ????? What's the recommended fix for "?Warning in gsub(gsLi$pattern, 
+>> gsLi$replacement, xo) : unable to translate 'Ekstr<f8>m' to a wide 
+>> string; Error in gsub(gsLi$pattern, gsLi$replacement, xo) : input 
+>> string 1 is invalid"?
+>>
+>>
+>> ????? This is in:
+>>
+>>
+>> https://github.com/sbgraves237/Ecfun/blob/master/man/subNonStandardCharacters.Rd 
+>>
+>>
+>>
+>> ????? R-devel is now rejecting some non-ASCII characters that it 
+>> previously accepted;? see below.
+> 
+> Please see 
+> https://blog.r-project.org/2022/06/27/why-to-avoid-%5Cx-in-regular-expressions 
+> 
+> 
+> Looking at the code I guess you should change the strings in icx to use 
+> \u escapes instead of \x. The use of \x as it is there was probably 
+> correct when the code was ran in Latin-1 encoding, but not in other 
+> encodings. Using \u would make it portable. Feel free to ask more if my 
+> guess is wrong and reading the blog post doesn't help.
+
+
+	  "subNonStandardCharacters.Rd" copies examples from:
+
+
+https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/iconv
+
+
+	  This file still contains "\x" in 5 places.  What's the recommended 
+fix?  Replace "\x" with "\u00" everyplace?
+
+
+	  I could try that, but I don't know if I have access to platforms that 
+would tell me if I fixed it or not ;-)
+
+
+	  Thanks very much.
+	  Spencer Graves
+
+> 
+> Best
+> Tomas
+> 
+> 
+> 
+>>
+>>
+>> ????? Thanks,
+>> ????? Spencer Graves
+>>
+>>
+>> -------- Forwarded Message --------
+>> Subject: CRAN package Ecfun and its reverse dependencies
+>> Date: Wed, 13 Jul 2022 06:34:24 +0100
+>> From: Prof Brian Ripley <ripley at stats.ox.ac.uk>
+>> Reply-To: CRAN at R-project.org
+>> To: veronica.vinciotti at brunel.ac.uk, 
+>> spencer.graves at effectivedefense.org, hamedhaseli at gmail.com, 
+>> dennis.prangle at gmail.com
+>> CC: CRAN at R-project.org
+>>
+>> Dear maintainers,
+>>
+>> This concerns the CRAN packages
+>>
+>> ? BDWreg DWreg Ecdat Ecfun gk
+>>
+>> maintained by one of you:
+>>
+>> ? Dennis Prangle <dennis.prangle at gmail.com>: gk
+>> ? Hamed Haselimashhadi <hamedhaseli at gmail.com>: BDWreg
+>> ? Spencer Graves <spencer.graves at effectivedefense.org>: Ecfun Ecdat
+>> ? Veronica Vinciotti<veronica.vinciotti at brunel.ac.uk>: DWreg
+>>
+>> We have asked for an update fixing the check problems shown at
+>> <https://cran.r-project.org/web/checks/check_results_Ecfun.html>
+>> with no update from the maintainer thus far.
+>>
+>> Thus, package Ecfun is now scheduled for archival on 2022-08-08, and
+>> archiving this will necessitate also archiving its CRAN strong reverse
+>> dependencies.
+>>
+>> Please negotiate the necessary actions.
+>>
+>> The CRAN Team
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From w||||@mwdun|@p @end|ng |rom gm@||@com  Tue Jul 19 19:10:29 2022
+From: w||||@mwdun|@p @end|ng |rom gm@||@com (Bill Dunlap)
+Date: Tue, 19 Jul 2022 10:10:29 -0700
+Subject: [R-pkg-devel] 
+ Warning... unable to translate 'Ekstr<f8>m' to a wide
+ string; Error... input string 1 is invalid
+In-Reply-To: <f80c936b-8580-54db-66be-707ca49a8d25@effectivedefense.org>
+References: <62ce5960.r6Obj/obxw/7rU4A%ripley@stats.ox.ac.uk>
+ <b6adef1e-1003-c807-e543-b745070c7e0a@effectivedefense.org>
+ <4a79b027-45cb-5236-70a1-c6c5edeb03ec@gmail.com>
+ <f80c936b-8580-54db-66be-707ca49a8d25@effectivedefense.org>
+Message-ID: <CAHqSRuRtF6vsvKvnTuZLbfmMkBuCb3akAm3Obz7GQ54pYnGhyg@mail.gmail.com>
+
+Have you tried changing the \x's in that file with \u's?
+
+> qx <- c("\xf6", "\xf8", "\xdf", "\xfc")
+> Encoding(qx) <- "latin1"
+> qu <- c("\uf6", "\uf8", "\udf", "\ufc")
+> Encoding(qu)
+[1] "UTF-8" "UTF-8" "UTF-8" "UTF-8"
+> qx == qu
+[1] TRUE TRUE TRUE TRUE
+
+(charToRaw shows that qu and qx are not byte-for-byte identical: '=='
+coerces the latin1 strings to utf-8.)
+
+-Bill
+
+On Tue, Jul 19, 2022 at 9:38 AM Spencer Graves <
+spencer.graves at effectivedefense.org> wrote:
+
+> Hi, Tomas:
+>
+>
+> On 7/19/22 2:20 AM, Tomas Kalibera wrote:
+> >
+> > On 7/19/22 08:37, Spencer Graves wrote:
+> >> Hello:
+> >>
+> >>
+> >>       What's the recommended fix for "?Warning in gsub(gsLi$pattern,
+> >> gsLi$replacement, xo) : unable to translate 'Ekstr<f8>m' to a wide
+> >> string; Error in gsub(gsLi$pattern, gsLi$replacement, xo) : input
+> >> string 1 is invalid"?
+> >>
+> >>
+> >>       This is in:
+> >>
+> >>
+> >>
+> https://github.com/sbgraves237/Ecfun/blob/master/man/subNonStandardCharacters.Rd
+> >>
+> >>
+> >>
+> >>       R-devel is now rejecting some non-ASCII characters that it
+> >> previously accepted;  see below.
+> >
+> > Please see
+> >
+> https://blog.r-project.org/2022/06/27/why-to-avoid-%5Cx-in-regular-expressions
+> >
+> >
+> > Looking at the code I guess you should change the strings in icx to use
+> > \u escapes instead of \x. The use of \x as it is there was probably
+> > correct when the code was ran in Latin-1 encoding, but not in other
+> > encodings. Using \u would make it portable. Feel free to ask more if my
+> > guess is wrong and reading the blog post doesn't help.
+>
+>
+>           "subNonStandardCharacters.Rd" copies examples from:
+>
+>
+> https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/iconv
+>
+>
+>           This file still contains "\x" in 5 places.  What's the
+> recommended
+> fix?  Replace "\x" with "\u00" everyplace?
+>
+>
+>           I could try that, but I don't know if I have access to platforms
+> that
+> would tell me if I fixed it or not ;-)
+>
+>
+>           Thanks very much.
+>           Spencer Graves
+>
+> >
+> > Best
+> > Tomas
+> >
+> >
+> >
+> >>
+> >>
+> >>       Thanks,
+> >>       Spencer Graves
+> >>
+> >>
+> >> -------- Forwarded Message --------
+> >> Subject: CRAN package Ecfun and its reverse dependencies
+> >> Date: Wed, 13 Jul 2022 06:34:24 +0100
+> >> From: Prof Brian Ripley <ripley at stats.ox.ac.uk>
+> >> Reply-To: CRAN at R-project.org
+> >> To: veronica.vinciotti at brunel.ac.uk,
+> >> spencer.graves at effectivedefense.org, hamedhaseli at gmail.com,
+> >> dennis.prangle at gmail.com
+> >> CC: CRAN at R-project.org
+> >>
+> >> Dear maintainers,
+> >>
+> >> This concerns the CRAN packages
+> >>
+> >>   BDWreg DWreg Ecdat Ecfun gk
+> >>
+> >> maintained by one of you:
+> >>
+> >>   Dennis Prangle <dennis.prangle at gmail.com>: gk
+> >>   Hamed Haselimashhadi <hamedhaseli at gmail.com>: BDWreg
+> >>   Spencer Graves <spencer.graves at effectivedefense.org>: Ecfun Ecdat
+> >>   Veronica Vinciotti<veronica.vinciotti at brunel.ac.uk>: DWreg
+> >>
+> >> We have asked for an update fixing the check problems shown at
+> >> <https://cran.r-project.org/web/checks/check_results_Ecfun.html>
+> >> with no update from the maintainer thus far.
+> >>
+> >> Thus, package Ecfun is now scheduled for archival on 2022-08-08, and
+> >> archiving this will necessitate also archiving its CRAN strong reverse
+> >> dependencies.
+> >>
+> >> Please negotiate the necessary actions.
+> >>
+> >> The CRAN Team
+> >>
+> >> ______________________________________________
+> >> R-package-devel at r-project.org mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Tue Jul 19 19:32:20 2022
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Tue, 19 Jul 2022 12:32:20 -0500
+Subject: [R-pkg-devel] 
+ Warning... unable to translate 'Ekstr<f8>m' to a wide
+ string; Error... input string 1 is invalid
+In-Reply-To: <CAHqSRuRtF6vsvKvnTuZLbfmMkBuCb3akAm3Obz7GQ54pYnGhyg@mail.gmail.com>
+References: <62ce5960.r6Obj/obxw/7rU4A%ripley@stats.ox.ac.uk>
+ <b6adef1e-1003-c807-e543-b745070c7e0a@effectivedefense.org>
+ <4a79b027-45cb-5236-70a1-c6c5edeb03ec@gmail.com>
+ <f80c936b-8580-54db-66be-707ca49a8d25@effectivedefense.org>
+ <CAHqSRuRtF6vsvKvnTuZLbfmMkBuCb3akAm3Obz7GQ54pYnGhyg@mail.gmail.com>
+Message-ID: <dab77229-faec-2337-a6b6-fee502518032@effectivedefense.org>
+
+Hi, Bill, Tomas, et al.:
+
+
+On 7/19/22 12:10 PM, Bill Dunlap wrote:
+> Have you tried changing the \x's in that file with \u's?
+> 
+>  > qx <- c("\xf6", "\xf8", "\xdf", "\xfc")
+>  > Encoding(qx) <- "latin1"
+>  > qu <- c("\uf6", "\uf8", "\udf", "\ufc")
+>  > Encoding(qu)
+> [1] "UTF-8" "UTF-8" "UTF-8" "UTF-8"
+>  > qx == qu
+> [1] TRUE TRUE TRUE TRUE
+
+
+I have not tried anything yet for three reasons:
+
+
+	  1.  I don't know that I have access to anything that can do the 
+proper test that's required, so I can know if I've fixed it or not.
+
+
+	  2.  Tomas' blog included examples that seemed to say to replace 
+"\xa0" with "\u00a0", NOT "\ua0", and I don't know if this difference 
+matters or not.
+
+
+	  3.  Can someone provide me with a link to the correct development 
+version of help('iconv')?  The current version includes the exact 
+offending "\x" strings that I have.  If I know the fix in the correct 
+development version of help('iconv'), I can copy that.  Without that, 
+I'm being asked to correct something that may not have been corrected in 
+the development version of the base package.
+
+
+	  Thanks,
+	  Spencer
+
+> 
+> (charToRaw shows that qu and qx are not byte-for-byte identical: '==' 
+> coerces the latin1 strings to utf-8.)
+> 
+> -Bill
+> 
+> On Tue, Jul 19, 2022 at 9:38 AM Spencer Graves 
+> <spencer.graves at effectivedefense.org 
+> <mailto:spencer.graves at effectivedefense.org>> wrote:
+> 
+>     Hi, Tomas:
+> 
+> 
+>     On 7/19/22 2:20 AM, Tomas Kalibera wrote:
+>      >
+>      > On 7/19/22 08:37, Spencer Graves wrote:
+>      >> Hello:
+>      >>
+>      >>
+>      >> ????? What's the recommended fix for "?Warning in
+>     gsub(gsLi$pattern,
+>      >> gsLi$replacement, xo) : unable to translate 'Ekstr<f8>m' to a wide
+>      >> string; Error in gsub(gsLi$pattern, gsLi$replacement, xo) : input
+>      >> string 1 is invalid"?
+>      >>
+>      >>
+>      >> ????? This is in:
+>      >>
+>      >>
+>      >>
+>     https://github.com/sbgraves237/Ecfun/blob/master/man/subNonStandardCharacters.Rd
+>     <https://github.com/sbgraves237/Ecfun/blob/master/man/subNonStandardCharacters.Rd>
+> 
+>      >>
+>      >>
+>      >>
+>      >> ????? R-devel is now rejecting some non-ASCII characters that it
+>      >> previously accepted;? see below.
+>      >
+>      > Please see
+>      >
+>     https://blog.r-project.org/2022/06/27/why-to-avoid-%5Cx-in-regular-expressions
+>     <https://blog.r-project.org/2022/06/27/why-to-avoid-%5Cx-in-regular-expressions>
+> 
+>      >
+>      >
+>      > Looking at the code I guess you should change the strings in icx
+>     to use
+>      > \u escapes instead of \x. The use of \x as it is there was probably
+>      > correct when the code was ran in Latin-1 encoding, but not in other
+>      > encodings. Using \u would make it portable. Feel free to ask more
+>     if my
+>      > guess is wrong and reading the blog post doesn't help.
+> 
+> 
+>      ? ? ? ? ? "subNonStandardCharacters.Rd" copies examples from:
+> 
+> 
+>     https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/iconv
+>     <https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/iconv>
+> 
+> 
+>      ? ? ? ? ? This file still contains "\x" in 5 places.? What's the
+>     recommended
+>     fix?? Replace "\x" with "\u00" everyplace?
+> 
+> 
+>      ? ? ? ? ? I could try that, but I don't know if I have access to
+>     platforms that
+>     would tell me if I fixed it or not ;-)
+> 
+> 
+>      ? ? ? ? ? Thanks very much.
+>      ? ? ? ? ? Spencer Graves
+> 
+>      >
+>      > Best
+>      > Tomas
+>      >
+>      >
+>      >
+>      >>
+>      >>
+>      >> ????? Thanks,
+>      >> ????? Spencer Graves
+>      >>
+>      >>
+>      >> -------- Forwarded Message --------
+>      >> Subject: CRAN package Ecfun and its reverse dependencies
+>      >> Date: Wed, 13 Jul 2022 06:34:24 +0100
+>      >> From: Prof Brian Ripley <ripley at stats.ox.ac.uk
+>     <mailto:ripley at stats.ox.ac.uk>>
+>      >> Reply-To: CRAN at R-project.org
+>      >> To: veronica.vinciotti at brunel.ac.uk
+>     <mailto:veronica.vinciotti at brunel.ac.uk>,
+>      >> spencer.graves at effectivedefense.org
+>     <mailto:spencer.graves at effectivedefense.org>, hamedhaseli at gmail.com
+>     <mailto:hamedhaseli at gmail.com>,
+>      >> dennis.prangle at gmail.com <mailto:dennis.prangle at gmail.com>
+>      >> CC: CRAN at R-project.org
+>      >>
+>      >> Dear maintainers,
+>      >>
+>      >> This concerns the CRAN packages
+>      >>
+>      >> ? BDWreg DWreg Ecdat Ecfun gk
+>      >>
+>      >> maintained by one of you:
+>      >>
+>      >> ? Dennis Prangle <dennis.prangle at gmail.com
+>     <mailto:dennis.prangle at gmail.com>>: gk
+>      >> ? Hamed Haselimashhadi <hamedhaseli at gmail.com
+>     <mailto:hamedhaseli at gmail.com>>: BDWreg
+>      >> ? Spencer Graves <spencer.graves at effectivedefense.org
+>     <mailto:spencer.graves at effectivedefense.org>>: Ecfun Ecdat
+>      >> ? Veronica Vinciotti<veronica.vinciotti at brunel.ac.uk
+>     <mailto:veronica.vinciotti at brunel.ac.uk>>: DWreg
+>      >>
+>      >> We have asked for an update fixing the check problems shown at
+>      >> <https://cran.r-project.org/web/checks/check_results_Ecfun.html
+>     <https://cran.r-project.org/web/checks/check_results_Ecfun.html>>
+>      >> with no update from the maintainer thus far.
+>      >>
+>      >> Thus, package Ecfun is now scheduled for archival on 2022-08-08, and
+>      >> archiving this will necessitate also archiving its CRAN strong
+>     reverse
+>      >> dependencies.
+>      >>
+>      >> Please negotiate the necessary actions.
+>      >>
+>      >> The CRAN Team
+>      >>
+>      >> ______________________________________________
+>      >> R-package-devel at r-project.org
+>     <mailto:R-package-devel at r-project.org> mailing list
+>      >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>     <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+> 
+>     ______________________________________________
+>     R-package-devel at r-project.org <mailto:R-package-devel at r-project.org>
+>     mailing list
+>     https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>     <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+>
+
+
+From w||||@mwdun|@p @end|ng |rom gm@||@com  Tue Jul 19 19:42:05 2022
+From: w||||@mwdun|@p @end|ng |rom gm@||@com (Bill Dunlap)
+Date: Tue, 19 Jul 2022 10:42:05 -0700
+Subject: [R-pkg-devel] 
+ Warning... unable to translate 'Ekstr<f8>m' to a wide
+ string; Error... input string 1 is invalid
+In-Reply-To: <dab77229-faec-2337-a6b6-fee502518032@effectivedefense.org>
+References: <62ce5960.r6Obj/obxw/7rU4A%ripley@stats.ox.ac.uk>
+ <b6adef1e-1003-c807-e543-b745070c7e0a@effectivedefense.org>
+ <4a79b027-45cb-5236-70a1-c6c5edeb03ec@gmail.com>
+ <f80c936b-8580-54db-66be-707ca49a8d25@effectivedefense.org>
+ <CAHqSRuRtF6vsvKvnTuZLbfmMkBuCb3akAm3Obz7GQ54pYnGhyg@mail.gmail.com>
+ <dab77229-faec-2337-a6b6-fee502518032@effectivedefense.org>
+Message-ID: <CAHqSRuTcLCu7wzQMQniFQ_dAi2FdBRuXqKX1rL6SifRGwJPq9A@mail.gmail.com>
+
+Adding the initial zeroes is a bit safer, as would be \u{df}; either
+protects against the next character being a hex digit.  There are 6 byte
+utf-8 'characters', but I don't think R's parser accepts more than 4.
+
+-Bill
+
+On Tue, Jul 19, 2022 at 10:32 AM Spencer Graves <
+spencer.graves at effectivedefense.org> wrote:
+
+> Hi, Bill, Tomas, et al.:
+>
+>
+> On 7/19/22 12:10 PM, Bill Dunlap wrote:
+> > Have you tried changing the \x's in that file with \u's?
+> >
+> >  > qx <- c("\xf6", "\xf8", "\xdf", "\xfc")
+> >  > Encoding(qx) <- "latin1"
+> >  > qu <- c("\uf6", "\uf8", "\udf", "\ufc")
+> >  > Encoding(qu)
+> > [1] "UTF-8" "UTF-8" "UTF-8" "UTF-8"
+> >  > qx == qu
+> > [1] TRUE TRUE TRUE TRUE
+>
+>
+> I have not tried anything yet for three reasons:
+>
+>
+>           1.  I don't know that I have access to anything that can do the
+> proper test that's required, so I can know if I've fixed it or not.
+>
+>
+>           2.  Tomas' blog included examples that seemed to say to replace
+> "\xa0" with "\u00a0", NOT "\ua0", and I don't know if this difference
+> matters or not.
+>
+>
+>           3.  Can someone provide me with a link to the correct
+> development
+> version of help('iconv')?  The current version includes the exact
+> offending "\x" strings that I have.  If I know the fix in the correct
+> development version of help('iconv'), I can copy that.  Without that,
+> I'm being asked to correct something that may not have been corrected in
+> the development version of the base package.
+>
+>
+>           Thanks,
+>           Spencer
+>
+> >
+> > (charToRaw shows that qu and qx are not byte-for-byte identical: '=='
+> > coerces the latin1 strings to utf-8.)
+> >
+> > -Bill
+> >
+> > On Tue, Jul 19, 2022 at 9:38 AM Spencer Graves
+> > <spencer.graves at effectivedefense.org
+> > <mailto:spencer.graves at effectivedefense.org>> wrote:
+> >
+> >     Hi, Tomas:
+> >
+> >
+> >     On 7/19/22 2:20 AM, Tomas Kalibera wrote:
+> >      >
+> >      > On 7/19/22 08:37, Spencer Graves wrote:
+> >      >> Hello:
+> >      >>
+> >      >>
+> >      >>       What's the recommended fix for "?Warning in
+> >     gsub(gsLi$pattern,
+> >      >> gsLi$replacement, xo) : unable to translate 'Ekstr<f8>m' to a
+> wide
+> >      >> string; Error in gsub(gsLi$pattern, gsLi$replacement, xo) : input
+> >      >> string 1 is invalid"?
+> >      >>
+> >      >>
+> >      >>       This is in:
+> >      >>
+> >      >>
+> >      >>
+> >
+> https://github.com/sbgraves237/Ecfun/blob/master/man/subNonStandardCharacters.Rd
+> >     <
+> https://github.com/sbgraves237/Ecfun/blob/master/man/subNonStandardCharacters.Rd
+> >
+> >
+> >      >>
+> >      >>
+> >      >>
+> >      >>       R-devel is now rejecting some non-ASCII characters that it
+> >      >> previously accepted;  see below.
+> >      >
+> >      > Please see
+> >      >
+> >
+> https://blog.r-project.org/2022/06/27/why-to-avoid-%5Cx-in-regular-expressions
+> >     <
+> https://blog.r-project.org/2022/06/27/why-to-avoid-%5Cx-in-regular-expressions
+> >
+> >
+> >      >
+> >      >
+> >      > Looking at the code I guess you should change the strings in icx
+> >     to use
+> >      > \u escapes instead of \x. The use of \x as it is there was
+> probably
+> >      > correct when the code was ran in Latin-1 encoding, but not in
+> other
+> >      > encodings. Using \u would make it portable. Feel free to ask more
+> >     if my
+> >      > guess is wrong and reading the blog post doesn't help.
+> >
+> >
+> >                "subNonStandardCharacters.Rd" copies examples from:
+> >
+> >
+> >
+> https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/iconv
+> >     <
+> https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/iconv>
+> >
+> >
+> >                This file still contains "\x" in 5 places.  What's the
+> >     recommended
+> >     fix?  Replace "\x" with "\u00" everyplace?
+> >
+> >
+> >                I could try that, but I don't know if I have access to
+> >     platforms that
+> >     would tell me if I fixed it or not ;-)
+> >
+> >
+> >                Thanks very much.
+> >                Spencer Graves
+> >
+> >      >
+> >      > Best
+> >      > Tomas
+> >      >
+> >      >
+> >      >
+> >      >>
+> >      >>
+> >      >>       Thanks,
+> >      >>       Spencer Graves
+> >      >>
+> >      >>
+> >      >> -------- Forwarded Message --------
+> >      >> Subject: CRAN package Ecfun and its reverse dependencies
+> >      >> Date: Wed, 13 Jul 2022 06:34:24 +0100
+> >      >> From: Prof Brian Ripley <ripley at stats.ox.ac.uk
+> >     <mailto:ripley at stats.ox.ac.uk>>
+> >      >> Reply-To: CRAN at R-project.org
+> >      >> To: veronica.vinciotti at brunel.ac.uk
+> >     <mailto:veronica.vinciotti at brunel.ac.uk>,
+> >      >> spencer.graves at effectivedefense.org
+> >     <mailto:spencer.graves at effectivedefense.org>, hamedhaseli at gmail.com
+> >     <mailto:hamedhaseli at gmail.com>,
+> >      >> dennis.prangle at gmail.com <mailto:dennis.prangle at gmail.com>
+> >      >> CC: CRAN at R-project.org
+> >      >>
+> >      >> Dear maintainers,
+> >      >>
+> >      >> This concerns the CRAN packages
+> >      >>
+> >      >>   BDWreg DWreg Ecdat Ecfun gk
+> >      >>
+> >      >> maintained by one of you:
+> >      >>
+> >      >>   Dennis Prangle <dennis.prangle at gmail.com
+> >     <mailto:dennis.prangle at gmail.com>>: gk
+> >      >>   Hamed Haselimashhadi <hamedhaseli at gmail.com
+> >     <mailto:hamedhaseli at gmail.com>>: BDWreg
+> >      >>   Spencer Graves <spencer.graves at effectivedefense.org
+> >     <mailto:spencer.graves at effectivedefense.org>>: Ecfun Ecdat
+> >      >>   Veronica Vinciotti<veronica.vinciotti at brunel.ac.uk
+> >     <mailto:veronica.vinciotti at brunel.ac.uk>>: DWreg
+> >      >>
+> >      >> We have asked for an update fixing the check problems shown at
+> >      >> <https://cran.r-project.org/web/checks/check_results_Ecfun.html
+> >     <https://cran.r-project.org/web/checks/check_results_Ecfun.html>>
+> >      >> with no update from the maintainer thus far.
+> >      >>
+> >      >> Thus, package Ecfun is now scheduled for archival on 2022-08-08,
+> and
+> >      >> archiving this will necessitate also archiving its CRAN strong
+> >     reverse
+> >      >> dependencies.
+> >      >>
+> >      >> Please negotiate the necessary actions.
+> >      >>
+> >      >> The CRAN Team
+> >      >>
+> >      >> ______________________________________________
+> >      >> R-package-devel at r-project.org
+> >     <mailto:R-package-devel at r-project.org> mailing list
+> >      >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >     <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+> >
+> >     ______________________________________________
+> >     R-package-devel at r-project.org <mailto:R-package-devel at r-project.org>
+> >     mailing list
+> >     https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >     <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+> >
+>
+
+	[[alternative HTML version deleted]]
+
+
+From bbo|ker @end|ng |rom gm@||@com  Tue Jul 19 19:45:49 2022
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Tue, 19 Jul 2022 13:45:49 -0400
+Subject: [R-pkg-devel] 
+ Warning... unable to translate 'Ekstr<f8>m' to a wide
+ string; Error... input string 1 is invalid
+In-Reply-To: <dab77229-faec-2337-a6b6-fee502518032@effectivedefense.org>
+References: <62ce5960.r6Obj/obxw/7rU4A%ripley@stats.ox.ac.uk>
+ <b6adef1e-1003-c807-e543-b745070c7e0a@effectivedefense.org>
+ <4a79b027-45cb-5236-70a1-c6c5edeb03ec@gmail.com>
+ <f80c936b-8580-54db-66be-707ca49a8d25@effectivedefense.org>
+ <CAHqSRuRtF6vsvKvnTuZLbfmMkBuCb3akAm3Obz7GQ54pYnGhyg@mail.gmail.com>
+ <dab77229-faec-2337-a6b6-fee502518032@effectivedefense.org>
+Message-ID: <4cedd143-2b4e-e5f7-de0e-c4a1580ca14f@gmail.com>
+
+
+ ?The help pages are at
+
+https://github.com/wch/r-source/blob/trunk/src/library/base/man/iconv.Rd
+
+or the equivalent at https://github.com/r-devel/r-svn
+
+or https://svn.r-project.org/R/trunk/src/library/base/man/iconv.Rd
+
+ ? they still have \x examples in them, but maybe the use of \x is not 
+flagged in the particular context of those examples?
+
+
+On 2022-07-19 1:32 PM, Spencer Graves wrote:
+> Hi, Bill, Tomas, et al.:
+>
+>
+> On 7/19/22 12:10 PM, Bill Dunlap wrote:
+>> Have you tried changing the \x's in that file with \u's?
+>>
+>> ?> qx <- c("\xf6", "\xf8", "\xdf", "\xfc")
+>> ?> Encoding(qx) <- "latin1"
+>> ?> qu <- c("\uf6", "\uf8", "\udf", "\ufc")
+>> ?> Encoding(qu)
+>> [1] "UTF-8" "UTF-8" "UTF-8" "UTF-8"
+>> ?> qx == qu
+>> [1] TRUE TRUE TRUE TRUE
+>
+>
+> I have not tried anything yet for three reasons:
+>
+>
+> ????? 1.? I don't know that I have access to anything that can do the 
+> proper test that's required, so I can know if I've fixed it or not.
+
+
+ ? I'm not sure what you need.? AFAIK r-hub's test platforms are still 
+down, but win-builder and
+
+>
+>
+> ????? 2.? Tomas' blog included examples that seemed to say to replace 
+> "\xa0" with "\u00a0", NOT "\ua0", and I don't know if this difference 
+> matters or not.
+>
+>
+> ????? 3.? Can someone provide me with a link to the correct 
+> development version of help('iconv')?? The current version includes 
+> the exact offending "\x" strings that I have.? If I know the fix in 
+> the correct development version of help('iconv'), I can copy that.? 
+> Without that, I'm being asked to correct something that may not have 
+> been corrected in the development version of the base package.
+
+
+ ? There are \x's in the examples there
+
+>
+>
+> ????? Thanks,
+> ????? Spencer
+>
+>>
+>> (charToRaw shows that qu and qx are not byte-for-byte identical: '==' 
+>> coerces the latin1 strings to utf-8.)
+>>
+>> -Bill
+>>
+>> On Tue, Jul 19, 2022 at 9:38 AM Spencer Graves 
+>> <spencer.graves at effectivedefense.org 
+>> <mailto:spencer.graves at effectivedefense.org>> wrote:
+>>
+>> ??? Hi, Tomas:
+>>
+>>
+>> ??? On 7/19/22 2:20 AM, Tomas Kalibera wrote:
+>> ???? >
+>> ???? > On 7/19/22 08:37, Spencer Graves wrote:
+>> ???? >> Hello:
+>> ???? >>
+>> ???? >>
+>> ???? >> ????? What's the recommended fix for "?Warning in
+>> ??? gsub(gsLi$pattern,
+>> ???? >> gsLi$replacement, xo) : unable to translate 'Ekstr<f8>m' to a 
+>> wide
+>> ???? >> string; Error in gsub(gsLi$pattern, gsLi$replacement, xo) : 
+>> input
+>> ???? >> string 1 is invalid"?
+>> ???? >>
+>> ???? >>
+>> ???? >> ????? This is in:
+>> ???? >>
+>> ???? >>
+>> ???? >>
+>> https://github.com/sbgraves237/Ecfun/blob/master/man/subNonStandardCharacters.Rd
+>> <https://github.com/sbgraves237/Ecfun/blob/master/man/subNonStandardCharacters.Rd>
+>>
+>> ???? >>
+>> ???? >>
+>> ???? >>
+>> ???? >> ????? R-devel is now rejecting some non-ASCII characters that it
+>> ???? >> previously accepted;? see below.
+>> ???? >
+>> ???? > Please see
+>> ???? >
+>> https://blog.r-project.org/2022/06/27/why-to-avoid-%5Cx-in-regular-expressions
+>> <https://blog.r-project.org/2022/06/27/why-to-avoid-%5Cx-in-regular-expressions>
+>>
+>> ???? >
+>> ???? >
+>> ???? > Looking at the code I guess you should change the strings in icx
+>> ??? to use
+>> ???? > \u escapes instead of \x. The use of \x as it is there was 
+>> probably
+>> ???? > correct when the code was ran in Latin-1 encoding, but not in 
+>> other
+>> ???? > encodings. Using \u would make it portable. Feel free to ask more
+>> ??? if my
+>> ???? > guess is wrong and reading the blog post doesn't help.
+>>
+>>
+>> ???? ? ? ? ? ? "subNonStandardCharacters.Rd" copies examples from:
+>>
+>>
+>> https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/iconv
+>> <https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/iconv>
+>>
+>>
+>> ???? ? ? ? ? ? This file still contains "\x" in 5 places. What's the
+>> ??? recommended
+>> ??? fix?? Replace "\x" with "\u00" everyplace?
+>>
+>>
+>> ???? ? ? ? ? ? I could try that, but I don't know if I have access to
+>> ??? platforms that
+>> ??? would tell me if I fixed it or not ;-)
+>>
+>>
+>> ???? ? ? ? ? ? Thanks very much.
+>> ???? ? ? ? ? ? Spencer Graves
+>>
+>> ???? >
+>> ???? > Best
+>> ???? > Tomas
+>> ???? >
+>> ???? >
+>> ???? >
+>> ???? >>
+>> ???? >>
+>> ???? >> ????? Thanks,
+>> ???? >> ????? Spencer Graves
+>> ???? >>
+>> ???? >>
+>> ???? >> -------- Forwarded Message --------
+>> ???? >> Subject: CRAN package Ecfun and its reverse dependencies
+>> ???? >> Date: Wed, 13 Jul 2022 06:34:24 +0100
+>> ???? >> From: Prof Brian Ripley <ripley at stats.ox.ac.uk
+>> ??? <mailto:ripley at stats.ox.ac.uk>>
+>> ???? >> Reply-To: CRAN at R-project.org
+>> ???? >> To: veronica.vinciotti at brunel.ac.uk
+>> ??? <mailto:veronica.vinciotti at brunel.ac.uk>,
+>> ???? >> spencer.graves at effectivedefense.org
+>> ??? <mailto:spencer.graves at effectivedefense.org>, hamedhaseli at gmail.com
+>> ??? <mailto:hamedhaseli at gmail.com>,
+>> ???? >> dennis.prangle at gmail.com <mailto:dennis.prangle at gmail.com>
+>> ???? >> CC: CRAN at R-project.org
+>> ???? >>
+>> ???? >> Dear maintainers,
+>> ???? >>
+>> ???? >> This concerns the CRAN packages
+>> ???? >>
+>> ???? >> ? BDWreg DWreg Ecdat Ecfun gk
+>> ???? >>
+>> ???? >> maintained by one of you:
+>> ???? >>
+>> ???? >> ? Dennis Prangle <dennis.prangle at gmail.com
+>> ??? <mailto:dennis.prangle at gmail.com>>: gk
+>> ???? >> ? Hamed Haselimashhadi <hamedhaseli at gmail.com
+>> ??? <mailto:hamedhaseli at gmail.com>>: BDWreg
+>> ???? >> ? Spencer Graves <spencer.graves at effectivedefense.org
+>> ??? <mailto:spencer.graves at effectivedefense.org>>: Ecfun Ecdat
+>> ???? >> ? Veronica Vinciotti<veronica.vinciotti at brunel.ac.uk
+>> ??? <mailto:veronica.vinciotti at brunel.ac.uk>>: DWreg
+>> ???? >>
+>> ???? >> We have asked for an update fixing the check problems shown at
+>> ???? >> <https://cran.r-project.org/web/checks/check_results_Ecfun.html
+>> <https://cran.r-project.org/web/checks/check_results_Ecfun.html>>
+>> ???? >> with no update from the maintainer thus far.
+>> ???? >>
+>> ???? >> Thus, package Ecfun is now scheduled for archival on 
+>> 2022-08-08, and
+>> ???? >> archiving this will necessitate also archiving its CRAN strong
+>> ??? reverse
+>> ???? >> dependencies.
+>> ???? >>
+>> ???? >> Please negotiate the necessary actions.
+>> ???? >>
+>> ???? >> The CRAN Team
+>> ???? >>
+>> ???? >> ______________________________________________
+>> ???? >> R-package-devel at r-project.org
+>> ??? <mailto:R-package-devel at r-project.org> mailing list
+>> ???? >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>> <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+>>
+>> ??? ______________________________________________
+>> ??? R-package-devel at r-project.org <mailto:R-package-devel at r-project.org>
+>> ??? mailing list
+>> ??? https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>> <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+>>
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Tue Jul 19 19:54:35 2022
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Tue, 19 Jul 2022 12:54:35 -0500
+Subject: [R-pkg-devel] 
+ Warning... unable to translate 'Ekstr<f8>m' to a wide
+ string; Error... input string 1 is invalid
+In-Reply-To: <CAHqSRuTcLCu7wzQMQniFQ_dAi2FdBRuXqKX1rL6SifRGwJPq9A@mail.gmail.com>
+References: <62ce5960.r6Obj/obxw/7rU4A%ripley@stats.ox.ac.uk>
+ <b6adef1e-1003-c807-e543-b745070c7e0a@effectivedefense.org>
+ <4a79b027-45cb-5236-70a1-c6c5edeb03ec@gmail.com>
+ <f80c936b-8580-54db-66be-707ca49a8d25@effectivedefense.org>
+ <CAHqSRuRtF6vsvKvnTuZLbfmMkBuCb3akAm3Obz7GQ54pYnGhyg@mail.gmail.com>
+ <dab77229-faec-2337-a6b6-fee502518032@effectivedefense.org>
+ <CAHqSRuTcLCu7wzQMQniFQ_dAi2FdBRuXqKX1rL6SifRGwJPq9A@mail.gmail.com>
+Message-ID: <03c7bca0-1e73-a9b0-7fd3-431d5abff7ea@effectivedefense.org>
+
+
+
+On 7/19/22 12:42 PM, Bill Dunlap wrote:
+> Adding the initial zeroes is a bit safer, as would be \u{df}; either 
+> protects against the next character being a hex digit.? There are 6 byte 
+> utf-8 'characters', but I don't think R's parser accepts more than 4.
+
+
+	  Thanks.  Tomas' blog was good in documenting the need and some of the 
+pitfalls, but I don't know the difference between "\ua0", "\u00a0", 
+"\u{a0}" or anything else, and I don't know how to find documentation 
+that would explain that.  As I wrote years ago, it's hard to RTFM if I 
+don't know which FMTR ;-)
+
+
+	  Most important, I think for my current issue:  How can I find the 
+correct development version of help('iconv')?
+
+
+	  Since I copied the example used in subNonStandardCharacters.Rd from 
+help('iconv'), I should be fine if I do what the R Core Team did with 
+help('iconv').  Or if I guess and guess wrong, I could get another email 
+from Prof Brian Ripley, ordering me to fix something.  I could search 
+myself for the current development version of the base package, but I'm 
+not sure I'd know if I got the correct version and not some other 
+experiment that is different from the actual official development version.
+
+
+	  ???
+	  Spencer
+
+> 
+> -Bill
+> 
+> On Tue, Jul 19, 2022 at 10:32 AM Spencer Graves 
+> <spencer.graves at effectivedefense.org 
+> <mailto:spencer.graves at effectivedefense.org>> wrote:
+> 
+>     Hi, Bill, Tomas, et al.:
+> 
+> 
+>     On 7/19/22 12:10 PM, Bill Dunlap wrote:
+>      > Have you tried changing the \x's in that file with \u's?
+>      >
+>      >? > qx <- c("\xf6", "\xf8", "\xdf", "\xfc")
+>      >? > Encoding(qx) <- "latin1"
+>      >? > qu <- c("\uf6", "\uf8", "\udf", "\ufc")
+>      >? > Encoding(qu)
+>      > [1] "UTF-8" "UTF-8" "UTF-8" "UTF-8"
+>      >? > qx == qu
+>      > [1] TRUE TRUE TRUE TRUE
+> 
+> 
+>     I have not tried anything yet for three reasons:
+> 
+> 
+>      ? ? ? ? ? 1.? I don't know that I have access to anything that can
+>     do the
+>     proper test that's required, so I can know if I've fixed it or not.
+> 
+> 
+>      ? ? ? ? ? 2.? Tomas' blog included examples that seemed to say to
+>     replace
+>     "\xa0" with "\u00a0", NOT "\ua0", and I don't know if this difference
+>     matters or not.
+> 
+> 
+>      ? ? ? ? ? 3.? Can someone provide me with a link to the correct
+>     development
+>     version of help('iconv')?? The current version includes the exact
+>     offending "\x" strings that I have.? If I know the fix in the correct
+>     development version of help('iconv'), I can copy that.? Without that,
+>     I'm being asked to correct something that may not have been
+>     corrected in
+>     the development version of the base package.
+> 
+> 
+>      ? ? ? ? ? Thanks,
+>      ? ? ? ? ? Spencer
+> 
+>      >
+>      > (charToRaw shows that qu and qx are not byte-for-byte identical:
+>     '=='
+>      > coerces the latin1 strings to utf-8.)
+>      >
+>      > -Bill
+>      >
+>      > On Tue, Jul 19, 2022 at 9:38 AM Spencer Graves
+>      > <spencer.graves at effectivedefense.org
+>     <mailto:spencer.graves at effectivedefense.org>
+>      > <mailto:spencer.graves at effectivedefense.org
+>     <mailto:spencer.graves at effectivedefense.org>>> wrote:
+>      >
+>      >? ? ?Hi, Tomas:
+>      >
+>      >
+>      >? ? ?On 7/19/22 2:20 AM, Tomas Kalibera wrote:
+>      >? ? ? >
+>      >? ? ? > On 7/19/22 08:37, Spencer Graves wrote:
+>      >? ? ? >> Hello:
+>      >? ? ? >>
+>      >? ? ? >>
+>      >? ? ? >> ????? What's the recommended fix for "?Warning in
+>      >? ? ?gsub(gsLi$pattern,
+>      >? ? ? >> gsLi$replacement, xo) : unable to translate 'Ekstr<f8>m'
+>     to a wide
+>      >? ? ? >> string; Error in gsub(gsLi$pattern, gsLi$replacement, xo)
+>     : input
+>      >? ? ? >> string 1 is invalid"?
+>      >? ? ? >>
+>      >? ? ? >>
+>      >? ? ? >> ????? This is in:
+>      >? ? ? >>
+>      >? ? ? >>
+>      >? ? ? >>
+>      >
+>     https://github.com/sbgraves237/Ecfun/blob/master/man/subNonStandardCharacters.Rd
+>     <https://github.com/sbgraves237/Ecfun/blob/master/man/subNonStandardCharacters.Rd>
+>      >   
+>      ?<https://github.com/sbgraves237/Ecfun/blob/master/man/subNonStandardCharacters.Rd <https://github.com/sbgraves237/Ecfun/blob/master/man/subNonStandardCharacters.Rd>>
+>      >
+>      >? ? ? >>
+>      >? ? ? >>
+>      >? ? ? >>
+>      >? ? ? >> ????? R-devel is now rejecting some non-ASCII characters
+>     that it
+>      >? ? ? >> previously accepted;? see below.
+>      >? ? ? >
+>      >? ? ? > Please see
+>      >? ? ? >
+>      >
+>     https://blog.r-project.org/2022/06/27/why-to-avoid-%5Cx-in-regular-expressions
+>     <https://blog.r-project.org/2022/06/27/why-to-avoid-%5Cx-in-regular-expressions>
+>      >   
+>      ?<https://blog.r-project.org/2022/06/27/why-to-avoid-%5Cx-in-regular-expressions <https://blog.r-project.org/2022/06/27/why-to-avoid-%5Cx-in-regular-expressions>>
+>      >
+>      >? ? ? >
+>      >? ? ? >
+>      >? ? ? > Looking at the code I guess you should change the strings
+>     in icx
+>      >? ? ?to use
+>      >? ? ? > \u escapes instead of \x. The use of \x as it is there was
+>     probably
+>      >? ? ? > correct when the code was ran in Latin-1 encoding, but not
+>     in other
+>      >? ? ? > encodings. Using \u would make it portable. Feel free to
+>     ask more
+>      >? ? ?if my
+>      >? ? ? > guess is wrong and reading the blog post doesn't help.
+>      >
+>      >
+>      >? ? ? ? ? ? ? ? "subNonStandardCharacters.Rd" copies examples from:
+>      >
+>      >
+>      >
+>     https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/iconv
+>     <https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/iconv>
+>      >   
+>      ?<https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/iconv <https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/iconv>>
+>      >
+>      >
+>      >? ? ? ? ? ? ? ? This file still contains "\x" in 5 places.? What's the
+>      >? ? ?recommended
+>      >? ? ?fix?? Replace "\x" with "\u00" everyplace?
+>      >
+>      >
+>      >? ? ? ? ? ? ? ? I could try that, but I don't know if I have access to
+>      >? ? ?platforms that
+>      >? ? ?would tell me if I fixed it or not ;-)
+>      >
+>      >
+>      >? ? ? ? ? ? ? ? Thanks very much.
+>      >? ? ? ? ? ? ? ? Spencer Graves
+>      >
+>      >? ? ? >
+>      >? ? ? > Best
+>      >? ? ? > Tomas
+>      >? ? ? >
+>      >? ? ? >
+>      >? ? ? >
+>      >? ? ? >>
+>      >? ? ? >>
+>      >? ? ? >> ????? Thanks,
+>      >? ? ? >> ????? Spencer Graves
+>      >? ? ? >>
+>      >? ? ? >>
+>      >? ? ? >> -------- Forwarded Message --------
+>      >? ? ? >> Subject: CRAN package Ecfun and its reverse dependencies
+>      >? ? ? >> Date: Wed, 13 Jul 2022 06:34:24 +0100
+>      >? ? ? >> From: Prof Brian Ripley <ripley at stats.ox.ac.uk
+>     <mailto:ripley at stats.ox.ac.uk>
+>      >? ? ?<mailto:ripley at stats.ox.ac.uk <mailto:ripley at stats.ox.ac.uk>>>
+>      >? ? ? >> Reply-To: CRAN at R-project.org
+>      >? ? ? >> To: veronica.vinciotti at brunel.ac.uk
+>     <mailto:veronica.vinciotti at brunel.ac.uk>
+>      >? ? ?<mailto:veronica.vinciotti at brunel.ac.uk
+>     <mailto:veronica.vinciotti at brunel.ac.uk>>,
+>      >? ? ? >> spencer.graves at effectivedefense.org
+>     <mailto:spencer.graves at effectivedefense.org>
+>      >? ? ?<mailto:spencer.graves at effectivedefense.org
+>     <mailto:spencer.graves at effectivedefense.org>>, hamedhaseli at gmail.com
+>     <mailto:hamedhaseli at gmail.com>
+>      >? ? ?<mailto:hamedhaseli at gmail.com <mailto:hamedhaseli at gmail.com>>,
+>      >? ? ? >> dennis.prangle at gmail.com
+>     <mailto:dennis.prangle at gmail.com> <mailto:dennis.prangle at gmail.com
+>     <mailto:dennis.prangle at gmail.com>>
+>      >? ? ? >> CC: CRAN at R-project.org
+>      >? ? ? >>
+>      >? ? ? >> Dear maintainers,
+>      >? ? ? >>
+>      >? ? ? >> This concerns the CRAN packages
+>      >? ? ? >>
+>      >? ? ? >> ? BDWreg DWreg Ecdat Ecfun gk
+>      >? ? ? >>
+>      >? ? ? >> maintained by one of you:
+>      >? ? ? >>
+>      >? ? ? >> ? Dennis Prangle <dennis.prangle at gmail.com
+>     <mailto:dennis.prangle at gmail.com>
+>      >? ? ?<mailto:dennis.prangle at gmail.com
+>     <mailto:dennis.prangle at gmail.com>>>: gk
+>      >? ? ? >> ? Hamed Haselimashhadi <hamedhaseli at gmail.com
+>     <mailto:hamedhaseli at gmail.com>
+>      >? ? ?<mailto:hamedhaseli at gmail.com
+>     <mailto:hamedhaseli at gmail.com>>>: BDWreg
+>      >? ? ? >> ? Spencer Graves <spencer.graves at effectivedefense.org
+>     <mailto:spencer.graves at effectivedefense.org>
+>      >? ? ?<mailto:spencer.graves at effectivedefense.org
+>     <mailto:spencer.graves at effectivedefense.org>>>: Ecfun Ecdat
+>      >? ? ? >> ? Veronica Vinciotti<veronica.vinciotti at brunel.ac.uk
+>     <mailto:veronica.vinciotti at brunel.ac.uk>
+>      >? ? ?<mailto:veronica.vinciotti at brunel.ac.uk
+>     <mailto:veronica.vinciotti at brunel.ac.uk>>>: DWreg
+>      >? ? ? >>
+>      >? ? ? >> We have asked for an update fixing the check problems
+>     shown at
+>      >? ? ? >>
+>     <https://cran.r-project.org/web/checks/check_results_Ecfun.html
+>     <https://cran.r-project.org/web/checks/check_results_Ecfun.html>
+>      >   
+>      ?<https://cran.r-project.org/web/checks/check_results_Ecfun.html
+>     <https://cran.r-project.org/web/checks/check_results_Ecfun.html>>>
+>      >? ? ? >> with no update from the maintainer thus far.
+>      >? ? ? >>
+>      >? ? ? >> Thus, package Ecfun is now scheduled for archival on
+>     2022-08-08, and
+>      >? ? ? >> archiving this will necessitate also archiving its CRAN
+>     strong
+>      >? ? ?reverse
+>      >? ? ? >> dependencies.
+>      >? ? ? >>
+>      >? ? ? >> Please negotiate the necessary actions.
+>      >? ? ? >>
+>      >? ? ? >> The CRAN Team
+>      >? ? ? >>
+>      >? ? ? >> ______________________________________________
+>      >? ? ? >> R-package-devel at r-project.org
+>     <mailto:R-package-devel at r-project.org>
+>      >? ? ?<mailto:R-package-devel at r-project.org
+>     <mailto:R-package-devel at r-project.org>> mailing list
+>      >? ? ? >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>     <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+>      >? ? ?<https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>     <https://stat.ethz.ch/mailman/listinfo/r-package-devel>>
+>      >
+>      >? ? ?______________________________________________
+>      > R-package-devel at r-project.org
+>     <mailto:R-package-devel at r-project.org>
+>     <mailto:R-package-devel at r-project.org
+>     <mailto:R-package-devel at r-project.org>>
+>      >? ? ?mailing list
+>      > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>     <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+>      >? ? ?<https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>     <https://stat.ethz.ch/mailman/listinfo/r-package-devel>>
+>      >
+>
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Jul 19 20:03:40 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 19 Jul 2022 21:03:40 +0300
+Subject: [R-pkg-devel] 
+ Warning... unable to translate 'Ekstr<f8>m' to a wide
+ string; Error... input string 1 is invalid
+In-Reply-To: <dab77229-faec-2337-a6b6-fee502518032@effectivedefense.org>
+References: <62ce5960.r6Obj/obxw/7rU4A%ripley@stats.ox.ac.uk>
+ <b6adef1e-1003-c807-e543-b745070c7e0a@effectivedefense.org>
+ <4a79b027-45cb-5236-70a1-c6c5edeb03ec@gmail.com>
+ <f80c936b-8580-54db-66be-707ca49a8d25@effectivedefense.org>
+ <CAHqSRuRtF6vsvKvnTuZLbfmMkBuCb3akAm3Obz7GQ54pYnGhyg@mail.gmail.com>
+ <dab77229-faec-2337-a6b6-fee502518032@effectivedefense.org>
+Message-ID: <20220719210340.2033a6c1@trisector>
+
+On Tue, 19 Jul 2022 12:32:20 -0500
+Spencer Graves <spencer.graves at effectivedefense.org> wrote:
+
+> Can someone provide me with a link to the correct development 
+> version of help('iconv')?  The current version includes the exact 
+> offending "\x" strings that I have.  
+
+http://svn.r-project.org/R/trunk/src/library/base/man/iconv.Rd
+
+It still does, because it works with byte strings the right way: by
+passing them to iconv(), which is designed to work with bytes in
+"unknown" encodings.
+
+In contrast, your use of arbitrary bytes with gsub() is invalid,
+because gsub() assumes that the strings match their declared encoding:
+UTF-8, Latin-1, or the native locale encoding. (See ?Encoding.)
+
+When you write "Ekstr\xf8m", you get a string that consists of Latin-1
+bytes but has the wrong encoding property set. Given this string,
+gsub() and friends will break on a UTF-8 system (because "r\xf8m" is
+not a valid UTF-8 sequence of bytes), while iconv() will not.
+
+Depending on the desired semantics of subNonStandardCharacters(), you
+might be able to avoid the failures with the useBytes argument, or you
+might silently return invalid data in some corner cases. Is the "x"
+argument supposed to be bytes in arbitrary encoding, or properly decoded
+characters that might include those that don't map to ASCII?
+
+-- 
+Best regards,
+Ivan
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Tue Jul 19 20:23:11 2022
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Tue, 19 Jul 2022 13:23:11 -0500
+Subject: [R-pkg-devel] 
+ Warning... unable to translate 'Ekstr<f8>m' to a wide
+ string; Error... input string 1 is invalid
+In-Reply-To: <20220719210340.2033a6c1@trisector>
+References: <62ce5960.r6Obj/obxw/7rU4A%ripley@stats.ox.ac.uk>
+ <b6adef1e-1003-c807-e543-b745070c7e0a@effectivedefense.org>
+ <4a79b027-45cb-5236-70a1-c6c5edeb03ec@gmail.com>
+ <f80c936b-8580-54db-66be-707ca49a8d25@effectivedefense.org>
+ <CAHqSRuRtF6vsvKvnTuZLbfmMkBuCb3akAm3Obz7GQ54pYnGhyg@mail.gmail.com>
+ <dab77229-faec-2337-a6b6-fee502518032@effectivedefense.org>
+ <20220719210340.2033a6c1@trisector>
+Message-ID: <163d9fb1-3988-1ab9-4079-e8db681e7eb7@effectivedefense.org>
+
+Hi, Ivan et al.:
+
+
+On 7/19/22 1:03 PM, Ivan Krylov wrote:
+> On Tue, 19 Jul 2022 12:32:20 -0500
+> Spencer Graves <spencer.graves at effectivedefense.org> wrote:
+> 
+>> Can someone provide me with a link to the correct development
+>> version of help('iconv')?  The current version includes the exact
+>> offending "\x" strings that I have.
+> 
+> http://svn.r-project.org/R/trunk/src/library/base/man/iconv.Rd
+> 
+> It still does, because it works with byte strings the right way: by
+> passing them to iconv(), which is designed to work with bytes in
+> "unknown" encodings.
+> 
+> In contrast, your use of arbitrary bytes with gsub() is invalid,
+> because gsub() assumes that the strings match their declared encoding:
+> UTF-8, Latin-1, or the native locale encoding. (See ?Encoding.)
+> 
+> When you write "Ekstr\xf8m", you get a string that consists of Latin-1
+> bytes but has the wrong encoding property set. Given this string,
+> gsub() and friends will break on a UTF-8 system (because "r\xf8m" is
+> not a valid UTF-8 sequence of bytes), while iconv() will not.
+> 
+> Depending on the desired semantics of subNonStandardCharacters(), you
+> might be able to avoid the failures with the useBytes argument, or you
+> might silently return invalid data in some corner cases. Is the "x"
+> argument supposed to be bytes in arbitrary encoding, or properly decoded
+> characters that might include those that don't map to ASCII?
+> 
+
+	  Wow.  So what's the recommended fix?
+
+
+	  If I understand correctly, "\u**" should work with ** being f8, f6, 
+df, or fc [all hex digits, I assume?].  However, "\u00**" may be 
+preferred over "\u**", and "\u{**}" may be better still.
+
+
+	  The blog that Tomas wrote might be more useful if it included a 
+recommendation like this.
+
+
+	  Thanks for all your work to make R better and thereby help people 
+everywhere extract better information from the data available to them.
+
+
+	  Spencer
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Tue Jul 19 20:26:59 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Tue, 19 Jul 2022 11:26:59 -0700
+Subject: [R-pkg-devel] 
+ Warning... unable to translate 'Ekstr<f8>m' to a wide
+ string; Error... input string 1 is invalid
+In-Reply-To: <03c7bca0-1e73-a9b0-7fd3-431d5abff7ea@effectivedefense.org>
+References: <62ce5960.r6Obj/obxw/7rU4A%ripley@stats.ox.ac.uk>
+ <b6adef1e-1003-c807-e543-b745070c7e0a@effectivedefense.org>
+ <4a79b027-45cb-5236-70a1-c6c5edeb03ec@gmail.com>
+ <f80c936b-8580-54db-66be-707ca49a8d25@effectivedefense.org>
+ <CAHqSRuRtF6vsvKvnTuZLbfmMkBuCb3akAm3Obz7GQ54pYnGhyg@mail.gmail.com>
+ <dab77229-faec-2337-a6b6-fee502518032@effectivedefense.org>
+ <CAHqSRuTcLCu7wzQMQniFQ_dAi2FdBRuXqKX1rL6SifRGwJPq9A@mail.gmail.com>
+ <03c7bca0-1e73-a9b0-7fd3-431d5abff7ea@effectivedefense.org>
+Message-ID: <D42C3211-EEB5-4702-925B-C1857EA371DF@dcn.davis.ca.us>
+
+Perhaps look at [1]? iconv is trying to handle conformity with the Unicode standard, so try starting out by assuming it will succeed.
+
+Meanwhile, you should consider using a docker container to test your code in an environment similar to to the ones throwing errors. [2] Or just make the change and resubmit.
+
+[1] https://en.m.wikipedia.org/wiki/List_of_Unicode_characters
+[2] https://colinfay.me/docker-r-reproducibility/
+
+On July 19, 2022 10:54:35 AM PDT, Spencer Graves <spencer.graves at effectivedefense.org> wrote:
+>
+>
+>On 7/19/22 12:42 PM, Bill Dunlap wrote:
+>> Adding the initial zeroes is a bit safer, as would be \u{df}; either protects against the next character being a hex digit.? There are 6 byte utf-8 'characters', but I don't think R's parser accepts more than 4.
+>
+>
+>	  Thanks.  Tomas' blog was good in documenting the need and some of the pitfalls, but I don't know the difference between "\ua0", "\u00a0", "\u{a0}" or anything else, and I don't know how to find documentation that would explain that.  As I wrote years ago, it's hard to RTFM if I don't know which FMTR ;-)
+>
+>
+>	  Most important, I think for my current issue:  How can I find the correct development version of help('iconv')?
+>
+>
+>	  Since I copied the example used in subNonStandardCharacters.Rd from help('iconv'), I should be fine if I do what the R Core Team did with help('iconv').  Or if I guess and guess wrong, I could get another email from Prof Brian Ripley, ordering me to fix something.  I could search myself for the current development version of the base package, but I'm not sure I'd know if I got the correct version and not some other experiment that is different from the actual official development version.
+>
+>
+>	  ???
+>	  Spencer
+>
+>> 
+>> -Bill
+>> 
+>> On Tue, Jul 19, 2022 at 10:32 AM Spencer Graves <spencer.graves at effectivedefense.org <mailto:spencer.graves at effectivedefense.org>> wrote:
+>> 
+>>     Hi, Bill, Tomas, et al.:
+>> 
+>> 
+>>     On 7/19/22 12:10 PM, Bill Dunlap wrote:
+>>      > Have you tried changing the \x's in that file with \u's?
+>>      >
+>>      >? > qx <- c("\xf6", "\xf8", "\xdf", "\xfc")
+>>      >? > Encoding(qx) <- "latin1"
+>>      >? > qu <- c("\uf6", "\uf8", "\udf", "\ufc")
+>>      >? > Encoding(qu)
+>>      > [1] "UTF-8" "UTF-8" "UTF-8" "UTF-8"
+>>      >? > qx == qu
+>>      > [1] TRUE TRUE TRUE TRUE
+>> 
+>> 
+>>     I have not tried anything yet for three reasons:
+>> 
+>> 
+>>      ? ? ? ? ? 1.? I don't know that I have access to anything that can
+>>     do the
+>>     proper test that's required, so I can know if I've fixed it or not.
+>> 
+>> 
+>>      ? ? ? ? ? 2.? Tomas' blog included examples that seemed to say to
+>>     replace
+>>     "\xa0" with "\u00a0", NOT "\ua0", and I don't know if this difference
+>>     matters or not.
+>> 
+>> 
+>>      ? ? ? ? ? 3.? Can someone provide me with a link to the correct
+>>     development
+>>     version of help('iconv')?? The current version includes the exact
+>>     offending "\x" strings that I have.? If I know the fix in the correct
+>>     development version of help('iconv'), I can copy that.? Without that,
+>>     I'm being asked to correct something that may not have been
+>>     corrected in
+>>     the development version of the base package.
+>> 
+>> 
+>>      ? ? ? ? ? Thanks,
+>>      ? ? ? ? ? Spencer
+>> 
+>>      >
+>>      > (charToRaw shows that qu and qx are not byte-for-byte identical:
+>>     '=='
+>>      > coerces the latin1 strings to utf-8.)
+>>      >
+>>      > -Bill
+>>      >
+>>      > On Tue, Jul 19, 2022 at 9:38 AM Spencer Graves
+>>      > <spencer.graves at effectivedefense.org
+>>     <mailto:spencer.graves at effectivedefense.org>
+>>      > <mailto:spencer.graves at effectivedefense.org
+>>     <mailto:spencer.graves at effectivedefense.org>>> wrote:
+>>      >
+>>      >? ? ?Hi, Tomas:
+>>      >
+>>      >
+>>      >? ? ?On 7/19/22 2:20 AM, Tomas Kalibera wrote:
+>>      >? ? ? >
+>>      >? ? ? > On 7/19/22 08:37, Spencer Graves wrote:
+>>      >? ? ? >> Hello:
+>>      >? ? ? >>
+>>      >? ? ? >>
+>>      >? ? ? >> ????? What's the recommended fix for "?Warning in
+>>      >? ? ?gsub(gsLi$pattern,
+>>      >? ? ? >> gsLi$replacement, xo) : unable to translate 'Ekstr<f8>m'
+>>     to a wide
+>>      >? ? ? >> string; Error in gsub(gsLi$pattern, gsLi$replacement, xo)
+>>     : input
+>>      >? ? ? >> string 1 is invalid"?
+>>      >? ? ? >>
+>>      >? ? ? >>
+>>      >? ? ? >> ????? This is in:
+>>      >? ? ? >>
+>>      >? ? ? >>
+>>      >? ? ? >>
+>>      >
+>>     https://github.com/sbgraves237/Ecfun/blob/master/man/subNonStandardCharacters.Rd
+>>     <https://github.com/sbgraves237/Ecfun/blob/master/man/subNonStandardCharacters.Rd>
+>>      >        ?<https://github.com/sbgraves237/Ecfun/blob/master/man/subNonStandardCharacters.Rd <https://github.com/sbgraves237/Ecfun/blob/master/man/subNonStandardCharacters.Rd>>
+>>      >
+>>      >? ? ? >>
+>>      >? ? ? >>
+>>      >? ? ? >>
+>>      >? ? ? >> ????? R-devel is now rejecting some non-ASCII characters
+>>     that it
+>>      >? ? ? >> previously accepted;? see below.
+>>      >? ? ? >
+>>      >? ? ? > Please see
+>>      >? ? ? >
+>>      >
+>>     https://blog.r-project.org/2022/06/27/why-to-avoid-%5Cx-in-regular-expressions
+>>     <https://blog.r-project.org/2022/06/27/why-to-avoid-%5Cx-in-regular-expressions>
+>>      >        ?<https://blog.r-project.org/2022/06/27/why-to-avoid-%5Cx-in-regular-expressions <https://blog.r-project.org/2022/06/27/why-to-avoid-%5Cx-in-regular-expressions>>
+>>      >
+>>      >? ? ? >
+>>      >? ? ? >
+>>      >? ? ? > Looking at the code I guess you should change the strings
+>>     in icx
+>>      >? ? ?to use
+>>      >? ? ? > \u escapes instead of \x. The use of \x as it is there was
+>>     probably
+>>      >? ? ? > correct when the code was ran in Latin-1 encoding, but not
+>>     in other
+>>      >? ? ? > encodings. Using \u would make it portable. Feel free to
+>>     ask more
+>>      >? ? ?if my
+>>      >? ? ? > guess is wrong and reading the blog post doesn't help.
+>>      >
+>>      >
+>>      >? ? ? ? ? ? ? ? "subNonStandardCharacters.Rd" copies examples from:
+>>      >
+>>      >
+>>      >
+>>     https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/iconv
+>>     <https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/iconv>
+>>      >        ?<https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/iconv <https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/iconv>>
+>>      >
+>>      >
+>>      >? ? ? ? ? ? ? ? This file still contains "\x" in 5 places.? What's the
+>>      >? ? ?recommended
+>>      >? ? ?fix?? Replace "\x" with "\u00" everyplace?
+>>      >
+>>      >
+>>      >? ? ? ? ? ? ? ? I could try that, but I don't know if I have access to
+>>      >? ? ?platforms that
+>>      >? ? ?would tell me if I fixed it or not ;-)
+>>      >
+>>      >
+>>      >? ? ? ? ? ? ? ? Thanks very much.
+>>      >? ? ? ? ? ? ? ? Spencer Graves
+>>      >
+>>      >? ? ? >
+>>      >? ? ? > Best
+>>      >? ? ? > Tomas
+>>      >? ? ? >
+>>      >? ? ? >
+>>      >? ? ? >
+>>      >? ? ? >>
+>>      >? ? ? >>
+>>      >? ? ? >> ????? Thanks,
+>>      >? ? ? >> ????? Spencer Graves
+>>      >? ? ? >>
+>>      >? ? ? >>
+>>      >? ? ? >> -------- Forwarded Message --------
+>>      >? ? ? >> Subject: CRAN package Ecfun and its reverse dependencies
+>>      >? ? ? >> Date: Wed, 13 Jul 2022 06:34:24 +0100
+>>      >? ? ? >> From: Prof Brian Ripley <ripley at stats.ox.ac.uk
+>>     <mailto:ripley at stats.ox.ac.uk>
+>>      >? ? ?<mailto:ripley at stats.ox.ac.uk <mailto:ripley at stats.ox.ac.uk>>>
+>>      >? ? ? >> Reply-To: CRAN at R-project.org
+>>      >? ? ? >> To: veronica.vinciotti at brunel.ac.uk
+>>     <mailto:veronica.vinciotti at brunel.ac.uk>
+>>      >? ? ?<mailto:veronica.vinciotti at brunel.ac.uk
+>>     <mailto:veronica.vinciotti at brunel.ac.uk>>,
+>>      >? ? ? >> spencer.graves at effectivedefense.org
+>>     <mailto:spencer.graves at effectivedefense.org>
+>>      >? ? ?<mailto:spencer.graves at effectivedefense.org
+>>     <mailto:spencer.graves at effectivedefense.org>>, hamedhaseli at gmail.com
+>>     <mailto:hamedhaseli at gmail.com>
+>>      >? ? ?<mailto:hamedhaseli at gmail.com <mailto:hamedhaseli at gmail.com>>,
+>>      >? ? ? >> dennis.prangle at gmail.com
+>>     <mailto:dennis.prangle at gmail.com> <mailto:dennis.prangle at gmail.com
+>>     <mailto:dennis.prangle at gmail.com>>
+>>      >? ? ? >> CC: CRAN at R-project.org
+>>      >? ? ? >>
+>>      >? ? ? >> Dear maintainers,
+>>      >? ? ? >>
+>>      >? ? ? >> This concerns the CRAN packages
+>>      >? ? ? >>
+>>      >? ? ? >> ? BDWreg DWreg Ecdat Ecfun gk
+>>      >? ? ? >>
+>>      >? ? ? >> maintained by one of you:
+>>      >? ? ? >>
+>>      >? ? ? >> ? Dennis Prangle <dennis.prangle at gmail.com
+>>     <mailto:dennis.prangle at gmail.com>
+>>      >? ? ?<mailto:dennis.prangle at gmail.com
+>>     <mailto:dennis.prangle at gmail.com>>>: gk
+>>      >? ? ? >> ? Hamed Haselimashhadi <hamedhaseli at gmail.com
+>>     <mailto:hamedhaseli at gmail.com>
+>>      >? ? ?<mailto:hamedhaseli at gmail.com
+>>     <mailto:hamedhaseli at gmail.com>>>: BDWreg
+>>      >? ? ? >> ? Spencer Graves <spencer.graves at effectivedefense.org
+>>     <mailto:spencer.graves at effectivedefense.org>
+>>      >? ? ?<mailto:spencer.graves at effectivedefense.org
+>>     <mailto:spencer.graves at effectivedefense.org>>>: Ecfun Ecdat
+>>      >? ? ? >> ? Veronica Vinciotti<veronica.vinciotti at brunel.ac.uk
+>>     <mailto:veronica.vinciotti at brunel.ac.uk>
+>>      >? ? ?<mailto:veronica.vinciotti at brunel.ac.uk
+>>     <mailto:veronica.vinciotti at brunel.ac.uk>>>: DWreg
+>>      >? ? ? >>
+>>      >? ? ? >> We have asked for an update fixing the check problems
+>>     shown at
+>>      >? ? ? >>
+>>     <https://cran.r-project.org/web/checks/check_results_Ecfun.html
+>>     <https://cran.r-project.org/web/checks/check_results_Ecfun.html>
+>>      >        ?<https://cran.r-project.org/web/checks/check_results_Ecfun.html
+>>     <https://cran.r-project.org/web/checks/check_results_Ecfun.html>>>
+>>      >? ? ? >> with no update from the maintainer thus far.
+>>      >? ? ? >>
+>>      >? ? ? >> Thus, package Ecfun is now scheduled for archival on
+>>     2022-08-08, and
+>>      >? ? ? >> archiving this will necessitate also archiving its CRAN
+>>     strong
+>>      >? ? ?reverse
+>>      >? ? ? >> dependencies.
+>>      >? ? ? >>
+>>      >? ? ? >> Please negotiate the necessary actions.
+>>      >? ? ? >>
+>>      >? ? ? >> The CRAN Team
+>>      >? ? ? >>
+>>      >? ? ? >> ______________________________________________
+>>      >? ? ? >> R-package-devel at r-project.org
+>>     <mailto:R-package-devel at r-project.org>
+>>      >? ? ?<mailto:R-package-devel at r-project.org
+>>     <mailto:R-package-devel at r-project.org>> mailing list
+>>      >? ? ? >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>     <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+>>      >? ? ?<https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>     <https://stat.ethz.ch/mailman/listinfo/r-package-devel>>
+>>      >
+>>      >? ? ?______________________________________________
+>>      > R-package-devel at r-project.org
+>>     <mailto:R-package-devel at r-project.org>
+>>     <mailto:R-package-devel at r-project.org
+>>     <mailto:R-package-devel at r-project.org>>
+>>      >? ? ?mailing list
+>>      > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>     <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+>>      >? ? ?<https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>     <https://stat.ethz.ch/mailman/listinfo/r-package-devel>>
+>>      >
+>> 
+>
+>______________________________________________
+>R-package-devel at r-project.org mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Jul 19 21:12:38 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 19 Jul 2022 15:12:38 -0400
+Subject: [R-pkg-devel] 
+ Warning... unable to translate 'Ekstr<f8>m' to a wide
+ string; Error... input string 1 is invalid
+In-Reply-To: <163d9fb1-3988-1ab9-4079-e8db681e7eb7@effectivedefense.org>
+References: <62ce5960.r6Obj/obxw/7rU4A%ripley@stats.ox.ac.uk>
+ <b6adef1e-1003-c807-e543-b745070c7e0a@effectivedefense.org>
+ <4a79b027-45cb-5236-70a1-c6c5edeb03ec@gmail.com>
+ <f80c936b-8580-54db-66be-707ca49a8d25@effectivedefense.org>
+ <CAHqSRuRtF6vsvKvnTuZLbfmMkBuCb3akAm3Obz7GQ54pYnGhyg@mail.gmail.com>
+ <dab77229-faec-2337-a6b6-fee502518032@effectivedefense.org>
+ <20220719210340.2033a6c1@trisector>
+ <163d9fb1-3988-1ab9-4079-e8db681e7eb7@effectivedefense.org>
+Message-ID: <ea3d139c-fee3-48f3-0f60-ba99ce7664b3@gmail.com>
+
+On 19/07/2022 2:23 p.m., Spencer Graves wrote:
+> Hi, Ivan et al.:
+> 
+> 
+> On 7/19/22 1:03 PM, Ivan Krylov wrote:
+>> On Tue, 19 Jul 2022 12:32:20 -0500
+>> Spencer Graves <spencer.graves at effectivedefense.org> wrote:
+>>
+>>> Can someone provide me with a link to the correct development
+>>> version of help('iconv')?  The current version includes the exact
+>>> offending "\x" strings that I have.
+>>
+>> http://svn.r-project.org/R/trunk/src/library/base/man/iconv.Rd
+>>
+>> It still does, because it works with byte strings the right way: by
+>> passing them to iconv(), which is designed to work with bytes in
+>> "unknown" encodings.
+>>
+>> In contrast, your use of arbitrary bytes with gsub() is invalid,
+>> because gsub() assumes that the strings match their declared encoding:
+>> UTF-8, Latin-1, or the native locale encoding. (See ?Encoding.)
+>>
+>> When you write "Ekstr\xf8m", you get a string that consists of Latin-1
+>> bytes but has the wrong encoding property set. Given this string,
+>> gsub() and friends will break on a UTF-8 system (because "r\xf8m" is
+>> not a valid UTF-8 sequence of bytes), while iconv() will not.
+>>
+>> Depending on the desired semantics of subNonStandardCharacters(), you
+>> might be able to avoid the failures with the useBytes argument, or you
+>> might silently return invalid data in some corner cases. Is the "x"
+>> argument supposed to be bytes in arbitrary encoding, or properly decoded
+>> characters that might include those that don't map to ASCII?
+>>
+> 
+> 	  Wow.  So what's the recommended fix?
+> 
+> 
+> 	  If I understand correctly, "\u**" should work with ** being f8, f6,
+> df, or fc [all hex digits, I assume?].  However, "\u00**" may be
+> preferred over "\u**", and "\u{**}" may be better still.
+
+That's all correct.
+
+> 	  The blog that Tomas wrote might be more useful if it included a
+> recommendation like this.
+
+I think that advice is too specific to this example.  Here's a short 
+explanation about what's going on:
+
+Strings in R are assumed to be in the ASCII encoding if they have no 
+bytes bigger than 128 (hex 80).
+
+If they do have such bytes, they can be marked as "latin1", or "UTF-8", 
+or not marked, in which case they are assumed to be in the local encoding.
+
+If you write a string containing "\u....", it is marked as being in the 
+"utf8" encoding.
+
+If you write a string containing "\x....", it is not marked.
+
+Thus if you are writing strings for others to use, you don't know how 
+those strings will be interpreted unless you explicitly set their 
+encoding.  For example, this is ambiguous:
+
+    x <- "fa\xE7ile"
+
+This is not:
+
+    x <- "fa\xE7ile"
+    Encoding(x) <- "latin1"
+
+The advice you received to change the \x to \u works for your examples, 
+but might fail in other examples.  As help("Quotes") says, "\uE7" is the 
+Unicode code point hex E7, which is a c with a cedilla.  (The two hex 
+digit Unicode values from 80 to FF match the Latin-1 values; but not 
+everyone lives and works in a Latin-1 locale, so \xE7 might not be 
+equivalent to \uE7 for some people.)
+
+You can have 1-4 hex digits after \u.  If the next character happens to 
+be a hex digit, you'll get some other character, e.g. "\uE7" is a ? (a c 
+with a cedilla), but "\uE7a" is a single Thai character, and "\uE7ab" is 
+some other single character (in the "private use area" of Unicode).
+
+So it's safest to use exactly 4 hex digits as \u00E7, or to wrap the 
+value in curly braces, \u{E7}.
+
+Some Unicode characters need more than 4 hex digits.  Use \U for those.
+
+Duncan Murdoch
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Jul 19 20:56:23 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 19 Jul 2022 21:56:23 +0300
+Subject: [R-pkg-devel] 
+ Warning... unable to translate 'Ekstr<f8>m' to a wide
+ string; Error... input string 1 is invalid
+In-Reply-To: <163d9fb1-3988-1ab9-4079-e8db681e7eb7@effectivedefense.org>
+References: <62ce5960.r6Obj/obxw/7rU4A%ripley@stats.ox.ac.uk>
+ <b6adef1e-1003-c807-e543-b745070c7e0a@effectivedefense.org>
+ <4a79b027-45cb-5236-70a1-c6c5edeb03ec@gmail.com>
+ <f80c936b-8580-54db-66be-707ca49a8d25@effectivedefense.org>
+ <CAHqSRuRtF6vsvKvnTuZLbfmMkBuCb3akAm3Obz7GQ54pYnGhyg@mail.gmail.com>
+ <dab77229-faec-2337-a6b6-fee502518032@effectivedefense.org>
+ <20220719210340.2033a6c1@trisector>
+ <163d9fb1-3988-1ab9-4079-e8db681e7eb7@effectivedefense.org>
+Message-ID: <20220719215623.01e89125@trisector>
+
+On Tue, 19 Jul 2022 13:23:11 -0500
+Spencer Graves <spencer.graves at effectivedefense.org> wrote:
+
+> So what's the recommended fix?
+
+Is subNonStandardCharacters() supposed to work with strings with
+Encoding(.) == 'unknown' that are also invalid in current locale
+encoding? (I think it's fair to not support Encoding(.) == 'bytes' for
+such a function, because such strings aren't supposed to be text.)
+
+If yes, the function itself needs to be fixed. I think that
+useBytes=TRUE may help, as long as the standardCharacters argument is
+limited to characters representable in ASCII. Alternatively, find a way
+to transform the 'x' argument into something that is guaranteed to be
+valid in its declared encoding. enc2utf8() could be an option, but any
+invalid bytes are replaced by their <hexadecimal codes>, which defeats
+the purpose of subNonStandardCharacters(). Find a way to feed the
+output of Encoding(x) to iconv() as its "from" argument?
+
+If not, it's enough to fix the example.
+
+> 	  If I understand correctly, "\u**" should work with ** being
+> f8, f6, df, or fc [all hex digits, I assume?].  However, "\u00**" may
+> be preferred over "\u**", and "\u{**}" may be better still.
+
+This is described in ?Quotes, although admittedly harder to find than
+desired. The "\u" escape sequences take 1 to 4 hexadecimal digits. As
+long as your escape sequence isn't followed by something that looks
+like a hexadecimal digit, you can keep it short, like "\uf8m" (m is not
+a hex digit). If you want to be 100% unambiguous, either padding the
+code point number to 4 digits ("\u00f8m") or wrapping it into braces
+("\u{f8}m") is enough. The belt-and-bracers approach ("\u{00f8}m") is
+not an error, either.
+
+You can also use the Encoding(x) <- 'latin1' trick to mark the strings
+produced from bytes as Latin-1. Then gsub() will work normally, the
+same way things happily work in example(iconv).
+
+-- 
+Best regards,
+Ivan
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Wed Jul 20 02:56:45 2022
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Tue, 19 Jul 2022 19:56:45 -0500
+Subject: [R-pkg-devel] 
+ Warning... unable to translate 'Ekstr<f8>m' to a wide
+ string; Error... input string 1 is invalid
+In-Reply-To: <ea3d139c-fee3-48f3-0f60-ba99ce7664b3@gmail.com>
+References: <62ce5960.r6Obj/obxw/7rU4A%ripley@stats.ox.ac.uk>
+ <b6adef1e-1003-c807-e543-b745070c7e0a@effectivedefense.org>
+ <4a79b027-45cb-5236-70a1-c6c5edeb03ec@gmail.com>
+ <f80c936b-8580-54db-66be-707ca49a8d25@effectivedefense.org>
+ <CAHqSRuRtF6vsvKvnTuZLbfmMkBuCb3akAm3Obz7GQ54pYnGhyg@mail.gmail.com>
+ <dab77229-faec-2337-a6b6-fee502518032@effectivedefense.org>
+ <20220719210340.2033a6c1@trisector>
+ <163d9fb1-3988-1ab9-4079-e8db681e7eb7@effectivedefense.org>
+ <ea3d139c-fee3-48f3-0f60-ba99ce7664b3@gmail.com>
+Message-ID: <7395e74a-88bc-1452-39ea-cab56cb4d711@effectivedefense.org>
+
+
+
+On 7/19/22 2:12 PM, Duncan Murdoch wrote:
+> On 19/07/2022 2:23 p.m., Spencer Graves wrote:
+>> Hi, Ivan et al.:
+>>
+>>
+>> On 7/19/22 1:03 PM, Ivan Krylov wrote:
+>>> On Tue, 19 Jul 2022 12:32:20 -0500
+>>> Spencer Graves <spencer.graves at effectivedefense.org> wrote:
+>>>
+>>>> Can someone provide me with a link to the correct development
+>>>> version of help('iconv')?? The current version includes the exact
+>>>> offending "\x" strings that I have.
+>>>
+>>> http://svn.r-project.org/R/trunk/src/library/base/man/iconv.Rd
+>>>
+>>> It still does, because it works with byte strings the right way: by
+>>> passing them to iconv(), which is designed to work with bytes in
+>>> "unknown" encodings.
+>>>
+>>> In contrast, your use of arbitrary bytes with gsub() is invalid,
+>>> because gsub() assumes that the strings match their declared encoding:
+>>> UTF-8, Latin-1, or the native locale encoding. (See ?Encoding.)
+>>>
+>>> When you write "Ekstr\xf8m", you get a string that consists of Latin-1
+>>> bytes but has the wrong encoding property set. Given this string,
+>>> gsub() and friends will break on a UTF-8 system (because "r\xf8m" is
+>>> not a valid UTF-8 sequence of bytes), while iconv() will not.
+>>>
+>>> Depending on the desired semantics of subNonStandardCharacters(), you
+>>> might be able to avoid the failures with the useBytes argument, or you
+>>> might silently return invalid data in some corner cases. Is the "x"
+>>> argument supposed to be bytes in arbitrary encoding, or properly decoded
+>>> characters that might include those that don't map to ASCII?
+>>>
+>>
+>> ????? Wow.? So what's the recommended fix?
+>>
+>>
+>> ????? If I understand correctly, "\u**" should work with ** being f8, f6,
+>> df, or fc [all hex digits, I assume?].? However, "\u00**" may be
+>> preferred over "\u**", and "\u{**}" may be better still.
+> 
+> That's all correct.
+> 
+>> ????? The blog that Tomas wrote might be more useful if it included a
+>> recommendation like this.
+> 
+> I think that advice is too specific to this example.? Here's a short 
+> explanation about what's going on:
+> 
+> Strings in R are assumed to be in the ASCII encoding if they have no 
+> bytes bigger than 128 (hex 80).
+> 
+> If they do have such bytes, they can be marked as "latin1", or "UTF-8", 
+> or not marked, in which case they are assumed to be in the local encoding.
+> 
+> If you write a string containing "\u....", it is marked as being in the 
+> "utf8" encoding.
+> 
+> If you write a string containing "\x....", it is not marked.
+> 
+> Thus if you are writing strings for others to use, you don't know how 
+> those strings will be interpreted unless you explicitly set their 
+> encoding.? For example, this is ambiguous:
+> 
+>  ?? x <- "fa\xE7ile"
+> 
+> This is not:
+> 
+>  ?? x <- "fa\xE7ile"
+>  ?? Encoding(x) <- "latin1"
+> 
+> The advice you received to change the \x to \u works for your examples, 
+> but might fail in other examples.? As help("Quotes") says, "\uE7" is the 
+> Unicode code point hex E7, which is a c with a cedilla.? (The two hex 
+> digit Unicode values from 80 to FF match the Latin-1 values; but not 
+> everyone lives and works in a Latin-1 locale, so \xE7 might not be 
+> equivalent to \uE7 for some people.)
+> 
+> You can have 1-4 hex digits after \u.? If the next character happens to 
+> be a hex digit, you'll get some other character, e.g. "\uE7" is a ? (a c 
+> with a cedilla), but "\uE7a" is a single Thai character, and "\uE7ab" is 
+> some other single character (in the "private use area" of Unicode).
+> 
+> So it's safest to use exactly 4 hex digits as \u00E7, or to wrap the 
+> value in curly braces, \u{E7}.
+
+
+Thanks to all who replied.  I've changed all the "\x.." to "\u{..}".  I 
+have other issues to deal with, but this seems to answer this question. 
+  Thanks again, Spencer Graves
+
+> 
+> Some Unicode characters need more than 4 hex digits.? Use \U for those.
+> 
+> Duncan Murdoch
+> 
+> 
+>
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Wed Jul 20 03:05:18 2022
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Tue, 19 Jul 2022 20:05:18 -0500
+Subject: [R-pkg-devel] NOTE, Problems with news in 'NEWS.md':,
+ No news entries found.
+In-Reply-To: <01d89bbe$Blat.v3.2.22$0f209195$1263c3d46@mail.statistik.tu-dortmund.de>
+References: <01d89bbe$Blat.v3.2.22$0f209195$1263c3d46@mail.statistik.tu-dortmund.de>
+Message-ID: <1ecc3e8f-937e-5b55-7f21-8a458b5c7800@effectivedefense.org>
+
+Hello, All:
+
+
+	  Winbuilder with R-Devel complains, " NOTE
+Problems with news in 'NEWS.md': No news entries found." See below.
+
+
+	  What should I do with this?  Document it in "cran-comments.md" and 
+not worry about it otherwise?  Thanks,
+	
+
+	  Spencer Graves
+
+
+-------- Forwarded Message --------
+Subject: winbuilder: Package Ecfun_0.2-7.tar.gz has been checked and built
+Date: Wed, 20 Jul 2022 00:22:40 +0200
+From: ligges at statistik.tu-dortmund.de
+To: spencer.graves at effectivedefense.org
+CC: ligges at statistik.tu-dortmund.de
+
+Dear package maintainer,
+  this notification has been generated automatically.
+Your package Ecfun_0.2-7.tar.gz has been built (if working) and checked 
+for Windows.
+Please check the log files and (if working) the binary package at:
+https://win-builder.r-project.org/e3NjJDDwiq0Z
+The files will be removed after roughly 72 hours.
+Installation time in seconds: 16
+Check time in seconds: 141
+Status: 1 NOTE
+R Under development (unstable) (2022-07-18 r82603 ucrt)
+  All the best,
+Uwe Ligges
+(CRAN maintainer of binary packages for Windows)
+
+
