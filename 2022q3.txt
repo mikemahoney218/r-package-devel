@@ -6804,3 +6804,94 @@ On 20.07.2022 03:27, Max Turgeon wrote:
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From m@|| @end|ng |rom jon@@kur|e@com  Fri Jul 22 22:09:15 2022
+From: m@|| @end|ng |rom jon@@kur|e@com (Jonas Kurle)
+Date: Fri, 22 Jul 2022 21:09:15 +0100
+Subject: [R-pkg-devel] CRAN pre-test failure due to long runtime / timeout
+Message-ID: <cce163c9-5ef2-96e2-8127-c0aa2efc8b81@jonaskurle.com>
+
+Dear all,
+
+I submitted a new version of my package "robust2sls" (released version 
+on CRAN <https://cran.r-project.org/package=robust2sls>, new submitted 
+version on GitHub <https://github.com/jkurle/robust2sls>).
+
+The automatic CRAN pre-tests fail and it seems that this is due to 
+runtime timeout (in the tests). For Windows, I get the message "Check 
+process probably crashed or hung up for 20 minutes ... killed" and for 
+Debian, I get "checking tests ... [30m/30m] ERROR". See below for the 
+links to the log files.
+
+https://win-builder.r-project.org/incoming_pretest/robust2sls_0.2.1_20220722_180126/Windows/00check.log
+https://win-builder.r-project.org/incoming_pretest/robust2sls_0.2.1_20220722_180126/Debian/00check.log 
+
+
+It seems that the development version of R might be causing this 
+problem, and others have already discussed longer running times of their 
+checks on this mailing list.
+
+If I do the checks on winbuilder using the old version 
+<https://win-builder.r-project.org/VCReLD0u8Svj/00check.log> or release 
+version <https://win-builder.r-project.org/l0zOMEvibJ1b/00check.log> of 
+R, it works fine. But with the development version 
+<https://win-builder.r-project.org/5ZebbySXV99X/00check.log> it fails.
+
+Surprisingly, the CRAN checks work well on all five settings that I have 
+tried with GitHub Actions 
+<https://github.com/jkurle/robust2sls/actions/runs/2719662067>, 
+including the one with the development version of R on Ubuntu. The check 
+took less than 10 minutes in this case.
+
+Can anyone advise me what to do? I could skip most of my tests based on 
+the "testthat" package to decrease the runtime, such that they can 
+finish when re-submitting to CRAN even if the development version of R 
+is slower. But of course, I would prefer to keep my tests and figure out 
+the reason for the slowdown.
+
+Thank you for any suggestions and help!
+
+Best wishes,
+Jonas
+
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Sat Jul 23 02:19:02 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 22 Jul 2022 19:19:02 -0500
+Subject: [R-pkg-devel] 
+ CRAN pre-test failure due to long runtime / timeout
+In-Reply-To: <cce163c9-5ef2-96e2-8127-c0aa2efc8b81@jonaskurle.com>
+References: <cce163c9-5ef2-96e2-8127-c0aa2efc8b81@jonaskurle.com>
+Message-ID: <25307.15990.782414.909474@rob.eddelbuettel.com>
+
+
+On 22 July 2022 at 21:09, Jonas Kurle wrote:
+| The automatic CRAN pre-tests fail and it seems that this is due to 
+| runtime timeout (in the tests). For Windows, I get the message "Check 
+| process probably crashed or hung up for 20 minutes ... killed" and for 
+| Debian, I get "checking tests ... [30m/30m] ERROR". See below for the 
+| links to the log files.
+
+[...]
+
+| Can anyone advise me what to do?
+
+There is a "fix" addressing the _symptom_ but not the _cause_: simply do not
+run the tests. Your time is finite, CRAN maintainer time is certainly finite.
+Even today we still do not have a real ability to cleanly reproduce CRAN
+checks (win-builder is pretty close, but eg CRAN Debian is not Dockerized and
+hence not really reproducible (I once offered help but this petered out
+without generating anything tangible).
+
+This topic has been discussed a few times before. Some people advocate using
+skip_on_cran() (if you use testthat). I don't testthat but in some packages
+only run tests if an env. var is set which I set eg for GitHUb Actions.
+
+Hth, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
