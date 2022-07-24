@@ -6895,3 +6895,99 @@ Hth, Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Sat Jul 23 08:21:21 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sat, 23 Jul 2022 09:21:21 +0300
+Subject: [R-pkg-devel] 
+ CRAN pre-test failure due to long runtime / timeout
+In-Reply-To: <cce163c9-5ef2-96e2-8127-c0aa2efc8b81@jonaskurle.com>
+References: <cce163c9-5ef2-96e2-8127-c0aa2efc8b81@jonaskurle.com>
+Message-ID: <20220723092121.0e27509b@trisector>
+
+On Fri, 22 Jul 2022 21:09:15 +0100
+Jonas Kurle <mail at jonaskurle.com> wrote:
+
+> Can anyone advise me what to do? 
+
+I see you're using testthat. Is there a way to make it produce verbose
+output for every test during their runtime? As far as I know, testthat
+tests look like a single test to R CMD check which only outputs
+everything after it's done (or an error occurs). Since the R process is
+terminated on timeout, it doesn't get a chance to handle an error and
+print anything.
+
+One way I see is relatively time-consuming, but so is blindly playing
+skip_on_cran with individual tests and resubmitting jobs to
+win-builder. If you move your tests from tests/testthat/*.R into
+tests/*.R (and adjust them to work outside the testthat harness if
+necessary), R should be able to tell you which *.R file times out
+and show you the approximate location where it was terminated.
+
+Alternatively, you could try instrumenting your tests with debugging
+print commands and see if any of them end up in 00check.log, but I
+think that testthat uses capture.output to declutter the console when
+running tests, which, sadly, ends up interfering with your ability to
+debug the problem in this case.
+
+-- 
+Best regards,
+Ivan
+
+
+From m@|| @end|ng |rom jon@@kur|e@com  Sat Jul 23 12:16:06 2022
+From: m@|| @end|ng |rom jon@@kur|e@com (Jonas Kurle)
+Date: Sat, 23 Jul 2022 11:16:06 +0100
+Subject: [R-pkg-devel] 
+ CRAN pre-test failure due to long runtime / timeout
+In-Reply-To: <20220723092121.0e27509b@trisector>
+References: <cce163c9-5ef2-96e2-8127-c0aa2efc8b81@jonaskurle.com>
+ <20220723092121.0e27509b@trisector>
+Message-ID: <40c41d20-8fc9-356e-4305-48f0de6f8e43@jonaskurle.com>
+
+Dear Ivan and Dirk,
+
+Thank you both for your suggestions and your help.
+
+For now, I will simply skip the automatic unit testing on CRAN. My 
+submission to winbuilder is now successful for all versions of R.
+
+In the long run, I might move away from testthat to have more 
+flexibility with respect to debugging and being able to see in more 
+detail what is going on. I also received a hint from another user 
+(thanks Johannes!) who ran my tests locally on their Debian system, 
+where the tests did not time out but eventually produced an error. It 
+turns out that some of my tests / functions work slightly differently on 
+different platforms, so I can now adjust these tests to be 
+platform-specific.
+
+Thanks again and best wishes,
+Jonas
+
+
+Am 23.07.2022 um 07:21 schrieb Ivan Krylov:
+> On Fri, 22 Jul 2022 21:09:15 +0100
+> Jonas Kurle <mail at jonaskurle.com> wrote:
+>
+>> Can anyone advise me what to do?
+> I see you're using testthat. Is there a way to make it produce verbose
+> output for every test during their runtime? As far as I know, testthat
+> tests look like a single test to R CMD check which only outputs
+> everything after it's done (or an error occurs). Since the R process is
+> terminated on timeout, it doesn't get a chance to handle an error and
+> print anything.
+>
+> One way I see is relatively time-consuming, but so is blindly playing
+> skip_on_cran with individual tests and resubmitting jobs to
+> win-builder. If you move your tests from tests/testthat/*.R into
+> tests/*.R (and adjust them to work outside the testthat harness if
+> necessary), R should be able to tell you which *.R file times out
+> and show you the approximate location where it was terminated.
+>
+> Alternatively, you could try instrumenting your tests with debugging
+> print commands and see if any of them end up in 00check.log, but I
+> think that testthat uses capture.output to declutter the console when
+> running tests, which, sadly, ends up interfering with your ability to
+> debug the problem in this case.
+>
+
+
