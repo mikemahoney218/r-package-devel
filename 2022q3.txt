@@ -7653,3 +7653,203 @@ Tomas
 >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From yut@n|@|n| @end|ng |rom gm@||@com  Fri Aug  5 03:28:00 2022
+From: yut@n|@|n| @end|ng |rom gm@||@com (Hiroaki Yutani)
+Date: Fri, 5 Aug 2022 10:28:00 +0900
+Subject: [R-pkg-devel] About the CRAN policy on downloading pre-compiled
+ binary
+In-Reply-To: <59d6931a-3326-c20a-fb60-0f7a6a9cbcb6@gmail.com>
+References: <b97a6d91-ad00-413f-14f4-e78a0c0e6d1e@stats.ox.ac.uk>
+ <CALyqOb_+E=EMg8w0wmBaB8=1by3SyBcBbrAC6KVd4PTygQT=3g@mail.gmail.com>
+ <22bf93a2-0abc-24e2-da24-ca1a219e4913@gmail.com>
+ <59d6931a-3326-c20a-fb60-0f7a6a9cbcb6@gmail.com>
+Message-ID: <CALyqOb_v2_rkfFpNjUZbYokhqg1YWFdfjFh9TPGGgJGvSyZOFg@mail.gmail.com>
+
+Hi,
+
+Thank you so much Tomas for helping me to figure out the things. Let me
+share some updates (some of them are what you've seen already in the reply
+to the CRAN maintainer) in case this might be eventually useful to those
+who are curious about using Rust on CRAN.
+
+First of all, let me correct my misunderstanding. I thought what violates
+the CRAN policy was that my package downloads a binary, but in actual, it
+seems my fault was
+
+    1. if the compiler exists, my package downloads the **sources** of the
+dependency, whose authorships are not described.
+    2. if the compiler doesn't exist, my package downloads the pre-compiled
+binary **without the agreement of the CRAN team**
+
+For point 2, as suggested in the previous comment,
+
+> at least check whether the compiler is present (during package
+installation), and use it if it is.
+
+my package first checks if Cargo, Rust's compiler toolchain and package
+manager, is installed (more specifically, whether the `cargo` command can
+be found on PATH), and falls back to downloading the pre-compiled binary
+only when Cargo is not available. So, I believe this can be considered as
+"a last resort". Again, it was clearly my fault that I didn't ask the CRAN
+maintainers for permission on my first submission.
+
+However, it seems Cargo is already available on the following CRAN machines:
+
+    - Linux machines
+    - Windows Server 2022 (at least on winbuilder. Thanks David B. Dahl for
+the information!)
+    - M1 macOS machine (guessed from the comment from the CRAN maintainer)
+
+If I remember correctly, the Windows machine didn't have Cargo installed
+when I submitted my package to CRAN. I'd really appreciate the CRAN
+maintainers' effort to improve the infrastructure, and I hope Cargo will be
+available on Intel macOS machines in the not so distant future so that I no
+longer need to provide the pre-compiled binary (I'm not sure if I can have
+the same hope on the Windows 2008, which might be a bit too old to install
+some latest-ish version of Cargo, though [2]).
+
+
+For point 1, it's Cargo that downloads the sources. It does download the
+fixed versions recorded in the bundled "Cargo.lock" file, and verifies the
+checksum. While Cargo provides the vendoring mechanism [1], I thought it
+was not realistic to include the sources because my dependency was so huge
+(132MB). But, I was wrong at two points.
+
+First, no matter whether to download or to bundle the sources, the CRAN
+Policy requires to describe the copyright information of "all components of
+the package," which should refer to all the individual Rust crate in the
+context of my package.
+
+>  The ownership of copyright and intellectual property rights of all
+components of the package must be clear and unambiguous (including from the
+authors specification in the DESCRIPTION file). Where code is copied (or
+derived) from the work of others (including from R itself), care must be
+taken that any copyright/license statements are preserved and authorship is
+not misrepresented.
+
+Second, it was possible to reduce the size to the extent where I can bundle
+it. I could tweak some libraries to drop the heavy dependency, and compress
+the source code (again, thanks David B. Dahl for the idea).
+
+I'm yet to figure out what's the proper way to list up the authors (I'm
+currently using inst/COPYRIGHTS, but I'm not fully sure at the moment), but
+I'm working on tweaking my package to bundle all the sources and to clarify
+the authorships of these dependencies [2]. I hope this will keep my package
+on CRAN.
+
+Best,
+Yutani
+
+[1]: https://doc.rust-lang.org/cargo/commands/cargo-vendor.html
+[2]: Actually, it keeps failing on Windows Server 2008 with the
+pre-compiled binary probably due to lack of some system API:
+https://www.r-project.org/nosvn/R.check/r-oldrel-windows-ix86+x86_64/string2path-00check.html
+[3]: https://github.com/yutannihilation/string2path/pull/35 (work in
+progress)
+
+2022?7?27?(?) 17:12 Tomas Kalibera <tomas.kalibera at gmail.com>:
+
+>
+> On 7/27/22 08:08, Tomas Kalibera wrote:
+> >
+> > On 7/27/22 00:30, Hiroaki Yutani wrote:
+> >> Hi,
+> >>
+> >> Recently I got the following email from the CRAN maintainer about my
+> >> package, string2path[1].
+> >>
+> >> However, I do ensure the binary is the pinned version and verify if the
+> >> hash matches with the embedded one in the DESCRIPTION [2][3]. In case
+> >> of a
+> >> mismatch, the build fails. So, this mechanism should ensure that I (or
+> >> anyone) cannot change the version of the binary without actually
+> >> resubmitting to CRAN.
+> >
+> > Please see the policy cited. Ensuring that the download is of a fixed
+> > version refers to the sources (which can be downloaded under the
+> > conditions mentioned).
+> >
+> > Downloading binaries are only a last resort option and requires the
+> > agreement of the CRAN team in the first place.
+> >
+> >> I believe this complies with the CRAN policy (except for not clearing
+> >> the
+> >> authorship and copyright). Is there anything I have to address to
+> >> prove I
+> >> do "ensure that the download is of a fixed version"? Any suggestions are
+> >> welcome.
+> >
+> > My understanding from your email is you are ensuring a fixed version
+> > download, and with most projects you could probably do even less
+> > (simply hardcode a URL which includes a specific version of the
+> > sources if that is stable for the project), but you are not
+> > downloading sources.
+>
+> I take back the comment about doing less to ensure a fixed version - it
+> is good to use a hash always when having to download sources, as
+> software distributions do (of course including MXE and Msys2, so Rtools
+> on Windows, etc). It is better as a guard against that the content is in
+> fact not stable for the project (I've been told it sometimes happens and
+> may be surprising to package authors), but of course also for security
+> reasons.
+>
+> Tomas
+> >
+> > In either case, of course if there is anything unclear in an email
+> > from CRAN, you can simply respond to that and ask.
+> >
+> > Best
+> > Tomas
+> >
+> >>
+> >> The CRAN policy stipulates
+> >>> "Where a package wishes to make use of a library not written solely for
+> >>> the package, the package installation should first look to see if it is
+> >>> already installed and if so is of a suitable version. In case not,
+> >>> it is
+> >>> desirable to include the library sources in the package and compile
+> >>> them
+> >>> as part of package installation. If the sources are too large, it is
+> >>> acceptable to download them as part of installation, but do ensure that
+> >>> the download is of a fixed version rather than the latest. Only as a
+> >>> last resort and with the agreement of the CRAN team should a package
+> >>> download pre-compiled software."
+> >>>
+> >>> and we have recently seen an instance of a rust-using package whose
+> >>> check output changed because what it downloaded had changed. CRAN
+> >>> checking is not set up for that (for example, macOS checks are done
+> >>> once
+> >>> only for each version).
+> >>>
+> >>> Whilst investigating, the Windows' maintainers found that binary libs
+> >>> were being downloaded.  And subsequently I found that salso,
+> >>> string2path
+> >>> and ymd are downloading compiled code on Intel macOS.
+> >>>
+> >>> Also. make sure that the authorship and copyright of code you download
+> >>> (and hence include in the package) is clear from the DESCRIPTION file.
+> >>> as required by the CRAN policy.
+> >>>
+> >> Best,
+> >> Hiroaki Yutani
+> >>
+> >> [1]: https://cran.r-project.org/package=string2path
+> >> [2]:
+> >>
+> https://github.com/cran/string2path/blob/46020296410cd78e2021bff86cb6f17c681d13a6/DESCRIPTION#L29-L40
+> >>
+> >> [3]:
+> >>
+> https://github.com/cran/string2path/blob/46020296410cd78e2021bff86cb6f17c681d13a6/tools/configure.R#L177-L295
+> >>
+> >>
+> >>     [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-package-devel at r-project.org mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
