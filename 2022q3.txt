@@ -10864,3 +10864,596 @@ What is the proper way (is there one?) to get displayed 'cases' environments in 
 Thanks & cheers,
 Marius
 
+From deep@y@n@@@rk@r @end|ng |rom gm@||@com  Fri Aug 12 05:56:46 2022
+From: deep@y@n@@@rk@r @end|ng |rom gm@||@com (Deepayan Sarkar)
+Date: Fri, 12 Aug 2022 09:26:46 +0530
+Subject: [R-pkg-devel] How to write a 'cases' environment in .Rd files?
+In-Reply-To: <YT3PR01MB1025002716E1ED5379E80126587649@YT3PR01MB10250.CANPRD01.PROD.OUTLOOK.COM>
+References: <YT3PR01MB1025002716E1ED5379E80126587649@YT3PR01MB10250.CANPRD01.PROD.OUTLOOK.COM>
+Message-ID: <CADfFDC6zrqtD0tUsJbEDe2buo=nEeBXeUib7h+6LE5ZbTxkXyA@mail.gmail.com>
+
+On Fri, Aug 12, 2022 at 12:14 AM Marius Hofert <marius.hofert at uwaterloo.ca>
+wrote:
+
+> Hi,
+>
+> For quite some time my .Rd files had 'cases' environments like these:
+>
+> \deqn{F(x) = \cases{
+> 1,&if x > 0,\cr
+> 0,&if x = 0.\cr}}{...}
+>
+> Since recently, r-devel-linux-x86_64-debian-clang and
+> r-devel-linux-x86_64-debian-gcc trigger the note 'Undefined control
+> sequence: \cases in F(x) = \cases{...', possibly due to KaTeX rendering
+> help pages. I looked around quite a bit but couldn't find a way to
+> implement 'cases' environments. For example,
+> https://katex.org/docs/supported.html#environments mentions \begin{cases}
+> \end{cases}, so I tried
+>
+> \deqn{F(x) = \begin{cases}
+> 1,&\text{if}\ x > 0,\\
+> 0,&\text{if} x = 0.}}{...}
+>
+> but that triggers:
+>
+
+Yes, the PDF refmans don't support amsmath (so no \begin{pmatrix},
+\begin{cases}, etc.), although \pmatrix and \cases are supported. KaTeX has
+it the other way around.
+
+Unfortunately there is no nice workaround at the moment. Even if the PDF
+version begins supporting \begin{cases} by including amsmath, \cases will
+stop working, and your package will need to depend on a very recent R.
+
+Possibly the only practical workaround is to use more basic LaTeX
+constructs such as \begin{array}.
+
+Best,
+-Deepayan
+
+
+
+>
+> ...
+> * checking PDF version of manual ... WARNING
+> LaTeX errors when creating PDF version.
+> This typically indicates Rd problems.
+> LaTeX errors found:
+> ! Misplaced alignment tab character &
+> ....
+>
+> What is the proper way (is there one?) to get displayed 'cases'
+> environments in .Rd files?
+>
+> Thanks & cheers,
+> Marius
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Aug 12 08:15:39 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 12 Aug 2022 09:15:39 +0300
+Subject: [R-pkg-devel] How to write a 'cases' environment in .Rd files?
+In-Reply-To: <YT3PR01MB1025002716E1ED5379E80126587649@YT3PR01MB10250.CANPRD01.PROD.OUTLOOK.COM>
+References: <YT3PR01MB1025002716E1ED5379E80126587649@YT3PR01MB10250.CANPRD01.PROD.OUTLOOK.COM>
+Message-ID: <20220812091539.037d26da@trisector>
+
+On Thu, 11 Aug 2022 18:43:44 +0000
+Marius Hofert <marius.hofert at uwaterloo.ca> wrote:
+
+> Since recently, r-devel-linux-x86_64-debian-clang and
+> r-devel-linux-x86_64-debian-gcc trigger the note 'Undefined control
+> sequence: \cases in F(x) = \cases{...', possibly due to KaTeX
+> rendering help pages. I looked around quite a bit but couldn't find a
+> way to implement 'cases' environments. For example,
+> https://katex.org/docs/supported.html#environments mentions
+> \begin{cases} \end{cases}, so I tried
+> 
+> \deqn{F(x) = \begin{cases}
+> 1,&\text{if}\ x > 0,\\
+> 0,&\text{if} x = 0.}}{...}
+> 
+> but that triggers:
+> 
+> ...
+> * checking PDF version of manual ... WARNING
+> LaTeX errors when creating PDF version.
+> This typically indicates Rd problems.
+> LaTeX errors found:
+> ! Misplaced alignment tab character &
+
+There is a possible workaround, but it's the opposite of beautiful. You
+can use conditional text to compile one version of the formula for HTML
+help and another one for PDF help:
+
+\ifelse{html}{\eqn{\begin{cases}...}}{\eqn{\cases{...}}{ascii}}
+
+It's as tedious as it looks. For extra style(?) points, you can put a
+three-argument user-defined macro in man/macros/whatever.Rd that
+forwards its arguments to one of the \ifelse branches. As far as I
+remember, \newcommand{}{} has to fit on one line, but in R ? 3.6.0,
+macros themselves can take multi-line arguments.
+
+If you're targeting an earlier version of R, you can make multi-line
+arguments work by forcing R to cache the parse tree of the man page
+while building a source tarball with a newer R version using
+\Sexpr[stage=build]{}, costing you some time during R CMD build and a
+slightly larger source tarball. (It's an implementation detail that one
+normally shouldn't depend upon. Thankfully, as of 2022, there won't be
+any newer versions of R ? 3.5.x to break it.) Support for
+man/macros/*.Rd only appeared in R-3.2.0, so I haven't researched
+compatibility tricks for even older versions of R.
+
+-- 
+Best regards,
+Ivan
+
+
+From m@r|u@@ho|ert @end|ng |rom uw@ter|oo@c@  Fri Aug 12 13:00:50 2022
+From: m@r|u@@ho|ert @end|ng |rom uw@ter|oo@c@ (Marius Hofert)
+Date: Fri, 12 Aug 2022 11:00:50 +0000
+Subject: [R-pkg-devel] How to write a 'cases' environment in .Rd files?
+In-Reply-To: <1MNKhm-1o33f53oF8-00On1j@mail.gmx.net>
+References: <20220812091539.037d26da@trisector>
+ <1MNKhm-1o33f53oF8-00On1j@mail.gmx.net>
+Message-ID: <YT3PR01MB10250F9BD5E7AFE967231082A87679@YT3PR01MB10250.CANPRD01.PROD.OUTLOOK.COM>
+
+Hi,
+
+Thanks everyone for your suggestions. I now went with the easiest solution, namely something of the form
+
+\deqn{F(x) = \left\{\begin{array}{ll}
+1,&\text{if}\ x > 0,\\
+0,&\text{if} x = 0.
+\end{array}\right.}{...}
+
+which worked flawlessly (and avoids having to type the formula twice or define a macro as suggested by Ivan).
+
+Cheers,
+Marius
+
+________________________________________
+From: matthias-gondan <matthias-gondan at gmx.de>
+Sent: Friday, August 12, 2022 03:09
+To: Ivan Krylov; Marius Hofert
+Cc: r-package-devel at r-project.org
+Subject: Re: [R-pkg-devel] How to write a 'cases' environment in .Rd files?
+
+I am currently developing an R package that translates R expressions to Html and Latex, things like dbinom(x, size, prob) to P\left(x; N, \pi\right)
+
+Generation of Rd files may be an interesting use case. It's still at an early stage, I appreciate contributions and interesting feature requests.
+
+github.com/mgondan/mathml
+
+
+
+
+Von meinem/meiner Galaxy gesendet
+
+
+-------- Urspr?ngliche Nachricht --------
+Von: Ivan Krylov <krylov.r00t at gmail.com>
+Datum: 12.08.22 08:16 (GMT+01:00)
+An: Marius Hofert <marius.hofert at uwaterloo.ca>
+Cc: r-package-devel at r-project.org
+Betreff: Re: [R-pkg-devel] How to write a 'cases' environment in .Rd files?
+
+On Thu, 11 Aug 2022 18:43:44 +0000
+Marius Hofert <marius.hofert at uwaterloo.ca> wrote:
+
+> Since recently, r-devel-linux-x86_64-debian-clang and
+> r-devel-linux-x86_64-debian-gcc trigger the note 'Undefined control
+> sequence: \cases in F(x) = \cases{...', possibly due to KaTeX
+> rendering help pages. I looked around quite a bit but couldn't find a
+> way to implement 'cases' environments. For example,
+> https://katex.org/docs/supported.html#environments mentions
+> \begin{cases} \end{cases}, so I tried
+>
+> \deqn{F(x) = \begin{cases}
+> 1,&\text{if}\ x > 0,\\
+> 0,&\text{if} x = 0.}}{...}
+>
+> but that triggers:
+>
+> ...
+> * checking PDF version of manual ... WARNING
+> LaTeX errors when creating PDF version.
+> This typically indicates Rd problems.
+> LaTeX errors found:
+> ! Misplaced alignment tab character &
+
+There is a possible workaround, but it's the opposite of beautiful. You
+can use conditional text to compile one version of the formula for HTML
+help and another one for PDF help:
+
+\ifelse{html}{\eqn{\begin{cases}...}}{\eqn{\cases{...}}{ascii}}
+
+It's as tedious as it looks. For extra style(?) points, you can put a
+three-argument user-defined macro in man/macros/whatever.Rd that
+forwards its arguments to one of the \ifelse branches. As far as I
+remember, \newcommand{}{} has to fit on one line, but in R ? 3.6.0,
+macros themselves can take multi-line arguments.
+
+If you're targeting an earlier version of R, you can make multi-line
+arguments work by forcing R to cache the parse tree of the man page
+while building a source tarball with a newer R version using
+\Sexpr[stage=build]{}, costing you some time during R CMD build and a
+slightly larger source tarball. (It's an implementation detail that one
+normally shouldn't depend upon. Thankfully, as of 2022, there won't be
+any newer versions of R ? 3.5.x to break it.) Support for
+man/macros/*.Rd only appeared in R-3.2.0, so I haven't researched
+compatibility tricks for even older versions of R.
+
+--
+Best regards,
+Ivan
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+From pro|jcn@@h @end|ng |rom gm@||@com  Sat Aug 13 00:40:39 2022
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Fri, 12 Aug 2022 18:40:39 -0400
+Subject: [R-pkg-devel] Strange behaviour of function called from within a
+ function
+Message-ID: <81078bd7-d89f-ab7e-b8ec-793744ef2971@gmail.com>
+
+I have been trying to sort out an odd issue for the last few days in upgrading package
+nlsr (for nonlinear least squares). It generally does much better in finding solutions from
+poor starts than nls(), but it does not generate the full nls returned object. I've written a
+wrapper wrapnlsr() that calls my nlsr functions then uses the resulting parameters in nls()
+to get the nls object. But up to now, neither weights nor subset are allowed. I've not got
+to subset, but have been trying weights, with very strange results. The full example is too
+much code for the list, so I've faked the nlsr output as "firstcoef" in the example below.
+What is troubling is that a hand-run example "works", but using a function to do it fails
+when there are weights.
+
+The nls.R code referenced in the example around line 570 may suggest that its handling the
+weights may be the culprit here. I don't understand why
+     eval(substitute(weights), data, environment(formula))
+is needed for a fixed numeric vector of weights (as required by the manual).
+
+Any help welcome.
+
+John Nash
+
+The example:
+
+# wterr.R -- reproduce nls error when called from function
+rm(list=ls()) # probably not needed, but clear the workspace
+
+tnow <- function(formula, data, start, control, trace) {
+   firstcoef <- c(b1=199, b2=50, b3=0.3) # as if from another solver
+   cat("firstcoef:\n")
+   print(firstcoef)
+   cat("No weights\n")
+   second<-nls(formula, data, firstcoef, control, algorithm=NULL, TRUE)
+   second
+}
+
+tw <- function(formula, data, start, control, trace, weights) {
+   firstcoef <- c(b1=199, b2=50, b3=0.3)
+   cat("firstcoef:\n")
+   print(firstcoef)
+   cat("weights:"); print(weights)
+   secondw<-nls(formula, data, firstcoef, control, algorithm=NULL, TRUE, weights=weights)
+   secondw
+}
+
+weed <- c(5.308, 7.24, 9.638, 12.866, 17.069, 23.192, 31.443,
+           38.558, 50.156, 62.948, 75.995, 91.972)
+tt <- 1:12
+weeddf <- data.frame(tt, weed)
+hobbsu <- weed ~ b1/(1+b2*exp(-b3*tt))
+st2 <- c(b1=200, b2=50, b3=0.3)
+wts <- 0.5^tt # a straight scaling comes via wts <- rep(0.01, 12)
+# From this level, we can do the calculation
+firstcoef <- c(b1=199, b2=50, b3=0.3)
+
+# Does NOT work from the function tw with weights, but unweighted OK.
+# Is the issue line 570/571 of ./R-4.2.1/src/library/stats/R/nls.R ??
+tn2<-tnow(hobbsu, weeddf, st2, control=list(), trace=TRUE)
+tn2
+tt2<-tw(hobbsu, weeddf, st2, control=list(), trace=TRUE, weights=wts)
+tt2
+
+# But we can get it running directly
+formula<-hobbsu
+data<-weeddf
+control<-list()
+weights<-wts
+second<-nls(formula, data, firstcoef, control, algorithm=NULL, TRUE)
+second
+secondw<-nls(formula, data, firstcoef, control, algorithm=NULL, TRUE, weights=weights)
+secondw
+# And if we rerun the functions AFTER succeeding here, tw now works
+tn2<-tnow(hobbsu, weeddf, st2, control=list(), trace=TRUE)
+tn2
+tt2<-tw(hobbsu, weeddf, st2, control=list(), trace=TRUE, weights=wts)
+tt2
+
+
+From no@h@gre||er @end|ng |rom gm@||@com  Sat Aug 13 00:52:56 2022
+From: no@h@gre||er @end|ng |rom gm@||@com (Noah Greifer)
+Date: Fri, 12 Aug 2022 18:52:56 -0400
+Subject: [R-pkg-devel] 
+ Strange behaviour of function called from within a function
+In-Reply-To: <81078bd7-d89f-ab7e-b8ec-793744ef2971@gmail.com>
+References: <81078bd7-d89f-ab7e-b8ec-793744ef2971@gmail.com>
+Message-ID: <CAPhhD8khrJK1WLrYzZeLC+xCq6JRVirZm3MkcX9BvjjKW_+9Eg@mail.gmail.com>
+
+This is an unfortunate problem caused by non-standard evaluation of the
+`weights` argument. It happens with `lm()`, too. To solve it, you should
+use do.call(), e.g.,
+
+secondw <- do.call("nls", list(formula, data, firstcoef, control,
+algorithm=NULL, TRUE, weights = weights))
+
+The reason this works is that `weights` is evaluated in the `list()` call,
+which uses standard evaluation, before being passed to `nls()`, rather than
+in the `nls()` call. Using `alist()` instead, which doesn't evaluate its
+arguments, creates the same problem. You unfortunately have to do this with
+every function that involves nonstandard evaluation.
+
+The error that you get, "invalid type (closure) for variable '(weights)'",
+occurs because `nls()` is interpreting `weights` as the function
+`weights()`, which is a closure (basically the same thing as a function),
+rather than as the argument passed through the `weights` argument of
+`tw()`.
+
+Noah
+
+On Fri, Aug 12, 2022 at 6:41 PM J C Nash <profjcnash at gmail.com> wrote:
+
+> I have been trying to sort out an odd issue for the last few days in
+> upgrading package
+> nlsr (for nonlinear least squares). It generally does much better in
+> finding solutions from
+> poor starts than nls(), but it does not generate the full nls returned
+> object. I've written a
+> wrapper wrapnlsr() that calls my nlsr functions then uses the resulting
+> parameters in nls()
+> to get the nls object. But up to now, neither weights nor subset are
+> allowed. I've not got
+> to subset, but have been trying weights, with very strange results. The
+> full example is too
+> much code for the list, so I've faked the nlsr output as "firstcoef" in
+> the example below.
+> What is troubling is that a hand-run example "works", but using a function
+> to do it fails
+> when there are weights.
+>
+> The nls.R code referenced in the example around line 570 may suggest that
+> its handling the
+> weights may be the culprit here. I don't understand why
+>      eval(substitute(weights), data, environment(formula))
+> is needed for a fixed numeric vector of weights (as required by the
+> manual).
+>
+> Any help welcome.
+>
+> John Nash
+>
+> The example:
+>
+> # wterr.R -- reproduce nls error when called from function
+> rm(list=ls()) # probably not needed, but clear the workspace
+>
+> tnow <- function(formula, data, start, control, trace) {
+>    firstcoef <- c(b1=199, b2=50, b3=0.3) # as if from another solver
+>    cat("firstcoef:\n")
+>    print(firstcoef)
+>    cat("No weights\n")
+>    second<-nls(formula, data, firstcoef, control, algorithm=NULL, TRUE)
+>    second
+> }
+>
+> tw <- function(formula, data, start, control, trace, weights) {
+>    firstcoef <- c(b1=199, b2=50, b3=0.3)
+>    cat("firstcoef:\n")
+>    print(firstcoef)
+>    cat("weights:"); print(weights)
+>    secondw<-nls(formula, data, firstcoef, control, algorithm=NULL, TRUE,
+> weights=weights)
+>    secondw
+> }
+>
+> weed <- c(5.308, 7.24, 9.638, 12.866, 17.069, 23.192, 31.443,
+>            38.558, 50.156, 62.948, 75.995, 91.972)
+> tt <- 1:12
+> weeddf <- data.frame(tt, weed)
+> hobbsu <- weed ~ b1/(1+b2*exp(-b3*tt))
+> st2 <- c(b1=200, b2=50, b3=0.3)
+> wts <- 0.5^tt # a straight scaling comes via wts <- rep(0.01, 12)
+> # From this level, we can do the calculation
+> firstcoef <- c(b1=199, b2=50, b3=0.3)
+>
+> # Does NOT work from the function tw with weights, but unweighted OK.
+> # Is the issue line 570/571 of ./R-4.2.1/src/library/stats/R/nls.R ??
+> tn2<-tnow(hobbsu, weeddf, st2, control=list(), trace=TRUE)
+> tn2
+> tt2<-tw(hobbsu, weeddf, st2, control=list(), trace=TRUE, weights=wts)
+> tt2
+>
+> # But we can get it running directly
+> formula<-hobbsu
+> data<-weeddf
+> control<-list()
+> weights<-wts
+> second<-nls(formula, data, firstcoef, control, algorithm=NULL, TRUE)
+> second
+> secondw<-nls(formula, data, firstcoef, control, algorithm=NULL, TRUE,
+> weights=weights)
+> secondw
+> # And if we rerun the functions AFTER succeeding here, tw now works
+> tn2<-tnow(hobbsu, weeddf, st2, control=list(), trace=TRUE)
+> tn2
+> tt2<-tw(hobbsu, weeddf, st2, control=list(), trace=TRUE, weights=wts)
+> tt2
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From j|ox @end|ng |rom mcm@@ter@c@  Sat Aug 13 00:54:40 2022
+From: j|ox @end|ng |rom mcm@@ter@c@ (John Fox)
+Date: Fri, 12 Aug 2022 18:54:40 -0400
+Subject: [R-pkg-devel] 
+ Strange behaviour of function called from within a function
+In-Reply-To: <4312_1660344060_27CMexOO029722_81078bd7-d89f-ab7e-b8ec-793744ef2971@gmail.com>
+References: <4312_1660344060_27CMexOO029722_81078bd7-d89f-ab7e-b8ec-793744ef2971@gmail.com>
+Message-ID: <9a39963d-9d48-806c-81f6-5f6174da5c2f@mcmaster.ca>
+
+Dear John,
+
+This is a scoping issue due to how model formulas are evaluated by nls() 
+and other modeling functions. Try this:
+
+tw2 <- function(formula, data, start, control, trace, weights) {
+   firstcoef <- c(b1=199, b2=50, b3=0.3)
+   cat("firstcoef:\n")
+   print(firstcoef)
+   cat("weights:"); print(weights)
+   data$weights <- weights
+   secondw<-nls(formula, data, firstcoef, control, algorithm=NULL, TRUE, 
+weights=weights)
+   secondw
+}
+
+ > tw2(hobbsu, weeddf, st2, control=list(), trace=TRUE, weights=wts)
+firstcoef:
+    b1    b2    b3
+199.0  50.0   0.3
+weights: [1] 0.5000000000 0.2500000000 0.1250000000 0.0625000000 
+0.0312500000 0.0156250000
+  [7] 0.0078125000 0.0039062500 0.0019531250 0.0009765625 0.0004882812 
+0.0002441406
+0.3342481   (3.98e+00): par = (199 50 0.3)
+0.01987378  (1.14e-01): par = (199.2897 50.14155 0.3139337)
+0.01961683  (2.88e-04): par = (199.8481 50.2582 0.3133964)
+0.01961683  (1.97e-06): par = (199.8595 50.26061 0.3133932)
+Nonlinear regression model
+   model: weed ~ b1/(1 + b2 * exp(-b3 * tt))
+    data: data
+       b1       b2       b3
+199.8595  50.2606   0.3134
+  weighted residual sum-of-squares: 0.01962
+
+Number of iterations to convergence: 3
+Achieved convergence tolerance: 1.975e-06
+
+(Your second attempt worked because you stuck the variable weights in 
+the global environment.)
+
+I hope that this does what you want.
+
+John
+
+On 2022-08-12 6:40 p.m., J C Nash wrote:
+> I have been trying to sort out an odd issue for the last few days in 
+> upgrading package
+> nlsr (for nonlinear least squares). It generally does much better in 
+> finding solutions from
+> poor starts than nls(), but it does not generate the full nls returned 
+> object. I've written a
+> wrapper wrapnlsr() that calls my nlsr functions then uses the resulting 
+> parameters in nls()
+> to get the nls object. But up to now, neither weights nor subset are 
+> allowed. I've not got
+> to subset, but have been trying weights, with very strange results. The 
+> full example is too
+> much code for the list, so I've faked the nlsr output as "firstcoef" in 
+> the example below.
+> What is troubling is that a hand-run example "works", but using a 
+> function to do it fails
+> when there are weights.
+> 
+> The nls.R code referenced in the example around line 570 may suggest 
+> that its handling the
+> weights may be the culprit here. I don't understand why
+>  ??? eval(substitute(weights), data, environment(formula))
+> is needed for a fixed numeric vector of weights (as required by the 
+> manual).
+> 
+> Any help welcome.
+> 
+> John Nash
+> 
+> The example:
+> 
+> # wterr.R -- reproduce nls error when called from function
+> rm(list=ls()) # probably not needed, but clear the workspace
+> 
+> tnow <- function(formula, data, start, control, trace) {
+>  ? firstcoef <- c(b1=199, b2=50, b3=0.3) # as if from another solver
+>  ? cat("firstcoef:\n")
+>  ? print(firstcoef)
+>  ? cat("No weights\n")
+>  ? second<-nls(formula, data, firstcoef, control, algorithm=NULL, TRUE)
+>  ? second
+> }
+> 
+> tw <- function(formula, data, start, control, trace, weights) {
+>  ? firstcoef <- c(b1=199, b2=50, b3=0.3)
+>  ? cat("firstcoef:\n")
+>  ? print(firstcoef)
+>  ? cat("weights:"); print(weights)
+>  ? secondw<-nls(formula, data, firstcoef, control, algorithm=NULL, TRUE, 
+> weights=weights)
+>  ? secondw
+> }
+> 
+> weed <- c(5.308, 7.24, 9.638, 12.866, 17.069, 23.192, 31.443,
+>  ????????? 38.558, 50.156, 62.948, 75.995, 91.972)
+> tt <- 1:12
+> weeddf <- data.frame(tt, weed)
+> hobbsu <- weed ~ b1/(1+b2*exp(-b3*tt))
+> st2 <- c(b1=200, b2=50, b3=0.3)
+> wts <- 0.5^tt # a straight scaling comes via wts <- rep(0.01, 12)
+> # From this level, we can do the calculation
+> firstcoef <- c(b1=199, b2=50, b3=0.3)
+> 
+> # Does NOT work from the function tw with weights, but unweighted OK.
+> # Is the issue line 570/571 of ./R-4.2.1/src/library/stats/R/nls.R ??
+> tn2<-tnow(hobbsu, weeddf, st2, control=list(), trace=TRUE)
+> tn2
+> tt2<-tw(hobbsu, weeddf, st2, control=list(), trace=TRUE, weights=wts)
+> tt2
+> 
+> # But we can get it running directly
+> formula<-hobbsu
+> data<-weeddf
+> control<-list()
+> weights<-wts
+> second<-nls(formula, data, firstcoef, control, algorithm=NULL, TRUE)
+> second
+> secondw<-nls(formula, data, firstcoef, control, algorithm=NULL, TRUE, 
+> weights=weights)
+> secondw
+> # And if we rerun the functions AFTER succeeding here, tw now works
+> tn2<-tnow(hobbsu, weeddf, st2, control=list(), trace=TRUE)
+> tn2
+> tt2<-tw(hobbsu, weeddf, st2, control=list(), trace=TRUE, weights=wts)
+> tt2
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+-- 
+John Fox, Professor Emeritus
+McMaster University
+Hamilton, Ontario, Canada
+web: https://socialsciences.mcmaster.ca/jfox/
+
+
