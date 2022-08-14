@@ -11457,3 +11457,392 @@ Hamilton, Ontario, Canada
 web: https://socialsciences.mcmaster.ca/jfox/
 
 
+From pro|jcn@@h @end|ng |rom gm@||@com  Sat Aug 13 15:41:02 2022
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Sat, 13 Aug 2022 09:41:02 -0400
+Subject: [R-pkg-devel] 
+ Strange behaviour of function called from within a function
+In-Reply-To: <9a39963d-9d48-806c-81f6-5f6174da5c2f@mcmaster.ca>
+References: <4312_1660344060_27CMexOO029722_81078bd7-d89f-ab7e-b8ec-793744ef2971@gmail.com>
+ <9a39963d-9d48-806c-81f6-5f6174da5c2f@mcmaster.ca>
+Message-ID: <f0058c1e-5f42-c2f4-cc06-751d5f7380c8@gmail.com>
+
+
+Thanks to John Fox and Noah Greifer. Both their approaches resolved my immediate
+problem.
+
+That is, to provide a summary of the fix of my example code,
+
+tw <- function(formula, data, start, control, trace, weights) {
+   firstcoef <- c(b1=199, b2=50, b3=0.3)
+   cat("firstcoef:\n")
+   print(firstcoef)
+   cat("weights:"); print(weights)
+# Following fails -- closure error
+#  secondw<-nls(formula, data, firstcoef, control, algorithm=NULL, TRUE, weights=weights)
+# from noah.greifer at gmail.com # this works OK
+   secondw <- do.call("nls", list(formula, data, firstcoef, control, algorithm=NULL, TRUE, weights = weights))
+#  As does putting weights in the data dataframe (here not active)
+#  data$weights <- weights # from John Fox
+#  secondw<-nls(formula, data, firstcoef, control, algorithm=NULL, TRUE, weights=weights)
+   secondw
+}
+
+Afraid I avoid the wonders of non-standard evaluation, and this time it jumped up and bit me.
+But then I remember what machine instruction 260000800009 did on an IBM 1620.
+
+The swiftness of reply from John and Noah was much appreciated.
+
+Best, JN
+
+
+From j|ox @end|ng |rom mcm@@ter@c@  Sat Aug 13 18:58:44 2022
+From: j|ox @end|ng |rom mcm@@ter@c@ (John Fox)
+Date: Sat, 13 Aug 2022 12:58:44 -0400
+Subject: [R-pkg-devel] 
+ Strange behaviour of function called from within a function
+In-Reply-To: <f0058c1e-5f42-c2f4-cc06-751d5f7380c8@gmail.com>
+References: <4312_1660344060_27CMexOO029722_81078bd7-d89f-ab7e-b8ec-793744ef2971@gmail.com>
+ <9a39963d-9d48-806c-81f6-5f6174da5c2f@mcmaster.ca>
+ <f0058c1e-5f42-c2f4-cc06-751d5f7380c8@gmail.com>
+Message-ID: <5081732f-0ec7-9d7d-8e6e-247ed1c7b6b7@mcmaster.ca>
+
+Dear John,
+
+After further thought, it's probably a better idea to evaluate the 
+weights argument in the same environment as the formula rather than to 
+bypass nonstandard evaluation. You could use lm() as a guide. I don't 
+entirely understand what you're trying to do so maybe this suggestion is 
+off-base.
+
+Best,
+  John
+
+On 2022-08-13 9:41 a.m., J C Nash wrote:
+> 
+> Thanks to John Fox and Noah Greifer. Both their approaches resolved my 
+> immediate
+> problem.
+> 
+> That is, to provide a summary of the fix of my example code,
+> 
+> tw <- function(formula, data, start, control, trace, weights) {
+>  ? firstcoef <- c(b1=199, b2=50, b3=0.3)
+>  ? cat("firstcoef:\n")
+>  ? print(firstcoef)
+>  ? cat("weights:"); print(weights)
+> # Following fails -- closure error
+> #? secondw<-nls(formula, data, firstcoef, control, algorithm=NULL, TRUE, 
+> weights=weights)
+> # from noah.greifer at gmail.com # this works OK
+>  ? secondw <- do.call("nls", list(formula, data, firstcoef, control, 
+> algorithm=NULL, TRUE, weights = weights))
+> #? As does putting weights in the data dataframe (here not active)
+> #? data$weights <- weights # from John Fox
+> #? secondw<-nls(formula, data, firstcoef, control, algorithm=NULL, TRUE, 
+> weights=weights)
+>  ? secondw
+> }
+> 
+> Afraid I avoid the wonders of non-standard evaluation, and this time it 
+> jumped up and bit me.
+> But then I remember what machine instruction 260000800009 did on an IBM 
+> 1620.
+> 
+> The swiftness of reply from John and Noah was much appreciated.
+> 
+> Best, JN
+-- 
+John Fox, Professor Emeritus
+McMaster University
+Hamilton, Ontario, Canada
+web: https://socialsciences.mcmaster.ca/jfox/
+
+
+From pro|jcn@@h @end|ng |rom gm@||@com  Sat Aug 13 19:15:51 2022
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Sat, 13 Aug 2022 13:15:51 -0400
+Subject: [R-pkg-devel] 
+ Strange behaviour of function called from within a function
+In-Reply-To: <5081732f-0ec7-9d7d-8e6e-247ed1c7b6b7@mcmaster.ca>
+References: <4312_1660344060_27CMexOO029722_81078bd7-d89f-ab7e-b8ec-793744ef2971@gmail.com>
+ <9a39963d-9d48-806c-81f6-5f6174da5c2f@mcmaster.ca>
+ <f0058c1e-5f42-c2f4-cc06-751d5f7380c8@gmail.com>
+ <5081732f-0ec7-9d7d-8e6e-247ed1c7b6b7@mcmaster.ca>
+Message-ID: <187d12ae-d324-e1a9-1741-98bb3fd455c1@gmail.com>
+
+This posting is to answer "what I'm trying to do". Otherwise can be skipped.
+
+My nlsr package has a completely different structure (philosophy?) from nls(). My aim is to
+try VERY hard to get solutions and not give up with "singular gradient" or other issues as
+nls() does. But the package is quite lean and doesn't return a lot of useful bits and pieces,
+such as nls returned functions and model stuff. So I've got a wrapnlsr() function that runs my
+solver, then passes the best parameters to nls(). This won't always work, for example, if
+the Jacobian at the best parameters is still singular, but very often it will, and the
+wrapper then returns all the goodies and a user can use the output as per nls().
+
+Because my activities don't often get into those spin-offs of nls() -- for instance the
+profile plots -- I really need some collaborators if nlsr is going to get more capable in
+that regard. However, I feel the wrapper is at least a start.
+
+For anyone interested, I have been tightening up the nlsr package and also trying to build a
+quite comprehensive collection of examples. Some areas of improvement are in applying bounds
+and masks (fixed parameters) and using selfStart models. There is still plenty to do, but the
+base package nlsr should be upgraded on CRAN in a few weeks. If anyone is anxious to try it,
+let me know. The changes are mostly internal. The examples collection is going to take a bit
+longer to get tidy, but I'll be happy to share those too. Material is on Gitlab or Github,
+though definitely a work in progress and updated daily, often with loose ends.
+
+Best, JN
+
+PS. Why would we "evaluate" the weights? The nls() man-page says they are fixed numbers, but
+the nls.R code I pointed to does evaluate them, and that seems to be the trouble. Is that a bug?
+
+On 2022-08-13 12:58, John Fox wrote:
+> Dear John,
+> 
+> After further thought, it's probably a better idea to evaluate the weights argument in the same environment as the 
+> formula rather than to bypass nonstandard evaluation. You could use lm() as a guide. I don't entirely understand what 
+> you're trying to do so maybe this suggestion is off-base.
+> 
+> Best,
+>  ?John
+> 
+> On 2022-08-13 9:41 a.m., J C Nash wrote:
+>>
+>> Thanks to John Fox and Noah Greifer. Both their approaches resolved my immediate
+>> problem.
+>>
+>> That is, to provide a summary of the fix of my example code,
+>>
+>> tw <- function(formula, data, start, control, trace, weights) {
+>> ?? firstcoef <- c(b1=199, b2=50, b3=0.3)
+>> ?? cat("firstcoef:\n")
+>> ?? print(firstcoef)
+>> ?? cat("weights:"); print(weights)
+>> # Following fails -- closure error
+>> #? secondw<-nls(formula, data, firstcoef, control, algorithm=NULL, TRUE, weights=weights)
+>> # from noah.greifer at gmail.com # this works OK
+>> ?? secondw <- do.call("nls", list(formula, data, firstcoef, control, algorithm=NULL, TRUE, weights = weights))
+>> #? As does putting weights in the data dataframe (here not active)
+>> #? data$weights <- weights # from John Fox
+>> #? secondw<-nls(formula, data, firstcoef, control, algorithm=NULL, TRUE, weights=weights)
+>> ?? secondw
+>> }
+>>
+>> Afraid I avoid the wonders of non-standard evaluation, and this time it jumped up and bit me.
+>> But then I remember what machine instruction 260000800009 did on an IBM 1620.
+>>
+>> The swiftness of reply from John and Noah was much appreciated.
+>>
+>> Best, JN
+
+
+From j|ox @end|ng |rom mcm@@ter@c@  Sat Aug 13 20:27:39 2022
+From: j|ox @end|ng |rom mcm@@ter@c@ (John Fox)
+Date: Sat, 13 Aug 2022 14:27:39 -0400
+Subject: [R-pkg-devel] 
+ Strange behaviour of function called from within a function
+In-Reply-To: <187d12ae-d324-e1a9-1741-98bb3fd455c1@gmail.com>
+References: <4312_1660344060_27CMexOO029722_81078bd7-d89f-ab7e-b8ec-793744ef2971@gmail.com>
+ <9a39963d-9d48-806c-81f6-5f6174da5c2f@mcmaster.ca>
+ <f0058c1e-5f42-c2f4-cc06-751d5f7380c8@gmail.com>
+ <5081732f-0ec7-9d7d-8e6e-247ed1c7b6b7@mcmaster.ca>
+ <187d12ae-d324-e1a9-1741-98bb3fd455c1@gmail.com>
+Message-ID: <df5ebd1b-5885-1a8b-6c48-bda4b68ee593@mcmaster.ca>
+
+Dear John,
+
+Please see below interline:
+
+On 2022-08-13 1:15 p.m., J C Nash wrote:
+> This posting is to answer "what I'm trying to do". Otherwise can be 
+> skipped.
+> 
+> My nlsr package has a completely different structure (philosophy?) from 
+> nls(). My aim is to
+> try VERY hard to get solutions and not give up with "singular gradient" 
+> or other issues as
+> nls() does. But the package is quite lean and doesn't return a lot of 
+> useful bits and pieces,
+> such as nls returned functions and model stuff. So I've got a wrapnlsr() 
+> function that runs my
+> solver, then passes the best parameters to nls(). This won't always 
+> work, for example, if
+> the Jacobian at the best parameters is still singular, but very often it 
+> will, and the
+> wrapper then returns all the goodies and a user can use the output as 
+> per nls().
+> 
+> Because my activities don't often get into those spin-offs of nls() -- 
+> for instance the
+> profile plots -- I really need some collaborators if nlsr is going to 
+> get more capable in
+> that regard. However, I feel the wrapper is at least a start.
+
+If I understand correctly, there are two contexts here: (1) the 
+interface for your wrapnlsr() function, and (2) how nlsr() calls other 
+functions, including nls().
+
+The first should probably work like a standard statistical modelling 
+function, including how the weights argument is evaluated. The second is 
+hidden from the user, and is where the scoping issue that you reported 
+arose. My suggestion to follow a standard statistical modelling function 
+here is probably off-base, and the previous two solutions, one from me 
+and one from Noah, both work.
+
+With respect to my solution: if you actually adopt it, I'd prefer not to 
+use a name like data$weights, for fear of overwriting an existing 
+variable in data called weights, but rather some like .weights or even 
+..weights.. .
+
+> 
+> For anyone interested, I have been tightening up the nlsr package and 
+> also trying to build a
+> quite comprehensive collection of examples. Some areas of improvement 
+> are in applying bounds
+> and masks (fixed parameters) and using selfStart models. There is still 
+> plenty to do, but the
+> base package nlsr should be upgraded on CRAN in a few weeks. If anyone 
+> is anxious to try it,
+> let me know. The changes are mostly internal. The examples collection is 
+> going to take a bit
+> longer to get tidy, but I'll be happy to share those too. Material is on 
+> Gitlab or Github,
+> though definitely a work in progress and updated daily, often with loose 
+> ends.
+
+I'm probably the wrong person for this -- I'm familiar with nonlinear 
+regression, but your knowledge of the computational details vastly 
+exceeds mine.
+
+> 
+> Best, JN
+> 
+> PS. Why would we "evaluate" the weights? The nls() man-page says they 
+> are fixed numbers, but
+> the nls.R code I pointed to does evaluate them, and that seems to be the 
+> trouble. Is that a bug?
+
+What I meant by "evaluate" was associate a value with the symbol 
+weights. The scoping issue was that nls() ended up looking in the global 
+environment, where it found the weights() function rather than the local 
+variable (i.e., argument) weights in your function.
+
+Best,
+  John
+
+> 
+> On 2022-08-13 12:58, John Fox wrote:
+>> Dear John,
+>>
+>> After further thought, it's probably a better idea to evaluate the 
+>> weights argument in the same environment as the formula rather than to 
+>> bypass nonstandard evaluation. You could use lm() as a guide. I don't 
+>> entirely understand what you're trying to do so maybe this suggestion 
+>> is off-base.
+>>
+>> Best,
+>> ??John
+>>
+>> On 2022-08-13 9:41 a.m., J C Nash wrote:
+>>>
+>>> Thanks to John Fox and Noah Greifer. Both their approaches resolved 
+>>> my immediate
+>>> problem.
+>>>
+>>> That is, to provide a summary of the fix of my example code,
+>>>
+>>> tw <- function(formula, data, start, control, trace, weights) {
+>>> ?? firstcoef <- c(b1=199, b2=50, b3=0.3)
+>>> ?? cat("firstcoef:\n")
+>>> ?? print(firstcoef)
+>>> ?? cat("weights:"); print(weights)
+>>> # Following fails -- closure error
+>>> #? secondw<-nls(formula, data, firstcoef, control, algorithm=NULL, 
+>>> TRUE, weights=weights)
+>>> # from noah.greifer at gmail.com # this works OK
+>>> ?? secondw <- do.call("nls", list(formula, data, firstcoef, control, 
+>>> algorithm=NULL, TRUE, weights = weights))
+>>> #? As does putting weights in the data dataframe (here not active)
+>>> #? data$weights <- weights # from John Fox
+>>> #? secondw<-nls(formula, data, firstcoef, control, algorithm=NULL, 
+>>> TRUE, weights=weights)
+>>> ?? secondw
+>>> }
+>>>
+>>> Afraid I avoid the wonders of non-standard evaluation, and this time 
+>>> it jumped up and bit me.
+>>> But then I remember what machine instruction 260000800009 did on an 
+>>> IBM 1620.
+>>>
+>>> The swiftness of reply from John and Noah was much appreciated.
+>>>
+>>> Best, JN
+-- 
+John Fox, Professor Emeritus
+McMaster University
+Hamilton, Ontario, Canada
+web: https://socialsciences.mcmaster.ca/jfox/
+
+
+From murr@y@e||ord @end|ng |rom ot@go@@c@nz  Sun Aug 14 01:09:54 2022
+From: murr@y@e||ord @end|ng |rom ot@go@@c@nz (Murray Efford)
+Date: Sat, 13 Aug 2022 23:09:54 +0000
+Subject: [R-pkg-devel] Windows check time blowout on R-devel
+Message-ID: <SY4PR01MB5658B18A5A97B37DA06BDE0AAC669@SY4PR01MB5658.ausprd01.prod.outlook.com>
+
+A slight revision of a longstanding CRAN package 'secr' (prompted by CRAN changes in math rendering) was archived on pre-test because of an increase in overall check time on R-devel. This seems to be beyond my control - what should I do?
+
+The package is at https://github.com/MurrayEfford/secr.
+
+I have extracted what seem like the relevant check lines below
+
+# Winbuilder R-oldrelease Check time in seconds: 660
+* using R version 4.1.3 (2022-03-10)
+* using platform: x86_64-w64-mingw32 (64-bit)
+* checking R code for possible problems ... [82s] OK
+* checking Rd files ... [4s] OK
+** running examples for arch 'x64' ... [59s] OK
+** running tests for arch 'x64' ... [56s] OK
+* checking re-building of vignette outputs ... [24s] OK
+
+# Winbuilder R-release Check time in seconds: 665
+* using R version 4.2.1 (2022-06-23 ucrt)
+* using platform: x86_64-w64-mingw32 (64-bit)
+* checking R code for possible problems ... [89s] OK
+* checking Rd files ... [6s] OK
+* checking examples ... [72s] OK
+* checking tests ... [67s] OK
+* checking re-building of vignette outputs ... [53s] OK
+
+# Winbuilder R-devel Check time in seconds: 835
+* using R Under development (unstable) (2022-08-11 r82713 ucrt)
+* using platform: x86_64-w64-mingw32 (64-bit)
+* checking R code for possible problems ... [147s] OK
+* checking Rd files ... [8s] OK
+* checking examples ... [113s] OK
+* checking tests ... [101s] OK
+* checking re-building of vignette outputs ... [41s] OK
+
+# CRAN pre-test Windows
+* using log directory 'd:/RCompile/CRANincoming/R-devel/secr.Rcheck'
+* using R Under development (unstable) (2022-08-11 r82713 ucrt)
+* using platform: x86_64-w64-mingw32 (64-bit)
+* checking R code for possible problems ... [147s] OK
+* checking Rd files ... [8s] OK
+* checking examples ... [106s] OK
+* checking tests ... [102s] OK
+* checking re-building of vignette outputs ... [39s] OK
+
+# CRAN pre-test Debian
+* using log directory ?/srv/hornik/tmp/CRAN/secr.Rcheck?
+* using R Under development (unstable) (2022-08-11 r82713)
+* using platform: x86_64-pc-linux-gnu (64-bit)
+* checking R code for possible problems ... [52s/52s] OK
+* checking Rd files ... [1s/1s] OK
+* checking examples ... [47s/47s] OK
+* checking tests ... [19s/19s] OK
+* checking re-building of vignette outputs ... [10s/10s] OK
+
+
