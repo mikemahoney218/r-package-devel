@@ -14714,3 +14714,119 @@ Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From y@nn@r|chet @end|ng |rom |r@n@|r  Tue Aug 30 14:14:07 2022
+From: y@nn@r|chet @end|ng |rom |r@n@|r (RICHET Yann)
+Date: Tue, 30 Aug 2022 12:14:07 +0000
+Subject: [R-pkg-devel] src/ subdirectories contains sources....
+Message-ID: <91E98C94545DA84BBCE16EE6BB38CFB4015B230994@irsn.fr>
+
+Dear all,
+
+I already asked some advice to well integrate a full C++ library as a submodule in my package... (which is just a wrapper for that cpp lib). As suggested, I moved the submodule inside src/, fixed some makefiles, ...
+
+But I still have a WARNING on Windows (only): 
+* checking package subdirectories ... WARNING
+Subdirectory 'src' contains no source files.
+
+https://win-builder.r-project.org/incoming_pretest/rlibkriging_0.6-0_20220830_115756/Windows/00check.log
+
+While my src/ is well populated with subdirectories containing source files...
+
+Regards,
+
+Yann
+
+
+From @teph@n@@truckm@nn @end|ng |rom un|-gre||@w@|d@de  Tue Aug 30 14:38:36 2022
+From: @teph@n@@truckm@nn @end|ng |rom un|-gre||@w@|d@de (Stephan Struckmann)
+Date: Tue, 30 Aug 2022 14:38:36 +0200
+Subject: [R-pkg-devel] r-oldrel-windows-ix86+x86_64 -- bioconductor links?
+Message-ID: <D475C395-0034-4963-B215-1562009D9B13@uni-greifswald.de>
+
+Dear list members,
+
+thank you for reading. For a few weeks, I have a WARNING on CRAN package checks for our dataquieR package, which does not even
+indirectly use Bioconductor nor cites anything from there. The warning states, that an old bioconductor release is not available any more:
+
+> Check: for unstated dependencies in ?tests?
+> Result: WARN
+>     Warning: unable to access index for repository https://bioconductor.org/packages/3.14/bioc/src/contrib:
+>      cannot open URL 'https://bioconductor.org/packages/3.14/bioc/src/contrib/PACKAGES'
+>     Warning: unable to access index for repository https://bioconductor.org/packages/3.14/data/annotation/src/contrib:
+>      cannot open URL 'https://bioconductor.org/packages/3.14/data/annotation/src/contrib/PACKAGES'
+>     Warning: unable to access index for repository https://bioconductor.org/packages/3.14/data/experiment/src/contrib:
+>      cannot open URL 'https://bioconductor.org/packages/3.14/data/experiment/src/contrib/PACKAGES'
+> Flavor: r-oldrel-windows-ix86+x86_64
+
+I suspect, this WARNING is related with the test infrastructure somehow. Since I also have to fix two NOTEs within the next two weeks, I should comment on this WARNING too.
+What would you propose to do about the WARNING ? I cannot address it, because dataquieR is not using Bioconductor at all (I?m rather sure about this, because
+`grep -ir bioc *` returns nothing, and because the BiocManager package does not list https://CRAN.R-project.org/package=BiocManager
+in its reverse dependencies).
+
+I expected the WARNING to disappear once someone fixes the suspected problems on r-oldrel-windows-ix86+x86_64, but this has not yet happened. Any hints how to handle this
+are appreciated, thank you in advance,
+
+Stephan
+
+
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: signature.asc
+Type: application/pgp-signature
+Size: 833 bytes
+Desc: Message signed with OpenPGP
+URL: <https://stat.ethz.ch/pipermail/r-package-devel/attachments/20220830/073e61a4/attachment.sig>
+
+From @ergue|@@oko| @end|ng |rom gm@||@com  Tue Aug 30 14:39:43 2022
+From: @ergue|@@oko| @end|ng |rom gm@||@com (Sokol Serguei)
+Date: Tue, 30 Aug 2022 14:39:43 +0200
+Subject: [R-pkg-devel] Fwd:  src/ subdirectories contains sources....
+In-Reply-To: <788b3859-60db-3f61-5a9b-15d71a48e291@insa-toulouse.fr>
+References: <788b3859-60db-3f61-5a9b-15d71a48e291@insa-toulouse.fr>
+Message-ID: <c38ca63a-40b4-3e0c-fc04-2be19759df8f@gmail.com>
+
+
+Le 30/08/2022 ? 14:14, RICHET Yann a ?crit?:
+> Dear all,
+>
+> I already asked some advice to well integrate a full C++ library as a submodule in my package... (which is just a wrapper for that cpp lib). As suggested, I moved the submodule inside src/, fixed some makefiles, ...
+>
+> But I still have a WARNING on Windows (only):
+> * checking package subdirectories ... WARNING
+> Subdirectory 'src' contains no source files.
+>
+> https://win-builder.r-project.org/incoming_pretest/rlibkriging_0.6-0_20220830_115756/Windows/00check.log
+>
+> While my src/ is well populated with subdirectories containing source files...
+
+These files are coming from the library that you want to wrap. You still 
+have to add an actual wrapper, i.e. your own code that will take SEXP 
+arguments convert them in C type variables needed by the wrapped lib and 
+once got the result from a lib call to convert it back to SEXP and 
+return to R world. For example, the nloptr package (you are inspired 
+off) has src/nloptr.c where it defines a function
+
+ ?? SEXP NLoptR_Optimize( SEXP args ) {...}
+
+and in R/nloptr.R it is called with
+
+ ?? solution <- .Call( "NLoptR_Optimize", ret, PACKAGE = "nloptr" )
+
+In now days, using Rcpp for lib wrapping is much more tractable solution 
+(IMHO). So you can look over there.
+
+Best,
+Serguei.
+
+> Regards,
+>
+> Yann
+>
+> ______________________________________________
+> R-package-devel at r-project.org  mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+	[[alternative HTML version deleted]]
+
+
