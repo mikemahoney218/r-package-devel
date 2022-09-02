@@ -14879,3 +14879,1109 @@ Uwe Ligges
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From et|enne@b@cher @end|ng |rom protonm@||@com  Thu Sep  1 15:55:15 2022
+From: et|enne@b@cher @end|ng |rom protonm@||@com (Etienne Bacher)
+Date: Thu, 01 Sep 2022 13:55:15 +0000
+Subject: [R-pkg-devel] tryCatch() doesn't capture errors due to && or ||
+ with R CMD check --as-cran
+Message-ID: <EYtAuD5vXFFQeFENJu_gUOXYiZoeRc85COpFtZDOLPWH4SgCxhZ-wR6qjssrCIAgqm3uxKSW3dSfDxqShu1_HkxROiND9PjbiuVTRQYpKQU=@protonmail.com>
+
+Dear all, 
+
+Calling && or || with LHS or (if evaluated) RHS of length greater than one gives an error in the devel version of R and a warning since R 4.2.0. With R 4.2.1, I can capture this warning with tryCatch(). However, R CMD check with R-devel fails because of this new behavior, meaning that tryCatch() doesn't work. For example, take this function:
+
+foo <- function() {
+  tryCatch(
+    if (c(TRUE, TRUE) || c(TRUE, TRUE)) 1,
+    warning = function(w) {
+      print(w)
+      NULL
+    },
+    error = function(e) {
+      print(e)
+      NULL
+    }
+  )
+}
+
+With R 4.2.1, this correctly gives a warning and returns NULL when I run this locally:
+> foo()
+<simpleWarning in c(TRUE, TRUE) || c(TRUE, TRUE): 'length(x) = 2 > 1' in coercion to 'logical(1)'>
+NULL
+
+And if I change the environment variables to return an error instead of the warning, it correctly gives an error and returns NULL:
+> Sys.setenv(
+    `_R_CHECK_LENGTH_1_CONDITION_` = "true",
+    `_R_CHECK_LENGTH_1_LOGIC2_` = "true"
+)
+>foo()
+<simpleError in c(TRUE, TRUE) || c(TRUE, TRUE): 'length(x) = 2 > 1' in coercion to 'logical(1)'>
+NULL
+
+This behavior is expected. But if I put this function in a package, add a test for it, and run R CMD check "." --as-cran (or rcmdcheck::rcmdcheck(args = "--as-cran")), then I get an error that I paste at the end of this email because it's quite long. I thought that tryCatch() would capture this error, even when using R CMD check with R-devel, but this is not the case. Is this an expected behavior or a bug?
+
+If you want to reproduce this error, I made a tiny package here: https://github.com/etiennebacher/testpackage. You can simply clone the repo and run R CMD check on it. 
+
+If it matters, I'm using R 4.2.1 on Windows 10.
+
+Thanks in advance,
+
+Etienne
+
+
+ ----------- FAILURE REPORT -------------- 
+ --- failure: length > 1 in coercion to logical ---
+ --- srcref --- 
+: 
+ --- package (from environment) --- 
+compiler
+ --- call from context --- 
+do.call(ffun, args)
+ --- call from argument --- 
+.Primitive("||")(c(TRUE, TRUE), c(TRUE, TRUE))
+ --- R stacktrace ---
+where 1: do.call(ffun, args)
+where 2: mode(e)
+where 3: mode(e) %in% constModes
+where 4: checkConst(do.call(ffun, args))
+where 5: doTryCatch(return(expr), name, parentenv, handler)
+where 6: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+where 7: tryCatchList(expr, names[-nh], parentenv, handlers[-nh])
+where 8: doTryCatch(return(expr), name, parentenv, handler)
+where 9: tryCatchOne(tryCatchList(expr, names[-nh], parentenv, handlers[-nh]), 
+    names[nh], parentenv, handlers[[nh]])
+where 10: tryCatchList(expr, classes, parentenv, handlers)
+where 11: tryCatch(checkConst(do.call(ffun, args)), error = function(e) NULL, 
+    warning = function(w) NULL)
+where 12: constantFoldCall(e, cntxt)
+where 13: constantFold(test, cntxt, loc = cb$savecurloc())
+where 14: h(e, cb, cntxt)
+where 15: tryInline(call, cb, cntxt)
+where 16: cmpCall(e, cb, cntxt)
+where 17: cmp(e, cb, cntxt, setloc = FALSE)
+where 18: genCode(a, pcntxt, loc = cb$savecurloc())
+where 19: cb$putconst(genCode(a, pcntxt, loc = cb$savecurloc()))
+where 20: cmpCallArgs(args, cb, cntxt, nse)
+where 21: cmpCallSymFun(fun, args, call, cb, cntxt)
+where 22: cmpCall(e, cb, cntxt)
+where 23: cmp(subexp, cb, cntxt, setloc = FALSE)
+where 24: h(e, cb, cntxt)
+where 25: tryInline(call, cb, cntxt)
+where 26: cmpCall(e, cb, cntxt)
+where 27: cmp(e, cb, cntxt, setloc = FALSE)
+where 28: genCode(body(f), ncntxt, loc = loc)
+where 29: cmpfun(f)
+where 30: doTryCatch(return(expr), name, parentenv, handler)
+where 31: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+where 32: tryCatchList(expr, classes, parentenv, handlers)
+where 33: tryCatch(cmpfun(f), error = function(e) {
+    notifyCompilerError(paste(e$message, "at", deparse(e$call)))
+    f
+})
+where 34: compiler:::tryCmpfun(function () 
+{
+    tryCatch(if (c(TRUE, TRUE) || c(TRUE, TRUE)) 
+        1, warning = function(w) {
+        print(w)
+        NULL
+    }, error = function(e) {
+        print(e)
+        NULL
+    })
+})
+where 35: lazyLoadDBinsertVariable(vars[i], from, datafile, ascii, compress, 
+    envhook)
+where 36: makeLazyLoadDB(ns, dbbase, compress = compress, set.install.dir = set.install.dir)
+where 37: code2LazyLoadDB(package, lib.loc = lib.loc, keep.source = keep.source, 
+    keep.parse.data = keep.parse.data, compress = compress, set.install.dir = set.install.dir)
+where 38: tools:::makeLazyLoading("testpackage", "C:/Users/etienne/AppData/Local/Temp/Rtmp8QXtOL/file41b43ee61605/testpackage.Rcheck/00LOCK-TESTPA~1/00new", 
+    keep.source = FALSE, keep.parse.data = FALSE, set.install.dir = "C:/Users/etienne/AppData/Local/Temp/Rtmp8QXtOL/file41b43ee61605/testpackage.Rcheck/testpackage")
+
+ --- value of length: 2 type: logical ---
+[1] TRUE TRUE
+ --- function from context --- 
+function (what, args, quote = FALSE, envir = parent.frame()) 
+{
+    if (!is.list(args)) 
+        stop("second argument must be a list")
+    if (quote) 
+        args <- lapply(args, enquote)
+    .Internal(do.call(what, args, envir))
+}
+<bytecode: 0x0000021b0a155e20>
+<environment: namespace:base>
+ --- function search by body ---
+Function do.call in namespace base has this body.
+ ----------- END OF FAILURE REPORT -------------- 
+Fatal error: length > 1 in coercion to logical
+
+
+From pro|jcn@@h @end|ng |rom gm@||@com  Thu Sep  1 16:48:06 2022
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Thu, 1 Sep 2022 10:48:06 -0400
+Subject: [R-pkg-devel] Advice on elegant way to alias function name
+Message-ID: <1525c052-890f-b5eb-2079-1688097e2a02@gmail.com>
+
+Hi,
+
+I've a package where it has been suggested that one of the functions -- call
+it "myfn()" -- should be called something else, say "thefn()". Of course, I'll
+need to keep the old name around for a while.
+
+Web search has suggested simple assignment of
+
+     thefn <- myfn
+
+but I cannot seem to get this to work with R CMD check when I put this in a .R
+file in the code and put alias and usage stanzas in documentation. I get alias
+and missing argument type errors. I've tried a number of variations on this theme
+without appreciable success.
+
+A workaround is to copy the entire function with Roxygen2 documentation and
+name change, but this seems inelegant.
+
+Is there a better way e.g., using something like onLoad ? Pointers to working
+examples in CRAN or Github packages would be welcome.
+
+Best, JN
+
+
+From n|u|tz @end|ng |rom gm@||@com  Thu Sep  1 16:53:40 2022
+From: n|u|tz @end|ng |rom gm@||@com (Neal Fultz)
+Date: Thu, 1 Sep 2022 07:53:40 -0700
+Subject: [R-pkg-devel] Advice on elegant way to alias function name
+In-Reply-To: <1525c052-890f-b5eb-2079-1688097e2a02@gmail.com>
+References: <1525c052-890f-b5eb-2079-1688097e2a02@gmail.com>
+Message-ID: <CAL9B2ve8ERfK-e-QmXa3K0CWx_ycqWW5ABZovBOfrQst_SOYRw@mail.gmail.com>
+
+Many of Hadley Wickhams packages have things with both US and UK spellings
+(summarise/summarize, color/colour), I would check ggplot2 or dplyr.
+
+https://github.com/cran/dplyr/blob/master/R/summarise.R#L122-L124
+
+On Thu, Sep 1, 2022 at 7:48 AM J C Nash <profjcnash at gmail.com> wrote:
+
+> Hi,
+>
+> I've a package where it has been suggested that one of the functions --
+> call
+> it "myfn()" -- should be called something else, say "thefn()". Of course,
+> I'll
+> need to keep the old name around for a while.
+>
+> Web search has suggested simple assignment of
+>
+>      thefn <- myfn
+>
+> but I cannot seem to get this to work with R CMD check when I put this in
+> a .R
+> file in the code and put alias and usage stanzas in documentation. I get
+> alias
+> and missing argument type errors. I've tried a number of variations on
+> this theme
+> without appreciable success.
+>
+> A workaround is to copy the entire function with Roxygen2 documentation and
+> name change, but this seems inelegant.
+>
+> Is there a better way e.g., using something like onLoad ? Pointers to
+> working
+> examples in CRAN or Github packages would be welcome.
+>
+> Best, JN
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Thu Sep  1 17:01:09 2022
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Thu, 1 Sep 2022 17:01:09 +0200
+Subject: [R-pkg-devel] tryCatch() doesn't capture errors due to && or ||
+ with R CMD check --as-cran
+In-Reply-To: <EYtAuD5vXFFQeFENJu_gUOXYiZoeRc85COpFtZDOLPWH4SgCxhZ-wR6qjssrCIAgqm3uxKSW3dSfDxqShu1_HkxROiND9PjbiuVTRQYpKQU=@protonmail.com>
+References: <EYtAuD5vXFFQeFENJu_gUOXYiZoeRc85COpFtZDOLPWH4SgCxhZ-wR6qjssrCIAgqm3uxKSW3dSfDxqShu1_HkxROiND9PjbiuVTRQYpKQU=@protonmail.com>
+Message-ID: <fe3f5d10-f6f3-d5d7-b3ea-620c81c68287@gmail.com>
+
+
+On 9/1/22 15:55, Etienne Bacher wrote:
+> Dear all,
+>
+> Calling && or || with LHS or (if evaluated) RHS of length greater than one gives an error in the devel version of R and a warning since R 4.2.0. With R 4.2.1, I can capture this warning with tryCatch(). However, R CMD check with R-devel fails because of this new behavior, meaning that tryCatch() doesn't work. For example, take this function:
+>
+> foo <- function() {
+>    tryCatch(
+>      if (c(TRUE, TRUE) || c(TRUE, TRUE)) 1,
+>      warning = function(w) {
+>        print(w)
+>        NULL
+>      },
+>      error = function(e) {
+>        print(e)
+>        NULL
+>      }
+>    )
+> }
+>
+> With R 4.2.1, this correctly gives a warning and returns NULL when I run this locally:
+>> foo()
+> <simpleWarning in c(TRUE, TRUE) || c(TRUE, TRUE): 'length(x) = 2 > 1' in coercion to 'logical(1)'>
+> NULL
+>
+> And if I change the environment variables to return an error instead of the warning, it correctly gives an error and returns NULL:
+>> Sys.setenv(
+>      `_R_CHECK_LENGTH_1_CONDITION_` = "true",
+>      `_R_CHECK_LENGTH_1_LOGIC2_` = "true"
+> )
+>> foo()
+> <simpleError in c(TRUE, TRUE) || c(TRUE, TRUE): 'length(x) = 2 > 1' in coercion to 'logical(1)'>
+> NULL
+>
+> This behavior is expected. But if I put this function in a package, add a test for it, and run R CMD check "." --as-cran (or rcmdcheck::rcmdcheck(args = "--as-cran")), then I get an error that I paste at the end of this email because it's quite long. I thought that tryCatch() would capture this error, even when using R CMD check with R-devel, but this is not the case. Is this an expected behavior or a bug?
+>
+> If you want to reproduce this error, I made a tiny package here: https://github.com/etiennebacher/testpackage. You can simply clone the repo and run R CMD check on it.
+>
+> If it matters, I'm using R 4.2.1 on Windows 10.
+
+This is because R CMD check in R 4.2.1 still used
+
+Sys.setenv1("_R_CHECK_LENGTH_1_LOGIC2_", "abort,verbose")
+
+with --as-cran (in check.R), so that the problematic code is found with 
+highest probability.
+
+By now in R-devel, these variables no longer have any effect (more in 
+NEWS) and you always get an error, even during R CMD check --as-cran. 
+Your example package passes on my build of R-devel.
+
+Best
+Tomas
+
+
+>
+> Thanks in advance,
+>
+> Etienne
+>
+>
+>   ----------- FAILURE REPORT --------------
+>   --- failure: length > 1 in coercion to logical ---
+>   --- srcref ---
+> :
+>   --- package (from environment) ---
+> compiler
+>   --- call from context ---
+> do.call(ffun, args)
+>   --- call from argument ---
+> .Primitive("||")(c(TRUE, TRUE), c(TRUE, TRUE))
+>   --- R stacktrace ---
+> where 1: do.call(ffun, args)
+> where 2: mode(e)
+> where 3: mode(e) %in% constModes
+> where 4: checkConst(do.call(ffun, args))
+> where 5: doTryCatch(return(expr), name, parentenv, handler)
+> where 6: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+> where 7: tryCatchList(expr, names[-nh], parentenv, handlers[-nh])
+> where 8: doTryCatch(return(expr), name, parentenv, handler)
+> where 9: tryCatchOne(tryCatchList(expr, names[-nh], parentenv, handlers[-nh]),
+>      names[nh], parentenv, handlers[[nh]])
+> where 10: tryCatchList(expr, classes, parentenv, handlers)
+> where 11: tryCatch(checkConst(do.call(ffun, args)), error = function(e) NULL,
+>      warning = function(w) NULL)
+> where 12: constantFoldCall(e, cntxt)
+> where 13: constantFold(test, cntxt, loc = cb$savecurloc())
+> where 14: h(e, cb, cntxt)
+> where 15: tryInline(call, cb, cntxt)
+> where 16: cmpCall(e, cb, cntxt)
+> where 17: cmp(e, cb, cntxt, setloc = FALSE)
+> where 18: genCode(a, pcntxt, loc = cb$savecurloc())
+> where 19: cb$putconst(genCode(a, pcntxt, loc = cb$savecurloc()))
+> where 20: cmpCallArgs(args, cb, cntxt, nse)
+> where 21: cmpCallSymFun(fun, args, call, cb, cntxt)
+> where 22: cmpCall(e, cb, cntxt)
+> where 23: cmp(subexp, cb, cntxt, setloc = FALSE)
+> where 24: h(e, cb, cntxt)
+> where 25: tryInline(call, cb, cntxt)
+> where 26: cmpCall(e, cb, cntxt)
+> where 27: cmp(e, cb, cntxt, setloc = FALSE)
+> where 28: genCode(body(f), ncntxt, loc = loc)
+> where 29: cmpfun(f)
+> where 30: doTryCatch(return(expr), name, parentenv, handler)
+> where 31: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+> where 32: tryCatchList(expr, classes, parentenv, handlers)
+> where 33: tryCatch(cmpfun(f), error = function(e) {
+>      notifyCompilerError(paste(e$message, "at", deparse(e$call)))
+>      f
+> })
+> where 34: compiler:::tryCmpfun(function ()
+> {
+>      tryCatch(if (c(TRUE, TRUE) || c(TRUE, TRUE))
+>          1, warning = function(w) {
+>          print(w)
+>          NULL
+>      }, error = function(e) {
+>          print(e)
+>          NULL
+>      })
+> })
+> where 35: lazyLoadDBinsertVariable(vars[i], from, datafile, ascii, compress,
+>      envhook)
+> where 36: makeLazyLoadDB(ns, dbbase, compress = compress, set.install.dir = set.install.dir)
+> where 37: code2LazyLoadDB(package, lib.loc = lib.loc, keep.source = keep.source,
+>      keep.parse.data = keep.parse.data, compress = compress, set.install.dir = set.install.dir)
+> where 38: tools:::makeLazyLoading("testpackage", "C:/Users/etienne/AppData/Local/Temp/Rtmp8QXtOL/file41b43ee61605/testpackage.Rcheck/00LOCK-TESTPA~1/00new",
+>      keep.source = FALSE, keep.parse.data = FALSE, set.install.dir = "C:/Users/etienne/AppData/Local/Temp/Rtmp8QXtOL/file41b43ee61605/testpackage.Rcheck/testpackage")
+>
+>   --- value of length: 2 type: logical ---
+> [1] TRUE TRUE
+>   --- function from context ---
+> function (what, args, quote = FALSE, envir = parent.frame())
+> {
+>      if (!is.list(args))
+>          stop("second argument must be a list")
+>      if (quote)
+>          args <- lapply(args, enquote)
+>      .Internal(do.call(what, args, envir))
+> }
+> <bytecode: 0x0000021b0a155e20>
+> <environment: namespace:base>
+>   --- function search by body ---
+> Function do.call in namespace base has this body.
+>   ----------- END OF FAILURE REPORT --------------
+> Fatal error: length > 1 in coercion to logical
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Thu Sep  1 17:01:32 2022
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Thu, 1 Sep 2022 17:01:32 +0200
+Subject: [R-pkg-devel] Advice on elegant way to alias function name
+In-Reply-To: <1525c052-890f-b5eb-2079-1688097e2a02@gmail.com>
+References: <1525c052-890f-b5eb-2079-1688097e2a02@gmail.com>
+Message-ID: <dbc3b596-4043-6a3d-813e-cf29ab0951f5@statistik.tu-dortmund.de>
+
+
+
+On 01.09.2022 16:48, J C Nash wrote:
+> Hi,
+> 
+> I've a package where it has been suggested that one of the functions -- 
+> call
+> it "myfn()" -- should be called something else, say "thefn()". Of 
+> course, I'll
+> need to keep the old name around for a while.
+> 
+> Web search has suggested simple assignment of
+> 
+>  ??? thefn <- myfn
+> 
+> but I cannot seem to get this to work with R CMD check when I put this 
+> in a .R
+> file in the code and put alias and usage stanzas in documentation. I get 
+> alias
+> and missing argument type errors. I've tried a number of variations on 
+> this theme
+> without appreciable success.
+
+Can you make the package available? It should work.
+
+Best,
+Uwe
+
+> A workaround is to copy the entire function with Roxygen2 documentation and
+> name change, but this seems inelegant.
+> 
+> Is there a better way e.g., using something like onLoad ? Pointers to 
+> working
+> examples in CRAN or Github packages would be welcome.
+> 
+> Best, JN
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From @ergue|@@oko| @end|ng |rom gm@||@com  Thu Sep  1 17:09:34 2022
+From: @ergue|@@oko| @end|ng |rom gm@||@com (Sokol Serguei)
+Date: Thu, 1 Sep 2022 17:09:34 +0200
+Subject: [R-pkg-devel] Advice on elegant way to alias function name
+In-Reply-To: <1525c052-890f-b5eb-2079-1688097e2a02@gmail.com>
+References: <1525c052-890f-b5eb-2079-1688097e2a02@gmail.com>
+Message-ID: <f2901c71-3959-e637-77ce-3ca13ef10b0d@gmail.com>
+
+Le 01/09/2022 ? 16:48, J C Nash a ?crit?:
+> Hi,
+>
+> I've a package where it has been suggested that one of the functions 
+> -- call
+> it "myfn()" -- should be called something else, say "thefn()". Of 
+> course, I'll
+> need to keep the old name around for a while.
+>
+> Web search has suggested simple assignment of
+>
+> ??? thefn <- myfn
+>
+> but I cannot seem to get this to work with R CMD check when I put this 
+> in a .R
+> file in the code and put alias and usage stanzas in documentation.
+
+Is there any place where we can see what alias and stanzas you have used 
+actually?
+
+Best,
+Serguei.
+
+> I get alias
+> and missing argument type errors. I've tried a number of variations on 
+> this theme
+> without appreciable success.
+>
+> A workaround is to copy the entire function with Roxygen2 
+> documentation and
+> name change, but this seems inelegant.
+>
+> Is there a better way e.g., using something like onLoad ? Pointers to 
+> working
+> examples in CRAN or Github packages would be welcome.
+>
+> Best, JN
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Thu Sep  1 17:19:47 2022
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Thu, 1 Sep 2022 17:19:47 +0200
+Subject: [R-pkg-devel] tryCatch() doesn't capture errors due to && or ||
+ with R CMD check --as-cran
+In-Reply-To: <EYtAuD5vXFFQeFENJu_gUOXYiZoeRc85COpFtZDOLPWH4SgCxhZ-wR6qjssrCIAgqm3uxKSW3dSfDxqShu1_HkxROiND9PjbiuVTRQYpKQU=@protonmail.com>
+References: <EYtAuD5vXFFQeFENJu_gUOXYiZoeRc85COpFtZDOLPWH4SgCxhZ-wR6qjssrCIAgqm3uxKSW3dSfDxqShu1_HkxROiND9PjbiuVTRQYpKQU=@protonmail.com>
+Message-ID: <25360.52627.355395.525599@stat.math.ethz.ch>
+
+>>>>> Etienne Bacher 
+>>>>>     on Thu, 01 Sep 2022 13:55:15 +0000 writes:
+
+> Dear all, 
+
+> Calling && or || with LHS or (if evaluated) RHS of length greater than one gives an error in the devel version of R and a warning since R 4.2.0. With R 4.2.1, I can capture this warning with tryCatch(). However, R CMD check with R-devel fails because of this new behavior, meaning that tryCatch() doesn't work. 
+
+Very much on purpose, even though we (the R Core team) may not
+have said so loudly.
+
+The problem is that too many "smart" people, including the
+authors of certain widely used testing packages do call
+tryCatch(), or suppressWarnings() and similar to eliminate
+warnings and errors in a situation we really *do* want these to
+be shown.
+
+For instance, we, the Matrix package authors, have planned to
+deprecate certain usages of  as(*, "<someMatrixClass>")  and
+give deprecation warnings -- see  help(Deprecated) -- so the
+users and package authors can see the undesired usages and
+eventually update their code.
+
+No, because of too much use of suppressWarnings() they *NEVER
+EVER* see *any* deprecation warnings for all their own code
+which silences these warnings and for all (often 100%) of their
+tests where they use the famous test...t  package ...
+
+An additional reason for such a non-suppressible error is that
+when you find such warnings/errors in package testing of
+packages with many dependencies, if the warning/error is raised
+and you *do* see it, it may *still* not at all be easy to see
+from which of the (sometimes 20--100) packages that are in use
+the problem is caused.
+
+I hope you understand that such "obnoxious" behavior is
+rational and desirable in such rare cases.
+
+Best regards,
+Martin
+
+
+--
+Martin Maechler
+ETH Zurich  and  R Core team
+
+> For example, take this function:
+> 
+> foo <- function() {
+>   tryCatch(
+>     if (c(TRUE, TRUE) || c(TRUE, TRUE)) 1,
+>     warning = function(w) {
+>       print(w)
+>       NULL
+>     },
+>     error = function(e) {
+>       print(e)
+>       NULL
+>     }
+>   )
+> }
+> 
+> With R 4.2.1, this correctly gives a warning and returns NULL when I run this locally:
+> > foo()
+> <simpleWarning in c(TRUE, TRUE) || c(TRUE, TRUE): 'length(x) = 2 > 1' in coercion to 'logical(1)'>
+> NULL
+> 
+> And if I change the environment variables to return an error instead of the warning, it correctly gives an error and returns NULL:
+> > Sys.setenv(
+>     `_R_CHECK_LENGTH_1_CONDITION_` = "true",
+>     `_R_CHECK_LENGTH_1_LOGIC2_` = "true"
+> )
+> >foo()
+> <simpleError in c(TRUE, TRUE) || c(TRUE, TRUE): 'length(x) = 2 > 1' in coercion to 'logical(1)'>
+> NULL
+> 
+> This behavior is expected. But if I put this function in a package, add a test for it, and run R CMD check "." --as-cran (or rcmdcheck::rcmdcheck(args = "--as-cran")), then I get an error that I paste at the end of this email because it's quite long. I thought that tryCatch() would capture this error, even when using R CMD check with R-devel, but this is not the case. Is this an expected behavior or a bug?
+> 
+> If you want to reproduce this error, I made a tiny package here: https://github.com/etiennebacher/testpackage. You can simply clone the repo and run R CMD check on it. 
+> 
+> If it matters, I'm using R 4.2.1 on Windows 10.
+> 
+> Thanks in advance,
+> 
+> Etienne
+> 
+> 
+>  ----------- FAILURE REPORT -------------- 
+>  --- failure: length > 1 in coercion to logical ---
+>  --- srcref --- 
+> : 
+>  --- package (from environment) --- 
+> compiler
+>  --- call from context --- 
+> do.call(ffun, args)
+>  --- call from argument --- 
+> .Primitive("||")(c(TRUE, TRUE), c(TRUE, TRUE))
+>  --- R stacktrace ---
+> where 1: do.call(ffun, args)
+> where 2: mode(e)
+> where 3: mode(e) %in% constModes
+> where 4: checkConst(do.call(ffun, args))
+> where 5: doTryCatch(return(expr), name, parentenv, handler)
+> where 6: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+> where 7: tryCatchList(expr, names[-nh], parentenv, handlers[-nh])
+> where 8: doTryCatch(return(expr), name, parentenv, handler)
+> where 9: tryCatchOne(tryCatchList(expr, names[-nh], parentenv, handlers[-nh]), 
+>     names[nh], parentenv, handlers[[nh]])
+> where 10: tryCatchList(expr, classes, parentenv, handlers)
+> where 11: tryCatch(checkConst(do.call(ffun, args)), error = function(e) NULL, 
+>     warning = function(w) NULL)
+> where 12: constantFoldCall(e, cntxt)
+> where 13: constantFold(test, cntxt, loc = cb$savecurloc())
+> where 14: h(e, cb, cntxt)
+> where 15: tryInline(call, cb, cntxt)
+> where 16: cmpCall(e, cb, cntxt)
+> where 17: cmp(e, cb, cntxt, setloc = FALSE)
+> where 18: genCode(a, pcntxt, loc = cb$savecurloc())
+> where 19: cb$putconst(genCode(a, pcntxt, loc = cb$savecurloc()))
+> where 20: cmpCallArgs(args, cb, cntxt, nse)
+> where 21: cmpCallSymFun(fun, args, call, cb, cntxt)
+> where 22: cmpCall(e, cb, cntxt)
+> where 23: cmp(subexp, cb, cntxt, setloc = FALSE)
+> where 24: h(e, cb, cntxt)
+> where 25: tryInline(call, cb, cntxt)
+> where 26: cmpCall(e, cb, cntxt)
+> where 27: cmp(e, cb, cntxt, setloc = FALSE)
+> where 28: genCode(body(f), ncntxt, loc = loc)
+> where 29: cmpfun(f)
+> where 30: doTryCatch(return(expr), name, parentenv, handler)
+> where 31: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+> where 32: tryCatchList(expr, classes, parentenv, handlers)
+> where 33: tryCatch(cmpfun(f), error = function(e) {
+>     notifyCompilerError(paste(e$message, "at", deparse(e$call)))
+>     f
+> })
+> where 34: compiler:::tryCmpfun(function () 
+> {
+>     tryCatch(if (c(TRUE, TRUE) || c(TRUE, TRUE)) 
+>         1, warning = function(w) {
+>         print(w)
+>         NULL
+>     }, error = function(e) {
+>         print(e)
+>         NULL
+>     })
+> })
+> where 35: lazyLoadDBinsertVariable(vars[i], from, datafile, ascii, compress, 
+>     envhook)
+> where 36: makeLazyLoadDB(ns, dbbase, compress = compress, set.install.dir = set.install.dir)
+> where 37: code2LazyLoadDB(package, lib.loc = lib.loc, keep.source = keep.source, 
+>     keep.parse.data = keep.parse.data, compress = compress, set.install.dir = set.install.dir)
+> where 38: tools:::makeLazyLoading("testpackage", "C:/Users/etienne/AppData/Local/Temp/Rtmp8QXtOL/file41b43ee61605/testpackage.Rcheck/00LOCK-TESTPA~1/00new", 
+>     keep.source = FALSE, keep.parse.data = FALSE, set.install.dir = "C:/Users/etienne/AppData/Local/Temp/Rtmp8QXtOL/file41b43ee61605/testpackage.Rcheck/testpackage")
+> 
+>  --- value of length: 2 type: logical ---
+> [1] TRUE TRUE
+>  --- function from context --- 
+> function (what, args, quote = FALSE, envir = parent.frame()) 
+> {
+>     if (!is.list(args)) 
+>         stop("second argument must be a list")
+>     if (quote) 
+>         args <- lapply(args, enquote)
+>     .Internal(do.call(what, args, envir))
+> }
+> <bytecode: 0x0000021b0a155e20>
+> <environment: namespace:base>
+>  --- function search by body ---
+> Function do.call in namespace base has this body.
+>  ----------- END OF FAILURE REPORT -------------- 
+> Fatal error: length > 1 in coercion to logical
+>
+
+
+From h@w|ckh@m @end|ng |rom gm@||@com  Thu Sep  1 17:29:33 2022
+From: h@w|ckh@m @end|ng |rom gm@||@com (Hadley Wickham)
+Date: Thu, 1 Sep 2022 10:29:33 -0500
+Subject: [R-pkg-devel] Advice on elegant way to alias function name
+In-Reply-To: <1525c052-890f-b5eb-2079-1688097e2a02@gmail.com>
+References: <1525c052-890f-b5eb-2079-1688097e2a02@gmail.com>
+Message-ID: <CABdHhvFKNMmDiXL1AU9jw0TO6zbAHQHy3C8eDM1NHkFXayQS2Q@mail.gmail.com>
+
+On Thu, Sep 1, 2022 at 9:48 AM J C Nash <profjcnash at gmail.com> wrote:
+>
+> Hi,
+>
+> I've a package where it has been suggested that one of the functions -- call
+> it "myfn()" -- should be called something else, say "thefn()". Of course, I'll
+> need to keep the old name around for a while.
+>
+> Web search has suggested simple assignment of
+>
+>      thefn <- myfn
+>
+> but I cannot seem to get this to work with R CMD check when I put this in a .R
+> file in the code and put alias and usage stanzas in documentation. I get alias
+> and missing argument type errors. I've tried a number of variations on this theme
+> without appreciable success.
+>
+> A workaround is to copy the entire function with Roxygen2 documentation and
+> name change, but this seems inelegant.
+
+You'll also need to add a couple of roxygen tags:
+
+#' @export
+#' @rdname myfn
+thefn <- myfn
+
+Hadley
+
+-- 
+http://hadley.nz
+
+
+From ||one| @end|ng |rom r@tud|o@com  Thu Sep  1 18:47:36 2022
+From: ||one| @end|ng |rom r@tud|o@com (Lionel Henry)
+Date: Thu, 1 Sep 2022 18:47:36 +0200
+Subject: [R-pkg-devel] tryCatch() doesn't capture errors due to && or ||
+ with R CMD check --as-cran
+In-Reply-To: <25360.52627.355395.525599@stat.math.ethz.ch>
+References: <EYtAuD5vXFFQeFENJu_gUOXYiZoeRc85COpFtZDOLPWH4SgCxhZ-wR6qjssrCIAgqm3uxKSW3dSfDxqShu1_HkxROiND9PjbiuVTRQYpKQU=@protonmail.com>
+ <25360.52627.355395.525599@stat.math.ethz.ch>
+Message-ID: <CAJf4E3pkq0HjYzAtdwFm_Uhttowgo_o-c2nq9gqbjKSFB9gm6g@mail.gmail.com>
+
+Hi Martin,
+
+I'm not sure I understand what you mean regarding suppressed warnings
+in testthat.
+
+- All warnings are reported to users by `devtools::test()`, with
+  accompanying backtraces. They are not hidden.
+
+- R CMD check doesn't report warnings emitted from files in `tests/`.
+
+If you need some sort of warning to surface as errors, warnings, or
+notes in R CMD check, it should be possible to come up with
+something. This could take the form of special classes of conditions
+that R CMD check would catch and emit corresponding diagnostics
+for. We would change testthat to make sure all such conditions are
+properly emitted during checks.
+
+Best,
+Lionel
+
+
+On 9/1/22, Martin Maechler <maechler at stat.math.ethz.ch> wrote:
+>>>>>> Etienne Bacher
+>>>>>>     on Thu, 01 Sep 2022 13:55:15 +0000 writes:
+>
+>> Dear all,
+>
+>> Calling && or || with LHS or (if evaluated) RHS of length greater than one
+>> gives an error in the devel version of R and a warning since R 4.2.0. With
+>> R 4.2.1, I can capture this warning with tryCatch(). However, R CMD check
+>> with R-devel fails because of this new behavior, meaning that tryCatch()
+>> doesn't work.
+>
+> Very much on purpose, even though we (the R Core team) may not
+> have said so loudly.
+>
+> The problem is that too many "smart" people, including the
+> authors of certain widely used testing packages do call
+> tryCatch(), or suppressWarnings() and similar to eliminate
+> warnings and errors in a situation we really *do* want these to
+> be shown.
+>
+> For instance, we, the Matrix package authors, have planned to
+> deprecate certain usages of  as(*, "<someMatrixClass>")  and
+> give deprecation warnings -- see  help(Deprecated) -- so the
+> users and package authors can see the undesired usages and
+> eventually update their code.
+>
+> No, because of too much use of suppressWarnings() they *NEVER
+> EVER* see *any* deprecation warnings for all their own code
+> which silences these warnings and for all (often 100%) of their
+> tests where they use the famous test...t  package ...
+>
+> An additional reason for such a non-suppressible error is that
+> when you find such warnings/errors in package testing of
+> packages with many dependencies, if the warning/error is raised
+> and you *do* see it, it may *still* not at all be easy to see
+> from which of the (sometimes 20--100) packages that are in use
+> the problem is caused.
+>
+> I hope you understand that such "obnoxious" behavior is
+> rational and desirable in such rare cases.
+>
+> Best regards,
+> Martin
+>
+>
+> --
+> Martin Maechler
+> ETH Zurich  and  R Core team
+>
+>> For example, take this function:
+>>
+>> foo <- function() {
+>>   tryCatch(
+>>     if (c(TRUE, TRUE) || c(TRUE, TRUE)) 1,
+>>     warning = function(w) {
+>>       print(w)
+>>       NULL
+>>     },
+>>     error = function(e) {
+>>       print(e)
+>>       NULL
+>>     }
+>>   )
+>> }
+>>
+>> With R 4.2.1, this correctly gives a warning and returns NULL when I run
+>> this locally:
+>> > foo()
+>> <simpleWarning in c(TRUE, TRUE) || c(TRUE, TRUE): 'length(x) = 2 > 1' in
+>> coercion to 'logical(1)'>
+>> NULL
+>>
+>> And if I change the environment variables to return an error instead of
+>> the warning, it correctly gives an error and returns NULL:
+>> > Sys.setenv(
+>>     `_R_CHECK_LENGTH_1_CONDITION_` = "true",
+>>     `_R_CHECK_LENGTH_1_LOGIC2_` = "true"
+>> )
+>> >foo()
+>> <simpleError in c(TRUE, TRUE) || c(TRUE, TRUE): 'length(x) = 2 > 1' in
+>> coercion to 'logical(1)'>
+>> NULL
+>>
+>> This behavior is expected. But if I put this function in a package, add a
+>> test for it, and run R CMD check "." --as-cran (or
+>> rcmdcheck::rcmdcheck(args = "--as-cran")), then I get an error that I
+>> paste at the end of this email because it's quite long. I thought that
+>> tryCatch() would capture this error, even when using R CMD check with
+>> R-devel, but this is not the case. Is this an expected behavior or a bug?
+>>
+>> If you want to reproduce this error, I made a tiny package here:
+>> https://github.com/etiennebacher/testpackage. You can simply clone the
+>> repo and run R CMD check on it.
+>>
+>> If it matters, I'm using R 4.2.1 on Windows 10.
+>>
+>> Thanks in advance,
+>>
+>> Etienne
+>>
+>>
+>>  ----------- FAILURE REPORT --------------
+>>  --- failure: length > 1 in coercion to logical ---
+>>  --- srcref ---
+>> :
+>>  --- package (from environment) ---
+>> compiler
+>>  --- call from context ---
+>> do.call(ffun, args)
+>>  --- call from argument ---
+>> .Primitive("||")(c(TRUE, TRUE), c(TRUE, TRUE))
+>>  --- R stacktrace ---
+>> where 1: do.call(ffun, args)
+>> where 2: mode(e)
+>> where 3: mode(e) %in% constModes
+>> where 4: checkConst(do.call(ffun, args))
+>> where 5: doTryCatch(return(expr), name, parentenv, handler)
+>> where 6: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+>> where 7: tryCatchList(expr, names[-nh], parentenv, handlers[-nh])
+>> where 8: doTryCatch(return(expr), name, parentenv, handler)
+>> where 9: tryCatchOne(tryCatchList(expr, names[-nh], parentenv,
+>> handlers[-nh]),
+>>     names[nh], parentenv, handlers[[nh]])
+>> where 10: tryCatchList(expr, classes, parentenv, handlers)
+>> where 11: tryCatch(checkConst(do.call(ffun, args)), error = function(e)
+>> NULL,
+>>     warning = function(w) NULL)
+>> where 12: constantFoldCall(e, cntxt)
+>> where 13: constantFold(test, cntxt, loc = cb$savecurloc())
+>> where 14: h(e, cb, cntxt)
+>> where 15: tryInline(call, cb, cntxt)
+>> where 16: cmpCall(e, cb, cntxt)
+>> where 17: cmp(e, cb, cntxt, setloc = FALSE)
+>> where 18: genCode(a, pcntxt, loc = cb$savecurloc())
+>> where 19: cb$putconst(genCode(a, pcntxt, loc = cb$savecurloc()))
+>> where 20: cmpCallArgs(args, cb, cntxt, nse)
+>> where 21: cmpCallSymFun(fun, args, call, cb, cntxt)
+>> where 22: cmpCall(e, cb, cntxt)
+>> where 23: cmp(subexp, cb, cntxt, setloc = FALSE)
+>> where 24: h(e, cb, cntxt)
+>> where 25: tryInline(call, cb, cntxt)
+>> where 26: cmpCall(e, cb, cntxt)
+>> where 27: cmp(e, cb, cntxt, setloc = FALSE)
+>> where 28: genCode(body(f), ncntxt, loc = loc)
+>> where 29: cmpfun(f)
+>> where 30: doTryCatch(return(expr), name, parentenv, handler)
+>> where 31: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+>> where 32: tryCatchList(expr, classes, parentenv, handlers)
+>> where 33: tryCatch(cmpfun(f), error = function(e) {
+>>     notifyCompilerError(paste(e$message, "at", deparse(e$call)))
+>>     f
+>> })
+>> where 34: compiler:::tryCmpfun(function ()
+>> {
+>>     tryCatch(if (c(TRUE, TRUE) || c(TRUE, TRUE))
+>>         1, warning = function(w) {
+>>         print(w)
+>>         NULL
+>>     }, error = function(e) {
+>>         print(e)
+>>         NULL
+>>     })
+>> })
+>> where 35: lazyLoadDBinsertVariable(vars[i], from, datafile, ascii,
+>> compress,
+>>     envhook)
+>> where 36: makeLazyLoadDB(ns, dbbase, compress = compress, set.install.dir
+>> = set.install.dir)
+>> where 37: code2LazyLoadDB(package, lib.loc = lib.loc, keep.source =
+>> keep.source,
+>>     keep.parse.data = keep.parse.data, compress = compress,
+>> set.install.dir = set.install.dir)
+>> where 38: tools:::makeLazyLoading("testpackage",
+>> "C:/Users/etienne/AppData/Local/Temp/Rtmp8QXtOL/file41b43ee61605/testpackage.Rcheck/00LOCK-TESTPA~1/00new",
+>>
+>>     keep.source = FALSE, keep.parse.data = FALSE, set.install.dir =
+>> "C:/Users/etienne/AppData/Local/Temp/Rtmp8QXtOL/file41b43ee61605/testpackage.Rcheck/testpackage")
+>>
+>>  --- value of length: 2 type: logical ---
+>> [1] TRUE TRUE
+>>  --- function from context ---
+>> function (what, args, quote = FALSE, envir = parent.frame())
+>> {
+>>     if (!is.list(args))
+>>         stop("second argument must be a list")
+>>     if (quote)
+>>         args <- lapply(args, enquote)
+>>     .Internal(do.call(what, args, envir))
+>> }
+>> <bytecode: 0x0000021b0a155e20>
+>> <environment: namespace:base>
+>>  --- function search by body ---
+>> Function do.call in namespace base has this body.
+>>  ----------- END OF FAILURE REPORT --------------
+>> Fatal error: length > 1 in coercion to logical
+>>
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+From pro|jcn@@h @end|ng |rom gm@||@com  Thu Sep  1 20:51:37 2022
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Thu, 1 Sep 2022 14:51:37 -0400
+Subject: [R-pkg-devel] Advice on elegant way to alias function name
+In-Reply-To: <CABdHhvFKNMmDiXL1AU9jw0TO6zbAHQHy3C8eDM1NHkFXayQS2Q@mail.gmail.com>
+References: <1525c052-890f-b5eb-2079-1688097e2a02@gmail.com>
+ <CABdHhvFKNMmDiXL1AU9jw0TO6zbAHQHy3C8eDM1NHkFXayQS2Q@mail.gmail.com>
+Message-ID: <ac548c4d-5aaf-488c-c2d8-607576b6da7f@gmail.com>
+
+
+Thanks to all for many quick replies.
+
+In trying different suggestions, it appears I may have some sort of conflict
+going on in the Roxygen tags and some other part of my package. To avoid
+sowing confusion on the list, I'll take a step back and go through things
+carefully and post my findings in a few days, hopefully with an explanation
+of why things didn't work as I expected.
+
+Best,
+
+JN
+
+
+From ru@@e||-|enth @end|ng |rom u|ow@@edu  Thu Sep  1 23:53:56 2022
+From: ru@@e||-|enth @end|ng |rom u|ow@@edu (Lenth, Russell V)
+Date: Thu, 1 Sep 2022 21:53:56 +0000
+Subject: [R-pkg-devel] Examples with conditional blocks
+Message-ID: <DM6PR04MB4474896BCDCF2B5DC1EEB82EF17B9@DM6PR04MB4474.namprd04.prod.outlook.com>
+
+Dear package developers,
+
+What is the best way to provide examples in help pages that should only be run under certain conditions -- 
+e.g., whether another package is installed? The code that is run conditionally is then an expression, so
+only the results of the last statement are displayed; and even if we force-print results, the output is
+separated from the code that produces it. 
+
+The best I have been able to come up with is to use withAutoprint(), such as we see here:
+---------------------------------------------------------------------------
+> example(hpd.summary)
+
+hpd.sm> if(require("coda")) withAutoprint({
+hpd.sm+   # Create an emmGrid object from a system file
+hpd.sm+   cbpp.rg <- do.call(emmobj, 
+hpd.sm+       readRDS(system.file("extdata", "cbpplist", package = "emmeans")))
+hpd.sm+   cbpp.emm <- emmeans(cbpp.rg, "period")
+hpd.sm+   hpd.summary(cbpp.emm)   # or just summary(cbpp.emm) as it gets redirected
+hpd.sm+   
+hpd.sm+   # Test for any two-fold difference
+hpd.sm+   summary(pairs(cbpp.emm), type = "response", delta = log(2))
+hpd.sm+ }, spaced = TRUE)
+Loading required package: coda
+
+> cbpp.rg <- do.call(emmobj, readRDS(system.file("extdata", "cbpplist", package = "emmeans")))
+
+> cbpp.emm <- emmeans(cbpp.rg, "period")
+
+> hpd.summary(cbpp.emm)
+ period emmean lower.HPD upper.HPD
+ 1       -1.43     -1.96    -0.894
+ 2       -2.39     -3.13    -1.823
+ 3       -2.52     -3.19    -1.862
+ 4       -2.97     -3.88    -1.998
+
+Point estimate displayed: median 
+Results are given on the logit (not the response) scale. 
+HPD interval probability: 0.95 
+
+> summary(pairs(cbpp.emm), type = "response", delta = log(2))
+ contrast          odds.ratio lower.HPD upper.HPD p.equiv odds.eq
+ period1 / period2       2.60     1.264      4.34   0.210  0.2658
+ period1 / period3       2.90     1.266      5.42   0.114  0.1287
+ period1 / period4       4.64     1.595      9.76   0.026  0.0267
+ period2 / period3       1.14     0.486      2.36   0.918 11.1951
+ period2 / period4       1.78     0.580      4.35   0.604  1.5253
+ period3 / period4       1.55     0.437      4.01   0.700  2.3333
+
+Point estimate displayed: median 
+'p.equiv' and 'odds.eq' based on posterior P(|lin. pred.| < 0.6931) 
+Results are back-transformed from the log odds ratio scale 
+HPD interval probability: 0.95
+---------------------------------------------------------------------------
+
+This "works" in that we can see the code and the output, but it is unduly messy: The example code is displayed twice, the call to withAutoprint() adds clutter, comments are suppressed, and the part last part no longer has the example prompt string ("hpd.sm>" in this illustration).
+
+Along these lines, I have a suggestion for enhancement of the example() function. That function allows for the example code to be marked-up with conditional blocks such as \dontrun{}. My suggestion is to provide an additional conditional markup option, perhaps \runif{expr}{...}, that runs the code in the second pair of braces exactly like any other example code when expr is true, and behaves like \dontrun{} otherwise.
+
+Thanks
+
+Russ Lenth
+Univ of Iowa
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Sep  2 00:13:28 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 1 Sep 2022 18:13:28 -0400
+Subject: [R-pkg-devel] Examples with conditional blocks
+In-Reply-To: <DM6PR04MB4474896BCDCF2B5DC1EEB82EF17B9@DM6PR04MB4474.namprd04.prod.outlook.com>
+References: <DM6PR04MB4474896BCDCF2B5DC1EEB82EF17B9@DM6PR04MB4474.namprd04.prod.outlook.com>
+Message-ID: <29d63215-ffcb-f04c-a34c-e4789b9bf476@gmail.com>
+
+On 01/09/2022 5:53 p.m., Lenth, Russell V wrote:
+> Dear package developers,
+> 
+> What is the best way to provide examples in help pages that should only be run under certain conditions --
+> e.g., whether another package is installed? The code that is run conditionally is then an expression, so
+> only the results of the last statement are displayed; and even if we force-print results, the output is
+> separated from the code that produces it.
+> 
+> The best I have been able to come up with is to use withAutoprint(), such as we see here:
+
+I don't think I've seen much better.
+
+> ---------------------------------------------------------------------------
+>> example(hpd.summary)
+> 
+> hpd.sm> if(require("coda")) withAutoprint({
+> hpd.sm+   # Create an emmGrid object from a system file
+> hpd.sm+   cbpp.rg <- do.call(emmobj,
+> hpd.sm+       readRDS(system.file("extdata", "cbpplist", package = "emmeans")))
+> hpd.sm+   cbpp.emm <- emmeans(cbpp.rg, "period")
+> hpd.sm+   hpd.summary(cbpp.emm)   # or just summary(cbpp.emm) as it gets redirected
+> hpd.sm+
+> hpd.sm+   # Test for any two-fold difference
+> hpd.sm+   summary(pairs(cbpp.emm), type = "response", delta = log(2))
+> hpd.sm+ }, spaced = TRUE)
+> Loading required package: coda
+> 
+>> cbpp.rg <- do.call(emmobj, readRDS(system.file("extdata", "cbpplist", package = "emmeans")))
+> 
+>> cbpp.emm <- emmeans(cbpp.rg, "period")
+> 
+>> hpd.summary(cbpp.emm)
+>   period emmean lower.HPD upper.HPD
+>   1       -1.43     -1.96    -0.894
+>   2       -2.39     -3.13    -1.823
+>   3       -2.52     -3.19    -1.862
+>   4       -2.97     -3.88    -1.998
+> 
+> Point estimate displayed: median
+> Results are given on the logit (not the response) scale.
+> HPD interval probability: 0.95
+> 
+>> summary(pairs(cbpp.emm), type = "response", delta = log(2))
+>   contrast          odds.ratio lower.HPD upper.HPD p.equiv odds.eq
+>   period1 / period2       2.60     1.264      4.34   0.210  0.2658
+>   period1 / period3       2.90     1.266      5.42   0.114  0.1287
+>   period1 / period4       4.64     1.595      9.76   0.026  0.0267
+>   period2 / period3       1.14     0.486      2.36   0.918 11.1951
+>   period2 / period4       1.78     0.580      4.35   0.604  1.5253
+>   period3 / period4       1.55     0.437      4.01   0.700  2.3333
+> 
+> Point estimate displayed: median
+> 'p.equiv' and 'odds.eq' based on posterior P(|lin. pred.| < 0.6931)
+> Results are back-transformed from the log odds ratio scale
+> HPD interval probability: 0.95
+> ---------------------------------------------------------------------------
+> 
+> This "works" in that we can see the code and the output, but it is unduly messy: The example code is displayed twice, the call to withAutoprint() adds clutter, comments are suppressed, and the part last part no longer has the example prompt string ("hpd.sm>" in this illustration).
+> 
+> Along these lines, I have a suggestion for enhancement of the example() function. That function allows for the example code to be marked-up with conditional blocks such as \dontrun{}. My suggestion is to provide an additional conditional markup option, perhaps \runif{expr}{...}, that runs the code in the second pair of braces exactly like any other example code when expr is true, and behaves like \dontrun{} otherwise.
+> 
+
+I think that would be a good idea, but it doesn't look easy.
+
+Duncan Murdoch
+
+
