@@ -15985,3 +15985,385 @@ I think that would be a good idea, but it doesn't look easy.
 Duncan Murdoch
 
 
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Fri Sep  2 17:18:08 2022
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Fri, 2 Sep 2022 17:18:08 +0200
+Subject: [R-pkg-devel] tryCatch() doesn't capture errors due to && or ||
+ with R CMD check --as-cran
+In-Reply-To: <CAJf4E3pkq0HjYzAtdwFm_Uhttowgo_o-c2nq9gqbjKSFB9gm6g@mail.gmail.com>
+References: <EYtAuD5vXFFQeFENJu_gUOXYiZoeRc85COpFtZDOLPWH4SgCxhZ-wR6qjssrCIAgqm3uxKSW3dSfDxqShu1_HkxROiND9PjbiuVTRQYpKQU=@protonmail.com>
+ <25360.52627.355395.525599@stat.math.ethz.ch>
+ <CAJf4E3pkq0HjYzAtdwFm_Uhttowgo_o-c2nq9gqbjKSFB9gm6g@mail.gmail.com>
+Message-ID: <25362.7856.798437.449426@stat.math.ethz.ch>
+
+>>>>> Lionel Henry 
+>>>>>     on Thu, 1 Sep 2022 18:47:36 +0200 writes:
+
+    > Hi Martin,
+    > I'm not sure I understand what you mean regarding suppressed warnings
+    > in testthat.
+
+    > - All warnings are reported to users by `devtools::test()`, with
+    > accompanying backtraces. They are not hidden.
+
+    > - R CMD check doesn't report warnings emitted from files in `tests/`.
+
+but you can easily grep them in the tests/*.Rout files.
+There are none of these in the testthat case,
+and it's own summary only *counts* the number of warnings.
+
+At least for me just now in a development version of lme4 (github),
+running with increased (non-default) testlevel
+	export LME4_TEST_LEVEL=2
+
+I get useful *.Rout files (with only one warning, easily greppable)
+for the non-testthat tests whereas  for the testthat ones I only get
+
+------------------------------------------------------------------------
+[ FAIL 3 | WARN 1 | SKIP 1 | PASS 829 ]
+
+?? Skipped tests ???????????????????????????????????????????????????????????????
+? On CRAN (1)
+
+?? Failed tests ????????????????????????????????????????????????????????????????
+?? Failure (test-methods.R:878:9): parallel influence ??????????????????????????
+`i1` not equal to `i2`.
+Component "vcov[-case]": Component "1": Attributes: < Length mismatch: comparison on first 1 components >
+    .............................
+    .............................
+Component "vcov[-case]": Component "9": Attributes: < Length mismatch: comparison on first 1 components >
+...
+?? Failure (test-summary.R:33:3): lmer ?????????????????????????????????????????
+tfun(cc1) not equal to c(...).
+Lengths differ: 5 is not 10
+?? Failure (test-summary.R:46:3): lmer ?????????????????????????????????????????
+tfun(cc2) not equal to c(...).
+Lengths differ: 5 is not 10
+
+[ FAIL 3 | WARN 1 | SKIP 1 | PASS 829 ]
+Error: Test failures
+Execution halted
+------------------------------------------------------------------------
+
+Telling me (twice) that there was  1 warning, but
+I don't know of any way to *see* that warning
+(after everything is run, and I have  lme4.Rcheck/  to look
+into).
+
+
+    > If you need some sort of warning to surface as errors, warnings, or
+    > notes in R CMD check, it should be possible to come up with
+    > something.
+
+Yes, that would be important for some of us.
+
+IIRC, It does not help to just add
+
+  options(warn = 2)
+
+at the beginning of the main tests/*.R  file, or inside the
+tests/testthat/*.R files , even though that would be standard R
+behavior,  no ?
+
+    > This could take the form of special classes of conditions
+    > that R CMD check would catch and emit corresponding diagnostics
+    > for. We would change testthat to make sure all such conditions are
+    > properly emitted during checks.
+
+If they are emitted as in R from warning() or stop() -- from R or C,
+that would be a big step forward for us (R core) who'd like to
+see effects of changing base R, and for all package maintainers considering
+changing their API or just deprecating something, and using  .Deprecated()
+{or equivalent} for that.
+
+Thank you, Lionel!
+
+Martin
+
+
+From pro|jcn@@h @end|ng |rom gm@||@com  Fri Sep  2 22:22:33 2022
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Fri, 2 Sep 2022 16:22:33 -0400
+Subject: [R-pkg-devel] Advice on elegant way to alias function name
+In-Reply-To: <CABdHhvFKNMmDiXL1AU9jw0TO6zbAHQHy3C8eDM1NHkFXayQS2Q@mail.gmail.com>
+References: <1525c052-890f-b5eb-2079-1688097e2a02@gmail.com>
+ <CABdHhvFKNMmDiXL1AU9jw0TO6zbAHQHy3C8eDM1NHkFXayQS2Q@mail.gmail.com>
+Message-ID: <c09a245a-5e61-3752-dd5d-68d9d5218dff@gmail.com>
+
+With some playing around I found a workable solution.
+
+- NAMESPACE needs  export(thefn)
+- thefn.Rd needs usage and arguments documented
+- myfn.Rd must NOT have alias(thefn)
+
+And I believe I've got the roxygen2 tags to work in Rstudio. In R itself,
+roxygen2 gives an error
+     Error: invalid version specification ?0.68?
+though the string '0.68' appears nowhere in my package according to grep.
+I have no idea what this is about, especially as Rstudio works fine.
+
+While I like the idea of documentation in code files, I think I'll go
+back to separately created .Rd files.
+
+If anyone is interested, package and README are at
+https://gitlab.com/nashjc/nlsr2022
+
+Best,
+
+John Nash
+
+
+On 2022-09-01 11:29, Hadley Wickham wrote:
+> On Thu, Sep 1, 2022 at 9:48 AM J C Nash <profjcnash at gmail.com> wrote:
+>>
+>> Hi,
+>>
+>> I've a package where it has been suggested that one of the functions -- call
+>> it "myfn()" -- should be called something else, say "thefn()". Of course, I'll
+>> need to keep the old name around for a while.
+>>
+>> Web search has suggested simple assignment of
+>>
+>>       thefn <- myfn
+>>
+>> but I cannot seem to get this to work with R CMD check when I put this in a .R
+>> file in the code and put alias and usage stanzas in documentation. I get alias
+>> and missing argument type errors. I've tried a number of variations on this theme
+>> without appreciable success.
+>>
+>> A workaround is to copy the entire function with Roxygen2 documentation and
+>> name change, but this seems inelegant.
+> 
+> You'll also need to add a couple of roxygen tags:
+> 
+> #' @export
+> #' @rdname myfn
+> thefn <- myfn
+> 
+> Hadley
+>
+
+
+From edd @end|ng |rom deb|@n@org  Fri Sep  2 22:34:02 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 2 Sep 2022 15:34:02 -0500
+Subject: [R-pkg-devel] Advice on elegant way to alias function name
+In-Reply-To: <c09a245a-5e61-3752-dd5d-68d9d5218dff@gmail.com>
+References: <1525c052-890f-b5eb-2079-1688097e2a02@gmail.com>
+ <CABdHhvFKNMmDiXL1AU9jw0TO6zbAHQHy3C8eDM1NHkFXayQS2Q@mail.gmail.com>
+ <c09a245a-5e61-3752-dd5d-68d9d5218dff@gmail.com>
+Message-ID: <25362.26810.80952.485910@rob.eddelbuettel.com>
+
+
+On 2 September 2022 at 16:22, J C Nash wrote:
+| And I believe I've got the roxygen2 tags to work in Rstudio. In R itself,
+| roxygen2 gives an error
+|      Error: invalid version specification ?0.68?
+| though the string '0.68' appears nowhere in my package according to grep.
+| I have no idea what this is about, especially as Rstudio works fine.
+
+An unrelated, documented, yet unfixed bug in 'cli' affecting packages using it.
+
+You need to define (in .Renviron, or via bash for your login, or system wide)
+the variable VTE_VERSION with any value, for example '1' will do.
+
+E.g. I call roxygen on the shell via 'roxy.r' from littler and my command
+history has a few
+
+   VTE_VERSION=1 roxy.r
+
+It also bit me in 'rhub' and other packages communicating via 'cli'.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From bbo|ker @end|ng |rom gm@||@com  Fri Sep  2 23:00:48 2022
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Fri, 2 Sep 2022 17:00:48 -0400
+Subject: [R-pkg-devel] Advice on elegant way to alias function name
+In-Reply-To: <25362.26810.80952.485910@rob.eddelbuettel.com>
+References: <1525c052-890f-b5eb-2079-1688097e2a02@gmail.com>
+ <CABdHhvFKNMmDiXL1AU9jw0TO6zbAHQHy3C8eDM1NHkFXayQS2Q@mail.gmail.com>
+ <c09a245a-5e61-3752-dd5d-68d9d5218dff@gmail.com>
+ <25362.26810.80952.485910@rob.eddelbuettel.com>
+Message-ID: <39bb06f2-a8ec-b277-91eb-85ffb501211f@gmail.com>
+
+
+
+On 2022-09-02 4:34 p.m., Dirk Eddelbuettel wrote:
+> 
+> On 2 September 2022 at 16:22, J C Nash wrote:
+> | And I believe I've got the roxygen2 tags to work in Rstudio. In R itself,
+> | roxygen2 gives an error
+> |      Error: invalid version specification ?0.68?
+> | though the string '0.68' appears nowhere in my package according to grep.
+> | I have no idea what this is about, especially as Rstudio works fine.
+> 
+> An unrelated, documented, yet unfixed bug in 'cli' affecting packages using it.
+> 
+> You need to define (in .Renviron, or via bash for your login, or system wide)
+> the variable VTE_VERSION with any value, for example '1' will do.
+> 
+> E.g. I call roxygen on the shell via 'roxy.r' from littler and my command
+> history has a few
+> 
+>     VTE_VERSION=1 roxy.r
+> 
+> It also bit me in 'rhub' and other packages communicating via 'cli'.
+> 
+> Dirk
+> 
+
+  Yes, this one is cryptic and frustrating.
+
+https://github.com/r-lib/devtools/issues/2439#issuecomment-1174146075
+
+   You can also solve the problem by installing the development version 
+of cli from Github (the fix was made *one day* after the last CRAN 
+release ...)
+
+
+From j|ox @end|ng |rom mcm@@ter@c@  Fri Sep  2 23:12:46 2022
+From: j|ox @end|ng |rom mcm@@ter@c@ (John Fox)
+Date: Fri, 2 Sep 2022 17:12:46 -0400
+Subject: [R-pkg-devel] Advice on elegant way to alias function name
+In-Reply-To: <22575_1662150172_282KMqsp023450_c09a245a-5e61-3752-dd5d-68d9d5218dff@gmail.com>
+References: <1525c052-890f-b5eb-2079-1688097e2a02@gmail.com>
+ <CABdHhvFKNMmDiXL1AU9jw0TO6zbAHQHy3C8eDM1NHkFXayQS2Q@mail.gmail.com>
+ <22575_1662150172_282KMqsp023450_c09a245a-5e61-3752-dd5d-68d9d5218dff@gmail.com>
+Message-ID: <e11051cf-4a10-e4c3-c250-95dcf9226013@mcmaster.ca>
+
+Dear John,
+
+I've used an alternative solution in similar situations, equivalent to 
+defining
+
+	thefn <- function(...) myfn(...)
+
+Then only ... needs to be documented as arguments passed down to myfn(). 
+Maybe that would work for you too.
+
+Best,
+  John
+
+On 2022-09-02 4:22 p.m., J C Nash wrote:
+> With some playing around I found a workable solution.
+> 
+> - NAMESPACE needs? export(thefn)
+> - thefn.Rd needs usage and arguments documented
+> - myfn.Rd must NOT have alias(thefn)
+> 
+> And I believe I've got the roxygen2 tags to work in Rstudio. In R itself,
+> roxygen2 gives an error
+>  ??? Error: invalid version specification ?0.68?
+> though the string '0.68' appears nowhere in my package according to grep.
+> I have no idea what this is about, especially as Rstudio works fine.
+> 
+> While I like the idea of documentation in code files, I think I'll go
+> back to separately created .Rd files.
+> 
+> If anyone is interested, package and README are at
+> https://gitlab.com/nashjc/nlsr2022
+> 
+> Best,
+> 
+> John Nash
+> 
+> 
+> On 2022-09-01 11:29, Hadley Wickham wrote:
+>> On Thu, Sep 1, 2022 at 9:48 AM J C Nash <profjcnash at gmail.com> wrote:
+>>>
+>>> Hi,
+>>>
+>>> I've a package where it has been suggested that one of the functions 
+>>> -- call
+>>> it "myfn()" -- should be called something else, say "thefn()". Of 
+>>> course, I'll
+>>> need to keep the old name around for a while.
+>>>
+>>> Web search has suggested simple assignment of
+>>>
+>>> ????? thefn <- myfn
+>>>
+>>> but I cannot seem to get this to work with R CMD check when I put 
+>>> this in a .R
+>>> file in the code and put alias and usage stanzas in documentation. I 
+>>> get alias
+>>> and missing argument type errors. I've tried a number of variations 
+>>> on this theme
+>>> without appreciable success.
+>>>
+>>> A workaround is to copy the entire function with Roxygen2 
+>>> documentation and
+>>> name change, but this seems inelegant.
+>>
+>> You'll also need to add a couple of roxygen tags:
+>>
+>> #' @export
+>> #' @rdname myfn
+>> thefn <- myfn
+>>
+>> Hadley
+>>
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+-- 
+John Fox, Professor Emeritus
+McMaster University
+Hamilton, Ontario, Canada
+web: https://socialsciences.mcmaster.ca/jfox/
+
+
+From h@w|ckh@m @end|ng |rom gm@||@com  Fri Sep  2 23:46:52 2022
+From: h@w|ckh@m @end|ng |rom gm@||@com (Hadley Wickham)
+Date: Fri, 2 Sep 2022 16:46:52 -0500
+Subject: [R-pkg-devel] Advice on elegant way to alias function name
+In-Reply-To: <c09a245a-5e61-3752-dd5d-68d9d5218dff@gmail.com>
+References: <1525c052-890f-b5eb-2079-1688097e2a02@gmail.com>
+ <CABdHhvFKNMmDiXL1AU9jw0TO6zbAHQHy3C8eDM1NHkFXayQS2Q@mail.gmail.com>
+ <c09a245a-5e61-3752-dd5d-68d9d5218dff@gmail.com>
+Message-ID: <CABdHhvF71poYw01nNhn7yye6Mh1+NacCYXM6Kc+39HsTeKnAug@mail.gmail.com>
+
+On Fri, Sep 2, 2022 at 3:22 PM J C Nash <profjcnash at gmail.com> wrote:
+>
+> With some playing around I found a workable solution.
+>
+> - NAMESPACE needs  export(thefn)
+> - thefn.Rd needs usage and arguments documented
+> - myfn.Rd must NOT have alias(thefn)
+>
+> And I believe I've got the roxygen2 tags to work in Rstudio. In R itself,
+> roxygen2 gives an error
+>      Error: invalid version specification ?0.68?
+> though the string '0.68' appears nowhere in my package according to grep.
+> I have no idea what this is about, especially as Rstudio works fine.
+>
+> While I like the idea of documentation in code files, I think I'll go
+> back to separately created .Rd files.
+>
+> If anyone is interested, package and README are at
+> https://gitlab.com/nashjc/nlsr2022
+
+All you need is:
+
+#' @export
+#' @rdname wrapnlsr
+nlsr <- wrapnlsr
+
+That will document nlsr and nlsr together in the same file.
+
+In general, if you find yourself having to use `@usage` or `@aliases`
+to get R CMD check to pass cleanly, something is off with the way
+you're documenting your functions.
+
+Hadley
+
+-- 
+http://hadley.nz
+
+
