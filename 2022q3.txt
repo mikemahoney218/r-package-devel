@@ -16367,3 +16367,358 @@ Hadley
 http://hadley.nz
 
 
+From pro|jcn@@h @end|ng |rom gm@||@com  Sat Sep  3 15:22:55 2022
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Sat, 3 Sep 2022 09:22:55 -0400
+Subject: [R-pkg-devel] Advice on elegant way to alias function name
+In-Reply-To: <CABdHhvF71poYw01nNhn7yye6Mh1+NacCYXM6Kc+39HsTeKnAug@mail.gmail.com>
+References: <1525c052-890f-b5eb-2079-1688097e2a02@gmail.com>
+ <CABdHhvFKNMmDiXL1AU9jw0TO6zbAHQHy3C8eDM1NHkFXayQS2Q@mail.gmail.com>
+ <c09a245a-5e61-3752-dd5d-68d9d5218dff@gmail.com>
+ <CABdHhvF71poYw01nNhn7yye6Mh1+NacCYXM6Kc+39HsTeKnAug@mail.gmail.com>
+Message-ID: <acc92182-de2c-7f79-5d4d-08341b1fe74d@gmail.com>
+
+Hadley is correct. I had a typo in one of the tags.
+
+And the @usage tag is not needed.
+
+Thanks to all.
+
+JN
+
+
+On 2022-09-02 17:46, Hadley Wickham wrote:
+> On Fri, Sep 2, 2022 at 3:22 PM J C Nash <profjcnash at gmail.com> wrote:
+>>
+>> With some playing around I found a workable solution.
+>>
+>> - NAMESPACE needs  export(thefn)
+>> - thefn.Rd needs usage and arguments documented
+>> - myfn.Rd must NOT have alias(thefn)
+>>
+>> And I believe I've got the roxygen2 tags to work in Rstudio. In R itself,
+>> roxygen2 gives an error
+>>       Error: invalid version specification ?0.68?
+>> though the string '0.68' appears nowhere in my package according to grep.
+>> I have no idea what this is about, especially as Rstudio works fine.
+>>
+>> While I like the idea of documentation in code files, I think I'll go
+>> back to separately created .Rd files.
+>>
+>> If anyone is interested, package and README are at
+>> https://gitlab.com/nashjc/nlsr2022
+> 
+> All you need is:
+> 
+> #' @export
+> #' @rdname wrapnlsr
+> nlsr <- wrapnlsr
+> 
+> That will document nlsr and nlsr together in the same file.
+> 
+> In general, if you find yourself having to use `@usage` or `@aliases`
+> to get R CMD check to pass cleanly, something is off with the way
+> you're documenting your functions.
+> 
+> Hadley
+>
+
+
+From bbo|ker @end|ng |rom gm@||@com  Sat Sep  3 22:09:42 2022
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Sat, 3 Sep 2022 16:09:42 -0400
+Subject: [R-pkg-devel] LaTeX packages available for documentation?
+Message-ID: <f501bf8b-2c29-2ca7-d655-81fbd47c4aaf@gmail.com>
+
+
+     I'm trying to figure out if the list of LaTeX packages that can be 
+expected to be available *when building PDF versions of man pages* is 
+documented/available somewhere.
+
+  One of my co-authors is a bit enthusiastic about complex math 
+expressions in the man pages, e.g. using \dfrac (from the amsmath 
+package) and \mathscr (from the mathrsfs package). These are OK in HTML 
+version of the docs (now that LaTeX is allowed), but throw an error when 
+building the PDF manuals.
+
+   I think this will probably turn out to be a case of "'doctor, it 
+hurts when I do this.' 'Well, then, don't do that.'" (i.e., remove fancy 
+LaTeX markup from man pages), but I'm curious.
+
+   cheers
+    Ben Bolker
+
+PS
+
+
+   I've looked at these sections of the documentation:
+
+https://cran.r-project.org/doc/manuals/R-exts.html#Writing-portable-packages
+https://cran.r-project.org/doc/manuals/R-exts.html#Checking-packages
+https://cran.r-project.org/doc/manuals/R-admin.html#Making-the-manuals
+
+   and have searched for packages in the R sources:
+
+$ find . -type f -exec grep "^.usepackage" {} \; | sort | uniq
+\usepackage{a4wide}
+\usepackage{amsmath}
+\usepackage[authoryear,round]{natbib}
+\usepackage{color}
+\usepackage{fullpage}
+\usepackage{fullpage}% save trees ;-)
+\usepackage{graphicx, Rd}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{myVignette}
+\usepackage[pdftex]{graphicx}
+\usepackage{Rd}
+\usepackage{Rd, parskip, amsmath, enumerate}
+\usepackage[round]{natbib}
+\usepackage{Sweave}
+
+
+   weirdly, amsmath is included here, but it's only used in vignettes -- 
+seems puzzling but plausible that package availability would be 
+different for building vignettes vs. man pages ... ??
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Sep  3 22:41:27 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 3 Sep 2022 16:41:27 -0400
+Subject: [R-pkg-devel] LaTeX packages available for documentation?
+In-Reply-To: <f501bf8b-2c29-2ca7-d655-81fbd47c4aaf@gmail.com>
+References: <f501bf8b-2c29-2ca7-d655-81fbd47c4aaf@gmail.com>
+Message-ID: <3eb031c7-acce-7831-b75d-68e0c3092ad3@gmail.com>
+
+I don't know if the LaTeX packages are fully documented, but there is 
+some info in the R Admin manual in section 2.4 "Installation".  That 
+might just apply to R, not contributed packages.
+
+One way to figure it out is to ask R to convert an Rd file to pdf, and 
+save the .tex file.  When I do that, I see that it uses or requires the 
+following packages:
+
+   Rd
+   makeidx
+   inputenc
+   graphicx (maybe?  commented out in the example I ran)
+
+and Rd.sty requires these (some conditionally), as seen in R sources 
+share/texmf/tex/latex/Rd.sty:
+
+   ifthen
+   longtable
+   hyperref
+   bm
+   alltt
+   verbatim
+   url
+   textcomp
+   iftex
+   fontenc
+   times
+   lmodern
+   beramono
+   zi4
+   inconsolata
+
+Since these are gleaned from the source, they are likely subject to change.
+
+
+
+On 03/09/2022 4:09 p.m., Ben Bolker wrote:
+> 
+>       I'm trying to figure out if the list of LaTeX packages that can be
+> expected to be available *when building PDF versions of man pages* is
+> documented/available somewhere.
+> 
+>    One of my co-authors is a bit enthusiastic about complex math
+> expressions in the man pages, e.g. using \dfrac (from the amsmath
+> package) and \mathscr (from the mathrsfs package). These are OK in HTML
+> version of the docs (now that LaTeX is allowed), but throw an error when
+> building the PDF manuals.
+> 
+>     I think this will probably turn out to be a case of "'doctor, it
+> hurts when I do this.' 'Well, then, don't do that.'" (i.e., remove fancy
+> LaTeX markup from man pages), but I'm curious.
+> 
+>     cheers
+>      Ben Bolker
+> 
+> PS
+> 
+> 
+>     I've looked at these sections of the documentation:
+> 
+> https://cran.r-project.org/doc/manuals/R-exts.html#Writing-portable-packages
+> https://cran.r-project.org/doc/manuals/R-exts.html#Checking-packages
+> https://cran.r-project.org/doc/manuals/R-admin.html#Making-the-manuals
+> 
+>     and have searched for packages in the R sources:
+> 
+> $ find . -type f -exec grep "^.usepackage" {} \; | sort | uniq
+> \usepackage{a4wide}
+> \usepackage{amsmath}
+> \usepackage[authoryear,round]{natbib}
+> \usepackage{color}
+> \usepackage{fullpage}
+> \usepackage{fullpage}% save trees ;-)
+> \usepackage{graphicx, Rd}
+> \usepackage{hyperref}
+> \usepackage{listings}
+> \usepackage{myVignette}
+> \usepackage[pdftex]{graphicx}
+> \usepackage{Rd}
+> \usepackage{Rd, parskip, amsmath, enumerate}
+> \usepackage[round]{natbib}
+> \usepackage{Sweave}
+> 
+> 
+>     weirdly, amsmath is included here, but it's only used in vignettes --
+> seems puzzling but plausible that package availability would be
+> different for building vignettes vs. man pages ... ??
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From bbo|ker @end|ng |rom gm@||@com  Sat Sep  3 22:45:07 2022
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Sat, 3 Sep 2022 16:45:07 -0400
+Subject: [R-pkg-devel] LaTeX packages available for documentation?
+In-Reply-To: <3eb031c7-acce-7831-b75d-68e0c3092ad3@gmail.com>
+References: <f501bf8b-2c29-2ca7-d655-81fbd47c4aaf@gmail.com>
+ <3eb031c7-acce-7831-b75d-68e0c3092ad3@gmail.com>
+Message-ID: <ebe63758-a610-fcbe-6fed-9fa6183450e8@gmail.com>
+
+   Thanks.  Feels like a request for including amsmath in Rd.sty might 
+not be out of order (since presumably most TeX installations will have 
+it if they have all of that other stuff, and since it might be a 
+one-line change to the R source code ...)
+
+On 2022-09-03 4:41 p.m., Duncan Murdoch wrote:
+> I don't know if the LaTeX packages are fully documented, but there is 
+> some info in the R Admin manual in section 2.4 "Installation".? That 
+> might just apply to R, not contributed packages.
+> 
+> One way to figure it out is to ask R to convert an Rd file to pdf, and 
+> save the .tex file.? When I do that, I see that it uses or requires the 
+> following packages:
+> 
+>  ? Rd
+>  ? makeidx
+>  ? inputenc
+>  ? graphicx (maybe?? commented out in the example I ran)
+> 
+> and Rd.sty requires these (some conditionally), as seen in R sources 
+> share/texmf/tex/latex/Rd.sty:
+> 
+>  ? ifthen
+>  ? longtable
+>  ? hyperref
+>  ? bm
+>  ? alltt
+>  ? verbatim
+>  ? url
+>  ? textcomp
+>  ? iftex
+>  ? fontenc
+>  ? times
+>  ? lmodern
+>  ? beramono
+>  ? zi4
+>  ? inconsolata
+> 
+> Since these are gleaned from the source, they are likely subject to change.
+> 
+> 
+> 
+> On 03/09/2022 4:09 p.m., Ben Bolker wrote:
+>>
+>> ????? I'm trying to figure out if the list of LaTeX packages that can be
+>> expected to be available *when building PDF versions of man pages* is
+>> documented/available somewhere.
+>>
+>> ?? One of my co-authors is a bit enthusiastic about complex math
+>> expressions in the man pages, e.g. using \dfrac (from the amsmath
+>> package) and \mathscr (from the mathrsfs package). These are OK in HTML
+>> version of the docs (now that LaTeX is allowed), but throw an error when
+>> building the PDF manuals.
+>>
+>> ??? I think this will probably turn out to be a case of "'doctor, it
+>> hurts when I do this.' 'Well, then, don't do that.'" (i.e., remove fancy
+>> LaTeX markup from man pages), but I'm curious.
+>>
+>> ??? cheers
+>> ???? Ben Bolker
+>>
+>> PS
+>>
+>>
+>> ??? I've looked at these sections of the documentation:
+>>
+>> https://cran.r-project.org/doc/manuals/R-exts.html#Writing-portable-packages 
+>>
+>> https://cran.r-project.org/doc/manuals/R-exts.html#Checking-packages
+>> https://cran.r-project.org/doc/manuals/R-admin.html#Making-the-manuals
+>>
+>> ??? and have searched for packages in the R sources:
+>>
+>> $ find . -type f -exec grep "^.usepackage" {} \; | sort | uniq
+>> \usepackage{a4wide}
+>> \usepackage{amsmath}
+>> \usepackage[authoryear,round]{natbib}
+>> \usepackage{color}
+>> \usepackage{fullpage}
+>> \usepackage{fullpage}% save trees ;-)
+>> \usepackage{graphicx, Rd}
+>> \usepackage{hyperref}
+>> \usepackage{listings}
+>> \usepackage{myVignette}
+>> \usepackage[pdftex]{graphicx}
+>> \usepackage{Rd}
+>> \usepackage{Rd, parskip, amsmath, enumerate}
+>> \usepackage[round]{natbib}
+>> \usepackage{Sweave}
+>>
+>>
+>> ??? weirdly, amsmath is included here, but it's only used in vignettes --
+>> seems puzzling but plausible that package availability would be
+>> different for building vignettes vs. man pages ... ??
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+(Acting) Graduate chair, Mathematics & Statistics
+ > E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Sep  3 23:41:58 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 3 Sep 2022 17:41:58 -0400
+Subject: [R-pkg-devel] LaTeX packages available for documentation?
+In-Reply-To: <ebe63758-a610-fcbe-6fed-9fa6183450e8@gmail.com>
+References: <f501bf8b-2c29-2ca7-d655-81fbd47c4aaf@gmail.com>
+ <3eb031c7-acce-7831-b75d-68e0c3092ad3@gmail.com>
+ <ebe63758-a610-fcbe-6fed-9fa6183450e8@gmail.com>
+Message-ID: <3982208f-0b97-70c1-4cd2-b71cf2125035@gmail.com>
+
+On 03/09/2022 4:45 p.m., Ben Bolker wrote:
+>     Thanks.  Feels like a request for including amsmath in Rd.sty might
+> not be out of order (since presumably most TeX installations will have
+> it if they have all of that other stuff, and since it might be a
+> one-line change to the R source code ...)
+
+Yes, I agree.
+
+Duncan Murdoch
+
+
