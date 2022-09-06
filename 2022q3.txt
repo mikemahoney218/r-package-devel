@@ -16722,3 +16722,170 @@ Yes, I agree.
 Duncan Murdoch
 
 
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Mon Sep  5 09:33:06 2022
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Mon, 5 Sep 2022 09:33:06 +0200
+Subject: [R-pkg-devel] LaTeX packages available for documentation?
+In-Reply-To: <3982208f-0b97-70c1-4cd2-b71cf2125035@gmail.com>
+References: <f501bf8b-2c29-2ca7-d655-81fbd47c4aaf@gmail.com>
+ <3eb031c7-acce-7831-b75d-68e0c3092ad3@gmail.com>
+ <ebe63758-a610-fcbe-6fed-9fa6183450e8@gmail.com>
+ <3982208f-0b97-70c1-4cd2-b71cf2125035@gmail.com>
+Message-ID: <1c949dc6-4d60-8555-f219-1db96dedbc55@statistik.tu-dortmund.de>
+
+
+
+On 03.09.2022 23:41, Duncan Murdoch wrote:
+> On 03/09/2022 4:45 p.m., Ben Bolker wrote:
+>> ??? Thanks.? Feels like a request for including amsmath in Rd.sty might
+>> not be out of order (since presumably most TeX installations will have
+>> it if they have all of that other stuff, and since it might be a
+>> one-line change to the R source code ...)
+
+This is under discussion for some time now.  Although, there are some 
+issues that adding amsmath witll break some packages and also requires 
+minor changes in R. This will likely make it to R-devel shortly, perhaps 
+also R-patched.
+
+Best,
+Uwe Ligges
+
+
+
+> Yes, I agree.
+> 
+> Duncan Murdoch
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From F|or|@nSchwend|nger @end|ng |rom gmx@@t  Mon Sep  5 16:27:21 2022
+From: F|or|@nSchwend|nger @end|ng |rom gmx@@t (Florian Schwendinger)
+Date: Mon, 5 Sep 2022 16:27:21 +0200
+Subject: [R-pkg-devel] MacOS CMAKE_OSX_ARCHITECTURES
+Message-ID: <trinity-c2cfc433-198e-4cb1-844b-dfc84451045b-1662388041696@3c-app-gmx-bap60>
+
+Dear package developers,
+
+I currently try to debug a few issues which occur on MacOS
+r-release-macos-arm64 and r-oldrel-macos-arm64.
+
+To the setting I wrote an interface to mixed integer linear optimization
+solver highs. Thereby I use the configure script + a bash file called
+from configure to build a static library to which I link afterwards.
+
+For MacOS M1 this was a little bit tricky since I needed to add the
+CMAKE_OSX_ARCHITECTURES flag to get it to work (I have no direct access to MacOS M1).
+What I currently doing for MacOS-M1 is
+${CMAKE_EXE} \
+-DCMAKE_INSTALL_PREFIX=${R_HIGHS_LIB_DIR} \
+-DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" ..
+
+As far as I understand from the cmake release page
+https://cmake.org/cmake/help/latest/release/3.19.html#id13
+which states
+"The precompiled macOS binary provided on cmake.org is now a universal
+binary with x86_64 and arm64 architectures."
+for this to work I need at least cmake version "3.19.2"?
+Is this correct?
+Is there a better way / another option?
+
+
+I used for MacOS-M1 the minimum cmake version "3.20" since
+this is the version I could test with a testing service.
+Now seeing the error messages on
+"r-release-macos-arm64" and "r-oldrel-macos-arm64"
+I see these two setups use cmake "3.19.4" which means
+I should have stuck to "3.19.2" if my assumption above is
+correct. Is it possible to see beforehand what the highest
+possible cmake version for CRAN is?
+
+Best regards,
+Florian
+?
+?
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Tue Sep  6 00:46:41 2022
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Tue, 6 Sep 2022 10:46:41 +1200
+Subject: [R-pkg-devel] MacOS CMAKE_OSX_ARCHITECTURES
+In-Reply-To: <trinity-c2cfc433-198e-4cb1-844b-dfc84451045b-1662388041696@3c-app-gmx-bap60>
+References: <trinity-c2cfc433-198e-4cb1-844b-dfc84451045b-1662388041696@3c-app-gmx-bap60>
+Message-ID: <7E969D73-AE82-4D30-8F34-1CC4C2CCA1A4@R-project.org>
+
+Florian,
+
+I think the CMake version is the least of your problems (that one would be trivial to address and I don't think it's needed at all). You cannot really assume that building multi-arch binaries is supported (most compilers don't support it) nor that it will work with R, so you cannot hard-code DCMAKE_OSX_ARCHITECTURES. If you are building a package, you have to use the compilers and flags from R - and they will differ a lot between architectures. Note that you have similar problem on other systems, not just macOS, there is no need to treat macOS differently in that respect.
+
+I don't understand why you have four different CMakeLists - you only need one, the point of cmake is that it will correctly detect dependencies regardless of the OS and arch. However, you have to make sure you pass compiler flags from R so you have the right compilers and flags for the system and architecture that is being built. Once you do that, stock CMakeList typically work just fine.
+
+I had a quick look and this worked for me (not using any of your patches):
+
+## set R flags and compilers
+export CC=`R CMD config CC`
+export CXX=`R CMD config CXX`
+export CXXFLAGS=`R CMD config CXXFLAGS`
+export CFLAGS=`R CMD config CFLAGS`
+export CPPFLAGS=`R CMD config CPPFLAGS`
+export LDFLAGS=`R CMD config LDFLAGS`
+
+${CMAKE_EXE} .. -DCMAKE_POSITION_INDEPENDENT_CODE:bool=ON -DSHARED:bool=OFF -DBUILD_TESTING:bool=OFF
+
+(Maybe you need CXX11 instead of CXX above since CMakeList seems to suggest that it requires C++11)
+
+Cheers,
+Simon
+
+
+
+> On Sep 6, 2022, at 2:27 AM, Florian Schwendinger <FlorianSchwendinger at gmx.at> wrote:
+> 
+> Dear package developers,
+> 
+> I currently try to debug a few issues which occur on MacOS
+> r-release-macos-arm64 and r-oldrel-macos-arm64.
+> 
+> To the setting I wrote an interface to mixed integer linear optimization
+> solver highs. Thereby I use the configure script + a bash file called
+> from configure to build a static library to which I link afterwards.
+> 
+> For MacOS M1 this was a little bit tricky since I needed to add the
+> CMAKE_OSX_ARCHITECTURES flag to get it to work (I have no direct access to MacOS M1).
+> What I currently doing for MacOS-M1 is
+> ${CMAKE_EXE} \
+> -DCMAKE_INSTALL_PREFIX=${R_HIGHS_LIB_DIR} \
+> -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" ..
+> 
+> As far as I understand from the cmake release page
+> https://cmake.org/cmake/help/latest/release/3.19.html#id13
+> which states
+> "The precompiled macOS binary provided on cmake.org is now a universal
+> binary with x86_64 and arm64 architectures."
+> for this to work I need at least cmake version "3.19.2"?
+> Is this correct?
+> Is there a better way / another option?
+> 
+> 
+> I used for MacOS-M1 the minimum cmake version "3.20" since
+> this is the version I could test with a testing service.
+> Now seeing the error messages on
+> "r-release-macos-arm64" and "r-oldrel-macos-arm64"
+> I see these two setups use cmake "3.19.4" which means
+> I should have stuck to "3.19.2" if my assumption above is
+> correct. Is it possible to see beforehand what the highest
+> possible cmake version for CRAN is?
+> 
+> Best regards,
+> Florian
+>  
+>  
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
