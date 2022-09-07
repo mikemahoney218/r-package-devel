@@ -16889,3 +16889,212 @@ Simon
 > 
 
 
+From j|r|@c@mor@vec @end|ng |rom gm@||@com  Tue Sep  6 04:48:02 2022
+From: j|r|@c@mor@vec @end|ng |rom gm@||@com (=?UTF-8?B?SmnFmcOtIE1vcmF2ZWM=?=)
+Date: Tue, 6 Sep 2022 14:48:02 +1200
+Subject: [R-pkg-devel] Error checking in an independent C code and printing
+ (perror, printf, etc.)
+Message-ID: <9aee2ae4-bd5b-fe27-9964-0994bdcb0cb6@gmail.com>
+
+Hello,
+
+this is my first time writing C code that interacts with R.
+To make my C code more modular, reusable, and easier to test with 
+unittests, I split my code into:
+
+a) code that does stuff
+b) code that interfaces between a) and R.
+
+Only the b) imports the R headers, a) is completely independent of R 
+(and potentially shared between different projects).
+
+That brings me to a problem: How to do error handling in C without the 
+use of various C-specific print functions R-specific print functions?
+
+The C-specific print functions raise a CRAN note:
+
+Compiled code should not call entry points which might terminate R nor
+write to stdout/stderr instead of to the console, nor use Fortran I/O
+nor system RNGs
+
+But R(C) print functions cannot be used without importing particular 
+header,
+which would induce otherwise another dependency, and tie it closely with R.
+
+This is my first time writing into mailing list, hopefully I am doing 
+everything ok.
+
+Thanks everyone!
+
+-- Jirka
+
+
+From @teve@the@b@ye@|@n @end|ng |rom gm@||@com  Tue Sep  6 18:27:08 2022
+From: @teve@the@b@ye@|@n @end|ng |rom gm@||@com (Steven Scott)
+Date: Tue, 6 Sep 2022 09:27:08 -0700
+Subject: [R-pkg-devel] 
+ Error checking in an independent C code and printing
+ (perror, printf, etc.)
+In-Reply-To: <9aee2ae4-bd5b-fe27-9964-0994bdcb0cb6@gmail.com>
+References: <9aee2ae4-bd5b-fe27-9964-0994bdcb0cb6@gmail.com>
+Message-ID: <CAJqTW45totVngu19fFxZC_P2vAqmg6K47DhvHsGij-nmxKpsoQ@mail.gmail.com>
+
+All software engineering problems are solved by an additional layer of
+indirection!  ;-)
+
+Introduce a function called "process_error".  Include one implementation
+for your standalone C library.  Include another R-specific one when using
+your C library as part of an R package.
+
+On Tue, Sep 6, 2022 at 9:23 AM Ji?? Moravec <jiri.c.moravec at gmail.com>
+wrote:
+
+> Hello,
+>
+> this is my first time writing C code that interacts with R.
+> To make my C code more modular, reusable, and easier to test with
+> unittests, I split my code into:
+>
+> a) code that does stuff
+> b) code that interfaces between a) and R.
+>
+> Only the b) imports the R headers, a) is completely independent of R
+> (and potentially shared between different projects).
+>
+> That brings me to a problem: How to do error handling in C without the
+> use of various C-specific print functions R-specific print functions?
+>
+> The C-specific print functions raise a CRAN note:
+>
+> Compiled code should not call entry points which might terminate R nor
+> write to stdout/stderr instead of to the console, nor use Fortran I/O
+> nor system RNGs
+>
+> But R(C) print functions cannot be used without importing particular
+> header,
+> which would induce otherwise another dependency, and tie it closely with R.
+>
+> This is my first time writing into mailing list, hopefully I am doing
+> everything ok.
+>
+> Thanks everyone!
+>
+> -- Jirka
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Sep  6 18:28:59 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 6 Sep 2022 12:28:59 -0400
+Subject: [R-pkg-devel] 
+ Error checking in an independent C code and printing
+ (perror, printf, etc.)
+In-Reply-To: <9aee2ae4-bd5b-fe27-9964-0994bdcb0cb6@gmail.com>
+References: <9aee2ae4-bd5b-fe27-9964-0994bdcb0cb6@gmail.com>
+Message-ID: <70d6e94c-e016-79e8-e02a-ca9bf8fb97a8@gmail.com>
+
+On 05/09/2022 10:48 p.m., Ji?? Moravec wrote:
+> Hello,
+> 
+> this is my first time writing C code that interacts with R.
+> To make my C code more modular, reusable, and easier to test with
+> unittests, I split my code into:
+> 
+> a) code that does stuff
+> b) code that interfaces between a) and R.
+> 
+> Only the b) imports the R headers, a) is completely independent of R
+> (and potentially shared between different projects).
+> 
+> That brings me to a problem: How to do error handling in C without the
+> use of various C-specific print functions R-specific print functions?
+> 
+> The C-specific print functions raise a CRAN note:
+> 
+> Compiled code should not call entry points which might terminate R nor
+> write to stdout/stderr instead of to the console, nor use Fortran I/O
+> nor system RNGs
+> 
+> But R(C) print functions cannot be used without importing particular
+> header,
+> which would induce otherwise another dependency, and tie it closely with R.
+
+I think the best way is to think of error reporting as part of the 
+interface.  Your code that does stuff shouldn't try to print anything, 
+it should just return special error code values to indicate problems. 
+The code in b) looks for those error codes and creates R messages or 
+errors.  If you use the a) code in a different project, it would do the 
+same, but report the errors in whatever way is natural in that context.
+
+> 
+> This is my first time writing into mailing list, hopefully I am doing
+> everything ok.
+
+Looks fine to me!
+
+Duncan Murdoch
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Sep  6 18:52:55 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 6 Sep 2022 18:52:55 +0200
+Subject: [R-pkg-devel] 
+ Error checking in an independent C code and printing
+ (perror, printf, etc.)
+In-Reply-To: <9aee2ae4-bd5b-fe27-9964-0994bdcb0cb6@gmail.com>
+References: <9aee2ae4-bd5b-fe27-9964-0994bdcb0cb6@gmail.com>
+Message-ID: <20220906185255.703ccf20@parabola>
+
+Hello Ji?? and welcome to the mailing list!
+
+On Tue, 6 Sep 2022 14:48:02 +1200
+"Ji?? Moravec" <jiri.c.moravec at gmail.com> wrote:
+
+> That brings me to a problem: How to do error handling in C without
+> the use of various <...> R-specific print functions?
+
+(Assuming that's what you meant...)
+
+One way would be to introduce callbacks from the R-independent part to
+the R-interfacing part, but I can imagine this to require tedious
+boilerplate. Also, many of R's entry points can raise an error
+condition (e.g. if an allocation fails), which would result in a
+longjmp() away from your code. Any resource not known to R's garbage
+collector is going to be leaked in this situation.
+
+I think you're actually allowed to format strings using sprintf and
+friends; only actual printing to stdout/stderr is disallowed because
+the user may be using e.g. Rgui on Windows and not see it at all. If
+you need to print error messages, you can pass them to the R side as
+strings, probably in storage allocated by the caller to avoid leaks on
+errors. Error codes are of course an option too, but can be less
+informative if not accompanied by an explanation of what went wrong.
+
+(It's considered polite for package code to use R's message system not
+only because of the stdout/Rgui problem mentioned above, but also
+because it gives the user an option to run your code with
+suppressMessages() and disable the verbose output. When the R code
+directly calls cat() or the C code prints directly to console, that
+option disappears.)
+
+To summarise, R would accept any option where only R is interacting
+with the user (or doing other I/O). If neither of this is satisfying,
+can you provide a bit more details on the kind of error handling you're
+looking for?
+ 
+> This is my first time writing into mailing list, hopefully I am doing 
+> everything ok.
+
+Indeed you are!
+
+-- 
+Best regards,
+Ivan
+
+
