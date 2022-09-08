@@ -17098,3 +17098,135 @@ Best regards,
 Ivan
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Sep  7 11:58:33 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 7 Sep 2022 11:58:33 +0200
+Subject: [R-pkg-devel] 
+ Error checking in an independent C code and printing
+ (perror, printf, etc.)
+In-Reply-To: <7f7c1c96-23a8-8e23-3345-25a09bc9a485@gmail.com>
+References: <9aee2ae4-bd5b-fe27-9964-0994bdcb0cb6@gmail.com>
+ <20220906185255.703ccf20@parabola>
+ <7f7c1c96-23a8-8e23-3345-25a09bc9a485@gmail.com>
+Message-ID: <20220907115833.6c2326cb@parabola>
+
+On Wed, 7 Sep 2022 18:32:46 +1200
+"Ji?? Moravec" <jiri.c.moravec at gmail.com> wrote:
+
+> I was hoping that you will tell me that R takes control of the C's 
+> stderr and stdout.
+> That would make stuff easier. But I guess that is not really possible.
+
+While there is fopencookie() in GNU libc, on other POSIX-compatible
+platforms the only relatively portable option is to replace file
+descriptors 0,1,2 with pipes and read those pipes from a thread. And on
+Windows there can be multiple C runtime libraries running in the same
+process, which makes taking over stdout/stderr extra hard.
+
+> First time using the dreadful "goto", looks like it makes sense to
+> free resources.
+
+"goto cleanup" is a fine pattern in a language like C which lacks
+both destructors and deferred execution.
+
+> It still looks a bit ugly compared to simple "throw" (i.e., too much 
+> code noise),
+> and I now understand where the Java's checked exceptions are coming
+> from. And somehow, now that I am thinking about it, I am getting used
+> to it.
+
+But if you'd like to "throw" from compiled code in an R package, the
+Rcpp package can help you with that: it forms a layer between R and
+your code that would catch the exception (letting the stack unwinding
+process run the destructors to prevent the leaks) and convert it into
+an R error condition. Common R types are also wrapped in C++ classes
+with convenient STL-like accessors.
+
+> I hope I am responding correctly ("respond all") and not spamming
+> people.
+
+Cc'ing the list is the right idea. On some lists it's considered
+wrong to send replies anywhere but to the list, but reply-all
+including the senders themselves seems to work fine here.
+
+> Particularly, when to use PROTECT() is not clear (new SEXP objects,
+> but not required if they are just interfaced with INTEGER(), REAL()
+> or VECTOR_ELT).
+
+If you can prove there won't be any allocations (including those done
+by R for its own purposes when you call some API function) between the
+creation of the new SEXP and the return from the function, you can omit
+the PROTECT() call. A simpler and perhaps safer rule is to always
+PROTECT() the allocations. I don't think it will cost you much in
+performance, though it's possible I'm mistaken.
+
+> The overview: 
+> https://stat.ethz.ch/pipermail/r-devel/attachments/20120323/a13f948a/attachment.pdf
+> was also really helpful and should be IMHO part of official
+> documentation.
+
+"Writing R Extensions" could use some improvements, that's true. For
+example, "serialise a SEXP to my C callback" is a very useful function
+which I think should be a part of public R API, but it's not mentioned
+there at all. On the other hand, my package that uses the
+R_InitOutPStream and R_Serialize entry points seems to have passed the
+CRAN review. A table of all public entry points including short
+descriptions and whether they allocate could be very useful.
+Unfortunately, if an outsider like me were to write it, some core
+member would still have to spend time reviewing it.
+
+> An example how to work with named list (e.g., an S3 class), where 
+> subsetting is done by name and not by position,
+> would be really useful.
+
+Hmm. For attributes and S4 slots, there's {GET,SET}_ATTR and
+{GET,SET}_SLOT, but I don't see such a quick shortcut for
+subsetting by name. Based on searching the R source, I think you could
+use SEXP index = PROTECT(match(GET_NAMES(list), mkChar("name"), 0)); to
+obtain an INTSXP vector of indices matching the names, 1-based (or 0 if
+there was no match).
+
+Rcpp offers a very convenient operator[](const std::string & name) that
+does a similar thing: it obtains the names of the object, then compares
+each of them to the name being looked up.
+
+-- 
+Best regards,
+Ivan
+
+
+From edd @end|ng |rom deb|@n@org  Wed Sep  7 16:03:16 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 7 Sep 2022 09:03:16 -0500
+Subject: [R-pkg-devel] 
+ Error checking in an independent C code and printing
+ (perror, printf, etc.)
+In-Reply-To: <20220907115833.6c2326cb@parabola>
+References: <9aee2ae4-bd5b-fe27-9964-0994bdcb0cb6@gmail.com>
+ <20220906185255.703ccf20@parabola>
+ <7f7c1c96-23a8-8e23-3345-25a09bc9a485@gmail.com>
+ <20220907115833.6c2326cb@parabola>
+Message-ID: <25368.42148.690124.702866@rob.eddelbuettel.com>
+
+
+On 7 September 2022 at 11:58, Ivan Krylov wrote:
+| there at all. On the other hand, my package that uses the
+| R_InitOutPStream and R_Serialize entry points seems to have passed the
+| CRAN review. A table of all public entry points including short
+| descriptions and whether they allocate could be very useful.
+
+And there is RApiSerialize:  https://cran.r-project.org/package=RApiSerialize
+
+It takes R Core code and provides it in a package. That allows R Core to one
+day change the non-exported API (so far it hasn't happened in the eight years
+since the 0.1.0 release) yet lets packages use serialization: RcppRedis and
+the excellent qs package make use of it.
+
+Tip of the hat to the Rhpc package for the idea.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
