@@ -18055,3 +18055,174 @@ David
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Sep 10 11:30:34 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 10 Sep 2022 05:30:34 -0400
+Subject: [R-pkg-devel] 
+ help using \Sexpr in .Rd documentaiton file results
+ in error in windows
+In-Reply-To: <CAJyC-m7pBvDz2xxiRyaWkfv3T7Ebuwu6m2StJ_dsX9B-A52A5Q@mail.gmail.com>
+References: <CAJyC-m7pBvDz2xxiRyaWkfv3T7Ebuwu6m2StJ_dsX9B-A52A5Q@mail.gmail.com>
+Message-ID: <f21a985a-ffce-631b-f922-627d71b8b09d@gmail.com>
+
+On 09/09/2022 11:23 a.m., Jairo Hidalgo Migueles wrote:
+> Dear list,
+> 
+> I tried to write a dynamic help file following the Writing R Extensions
+> manual (section 2.12, "Dynamic pages"). When using the \Sexpr macro, the
+> package does not longer pass the R CMD CHECK. I get the following error:
+> 
+> ?? R CMD build ?????????????????????????????
+> ?  checking for file 'C:\R\pkgs\GGIR/DESCRIPTION' ...
+> ?  preparing 'GGIR': (8.5s)
+> ?  checking DESCRIPTION meta-information ...
+> ?  cleaning src
+> ?  installing the package to process help pages (427ms)
+> ?  building the PDF package manual (13.9s)
+>     Warning in system2(..., stdout = FALSE, stderr = FALSE) :
+>       '"makeindex"' not found
+>     Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet = quiet,
+>   :
+>       unable to run 'makeindex' on 'Rd2.idx'
+>     Warning in system2(..., stdout = FALSE, stderr = FALSE) :
+>       '"makeindex"' not found
+>     Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet = quiet,
+>   :
+>       unable to run 'makeindex' on 'Rd2.idx'
+>     Error in running tools::texi2pdf()
+> Error in proc$get_built_file() : Build process failed
+> 
+> It seems there is something wrong when building the package manual, but
+> after some attempts, I have not been able to fix this. Any advice is
+> welcome.
+> 
+> Here an example of the \Sexpr usage in the .Rd file, consider "argument"
+> the name of a parameter to function "fn" in package "pkg":
+> 
+> \usage{
+> fn(argument= \Sexpr{format(formals(pkg::fn)[[" argument "]])})
+> }
+> 
+
+There doesn't appear to be any complaint specifically about your Rd 
+file.  The problem is that to evaluate that line, the package needs to 
+be installed, and the installation is failing because the installer 
+couldn't find the `makeindex` program.  That should be part of your 
+LaTeX distribution.
+
+You can ask INSTALL not to build the manual, and then this might succeed.
+
+Duncan Murdoch
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Sep 10 18:38:53 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 10 Sep 2022 12:38:53 -0400
+Subject: [R-pkg-devel] 
+ help using \Sexpr in .Rd documentaiton file results
+ in error in windows
+In-Reply-To: <CALnEB15hDSdbeupFBSXd7N5QVQ-i6xQ7X9VniK_mCtXjAOaXaw@mail.gmail.com>
+References: <CAJyC-m7pBvDz2xxiRyaWkfv3T7Ebuwu6m2StJ_dsX9B-A52A5Q@mail.gmail.com>
+ <f21a985a-ffce-631b-f922-627d71b8b09d@gmail.com>
+ <CALnEB15hDSdbeupFBSXd7N5QVQ-i6xQ7X9VniK_mCtXjAOaXaw@mail.gmail.com>
+Message-ID: <7d85cf0b-12f3-0d71-7d7f-73666cd93b3e@gmail.com>
+
+
+On 10/09/2022 9:49 a.m., Vincent van Hees wrote:
+> Thanks Duncan, I am working with Jairo on this and we encounter 
+> the?problem in a GitHub Actions environment.
+> 
+>     You can ask INSTALL not to build the manual, and then this might
+>     succeed.
+> 
+> 
+> Do you or anyone else here know how to tell GitHub Actions to not build 
+> a manual?
+> 
+> We already have "--no-manual" in the package check statement:
+> 
+> rcmdcheck::rcmdcheck(args = c("--no-manual", "--as-cran"), error_on = 
+> "warning", check_dir = "check")
+> See full yml file here: 
+> https://github.com/wadpac/GGIR/blob/issue617_documentation/.github/workflows/r.yml 
+> <https://github.com/wadpac/GGIR/blob/issue617_documentation/.github/workflows/r.yml>
+
+You set it as an `R CMD check` option, but the error happens in `R CMD 
+build`.  So you also need `build_args = "--no-manual"` in your call to 
+`rcmdcheck()` to avoid that.
+
+Duncan Murdoch
+
+> 
+> Vincent
+> 
+> 
+> 
+> On Sat, 10 Sept 2022 at 11:31, Duncan Murdoch <murdoch.duncan at gmail.com 
+> <mailto:murdoch.duncan at gmail.com>> wrote:
+> 
+>     On 09/09/2022 11:23 a.m., Jairo Hidalgo Migueles wrote:
+>      > Dear list,
+>      >
+>      > I tried to write a dynamic help file following the Writing R
+>     Extensions
+>      > manual (section 2.12, "Dynamic pages"). When using the \Sexpr
+>     macro, the
+>      > package does not longer pass the R CMD CHECK. I get the following
+>     error:
+>      >
+>      > ?? R CMD build ?????????????????????????????
+>      > ?? checking for file 'C:\R\pkgs\GGIR/DESCRIPTION' ...
+>      > ?? preparing 'GGIR': (8.5s)
+>      > ?? checking DESCRIPTION meta-information ...
+>      > ?? cleaning src
+>      > ?? installing the package to process help pages (427ms)
+>      > ?? building the PDF package manual (13.9s)
+>      >? ? ?Warning in system2(..., stdout = FALSE, stderr = FALSE) :
+>      >? ? ? ?'"makeindex"' not found
+>      >? ? ?Error in texi2dvi(file = file, pdf = TRUE, clean = clean,
+>     quiet = quiet,
+>      >? ?:
+>      >? ? ? ?unable to run 'makeindex' on 'Rd2.idx'
+>      >? ? ?Warning in system2(..., stdout = FALSE, stderr = FALSE) :
+>      >? ? ? ?'"makeindex"' not found
+>      >? ? ?Error in texi2dvi(file = file, pdf = TRUE, clean = clean,
+>     quiet = quiet,
+>      >? ?:
+>      >? ? ? ?unable to run 'makeindex' on 'Rd2.idx'
+>      >? ? ?Error in running tools::texi2pdf()
+>      > Error in proc$get_built_file() : Build process failed
+>      >
+>      > It seems there is something wrong when building the package
+>     manual, but
+>      > after some attempts, I have not been able to fix this. Any advice is
+>      > welcome.
+>      >
+>      > Here an example of the \Sexpr usage in the .Rd file, consider
+>     "argument"
+>      > the name of a parameter to function "fn" in package "pkg":
+>      >
+>      > \usage{
+>      > fn(argument= \Sexpr{format(formals(pkg::fn)[[" argument "]])})
+>      > }
+>      >
+> 
+>     There doesn't appear to be any complaint specifically about your Rd
+>     file.? The problem is that to evaluate that line, the package needs to
+>     be installed, and the installation is failing because the installer
+>     couldn't find the `makeindex` program.? That should be part of your
+>     LaTeX distribution.
+> 
+>     You can ask INSTALL not to build the manual, and then this might
+>     succeed.
+> 
+>     Duncan Murdoch
+> 
+>     ______________________________________________
+>     R-package-devel at r-project.org <mailto:R-package-devel at r-project.org>
+>     mailing list
+>     https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>     <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+>
+
+
