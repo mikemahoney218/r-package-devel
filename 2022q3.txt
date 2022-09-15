@@ -19058,3 +19058,2655 @@ Best regards,
 Florian
 
 
+From john@m@h@rro|d @end|ng |rom gm@||@com  Wed Sep 14 05:21:05 2022
+From: john@m@h@rro|d @end|ng |rom gm@||@com (John Harrold)
+Date: Tue, 13 Sep 2022 20:21:05 -0700
+Subject: [R-pkg-devel] Examples taking too long depend on object that takes
+ a while to generate
+Message-ID: <CANAiAiVBEoSENxOTy1xCDTmbsZmaYFdUuuzaL6UYK0oYEp43zw@mail.gmail.com>
+
+Hello,
+
+I'm working on submitting a new package. I've created examples for each of
+the functions. Most of these functions depend on an R object that uses
+architecture-specific compiled code. To create that object can take between
+10-20 seconds. The function that creates it will cache it in the tempdir().
+So the first example that uses that object will take more than the 5
+seconds allowed by CRAN. If I wrap that example in donttest, then the next
+function that uses it will exceed the 5 second limit, and on. I submitted
+the package with all of these examples wrapped in donttest, but that got me
+dinged :). So I'm trying to come up with a solution and I'd appreciate any
+help here.
+
+Is there some way to build an object before tests are run?
+
+Thank you,
+John
+
+If it would help this is an example where I'm testing it in win-builder:
+
+https://win-builder.r-project.org/6641irOr4mI6/
+
+	[[alternative HTML version deleted]]
+
+
+From greg @end|ng |rom ||rm@n@y@h@com  Wed Sep 14 05:34:53 2022
+From: greg @end|ng |rom ||rm@n@y@h@com (Greg Hunt)
+Date: Wed, 14 Sep 2022 13:34:53 +1000
+Subject: [R-pkg-devel] 
+ Examples taking too long depend on object that takes
+ a while to generate
+In-Reply-To: <CANAiAiVBEoSENxOTy1xCDTmbsZmaYFdUuuzaL6UYK0oYEp43zw@mail.gmail.com>
+References: <CANAiAiVBEoSENxOTy1xCDTmbsZmaYFdUuuzaL6UYK0oYEp43zw@mail.gmail.com>
+Message-ID: <CAAS8PALXXmR83mm5ftLUTLYLQKKX3DQt3=JxxKrQ5ig9AXN0Og@mail.gmail.com>
+
+John,
+Can you cut the test data size back?  Do you have some processing costs
+that are non-linear with data size?  27 seconds of user CPU is an awful lot
+of processing these days.
+
+Greg
+
+On Wed, 14 Sept 2022 at 13:21, John Harrold <john.m.harrold at gmail.com>
+wrote:
+
+> Hello,
+>
+> I'm working on submitting a new package. I've created examples for each of
+> the functions. Most of these functions depend on an R object that uses
+> architecture-specific compiled code. To create that object can take between
+> 10-20 seconds. The function that creates it will cache it in the tempdir().
+> So the first example that uses that object will take more than the 5
+> seconds allowed by CRAN. If I wrap that example in donttest, then the next
+> function that uses it will exceed the 5 second limit, and on. I submitted
+> the package with all of these examples wrapped in donttest, but that got me
+> dinged :). So I'm trying to come up with a solution and I'd appreciate any
+> help here.
+>
+> Is there some way to build an object before tests are run?
+>
+> Thank you,
+> John
+>
+> If it would help this is an example where I'm testing it in win-builder:
+>
+> https://win-builder.r-project.org/6641irOr4mI6/
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From john@m@h@rro|d @end|ng |rom gm@||@com  Wed Sep 14 05:51:26 2022
+From: john@m@h@rro|d @end|ng |rom gm@||@com (John Harrold)
+Date: Tue, 13 Sep 2022 20:51:26 -0700
+Subject: [R-pkg-devel] 
+ Examples taking too long depend on object that takes
+ a while to generate
+In-Reply-To: <CAAS8PALXXmR83mm5ftLUTLYLQKKX3DQt3=JxxKrQ5ig9AXN0Og@mail.gmail.com>
+References: <CANAiAiVBEoSENxOTy1xCDTmbsZmaYFdUuuzaL6UYK0oYEp43zw@mail.gmail.com>
+ <CAAS8PALXXmR83mm5ftLUTLYLQKKX3DQt3=JxxKrQ5ig9AXN0Og@mail.gmail.com>
+Message-ID: <CANAiAiUqqyc_zmL8pWXHrp9HgArtASNQmE0BwyEF4nWrg-wzJQ@mail.gmail.com>
+
+Hello Greg,
+
+I'm already using a reduced dataset. I can reduce it a little bit further
+but it doesn't really change things much.
+
+John
+
+On Tue, Sep 13, 2022 at 8:35 PM Greg Hunt <greg at firmansyah.com> wrote:
+
+> John,
+> Can you cut the test data size back?  Do you have some processing costs
+> that are non-linear with data size?  27 seconds of user CPU is an awful lot
+> of processing these days.
+>
+> Greg
+>
+> On Wed, 14 Sept 2022 at 13:21, John Harrold <john.m.harrold at gmail.com>
+> wrote:
+>
+>> Hello,
+>>
+>> I'm working on submitting a new package. I've created examples for each of
+>> the functions. Most of these functions depend on an R object that uses
+>> architecture-specific compiled code. To create that object can take
+>> between
+>> 10-20 seconds. The function that creates it will cache it in the
+>> tempdir().
+>> So the first example that uses that object will take more than the 5
+>> seconds allowed by CRAN. If I wrap that example in donttest, then the next
+>> function that uses it will exceed the 5 second limit, and on. I submitted
+>> the package with all of these examples wrapped in donttest, but that got
+>> me
+>> dinged :). So I'm trying to come up with a solution and I'd appreciate any
+>> help here.
+>>
+>> Is there some way to build an object before tests are run?
+>>
+>> Thank you,
+>> John
+>>
+>> If it would help this is an example where I'm testing it in win-builder:
+>>
+>> https://win-builder.r-project.org/6641irOr4mI6/
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>
+
+-- 
+John
+:wq
+
+	[[alternative HTML version deleted]]
+
+
+From greg @end|ng |rom ||rm@n@y@h@com  Wed Sep 14 06:06:02 2022
+From: greg @end|ng |rom ||rm@n@y@h@com (Greg Hunt)
+Date: Wed, 14 Sep 2022 14:06:02 +1000
+Subject: [R-pkg-devel] 
+ Examples taking too long depend on object that takes
+ a while to generate
+In-Reply-To: <CANAiAiUqqyc_zmL8pWXHrp9HgArtASNQmE0BwyEF4nWrg-wzJQ@mail.gmail.com>
+References: <CANAiAiVBEoSENxOTy1xCDTmbsZmaYFdUuuzaL6UYK0oYEp43zw@mail.gmail.com>
+ <CAAS8PALXXmR83mm5ftLUTLYLQKKX3DQt3=JxxKrQ5ig9AXN0Og@mail.gmail.com>
+ <CANAiAiUqqyc_zmL8pWXHrp9HgArtASNQmE0BwyEF4nWrg-wzJQ@mail.gmail.com>
+Message-ID: <CAAS8PALSwfy6tRdypBMVcAMTHGo6UjHy2r4y4eCo+rbMDMHgaw@mail.gmail.com>
+
+John,
+You have read_template, fetch_fit_example, yaml_read_fit and build_figures
+taking up that time. Have you checked the individual timings? If you are
+spending 27 seconds of user time on a small data set I'd wonder what the
+full-scale times look like. I'd still be wondering whether you have a
+non-linear ratio of processing cost to data size.
+
+The examples don't need to process meaningful data, they are just examples
+of what the code should look like.
+
+if your absolute minimum time is still above 10 seconds you could
+distribute a sample object under inst I suppose.
+
+Greg
+
+
+
+
+On Wed, 14 Sept 2022 at 13:51, John Harrold <john.m.harrold at gmail.com>
+wrote:
+
+> Hello Greg,
+>
+> I'm already using a reduced dataset. I can reduce it a little bit further
+> but it doesn't really change things much.
+>
+> John
+>
+> On Tue, Sep 13, 2022 at 8:35 PM Greg Hunt <greg at firmansyah.com> wrote:
+>
+>> John,
+>> Can you cut the test data size back?  Do you have some processing costs
+>> that are non-linear with data size?  27 seconds of user CPU is an awful lot
+>> of processing these days.
+>>
+>> Greg
+>>
+>> On Wed, 14 Sept 2022 at 13:21, John Harrold <john.m.harrold at gmail.com>
+>> wrote:
+>>
+>>> Hello,
+>>>
+>>> I'm working on submitting a new package. I've created examples for each
+>>> of
+>>> the functions. Most of these functions depend on an R object that uses
+>>> architecture-specific compiled code. To create that object can take
+>>> between
+>>> 10-20 seconds. The function that creates it will cache it in the
+>>> tempdir().
+>>> So the first example that uses that object will take more than the 5
+>>> seconds allowed by CRAN. If I wrap that example in donttest, then the
+>>> next
+>>> function that uses it will exceed the 5 second limit, and on. I submitted
+>>> the package with all of these examples wrapped in donttest, but that got
+>>> me
+>>> dinged :). So I'm trying to come up with a solution and I'd appreciate
+>>> any
+>>> help here.
+>>>
+>>> Is there some way to build an object before tests are run?
+>>>
+>>> Thank you,
+>>> John
+>>>
+>>> If it would help this is an example where I'm testing it in win-builder:
+>>>
+>>> https://win-builder.r-project.org/6641irOr4mI6/
+>>>
+>>>         [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>
+>>
+>
+> --
+> John
+> :wq
+>
+
+	[[alternative HTML version deleted]]
+
+
+From john@m@h@rro|d @end|ng |rom gm@||@com  Wed Sep 14 06:10:36 2022
+From: john@m@h@rro|d @end|ng |rom gm@||@com (John Harrold)
+Date: Tue, 13 Sep 2022 21:10:36 -0700
+Subject: [R-pkg-devel] 
+ Examples taking too long depend on object that takes
+ a while to generate
+In-Reply-To: <CAAS8PALSwfy6tRdypBMVcAMTHGo6UjHy2r4y4eCo+rbMDMHgaw@mail.gmail.com>
+References: <CANAiAiVBEoSENxOTy1xCDTmbsZmaYFdUuuzaL6UYK0oYEp43zw@mail.gmail.com>
+ <CAAS8PALXXmR83mm5ftLUTLYLQKKX3DQt3=JxxKrQ5ig9AXN0Og@mail.gmail.com>
+ <CANAiAiUqqyc_zmL8pWXHrp9HgArtASNQmE0BwyEF4nWrg-wzJQ@mail.gmail.com>
+ <CAAS8PALSwfy6tRdypBMVcAMTHGo6UjHy2r4y4eCo+rbMDMHgaw@mail.gmail.com>
+Message-ID: <CANAiAiVvet=mvk-4WeUF2+EAi=RipzqvJT-9COj3XdYOzL6KHQ@mail.gmail.com>
+
+Hello Greg,
+
+The fetch_fit_example is the function that creates the object. It takes the
+bulk of the time.
+
+The problem is I cannot distribute the sample object under inst because it
+needs to be compiled under the specific architecture. It also needs to be
+compiled using the version of nlmixr2 the user has installed.
+
+I'm looking into a less complicated example right now, but I think I may
+not be able to get it under 5 seconds.
+
+Thanks
+John
+
+
+
+
+
+On Tue, Sep 13, 2022 at 9:06 PM Greg Hunt <greg at firmansyah.com> wrote:
+
+> John,
+> You have read_template, fetch_fit_example, yaml_read_fit and
+> build_figures taking up that time. Have you checked the individual timings?
+> If you are spending 27 seconds of user time on a small data set I'd wonder
+> what the full-scale times look like. I'd still be wondering whether you
+> have a non-linear ratio of processing cost to data size.
+>
+> The examples don't need to process meaningful data, they are just examples
+> of what the code should look like.
+>
+> if your absolute minimum time is still above 10 seconds you could
+> distribute a sample object under inst I suppose.
+>
+> Greg
+>
+>
+>
+>
+> On Wed, 14 Sept 2022 at 13:51, John Harrold <john.m.harrold at gmail.com>
+> wrote:
+>
+>> Hello Greg,
+>>
+>> I'm already using a reduced dataset. I can reduce it a little bit further
+>> but it doesn't really change things much.
+>>
+>> John
+>>
+>> On Tue, Sep 13, 2022 at 8:35 PM Greg Hunt <greg at firmansyah.com> wrote:
+>>
+>>> John,
+>>> Can you cut the test data size back?  Do you have some processing costs
+>>> that are non-linear with data size?  27 seconds of user CPU is an awful lot
+>>> of processing these days.
+>>>
+>>> Greg
+>>>
+>>> On Wed, 14 Sept 2022 at 13:21, John Harrold <john.m.harrold at gmail.com>
+>>> wrote:
+>>>
+>>>> Hello,
+>>>>
+>>>> I'm working on submitting a new package. I've created examples for each
+>>>> of
+>>>> the functions. Most of these functions depend on an R object that uses
+>>>> architecture-specific compiled code. To create that object can take
+>>>> between
+>>>> 10-20 seconds. The function that creates it will cache it in the
+>>>> tempdir().
+>>>> So the first example that uses that object will take more than the 5
+>>>> seconds allowed by CRAN. If I wrap that example in donttest, then the
+>>>> next
+>>>> function that uses it will exceed the 5 second limit, and on. I
+>>>> submitted
+>>>> the package with all of these examples wrapped in donttest, but that
+>>>> got me
+>>>> dinged :). So I'm trying to come up with a solution and I'd appreciate
+>>>> any
+>>>> help here.
+>>>>
+>>>> Is there some way to build an object before tests are run?
+>>>>
+>>>> Thank you,
+>>>> John
+>>>>
+>>>> If it would help this is an example where I'm testing it in win-builder:
+>>>>
+>>>> https://win-builder.r-project.org/6641irOr4mI6/
+>>>>
+>>>>         [[alternative HTML version deleted]]
+>>>>
+>>>> ______________________________________________
+>>>> R-package-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>
+>>>
+>>
+>> --
+>> John
+>> :wq
+>>
+>
+
+-- 
+John
+:wq
+
+	[[alternative HTML version deleted]]
+
+
+From SGAO @end|ng |rom beckm@n@com  Wed Sep 14 02:32:45 2022
+From: SGAO @end|ng |rom beckm@n@com (Gao, Song)
+Date: Wed, 14 Sep 2022 00:32:45 +0000
+Subject: [R-pkg-devel] Links from manual return 403 and 404 responses when
+ running devtools::check_rhub()
+In-Reply-To: <CO6P222MB0570B1000F289A6BBC9DA8CFC2469@CO6P222MB0570.NAMP222.PROD.OUTLOOK.COM>
+References: <CO6P222MB0570B1000F289A6BBC9DA8CFC2469@CO6P222MB0570.NAMP222.PROD.OUTLOOK.COM>
+Message-ID: <CO6P222MB0570AAF59C1B792DD2741991C2469@CO6P222MB0570.NAMP222.PROD.OUTLOOK.COM>
+
+Hi there,
+
+This is a developer from Cytobank.
+I encountered an issue when I release the R package.
+
+The issue happened when running devtools::check_rhub(), there are a lot of 403 responses when testing the links in the manual. The details log is attached
+The links in the manual are public ones without authentication, and anyone can access them from anywhere.
+
+Also, there are two 404 requests.
+Found the following (possibly) invalid URLs:
+    URL: https://cran.r-project.org/package=CytobankAPI/vignettes/cytobank-advanced-analyses.html
+      From: README.md
+      Status: 404
+      Message: Not Found
+    URL: https://cran.r-project.org/package=CytobankAPI/vignettes/cytobank-quickstart.html
+      From: README.md
+      Status: 404
+      Message: Not Found
+Currently, the cytobank page on CRAN is not available, so the 2 links can?t be accessed
+
+Can you please have a look at it?
+
+Thanks.
+Best Wishes!
+Sgao
+
+
+
+Please be advised that this email may contain confidential information. If you are not the intended recipient, please notify us by email by replying to the sender and delete this message. The sender disclaims that the content of this email constitutes an offer to enter into, or the acceptance of, any agreement; provided that the foregoing does not invalidate the binding effect of any digital or other electronic reproduction of a manual signature that is included in any attachment.
+
+Confidential - Company Proprietary
+
+From greg @end|ng |rom ||rm@n@y@h@com  Wed Sep 14 09:40:54 2022
+From: greg @end|ng |rom ||rm@n@y@h@com (Greg Hunt)
+Date: Wed, 14 Sep 2022 17:40:54 +1000
+Subject: [R-pkg-devel] 
+ Links from manual return 403 and 404 responses when
+ running devtools::check_rhub()
+In-Reply-To: <CO6P222MB0570AAF59C1B792DD2741991C2469@CO6P222MB0570.NAMP222.PROD.OUTLOOK.COM>
+References: <CO6P222MB0570B1000F289A6BBC9DA8CFC2469@CO6P222MB0570.NAMP222.PROD.OUTLOOK.COM>
+ <CO6P222MB0570AAF59C1B792DD2741991C2469@CO6P222MB0570.NAMP222.PROD.OUTLOOK.COM>
+Message-ID: <CAAS8PAJbAcMQrt1kHZYZAqfAYbmxHv9LKDG36s2v9NN0E8jQww@mail.gmail.com>
+
+When I click on those links, I also get 404 errors.  When I try to access
+the package I get a page that looks like it explains the problem.  You may
+have to talk to the CRAN maintainers about that:
+
+Package ?CytobankAPI? was removed from the CRAN repository.
+
+Formerly available versions can be obtained from the archive
+<https://cran.r-project.org/src/contrib/Archive/CytobankAPI>.
+
+Archived on 2022-09-11 as email to the maintainer is undeliverable.
+
+
+On Wed, 14 Sept 2022 at 17:29, Gao, Song via R-package-devel <
+r-package-devel at r-project.org> wrote:
+
+> Hi there,
+>
+> This is a developer from Cytobank.
+> I encountered an issue when I release the R package.
+>
+> The issue happened when running devtools::check_rhub(), there are a lot of
+> 403 responses when testing the links in the manual. The details log is
+> attached
+> The links in the manual are public ones without authentication, and anyone
+> can access them from anywhere.
+>
+> Also, there are two 404 requests.
+> Found the following (possibly) invalid URLs:
+>     URL:
+> https://cran.r-project.org/package=CytobankAPI/vignettes/cytobank-advanced-analyses.html
+>       From: README.md
+>       Status: 404
+>       Message: Not Found
+>     URL:
+> https://cran.r-project.org/package=CytobankAPI/vignettes/cytobank-quickstart.html
+>       From: README.md
+>       Status: 404
+>       Message: Not Found
+> Currently, the cytobank page on CRAN is not available, so the 2 links
+> can?t be accessed
+>
+> Can you please have a look at it?
+>
+> Thanks.
+> Best Wishes!
+> Sgao
+>
+>
+>
+> Please be advised that this email may contain confidential information. If
+> you are not the intended recipient, please notify us by email by replying
+> to the sender and delete this message. The sender disclaims that the
+> content of this email constitutes an offer to enter into, or the acceptance
+> of, any agreement; provided that the foregoing does not invalidate the
+> binding effect of any digital or other electronic reproduction of a manual
+> signature that is included in any attachment.
+>
+> Confidential - Company Proprietary
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Wed Sep 14 09:45:11 2022
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Wed, 14 Sep 2022 09:45:11 +0200
+Subject: [R-pkg-devel] 
+ Links from manual return 403 and 404 responses when
+ running devtools::check_rhub()
+In-Reply-To: <CO6P222MB0570AAF59C1B792DD2741991C2469@CO6P222MB0570.NAMP222.PROD.OUTLOOK.COM>
+References: <CO6P222MB0570B1000F289A6BBC9DA8CFC2469@CO6P222MB0570.NAMP222.PROD.OUTLOOK.COM>
+ <CO6P222MB0570AAF59C1B792DD2741991C2469@CO6P222MB0570.NAMP222.PROD.OUTLOOK.COM>
+Message-ID: <0f2bd2ac-b2bc-e275-f5ef-a5904d0d8208@statistik.tu-dortmund.de>
+
+
+
+On 14.09.2022 02:32, Gao, Song via R-package-devel wrote:
+> Hi there,
+> 
+> This is a developer from Cytobank.
+> I encountered an issue when I release the R package.
+> 
+> The issue happened when running devtools::check_rhub(), there are a lot of 403 responses when testing the links in the manual. The details log is attached
+> The links in the manual are public ones without authentication, and anyone can access them from anywhere.
+> 
+> Also, there are two 404 requests.
+> Found the following (possibly) invalid URLs:
+>      URL: https://cran.r-project.org/package=CytobankAPI/vignettes/cytobank-advanced-analyses.html
+>        From: README.md
+>        Status: 404
+>        Message: Not Found
+>      URL: https://cran.r-project.org/package=CytobankAPI/vignettes/cytobank-quickstart.html
+>        From: README.md
+>        Status: 404
+>        Message: Not Found
+> Currently, the cytobank page on CRAN is not available, so the 2 links can?t be accessed
+> 
+> Can you please have a look at it?
+
+What should we look at? The links are currently not working, so the 
+check is right. You can write a comment that these are expected to work 
+once the package is on CRAN. The comment field is available from the 
+webform.
+(if people use the cran-copmment mechanism provided by devtools, please 
+only write one relevant sentence about issue that may prevent 
+publication, we do not read several pages of comments)
+
+But honetsly, why don't you say people can simply read it by 
+vignette("cytoban-quickstart"), for example?
+
+Best,
+Uwe Ligges
+
+
+
+
+
+
+> Thanks.
+> Best Wishes!
+> Sgao
+> 
+> 
+> 
+> Please be advised that this email may contain confidential information. If you are not the intended recipient, please notify us by email by replying to the sender and delete this message. The sender disclaims that the content of this email constitutes an offer to enter into, or the acceptance of, any agreement; provided that the foregoing does not invalidate the binding effect of any digital or other electronic reproduction of a manual signature that is included in any attachment.
+> 
+> Confidential - Company Proprietary
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Sep 14 10:06:14 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 14 Sep 2022 11:06:14 +0300
+Subject: [R-pkg-devel] 
+ Links from manual return 403 and 404 responses when
+ running devtools::check_rhub()
+In-Reply-To: <CO6P222MB0570AAF59C1B792DD2741991C2469@CO6P222MB0570.NAMP222.PROD.OUTLOOK.COM>
+References: <CO6P222MB0570B1000F289A6BBC9DA8CFC2469@CO6P222MB0570.NAMP222.PROD.OUTLOOK.COM>
+ <CO6P222MB0570AAF59C1B792DD2741991C2469@CO6P222MB0570.NAMP222.PROD.OUTLOOK.COM>
+Message-ID: <20220914110614.621dfe70@Tarkus>
+
+On Wed, 14 Sep 2022 00:32:45 +0000
+"Gao, Song via R-package-devel" <r-package-devel at r-project.org> wrote:
+
+> The issue happened when running devtools::check_rhub(), there are a
+> lot of 403 responses when testing the links in the manual. The
+> details log is attached The links in the manual are public ones
+> without authentication, and anyone can access them from anywhere.
+
+A browser deemed by Cloudflare to be operated by a human can access the
+links, that's true. When R checks the links, it uses cURL to send a
+HEAD request to the URL. Cloudflare deems these requests as coming from
+a robot (which is more or less correct, I guess) and blocks them,
+returning a 403 error.
+
+R is not going to pretend to be a human operating a browser, because
+there's no winning this cat-and-mouse game: it's already costly, and
+bot-detecting systems will just adapt and classify the new behaviour as
+bot-like.
+
+Use the CRAN comments page to explain that the links returning 403 are
+for humans only and would work if actually clicked. Alternatively, you
+could ask Cloudflare not to block HEAD requests to your website coming
+from cURL, but that might be against their business model.
+
+-- 
+Best regards,
+Ivan
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Sep 14 14:52:47 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 14 Sep 2022 08:52:47 -0400
+Subject: [R-pkg-devel] 
+ Examples taking too long depend on object that takes
+ a while to generate
+In-Reply-To: <CANAiAiVBEoSENxOTy1xCDTmbsZmaYFdUuuzaL6UYK0oYEp43zw@mail.gmail.com>
+References: <CANAiAiVBEoSENxOTy1xCDTmbsZmaYFdUuuzaL6UYK0oYEp43zw@mail.gmail.com>
+Message-ID: <b110f271-a87e-d357-4aa9-aa568d77df9d@gmail.com>
+
+On 13/09/2022 11:21 p.m., John Harrold wrote:
+> Hello,
+> 
+> I'm working on submitting a new package. I've created examples for each of
+> the functions. Most of these functions depend on an R object that uses
+> architecture-specific compiled code. To create that object can take between
+> 10-20 seconds. The function that creates it will cache it in the tempdir().
+> So the first example that uses that object will take more than the 5
+> seconds allowed by CRAN. If I wrap that example in donttest, then the next
+> function that uses it will exceed the 5 second limit, and on. I submitted
+> the package with all of these examples wrapped in donttest, but that got me
+> dinged :). So I'm trying to come up with a solution and I'd appreciate any
+> help here.
+> 
+> Is there some way to build an object before tests are run?
+
+You could build it on your system, and save it in the data directory.
+
+If it really needs to depend on the current architecture, you could 
+build it at install time.
+
+Duncan Murdoch
+
+
+From no@h@gre||er @end|ng |rom gm@||@com  Wed Sep 14 16:30:44 2022
+From: no@h@gre||er @end|ng |rom gm@||@com (Noah Greifer)
+Date: Wed, 14 Sep 2022 10:30:44 -0400
+Subject: [R-pkg-devel] Save and restoring random number seed in a package
+ function
+Message-ID: <CAPhhD8=yqycnMsA1gYXrdMc=65CQ0rGphOZ49Rx_MykTOr4siA@mail.gmail.com>
+
+Hello fellow developers,
+
+I am attempting to solve the problem of saving the state of the random
+generator so that the state can be recovered in a future call. Essentially,
+my function generates random numbers, performs an operation on them (saving
+the result), and throws them out (saving them would require too much
+memory). A second function is meant to take the output of the first
+function, generate the same random numbers, and perform a different
+operation on them.
+
+This is exactly what happens in the *boot* package: the boot() function
+saves the random seed (extracted from .Random.Seed), and the boot.array()
+function extracts the saved seed from the boot() output, sets the seed to
+that value, re-generates the same set of random numbers, and then
+re-sets the seed to what it was before boot.array() was called. This has
+the following benefits: 1) it allows the same random numbers to be drawn;
+2) the random numbers don't need to be saved, which is good because they
+would take up a lot of memory and boot.array() is an optional function (it
+is used in boot.ci() with type = "bca" for those curious); and 3) the seed
+carries on from where it left off before boot.array() was called instead of
+being set to what it was after boot() was called.
+
+This is implemented in boot in the following way (code abbreviated):
+
+boot <- function(...) {
+  seed <- .Random.Seed
+  #Random numbers generated
+  out <- list(seed = seed
+                  #Other stuff is in this list
+              )
+  out
+}
+
+boot.array <- function(boot.out) {
+  #Save current random seed in `temp`
+  if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
+    temp <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  else temp <- NULL
+
+  #Assign saved seed from boot.out
+  assign(".Random.seed", boot.out$seed, envir = .GlobalEnv)
+
+  #Generate same random numbers from boot() call
+
+  #Restore random seed to what it was before boot.array() call
+  if (!is.null(temp))
+    assign(".Random.seed", temp, envir = .GlobalEnv)
+  else rm(.Random.seed, pos = 1)
+}
+
+This seems to work as intended. However, this violates the CRAN policy of
+changing the global environment. When I used this exact code in a package I
+submitted, the package was rejected for it. The message I received was
+
+> Please do not modify the .GlobalEnv (e.g.: by changing the .Random.seed
+> which is part of the global environment). This is not allowed by the CRAN
+> policies.
+
+
+I'm curious what you think the best course of action might be, and what the
+current policy means for the *boot* package. Thanks for your help.
+
+Noah
+
+	[[alternative HTML version deleted]]
+
+
+From john@m@h@rro|d @end|ng |rom gm@||@com  Wed Sep 14 16:32:51 2022
+From: john@m@h@rro|d @end|ng |rom gm@||@com (John Harrold)
+Date: Wed, 14 Sep 2022 07:32:51 -0700
+Subject: [R-pkg-devel] 
+ Examples taking too long depend on object that takes
+ a while to generate
+In-Reply-To: <b110f271-a87e-d357-4aa9-aa568d77df9d@gmail.com>
+References: <CANAiAiVBEoSENxOTy1xCDTmbsZmaYFdUuuzaL6UYK0oYEp43zw@mail.gmail.com>
+ <b110f271-a87e-d357-4aa9-aa568d77df9d@gmail.com>
+Message-ID: <CANAiAiUzP7EXkSiRuQLQB=F6GgtwE1NW0SZmv0NN+rLjMb9=hA@mail.gmail.com>
+
+Is there an example of how I can build it  at install time?
+
+On Wed, Sep 14, 2022 at 5:52 AM Duncan Murdoch <murdoch.duncan at gmail.com>
+wrote:
+
+> On 13/09/2022 11:21 p.m., John Harrold wrote:
+> > Hello,
+> >
+> > I'm working on submitting a new package. I've created examples for each
+> of
+> > the functions. Most of these functions depend on an R object that uses
+> > architecture-specific compiled code. To create that object can take
+> between
+> > 10-20 seconds. The function that creates it will cache it in the
+> tempdir().
+> > So the first example that uses that object will take more than the 5
+> > seconds allowed by CRAN. If I wrap that example in donttest, then the
+> next
+> > function that uses it will exceed the 5 second limit, and on. I submitted
+> > the package with all of these examples wrapped in donttest, but that got
+> me
+> > dinged :). So I'm trying to come up with a solution and I'd appreciate
+> any
+> > help here.
+> >
+> > Is there some way to build an object before tests are run?
+>
+> You could build it on your system, and save it in the data directory.
+>
+> If it really needs to depend on the current architecture, you could
+> build it at install time.
+>
+> Duncan Murdoch
+>
+-- 
+John
+:wq
+
+	[[alternative HTML version deleted]]
+
+
+From jepu@to @end|ng |rom gm@||@com  Wed Sep 14 16:39:23 2022
+From: jepu@to @end|ng |rom gm@||@com (James Pustejovsky)
+Date: Wed, 14 Sep 2022 09:39:23 -0500
+Subject: [R-pkg-devel] 
+ Save and restoring random number seed in a package function
+In-Reply-To: <CAPhhD8=yqycnMsA1gYXrdMc=65CQ0rGphOZ49Rx_MykTOr4siA@mail.gmail.com>
+References: <CAPhhD8=yqycnMsA1gYXrdMc=65CQ0rGphOZ49Rx_MykTOr4siA@mail.gmail.com>
+Message-ID: <CAFUVuJx_zEp4w6RTL=WApFfrJtOv9xorwSGA+z5bnVAFpFfk8Q@mail.gmail.com>
+
+I'm interested in this question too. Noah, is there a reason you are using
+assign(".Random.seed",...) rather than set.seed()?
+
+On Wed, Sep 14, 2022 at 9:31 AM Noah Greifer <noah.greifer at gmail.com> wrote:
+
+> Hello fellow developers,
+>
+> I am attempting to solve the problem of saving the state of the random
+> generator so that the state can be recovered in a future call. Essentially,
+> my function generates random numbers, performs an operation on them (saving
+> the result), and throws them out (saving them would require too much
+> memory). A second function is meant to take the output of the first
+> function, generate the same random numbers, and perform a different
+> operation on them.
+>
+> This is exactly what happens in the *boot* package: the boot() function
+> saves the random seed (extracted from .Random.Seed), and the boot.array()
+> function extracts the saved seed from the boot() output, sets the seed to
+> that value, re-generates the same set of random numbers, and then
+> re-sets the seed to what it was before boot.array() was called. This has
+> the following benefits: 1) it allows the same random numbers to be drawn;
+> 2) the random numbers don't need to be saved, which is good because they
+> would take up a lot of memory and boot.array() is an optional function (it
+> is used in boot.ci() with type = "bca" for those curious); and 3) the seed
+> carries on from where it left off before boot.array() was called instead of
+> being set to what it was after boot() was called.
+>
+> This is implemented in boot in the following way (code abbreviated):
+>
+> boot <- function(...) {
+>   seed <- .Random.Seed
+>   #Random numbers generated
+>   out <- list(seed = seed
+>                   #Other stuff is in this list
+>               )
+>   out
+> }
+>
+> boot.array <- function(boot.out) {
+>   #Save current random seed in `temp`
+>   if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
+>     temp <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+>   else temp <- NULL
+>
+>   #Assign saved seed from boot.out
+>   assign(".Random.seed", boot.out$seed, envir = .GlobalEnv)
+>
+>   #Generate same random numbers from boot() call
+>
+>   #Restore random seed to what it was before boot.array() call
+>   if (!is.null(temp))
+>     assign(".Random.seed", temp, envir = .GlobalEnv)
+>   else rm(.Random.seed, pos = 1)
+> }
+>
+> This seems to work as intended. However, this violates the CRAN policy of
+> changing the global environment. When I used this exact code in a package I
+> submitted, the package was rejected for it. The message I received was
+>
+> > Please do not modify the .GlobalEnv (e.g.: by changing the .Random.seed
+> > which is part of the global environment). This is not allowed by the CRAN
+> > policies.
+>
+>
+> I'm curious what you think the best course of action might be, and what the
+> current policy means for the *boot* package. Thanks for your help.
+>
+> Noah
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From no@h@gre||er @end|ng |rom gm@||@com  Wed Sep 14 17:03:13 2022
+From: no@h@gre||er @end|ng |rom gm@||@com (Noah Greifer)
+Date: Wed, 14 Sep 2022 11:03:13 -0400
+Subject: [R-pkg-devel] 
+ Save and restoring random number seed in a package function
+In-Reply-To: <CAFUVuJx_zEp4w6RTL=WApFfrJtOv9xorwSGA+z5bnVAFpFfk8Q@mail.gmail.com>
+References: <CAPhhD8=yqycnMsA1gYXrdMc=65CQ0rGphOZ49Rx_MykTOr4siA@mail.gmail.com>
+ <CAFUVuJx_zEp4w6RTL=WApFfrJtOv9xorwSGA+z5bnVAFpFfk8Q@mail.gmail.com>
+Message-ID: <CAPhhD8kGjdm9ngLSVP3ppdbd=AEXe_=5c2FDgs8CE-v+k+CcHQ@mail.gmail.com>
+
+Yes, set.seed() cannot accept .Random.Seed as an input; it can only take a
+single integer. As said in this answer
+<https://stackoverflow.com/a/13997608/6348551>, there is a one-way
+relationship between set.seed() and .Random.Seed. My understanding is that
+the recommended way to restore the seed is to assign the saved seed to
+.Random.Seed in the global environment, though this is the method that is
+not allowed by the CRAN policy. Unfortunately saving it in the environment
+of the inner function is not sufficient.
+
+One potential inconsistency with CRAN's policy is that generating a random
+number itself changes the global environment by changing the value of
+.Random.Seed. The boot.array() code just does it manually using assign().
+Indeed, the boot.array() code does less damage to the global environment in
+that it resets the seed to what it would have been had boot.array() not
+been run.
+
+Noah
+
+On Wed, Sep 14, 2022 at 10:39 AM James Pustejovsky <jepusto at gmail.com>
+wrote:
+
+> I'm interested in this question too. Noah, is there a reason you are using
+> assign(".Random.seed",...) rather than set.seed()?
+>
+> On Wed, Sep 14, 2022 at 9:31 AM Noah Greifer <noah.greifer at gmail.com>
+> wrote:
+>
+>> Hello fellow developers,
+>>
+>> I am attempting to solve the problem of saving the state of the random
+>> generator so that the state can be recovered in a future call.
+>> Essentially,
+>> my function generates random numbers, performs an operation on them
+>> (saving
+>> the result), and throws them out (saving them would require too much
+>> memory). A second function is meant to take the output of the first
+>> function, generate the same random numbers, and perform a different
+>> operation on them.
+>>
+>> This is exactly what happens in the *boot* package: the boot() function
+>> saves the random seed (extracted from .Random.Seed), and the boot.array()
+>> function extracts the saved seed from the boot() output, sets the seed to
+>> that value, re-generates the same set of random numbers, and then
+>> re-sets the seed to what it was before boot.array() was called. This has
+>> the following benefits: 1) it allows the same random numbers to be drawn;
+>> 2) the random numbers don't need to be saved, which is good because they
+>> would take up a lot of memory and boot.array() is an optional function (it
+>> is used in boot.ci() with type = "bca" for those curious); and 3) the
+>> seed
+>> carries on from where it left off before boot.array() was called instead
+>> of
+>> being set to what it was after boot() was called.
+>>
+>> This is implemented in boot in the following way (code abbreviated):
+>>
+>> boot <- function(...) {
+>>   seed <- .Random.Seed
+>>   #Random numbers generated
+>>   out <- list(seed = seed
+>>                   #Other stuff is in this list
+>>               )
+>>   out
+>> }
+>>
+>> boot.array <- function(boot.out) {
+>>   #Save current random seed in `temp`
+>>   if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
+>>     temp <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+>>   else temp <- NULL
+>>
+>>   #Assign saved seed from boot.out
+>>   assign(".Random.seed", boot.out$seed, envir = .GlobalEnv)
+>>
+>>   #Generate same random numbers from boot() call
+>>
+>>   #Restore random seed to what it was before boot.array() call
+>>   if (!is.null(temp))
+>>     assign(".Random.seed", temp, envir = .GlobalEnv)
+>>   else rm(.Random.seed, pos = 1)
+>> }
+>>
+>> This seems to work as intended. However, this violates the CRAN policy of
+>> changing the global environment. When I used this exact code in a package
+>> I
+>> submitted, the package was rejected for it. The message I received was
+>>
+>> > Please do not modify the .GlobalEnv (e.g.: by changing the .Random.seed
+>> > which is part of the global environment). This is not allowed by the
+>> CRAN
+>> > policies.
+>>
+>>
+>> I'm curious what you think the best course of action might be, and what
+>> the
+>> current policy means for the *boot* package. Thanks for your help.
+>>
+>> Noah
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From d@h| @end|ng |rom @t@t@byu@edu  Wed Sep 14 17:24:24 2022
+From: d@h| @end|ng |rom @t@t@byu@edu (David B. Dahl)
+Date: Wed, 14 Sep 2022 09:24:24 -0600
+Subject: [R-pkg-devel] Advice on resubmitting when no response from CRAN
+Message-ID: <CALivmgaQ7qtA4fFonWvb-NONfxeG_ZDERTftXyaZUMeWr1_wOg@mail.gmail.com>
+
+Hi colleagues.  I am hoping to get some advice from you on how to get
+a package "unstuck" at CRAN without antagonizing the busy CRAN
+maintainers.
+
+I submitted to CRAN an update to one of my packages on August 5.  The
+submission passed the automatic tests on Debian, but not Windows.  The
+automated response said, "If you are fairly certain the rejection is a
+false positive, please reply-all to this message and explain."  I
+replied-all and noted that the failure should be resolved by please
+installing software as described in the SystemRequirements field and
+the referenced INSTALL file.  After three weeks of not hearing back, I
+sent a polite nudge (again via reply-all) on August 26 and suggested
+an alternative if my original solution was not feasible.  I still have
+not heard back and notice that now my package source is no longer on
+https://cran.r-project.org/incoming/archive/.
+
+How would you recommend that I proceed in a professional fashion?  Thanks!
+
+-- David B. Dahl
+
+
+From bbo|ker @end|ng |rom gm@||@com  Wed Sep 14 17:46:58 2022
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Wed, 14 Sep 2022 11:46:58 -0400
+Subject: [R-pkg-devel] Advice on resubmitting when no response from CRAN
+In-Reply-To: <CALivmgaQ7qtA4fFonWvb-NONfxeG_ZDERTftXyaZUMeWr1_wOg@mail.gmail.com>
+References: <CALivmgaQ7qtA4fFonWvb-NONfxeG_ZDERTftXyaZUMeWr1_wOg@mail.gmail.com>
+Message-ID: <276c9a8f-6dac-ccd8-93a8-7ed73453e927@gmail.com>
+
+    One question and one suggestion.
+
+    Is the software required/indicated by the SystemRequirements field 
+unusual/possibly burdensome to install across platforms? That wouldn't 
+justify not responding to your e-mails, but it might explain why the 
+package didn't make it onto CRAN.
+
+   For some context, can you tell us what the system 
+requirement/alternative is?
+
+   The suggestion would be to politely nudge again.
+
+On 9/14/22 11:24 AM, David B. Dahl wrote:
+> Hi colleagues.  I am hoping to get some advice from you on how to get
+> a package "unstuck" at CRAN without antagonizing the busy CRAN
+> maintainers.
+> 
+> I submitted to CRAN an update to one of my packages on August 5.  The
+> submission passed the automatic tests on Debian, but not Windows.  The
+> automated response said, "If you are fairly certain the rejection is a
+> false positive, please reply-all to this message and explain."  I
+> replied-all and noted that the failure should be resolved by please
+> installing software as described in the SystemRequirements field and
+> the referenced INSTALL file.  After three weeks of not hearing back, I
+> sent a polite nudge (again via reply-all) on August 26 and suggested
+> an alternative if my original solution was not feasible.  I still have
+> not heard back and notice that now my package source is no longer on
+> https://cran.r-project.org/incoming/archive/.
+> 
+> How would you recommend that I proceed in a professional fashion?  Thanks!
+> 
+> -- David B. Dahl
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+Graduate chair, Mathematics & Statistics
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Sep 14 18:31:49 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 14 Sep 2022 12:31:49 -0400
+Subject: [R-pkg-devel] 
+ Examples taking too long depend on object that takes
+ a while to generate
+In-Reply-To: <CANAiAiUzP7EXkSiRuQLQB=F6GgtwE1NW0SZmv0NN+rLjMb9=hA@mail.gmail.com>
+References: <CANAiAiVBEoSENxOTy1xCDTmbsZmaYFdUuuzaL6UYK0oYEp43zw@mail.gmail.com>
+ <b110f271-a87e-d357-4aa9-aa568d77df9d@gmail.com>
+ <CANAiAiUzP7EXkSiRuQLQB=F6GgtwE1NW0SZmv0NN+rLjMb9=hA@mail.gmail.com>
+Message-ID: <d9c557bc-7bf0-21f7-8a78-e02da31b5483@gmail.com>
+
+On 14/09/2022 10:32 a.m., John Harrold wrote:
+> Is there an example of how I can build it ?at install time?
+
+I don't know of one; the requirement of the architecture-specific 
+version is very unusual.
+
+But one general idea is that the .R files in the R directory are all 
+executed at install time.  In a typical package that just creates 
+functions, and they are saved in binary form in one of the files in the 
+installed R directory.  But that code can do other things, such as 
+creating a data object in the package environment, and maybe it can also 
+write to package directories like the data directory before they get 
+made read-only.
+
+It's also possible to put .R files in the data directory, and they are 
+executed to create the data object.  I think that happens at the time 
+when you call data() rather than at install time, so it might not be 
+helpful.  But I could be wrong.
+
+Duncan Murdoch
+
+> 
+> On Wed, Sep 14, 2022 at 5:52 AM Duncan Murdoch <murdoch.duncan at gmail.com 
+> <mailto:murdoch.duncan at gmail.com>> wrote:
+> 
+>     On 13/09/2022 11:21 p.m., John Harrold wrote:
+>      > Hello,
+>      >
+>      > I'm working on submitting a new package. I've created examples
+>     for each of
+>      > the functions. Most of these functions depend on an R object that
+>     uses
+>      > architecture-specific compiled code. To create that object can
+>     take between
+>      > 10-20 seconds. The function that creates it will cache it in the
+>     tempdir().
+>      > So the first example that uses that object will take more than the 5
+>      > seconds allowed by CRAN. If I wrap that example in donttest, then
+>     the next
+>      > function that uses it will exceed the 5 second limit, and on. I
+>     submitted
+>      > the package with all of these examples wrapped in donttest, but
+>     that got me
+>      > dinged :). So I'm trying to come up with a solution and I'd
+>     appreciate any
+>      > help here.
+>      >
+>      > Is there some way to build an object before tests are run?
+> 
+>     You could build it on your system, and save it in the data directory.
+> 
+>     If it really needs to depend on the current architecture, you could
+>     build it at install time.
+> 
+>     Duncan Murdoch
+> 
+> -- 
+> John
+> :wq
+
+
+From d@h| @end|ng |rom @t@t@byu@edu  Wed Sep 14 18:31:55 2022
+From: d@h| @end|ng |rom @t@t@byu@edu (David B. Dahl)
+Date: Wed, 14 Sep 2022 10:31:55 -0600
+Subject: [R-pkg-devel] Advice on resubmitting when no response from CRAN
+In-Reply-To: <276c9a8f-6dac-ccd8-93a8-7ed73453e927@gmail.com>
+References: <CALivmgaQ7qtA4fFonWvb-NONfxeG_ZDERTftXyaZUMeWr1_wOg@mail.gmail.com>
+ <276c9a8f-6dac-ccd8-93a8-7ed73453e927@gmail.com>
+Message-ID: <CALivmgZtGTo8NesAVZ-XqgvY3RFthCFxz_k-LUL6YZQrWJ1FXw@mail.gmail.com>
+
+Thanks for the reply, Ben.
+
+The SystemRequirements is "Cargo (>= 1.56) for installation from source:
+see INSTALL file".  The INSTALL notes that the package contains Rust source
+code compiled by Cargo (the Rust package manager) which can be obtained
+from the Rust project at https://rustup.rs.  On Windows, this involves
+downloading an executable and following the onscreen instructions.
+
+In my follow-up email, I wrote, "Alternatively, if you prefer, could these
+packages please download
+binary libraries produced by Cargo in accordance with the CRAN policy:
+'Only as a last resort and with the agreement of the CRAN team should a
+package download pre-compiled software.'"
+
+So you suggest I politely nudge instead of resubmitting?  I don't think
+that CRAN even has a copy of my submission anymore.  (It was here
+https://cran.r-project.org/incoming/archive/ for several weeks, but is now
+gone.)
+
+Thanks!
+
+-- David
+
+
+On Wed, Sep 14, 2022 at 9:47 AM Ben Bolker <bbolker at gmail.com> wrote:
+
+>     One question and one suggestion.
+>
+>     Is the software required/indicated by the SystemRequirements field
+> unusual/possibly burdensome to install across platforms? That wouldn't
+> justify not responding to your e-mails, but it might explain why the
+> package didn't make it onto CRAN.
+>
+>    For some context, can you tell us what the system
+> requirement/alternative is?
+>
+>    The suggestion would be to politely nudge again.
+>
+> On 9/14/22 11:24 AM, David B. Dahl wrote:
+> > Hi colleagues.  I am hoping to get some advice from you on how to get
+> > a package "unstuck" at CRAN without antagonizing the busy CRAN
+> > maintainers.
+> >
+> > I submitted to CRAN an update to one of my packages on August 5.  The
+> > submission passed the automatic tests on Debian, but not Windows.  The
+> > automated response said, "If you are fairly certain the rejection is a
+> > false positive, please reply-all to this message and explain."  I
+> > replied-all and noted that the failure should be resolved by please
+> > installing software as described in the SystemRequirements field and
+> > the referenced INSTALL file.  After three weeks of not hearing back, I
+> > sent a polite nudge (again via reply-all) on August 26 and suggested
+> > an alternative if my original solution was not feasible.  I still have
+> > not heard back and notice that now my package source is no longer on
+> > https://cran.r-project.org/incoming/archive/.
+> >
+> > How would you recommend that I proceed in a professional fashion?
+> Thanks!
+> >
+> > -- David B. Dahl
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+> --
+> Dr. Benjamin Bolker
+> Professor, Mathematics & Statistics and Biology, McMaster University
+> Director, School of Computational Science and Engineering
+> Graduate chair, Mathematics & Statistics
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Sep 14 18:43:25 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 14 Sep 2022 19:43:25 +0300
+Subject: [R-pkg-devel] 
+ Examples taking too long depend on object that takes
+ a while to generate
+In-Reply-To: <d9c557bc-7bf0-21f7-8a78-e02da31b5483@gmail.com>
+References: <CANAiAiVBEoSENxOTy1xCDTmbsZmaYFdUuuzaL6UYK0oYEp43zw@mail.gmail.com>
+ <b110f271-a87e-d357-4aa9-aa568d77df9d@gmail.com>
+ <CANAiAiUzP7EXkSiRuQLQB=F6GgtwE1NW0SZmv0NN+rLjMb9=hA@mail.gmail.com>
+ <d9c557bc-7bf0-21f7-8a78-e02da31b5483@gmail.com>
+Message-ID: <20220914194325.4ab2b101@arachnoid>
+
+On Wed, 14 Sep 2022 12:31:49 -0400
+Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+
+> It's also possible to put .R files in the data directory, and they
+> are executed to create the data object.  I think that happens at the
+> time when you call data() rather than at install time, so it might
+> not be helpful.
+
+Some time ago I was hoping to compress a package of mine by generating a
+dataset during a data() call instead loading it from an .rda file, but
+it turned out that the .R file is executed during R CMD build:
+https://github.com/r-devel/r-svn/blob/03df313ad37456c6a62158328d4e373408ce4d59/src/library/tools/R/build.R#L794
+
+-- 
+Best regards,
+Ivan
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Sep 14 19:02:28 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 14 Sep 2022 13:02:28 -0400
+Subject: [R-pkg-devel] 
+ Examples taking too long depend on object that takes
+ a while to generate
+In-Reply-To: <20220914194325.4ab2b101@arachnoid>
+References: <CANAiAiVBEoSENxOTy1xCDTmbsZmaYFdUuuzaL6UYK0oYEp43zw@mail.gmail.com>
+ <b110f271-a87e-d357-4aa9-aa568d77df9d@gmail.com>
+ <CANAiAiUzP7EXkSiRuQLQB=F6GgtwE1NW0SZmv0NN+rLjMb9=hA@mail.gmail.com>
+ <d9c557bc-7bf0-21f7-8a78-e02da31b5483@gmail.com>
+ <20220914194325.4ab2b101@arachnoid>
+Message-ID: <8fa6e6d4-21e2-978e-5d6f-7c9e4295a172@gmail.com>
+
+On 14/09/2022 12:43 p.m., Ivan Krylov wrote:
+> On Wed, 14 Sep 2022 12:31:49 -0400
+> Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+> 
+>> It's also possible to put .R files in the data directory, and they
+>> are executed to create the data object.  I think that happens at the
+>> time when you call data() rather than at install time, so it might
+>> not be helpful.
+> 
+> Some time ago I was hoping to compress a package of mine by generating a
+> dataset during a data() call instead loading it from an .rda file, but
+> it turned out that the .R file is executed during R CMD build:
+> https://github.com/r-devel/r-svn/blob/03df313ad37456c6a62158328d4e373408ce4d59/src/library/tools/R/build.R#L794
+> 
+
+Thanks for that info.  That's not good for John, because the 
+architecture isn't known at build time.
+
+Duncan Murdoch
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Wed Sep 14 20:16:40 2022
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Wed, 14 Sep 2022 11:16:40 -0700
+Subject: [R-pkg-devel] 
+ Save and restoring random number seed in a package function
+In-Reply-To: <CAPhhD8kGjdm9ngLSVP3ppdbd=AEXe_=5c2FDgs8CE-v+k+CcHQ@mail.gmail.com>
+References: <CAPhhD8=yqycnMsA1gYXrdMc=65CQ0rGphOZ49Rx_MykTOr4siA@mail.gmail.com>
+ <CAFUVuJx_zEp4w6RTL=WApFfrJtOv9xorwSGA+z5bnVAFpFfk8Q@mail.gmail.com>
+ <CAPhhD8kGjdm9ngLSVP3ppdbd=AEXe_=5c2FDgs8CE-v+k+CcHQ@mail.gmail.com>
+Message-ID: <CAFDcVCRjPcw7=QP42uPtaRBQr-WHsmWqTBxW7BfC42viUXBjyA@mail.gmail.com>
+
+Great to see you're handling the corner case when .Random.seed is not
+set.  Note that your current implementation of boot.array() still
+risks leaving .Random.seed modified in case an error or an interrupt
+occurs while evaluating boot.array().  If that happens, one certainly
+can argue that it modifies the .GlobalEnv environment.  A more robust
+solution is:
+
+boot.array <- function(boot.out) {
+  genv <- globalenv()
+
+  # Make sure to leave '.Random.seed' as-is on exit
+  old_seed <- genv$.Random.seed
+  on.exit(suspendInterrupts({
+    if (is.null(old_seed)) {
+      rm(".Random.seed", envir = genv, inherits = FALSE)
+    } else {
+      assign(".Random.seed", value = old_seed, envir = genv, inherits = FALSE)
+    }
+  }))
+
+  # Assign saved seed from boot.out
+  assign(".Random.seed", value = boot.out$seed, envir = genv)
+
+  # Generate same random numbers from boot() call
+}
+
+This implementation leaves .GlobalEnv unmodified when the function
+exits, regardless of how.
+
+If CRAN would not allow temporarily modifying the .Random.seed this
+way, there would not be possible to distribute a lot of statistical
+algorithm on CRAN. I can't speak for CRAN, but I would assume they
+accept this type of approach, since it should have no side effects.
+FWIW, this strategy is used by several CRAN packages for generating
+random numbers in "stealth mode" while R's RNG, e.g. 'future.apply'
+(mine) and 'withr'. If you have a GitHub account, you find hundres of
+other CRAN examples by searching "org:cran assign .Random.seed".  So,
+you're not alone in this need.  As a fallback, you could use
+`withr::with_seed()` which uses the above approach. That would put the
+burden on the 'withr' maintainer to argue for this approach.
+
+Hope this helps,
+
+Henrik
+
+
+On Wed, Sep 14, 2022 at 8:11 AM Noah Greifer <noah.greifer at gmail.com> wrote:
+>
+> Yes, set.seed() cannot accept .Random.Seed as an input; it can only take a
+> single integer. As said in this answer
+> <https://stackoverflow.com/a/13997608/6348551>, there is a one-way
+> relationship between set.seed() and .Random.Seed. My understanding is that
+> the recommended way to restore the seed is to assign the saved seed to
+> .Random.Seed in the global environment, though this is the method that is
+> not allowed by the CRAN policy. Unfortunately saving it in the environment
+> of the inner function is not sufficient.
+>
+> One potential inconsistency with CRAN's policy is that generating a random
+> number itself changes the global environment by changing the value of
+> .Random.Seed. The boot.array() code just does it manually using assign().
+> Indeed, the boot.array() code does less damage to the global environment in
+> that it resets the seed to what it would have been had boot.array() not
+> been run.
+>
+> Noah
+>
+> On Wed, Sep 14, 2022 at 10:39 AM James Pustejovsky <jepusto at gmail.com>
+> wrote:
+>
+> > I'm interested in this question too. Noah, is there a reason you are using
+> > assign(".Random.seed",...) rather than set.seed()?
+> >
+> > On Wed, Sep 14, 2022 at 9:31 AM Noah Greifer <noah.greifer at gmail.com>
+> > wrote:
+> >
+> >> Hello fellow developers,
+> >>
+> >> I am attempting to solve the problem of saving the state of the random
+> >> generator so that the state can be recovered in a future call.
+> >> Essentially,
+> >> my function generates random numbers, performs an operation on them
+> >> (saving
+> >> the result), and throws them out (saving them would require too much
+> >> memory). A second function is meant to take the output of the first
+> >> function, generate the same random numbers, and perform a different
+> >> operation on them.
+> >>
+> >> This is exactly what happens in the *boot* package: the boot() function
+> >> saves the random seed (extracted from .Random.Seed), and the boot.array()
+> >> function extracts the saved seed from the boot() output, sets the seed to
+> >> that value, re-generates the same set of random numbers, and then
+> >> re-sets the seed to what it was before boot.array() was called. This has
+> >> the following benefits: 1) it allows the same random numbers to be drawn;
+> >> 2) the random numbers don't need to be saved, which is good because they
+> >> would take up a lot of memory and boot.array() is an optional function (it
+> >> is used in boot.ci() with type = "bca" for those curious); and 3) the
+> >> seed
+> >> carries on from where it left off before boot.array() was called instead
+> >> of
+> >> being set to what it was after boot() was called.
+> >>
+> >> This is implemented in boot in the following way (code abbreviated):
+> >>
+> >> boot <- function(...) {
+> >>   seed <- .Random.Seed
+> >>   #Random numbers generated
+> >>   out <- list(seed = seed
+> >>                   #Other stuff is in this list
+> >>               )
+> >>   out
+> >> }
+> >>
+> >> boot.array <- function(boot.out) {
+> >>   #Save current random seed in `temp`
+> >>   if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
+> >>     temp <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+> >>   else temp <- NULL
+> >>
+> >>   #Assign saved seed from boot.out
+> >>   assign(".Random.seed", boot.out$seed, envir = .GlobalEnv)
+> >>
+> >>   #Generate same random numbers from boot() call
+> >>
+> >>   #Restore random seed to what it was before boot.array() call
+> >>   if (!is.null(temp))
+> >>     assign(".Random.seed", temp, envir = .GlobalEnv)
+> >>   else rm(.Random.seed, pos = 1)
+> >> }
+> >>
+> >> This seems to work as intended. However, this violates the CRAN policy of
+> >> changing the global environment. When I used this exact code in a package
+> >> I
+> >> submitted, the package was rejected for it. The message I received was
+> >>
+> >> > Please do not modify the .GlobalEnv (e.g.: by changing the .Random.seed
+> >> > which is part of the global environment). This is not allowed by the
+> >> CRAN
+> >> > policies.
+> >>
+> >>
+> >> I'm curious what you think the best course of action might be, and what
+> >> the
+> >> current policy means for the *boot* package. Thanks for your help.
+> >>
+> >> Noah
+> >>
+> >>         [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-package-devel at r-project.org mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >>
+> >
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From bbo|ker @end|ng |rom gm@||@com  Wed Sep 14 20:19:00 2022
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Wed, 14 Sep 2022 14:19:00 -0400
+Subject: [R-pkg-devel] Advice on resubmitting when no response from CRAN
+In-Reply-To: <CALivmgZtGTo8NesAVZ-XqgvY3RFthCFxz_k-LUL6YZQrWJ1FXw@mail.gmail.com>
+References: <CALivmgaQ7qtA4fFonWvb-NONfxeG_ZDERTftXyaZUMeWr1_wOg@mail.gmail.com>
+ <276c9a8f-6dac-ccd8-93a8-7ed73453e927@gmail.com>
+ <CALivmgZtGTo8NesAVZ-XqgvY3RFthCFxz_k-LUL6YZQrWJ1FXw@mail.gmail.com>
+Message-ID: <f34d5515-3aab-55af-4126-9fc69f8a0619@gmail.com>
+
+    To be honest, I'm not sure about nudging vs resubmitting.
+
+    I guess since they don't have a copy of the package handy, you might 
+as well resubmit, with however much of the history as seems appropriate 
+in your submission note.
+
+   I guess the problem is for salso, bumping the required Cargo version 
+from 1.51 to 1.56 ... ?
+
+On 9/14/22 12:31 PM, David B. Dahl wrote:
+> Thanks for the reply, Ben.
+> 
+> The SystemRequirements is "Cargo (>= 1.56) for installation from source:
+> see INSTALL file".  The INSTALL notes that the package contains Rust source
+> code compiled by Cargo (the Rust package manager) which can be obtained
+> from the Rust project at https://rustup.rs.  On Windows, this involves
+> downloading an executable and following the onscreen instructions.
+> 
+> In my follow-up email, I wrote, "Alternatively, if you prefer, could these
+> packages please download
+> binary libraries produced by Cargo in accordance with the CRAN policy:
+> 'Only as a last resort and with the agreement of the CRAN team should a
+> package download pre-compiled software.'"
+> 
+> So you suggest I politely nudge instead of resubmitting?  I don't think
+> that CRAN even has a copy of my submission anymore.  (It was here
+> https://cran.r-project.org/incoming/archive/ for several weeks, but is now
+> gone.)
+> 
+> Thanks!
+> 
+> -- David
+> 
+> 
+> On Wed, Sep 14, 2022 at 9:47 AM Ben Bolker <bbolker at gmail.com> wrote:
+> 
+>>      One question and one suggestion.
+>>
+>>      Is the software required/indicated by the SystemRequirements field
+>> unusual/possibly burdensome to install across platforms? That wouldn't
+>> justify not responding to your e-mails, but it might explain why the
+>> package didn't make it onto CRAN.
+>>
+>>     For some context, can you tell us what the system
+>> requirement/alternative is?
+>>
+>>     The suggestion would be to politely nudge again.
+>>
+>> On 9/14/22 11:24 AM, David B. Dahl wrote:
+>>> Hi colleagues.  I am hoping to get some advice from you on how to get
+>>> a package "unstuck" at CRAN without antagonizing the busy CRAN
+>>> maintainers.
+>>>
+>>> I submitted to CRAN an update to one of my packages on August 5.  The
+>>> submission passed the automatic tests on Debian, but not Windows.  The
+>>> automated response said, "If you are fairly certain the rejection is a
+>>> false positive, please reply-all to this message and explain."  I
+>>> replied-all and noted that the failure should be resolved by please
+>>> installing software as described in the SystemRequirements field and
+>>> the referenced INSTALL file.  After three weeks of not hearing back, I
+>>> sent a polite nudge (again via reply-all) on August 26 and suggested
+>>> an alternative if my original solution was not feasible.  I still have
+>>> not heard back and notice that now my package source is no longer on
+>>> https://cran.r-project.org/incoming/archive/.
+>>>
+>>> How would you recommend that I proceed in a professional fashion?
+>> Thanks!
+>>>
+>>> -- David B. Dahl
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>> --
+>> Dr. Benjamin Bolker
+>> Professor, Mathematics & Statistics and Biology, McMaster University
+>> Director, School of Computational Science and Engineering
+>> Graduate chair, Mathematics & Statistics
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+Graduate chair, Mathematics & Statistics
+
+
+From edwwe|2020 @end|ng |rom gm@||@com  Wed Sep 14 22:26:28 2022
+From: edwwe|2020 @end|ng |rom gm@||@com (Edward Wei)
+Date: Wed, 14 Sep 2022 13:26:28 -0700
+Subject: [R-pkg-devel] Unable to create manual
+In-Reply-To: <1Mof9P-1p94FQ2bwf-00p8an@mail.gmx.net>
+References: <CAEf_eRCTaa5Xnv6TkHX=Jncqv+Fu7PMTM=_w7WLFj9SDGVKm5g@mail.gmail.com>
+ <1Mof9P-1p94FQ2bwf-00p8an@mail.gmx.net>
+Message-ID: <CAEf_eRBkmd_N4ajnumYUi9cviFh1sQpv4VViCqCE6pv24S9LsA@mail.gmail.com>
+
+Hello Matthias.
+
+This is what is returned when I try pdflatex on terminal
+
+This is pdfTeX, Version 3.141592653-2.6-1.40.24 (MiKTeX 22.8.28) (preloaded
+format=pdflatex.fmt)
+ restricted \write18 enabled.
+**
+
+
+
+On Mon, Sep 12, 2022 at 7:20 AM Matthias Gondan <matthias-gondan at gmx.de>
+wrote:
+
+> You may wish to check first if pdflatex works from the folder, i.e.
+>
+>
+>
+> C:\Users\edmon\Documents\R\RFIN> pdflatex
+>
+>
+>
+> The problem with Rd.sty may be unrelated.
+>
+>
+>
+>
+>
+> *Von: *Edward Wei <edwwei2020 at gmail.com>
+> *Gesendet: *Montag, 12. September 2022 15:09
+> *An: *r-package-devel at r-project.org
+> *Betreff: *[R-pkg-devel] Unable to create manual
+>
+>
+>
+> This is the following error message I get from R CMD check:
+>
+>
+>
+> LaTeX errors when creating PDF version.
+>
+> This typically indicates Rd problems.
+>
+> * checking PDF version of manual without index ... ERROR
+>
+> Re-running with no redirection of stdout/stderr.
+>
+> Hmm ... looks like a package
+>
+> Converting parsed Rd's to LaTeX ...
+>
+> Creating pdf output from LaTeX ...
+>
+> Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet = quiet,  :
+>
+>   pdflatex is not available
+>
+> Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet = quiet,  :
+>
+>   pdflatex is not available
+>
+> Error in running tools::texi2pdf()
+>
+> You may want to clean up by 'rm -Rf
+>
+> C:/Users/edmon/AppData/Local/Temp/RtmpWkD7Iy/Rd2pdf35d81e3e188c'
+>
+> * DONE
+>
+>
+>
+> Status: 1 ERROR, 1 WARNING, 2 NOTEs
+>
+>
+>
+>
+>
+> Then, I tried debugging by isolating errors from the Rd to PDF conversion.
+>
+>
+>
+>
+>
+> C:\Users\edmon\Documents\R\RFIN> R CMD Rd2pdf avfintools --no-clean
+>
+> Hmm ... looks like a package
+>
+> Converting Rd files to LaTeX ...
+>
+> Creating pdf output from LaTeX ...
+>
+> Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet = quiet,  :
+>
+>   pdflatex is not available
+>
+> Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet = quiet,  :
+>
+>   pdflatex is not available
+>
+> Error in running tools::texi2pdf()
+>
+> You may want to clean up by 'rm -Rf .Rd2pdf27964'
+>
+>
+>
+>
+>
+> In this folder is the file Rd2.tex which I tried to complie into a pdf. But
+>
+> this error returns and PDF cannot be compiled. :
+>
+>
+>
+>
+>
+> LaTeX Error: File `Rd.sty' not found.
+>
+>
+>
+> Type X to quit or <RETURN> to proceed,
+>
+> or enter new name. (Default extension: sty)
+>
+>
+>
+> Enter file name:
+>
+> ! Emergency stop.
+>
+> <read *>
+>
+>
+>
+> l.4 \usepackage
+>
+>                {makeidx}^^M
+>
+> ==> Fatal error occurred, no output PDF file produced!
+>
+>
+>
+>
+>
+> Thanks for your help,
+>
+>
+>
+>              [[alternative HTML version deleted]]
+>
+>
+>
+> ______________________________________________
+>
+> R-package-devel at r-project.org mailing list
+>
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From m@tth|@@-gond@n @end|ng |rom gmx@de  Wed Sep 14 22:30:30 2022
+From: m@tth|@@-gond@n @end|ng |rom gmx@de (Matthias Gondan)
+Date: Wed, 14 Sep 2022 22:30:30 +0200
+Subject: [R-pkg-devel] Unable to create manual
+In-Reply-To: <CAEf_eRBkmd_N4ajnumYUi9cviFh1sQpv4VViCqCE6pv24S9LsA@mail.gmail.com>
+References: <CAEf_eRCTaa5Xnv6TkHX=Jncqv+Fu7PMTM=_w7WLFj9SDGVKm5g@mail.gmail.com>
+ <1Mof9P-1p94FQ2bwf-00p8an@mail.gmx.net>
+ <CAEf_eRBkmd_N4ajnumYUi9cviFh1sQpv4VViCqCE6pv24S9LsA@mail.gmail.com>
+Message-ID: <1MxlzC-1pWhEO0vGQ-00zIC4@mail.gmx.net>
+
+That?s interesting. I was just wondering if it is installed, given the message ?pdflatex is not available?.
+
+
+
+Von: Edward Wei
+Gesendet: Mittwoch, 14. September 2022 22:26
+An: Matthias Gondan
+Cc: r-package-devel at r-project.org
+Betreff: Re: [R-pkg-devel] Unable to create manual
+
+Hello Matthias.
+
+This is what is returned when I try pdflatex on terminal
+
+This is pdfTeX, Version 3.141592653-2.6-1.40.24 (MiKTeX 22.8.28) (preloaded format=pdflatex.fmt)
+?restricted \write18 enabled.
+**
+
+
+
+On Mon, Sep 12, 2022 at 7:20 AM Matthias Gondan <matthias-gondan at gmx.de> wrote:
+You may wish to check first if pdflatex works from the folder, i.e.
+?
+C:\Users\edmon\Documents\R\RFIN> pdflatex
+?
+The problem with Rd.sty may be unrelated.
+?
+?
+Von: Edward Wei
+Gesendet: Montag, 12. September 2022 15:09
+An: r-package-devel at r-project.org
+Betreff: [R-pkg-devel] Unable to create manual
+?
+This is the following error message I get from R CMD check:
+?
+LaTeX errors when creating PDF version.
+This typically indicates Rd problems.
+* checking PDF version of manual without index ... ERROR
+Re-running with no redirection of stdout/stderr.
+Hmm ... looks like a package
+Converting parsed Rd's to LaTeX ...
+Creating pdf output from LaTeX ...
+Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet = quiet,? :
+? pdflatex is not available
+Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet = quiet,? :
+? pdflatex is not available
+Error in running tools::texi2pdf()
+You may want to clean up by 'rm -Rf
+C:/Users/edmon/AppData/Local/Temp/RtmpWkD7Iy/Rd2pdf35d81e3e188c'
+* DONE
+?
+Status: 1 ERROR, 1 WARNING, 2 NOTEs
+?
+?
+Then, I tried debugging by isolating errors from the Rd to PDF conversion.
+?
+?
+C:\Users\edmon\Documents\R\RFIN> R CMD Rd2pdf avfintools --no-clean
+Hmm ... looks like a package
+Converting Rd files to LaTeX ...
+Creating pdf output from LaTeX ...
+Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet = quiet,? :
+? pdflatex is not available
+Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet = quiet,? :
+? pdflatex is not available
+Error in running tools::texi2pdf()
+You may want to clean up by 'rm -Rf .Rd2pdf27964'
+?
+?
+In this folder is the file Rd2.tex which I tried to complie into a pdf. But
+this error returns and PDF cannot be compiled. :
+?
+?
+LaTeX Error: File `Rd.sty' not found.
+?
+Type X to quit or <RETURN> to proceed,
+or enter new name. (Default extension: sty)
+?
+Enter file name:
+! Emergency stop.
+<read *>
+?
+l.4 \usepackage
+????????? ?????{makeidx}^^M
+==> Fatal error occurred, no output PDF file produced!
+?
+?
+Thanks for your help,
+?
+???????????? [[alternative HTML version deleted]]
+?
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+?
+
+
+	[[alternative HTML version deleted]]
+
+
+From no@h@gre||er @end|ng |rom gm@||@com  Wed Sep 14 22:31:24 2022
+From: no@h@gre||er @end|ng |rom gm@||@com (Noah Greifer)
+Date: Wed, 14 Sep 2022 16:31:24 -0400
+Subject: [R-pkg-devel] 
+ Save and restoring random number seed in a package function
+In-Reply-To: <CAFDcVCRjPcw7=QP42uPtaRBQr-WHsmWqTBxW7BfC42viUXBjyA@mail.gmail.com>
+References: <CAPhhD8=yqycnMsA1gYXrdMc=65CQ0rGphOZ49Rx_MykTOr4siA@mail.gmail.com>
+ <CAFUVuJx_zEp4w6RTL=WApFfrJtOv9xorwSGA+z5bnVAFpFfk8Q@mail.gmail.com>
+ <CAPhhD8kGjdm9ngLSVP3ppdbd=AEXe_=5c2FDgs8CE-v+k+CcHQ@mail.gmail.com>
+ <CAFDcVCRjPcw7=QP42uPtaRBQr-WHsmWqTBxW7BfC42viUXBjyA@mail.gmail.com>
+Message-ID: <CAPhhD8n6sawu8bF8dYvXbSKtzS10cEYs+5qjYFnjCqR+bt0zyA@mail.gmail.com>
+
+Hi Henrik,
+
+Thank you so much, this is extremely helpful! Glad to know my approach is
+not unreasonable. Hopefully CRAN will be okay with these modifications.
+
+Noah
+
+On Wed, Sep 14, 2022 at 2:16 PM Henrik Bengtsson <henrik.bengtsson at gmail.com>
+wrote:
+
+> Great to see you're handling the corner case when .Random.seed is not
+> set.  Note that your current implementation of boot.array() still
+> risks leaving .Random.seed modified in case an error or an interrupt
+> occurs while evaluating boot.array().  If that happens, one certainly
+> can argue that it modifies the .GlobalEnv environment.  A more robust
+> solution is:
+>
+> boot.array <- function(boot.out) {
+>   genv <- globalenv()
+>
+>   # Make sure to leave '.Random.seed' as-is on exit
+>   old_seed <- genv$.Random.seed
+>   on.exit(suspendInterrupts({
+>     if (is.null(old_seed)) {
+>       rm(".Random.seed", envir = genv, inherits = FALSE)
+>     } else {
+>       assign(".Random.seed", value = old_seed, envir = genv, inherits =
+> FALSE)
+>     }
+>   }))
+>
+>   # Assign saved seed from boot.out
+>   assign(".Random.seed", value = boot.out$seed, envir = genv)
+>
+>   # Generate same random numbers from boot() call
+> }
+>
+> This implementation leaves .GlobalEnv unmodified when the function
+> exits, regardless of how.
+>
+> If CRAN would not allow temporarily modifying the .Random.seed this
+> way, there would not be possible to distribute a lot of statistical
+> algorithm on CRAN. I can't speak for CRAN, but I would assume they
+> accept this type of approach, since it should have no side effects.
+> FWIW, this strategy is used by several CRAN packages for generating
+> random numbers in "stealth mode" while R's RNG, e.g. 'future.apply'
+> (mine) and 'withr'. If you have a GitHub account, you find hundres of
+> other CRAN examples by searching "org:cran assign .Random.seed".  So,
+> you're not alone in this need.  As a fallback, you could use
+> `withr::with_seed()` which uses the above approach. That would put the
+> burden on the 'withr' maintainer to argue for this approach.
+>
+> Hope this helps,
+>
+> Henrik
+>
+>
+> On Wed, Sep 14, 2022 at 8:11 AM Noah Greifer <noah.greifer at gmail.com>
+> wrote:
+> >
+> > Yes, set.seed() cannot accept .Random.Seed as an input; it can only take
+> a
+> > single integer. As said in this answer
+> > <https://stackoverflow.com/a/13997608/6348551>, there is a one-way
+> > relationship between set.seed() and .Random.Seed. My understanding is
+> that
+> > the recommended way to restore the seed is to assign the saved seed to
+> > .Random.Seed in the global environment, though this is the method that is
+> > not allowed by the CRAN policy. Unfortunately saving it in the
+> environment
+> > of the inner function is not sufficient.
+> >
+> > One potential inconsistency with CRAN's policy is that generating a
+> random
+> > number itself changes the global environment by changing the value of
+> > .Random.Seed. The boot.array() code just does it manually using assign().
+> > Indeed, the boot.array() code does less damage to the global environment
+> in
+> > that it resets the seed to what it would have been had boot.array() not
+> > been run.
+> >
+> > Noah
+> >
+> > On Wed, Sep 14, 2022 at 10:39 AM James Pustejovsky <jepusto at gmail.com>
+> > wrote:
+> >
+> > > I'm interested in this question too. Noah, is there a reason you are
+> using
+> > > assign(".Random.seed",...) rather than set.seed()?
+> > >
+> > > On Wed, Sep 14, 2022 at 9:31 AM Noah Greifer <noah.greifer at gmail.com>
+> > > wrote:
+> > >
+> > >> Hello fellow developers,
+> > >>
+> > >> I am attempting to solve the problem of saving the state of the random
+> > >> generator so that the state can be recovered in a future call.
+> > >> Essentially,
+> > >> my function generates random numbers, performs an operation on them
+> > >> (saving
+> > >> the result), and throws them out (saving them would require too much
+> > >> memory). A second function is meant to take the output of the first
+> > >> function, generate the same random numbers, and perform a different
+> > >> operation on them.
+> > >>
+> > >> This is exactly what happens in the *boot* package: the boot()
+> function
+> > >> saves the random seed (extracted from .Random.Seed), and the
+> boot.array()
+> > >> function extracts the saved seed from the boot() output, sets the
+> seed to
+> > >> that value, re-generates the same set of random numbers, and then
+> > >> re-sets the seed to what it was before boot.array() was called. This
+> has
+> > >> the following benefits: 1) it allows the same random numbers to be
+> drawn;
+> > >> 2) the random numbers don't need to be saved, which is good because
+> they
+> > >> would take up a lot of memory and boot.array() is an optional
+> function (it
+> > >> is used in boot.ci() with type = "bca" for those curious); and 3) the
+> > >> seed
+> > >> carries on from where it left off before boot.array() was called
+> instead
+> > >> of
+> > >> being set to what it was after boot() was called.
+> > >>
+> > >> This is implemented in boot in the following way (code abbreviated):
+> > >>
+> > >> boot <- function(...) {
+> > >>   seed <- .Random.Seed
+> > >>   #Random numbers generated
+> > >>   out <- list(seed = seed
+> > >>                   #Other stuff is in this list
+> > >>               )
+> > >>   out
+> > >> }
+> > >>
+> > >> boot.array <- function(boot.out) {
+> > >>   #Save current random seed in `temp`
+> > >>   if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
+> > >>     temp <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+> > >>   else temp <- NULL
+> > >>
+> > >>   #Assign saved seed from boot.out
+> > >>   assign(".Random.seed", boot.out$seed, envir = .GlobalEnv)
+> > >>
+> > >>   #Generate same random numbers from boot() call
+> > >>
+> > >>   #Restore random seed to what it was before boot.array() call
+> > >>   if (!is.null(temp))
+> > >>     assign(".Random.seed", temp, envir = .GlobalEnv)
+> > >>   else rm(.Random.seed, pos = 1)
+> > >> }
+> > >>
+> > >> This seems to work as intended. However, this violates the CRAN
+> policy of
+> > >> changing the global environment. When I used this exact code in a
+> package
+> > >> I
+> > >> submitted, the package was rejected for it. The message I received was
+> > >>
+> > >> > Please do not modify the .GlobalEnv (e.g.: by changing the
+> .Random.seed
+> > >> > which is part of the global environment). This is not allowed by the
+> > >> CRAN
+> > >> > policies.
+> > >>
+> > >>
+> > >> I'm curious what you think the best course of action might be, and
+> what
+> > >> the
+> > >> current policy means for the *boot* package. Thanks for your help.
+> > >>
+> > >> Noah
+> > >>
+> > >>         [[alternative HTML version deleted]]
+> > >>
+> > >> ______________________________________________
+> > >> R-package-devel at r-project.org mailing list
+> > >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> > >>
+> > >
+> >
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From edwwe|2020 @end|ng |rom gm@||@com  Wed Sep 14 22:56:53 2022
+From: edwwe|2020 @end|ng |rom gm@||@com (Edward Wei)
+Date: Wed, 14 Sep 2022 13:56:53 -0700
+Subject: [R-pkg-devel] Unable to create manual
+In-Reply-To: <1MxlzC-1pWhEO0vGQ-00zIC4@mail.gmx.net>
+References: <CAEf_eRCTaa5Xnv6TkHX=Jncqv+Fu7PMTM=_w7WLFj9SDGVKm5g@mail.gmail.com>
+ <1Mof9P-1p94FQ2bwf-00p8an@mail.gmx.net>
+ <CAEf_eRBkmd_N4ajnumYUi9cviFh1sQpv4VViCqCE6pv24S9LsA@mail.gmail.com>
+ <1MxlzC-1pWhEO0vGQ-00zIC4@mail.gmx.net>
+Message-ID: <CAEf_eRAARr8qDgZk6bgunW7Q9exax73TQ9k6=8U0AOF0SvzNHg@mail.gmail.com>
+
+My next steps in debugging this is:
+1. make sure my latex CAN generate PDFs by editing .tex file
+2. Run pdflatex as an Admin
+3. Download "texinfo" externally (unable to do in R studio as it says it is
+incompatible with this version of R)
+4. Inspect Rd files
+
+I have made no real progress on this bug...
+
+What is interesting is that previously, before I changed my code for
+feedback from manual review, this didn't happen.
+
+On Wed, Sep 14, 2022 at 1:30 PM Matthias Gondan <matthias-gondan at gmx.de>
+wrote:
+
+> That?s interesting. I was just wondering if it is installed, given the
+> message ?pdflatex is not available?.
+>
+>
+>
+>
+>
+>
+>
+> *Von: *Edward Wei <edwwei2020 at gmail.com>
+> *Gesendet: *Mittwoch, 14. September 2022 22:26
+> *An: *Matthias Gondan <matthias-gondan at gmx.de>
+> *Cc: *r-package-devel at r-project.org
+> *Betreff: *Re: [R-pkg-devel] Unable to create manual
+>
+>
+>
+> Hello Matthias.
+>
+>
+>
+> This is what is returned when I try pdflatex on terminal
+>
+>
+>
+> This is pdfTeX, Version 3.141592653-2.6-1.40.24 (MiKTeX 22.8.28)
+> (preloaded format=pdflatex.fmt)
+>  restricted \write18 enabled.
+> **
+>
+>
+>
+>
+>
+>
+>
+> On Mon, Sep 12, 2022 at 7:20 AM Matthias Gondan <matthias-gondan at gmx.de>
+> wrote:
+>
+> You may wish to check first if pdflatex works from the folder, i.e.
+>
+>
+>
+> C:\Users\edmon\Documents\R\RFIN> pdflatex
+>
+>
+>
+> The problem with Rd.sty may be unrelated.
+>
+>
+>
+>
+>
+> *Von: *Edward Wei <edwwei2020 at gmail.com>
+> *Gesendet: *Montag, 12. September 2022 15:09
+> *An: *r-package-devel at r-project.org
+> *Betreff: *[R-pkg-devel] Unable to create manual
+>
+>
+>
+> This is the following error message I get from R CMD check:
+>
+>
+>
+> LaTeX errors when creating PDF version.
+>
+> This typically indicates Rd problems.
+>
+> * checking PDF version of manual without index ... ERROR
+>
+> Re-running with no redirection of stdout/stderr.
+>
+> Hmm ... looks like a package
+>
+> Converting parsed Rd's to LaTeX ...
+>
+> Creating pdf output from LaTeX ...
+>
+> Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet = quiet,  :
+>
+>   pdflatex is not available
+>
+> Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet = quiet,  :
+>
+>   pdflatex is not available
+>
+> Error in running tools::texi2pdf()
+>
+> You may want to clean up by 'rm -Rf
+>
+> C:/Users/edmon/AppData/Local/Temp/RtmpWkD7Iy/Rd2pdf35d81e3e188c'
+>
+> * DONE
+>
+>
+>
+> Status: 1 ERROR, 1 WARNING, 2 NOTEs
+>
+>
+>
+>
+>
+> Then, I tried debugging by isolating errors from the Rd to PDF conversion.
+>
+>
+>
+>
+>
+> C:\Users\edmon\Documents\R\RFIN> R CMD Rd2pdf avfintools --no-clean
+>
+> Hmm ... looks like a package
+>
+> Converting Rd files to LaTeX ...
+>
+> Creating pdf output from LaTeX ...
+>
+> Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet = quiet,  :
+>
+>   pdflatex is not available
+>
+> Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet = quiet,  :
+>
+>   pdflatex is not available
+>
+> Error in running tools::texi2pdf()
+>
+> You may want to clean up by 'rm -Rf .Rd2pdf27964'
+>
+>
+>
+>
+>
+> In this folder is the file Rd2.tex which I tried to complie into a pdf. But
+>
+> this error returns and PDF cannot be compiled. :
+>
+>
+>
+>
+>
+> LaTeX Error: File `Rd.sty' not found.
+>
+>
+>
+> Type X to quit or <RETURN> to proceed,
+>
+> or enter new name. (Default extension: sty)
+>
+>
+>
+> Enter file name:
+>
+> ! Emergency stop.
+>
+> <read *>
+>
+>
+>
+> l.4 \usepackage
+>
+>                {makeidx}^^M
+>
+> ==> Fatal error occurred, no output PDF file produced!
+>
+>
+>
+>
+>
+> Thanks for your help,
+>
+>
+>
+>              [[alternative HTML version deleted]]
+>
+>
+>
+> ______________________________________________
+>
+> R-package-devel at r-project.org mailing list
+>
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+>
+>
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Sep 14 23:54:21 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 14 Sep 2022 17:54:21 -0400
+Subject: [R-pkg-devel] Unable to create manual
+In-Reply-To: <CAEf_eRCTaa5Xnv6TkHX=Jncqv+Fu7PMTM=_w7WLFj9SDGVKm5g@mail.gmail.com>
+References: <CAEf_eRCTaa5Xnv6TkHX=Jncqv+Fu7PMTM=_w7WLFj9SDGVKm5g@mail.gmail.com>
+Message-ID: <a51aa30d-bff0-2824-fd6f-948a70975e06@gmail.com>
+
+On 12/09/2022 9:09 a.m., Edward Wei wrote:
+> This is the following error message I get from R CMD check:
+> 
+> LaTeX errors when creating PDF version.
+> This typically indicates Rd problems.
+> * checking PDF version of manual without index ... ERROR
+> Re-running with no redirection of stdout/stderr.
+> Hmm ... looks like a package
+> Converting parsed Rd's to LaTeX ...
+> Creating pdf output from LaTeX ...
+> Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet = quiet,  :
+>    pdflatex is not available
+
+This looks like a problem in the way tools::texi2dvi detects pdflatex. 
+If you have a valid LaTeX file, try running
+
+tools::texi2dvi(filename, pdf = TRUE)
+
+If that gives the same message, then debug(tools::texi2dvi), and repeat, 
+single stepping through the function to see what test it uses, and 
+figure out why it fails on your system.
+
+Duncan Murdoch
+
+
+> Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet = quiet,  :
+>    pdflatex is not available
+> Error in running tools::texi2pdf()
+> You may want to clean up by 'rm -Rf
+> C:/Users/edmon/AppData/Local/Temp/RtmpWkD7Iy/Rd2pdf35d81e3e188c'
+> * DONE
+> 
+> Status: 1 ERROR, 1 WARNING, 2 NOTEs
+> 
+> 
+> Then, I tried debugging by isolating errors from the Rd to PDF conversion.
+> 
+> 
+> C:\Users\edmon\Documents\R\RFIN> R CMD Rd2pdf avfintools --no-clean
+> Hmm ... looks like a package
+> Converting Rd files to LaTeX ...
+> Creating pdf output from LaTeX ...
+> Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet = quiet,  :
+>    pdflatex is not available
+> Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet = quiet,  :
+>    pdflatex is not available
+> Error in running tools::texi2pdf()
+> You may want to clean up by 'rm -Rf .Rd2pdf27964'
+> 
+> 
+> In this folder is the file Rd2.tex which I tried to complie into a pdf. But
+> this error returns and PDF cannot be compiled. :
+> 
+> 
+> LaTeX Error: File `Rd.sty' not found.
+> 
+> Type X to quit or <RETURN> to proceed,
+> or enter new name. (Default extension: sty)
+> 
+> Enter file name:
+> ! Emergency stop.
+> <read *>
+> 
+> l.4 \usepackage
+>                 {makeidx}^^M
+> ==> Fatal error occurred, no output PDF file produced!
+> 
+> 
+> Thanks for your help,
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From w||||@mwdun|@p @end|ng |rom gm@||@com  Thu Sep 15 00:06:11 2022
+From: w||||@mwdun|@p @end|ng |rom gm@||@com (Bill Dunlap)
+Date: Wed, 14 Sep 2022 15:06:11 -0700
+Subject: [R-pkg-devel] 
+ Save and restoring random number seed in a package function
+In-Reply-To: <CAPhhD8kGjdm9ngLSVP3ppdbd=AEXe_=5c2FDgs8CE-v+k+CcHQ@mail.gmail.com>
+References: <CAPhhD8=yqycnMsA1gYXrdMc=65CQ0rGphOZ49Rx_MykTOr4siA@mail.gmail.com>
+ <CAFUVuJx_zEp4w6RTL=WApFfrJtOv9xorwSGA+z5bnVAFpFfk8Q@mail.gmail.com>
+ <CAPhhD8kGjdm9ngLSVP3ppdbd=AEXe_=5c2FDgs8CE-v+k+CcHQ@mail.gmail.com>
+Message-ID: <CAHqSRuT6YieGoVAJN6hR7GMLYCTdXPU7dkvLgtF-p20=Auy3fw@mail.gmail.com>
+
+> Yes, set.seed() cannot accept .Random.Seed as an input; it can only take
+a single integer.
+
+If I recall correctly, S-plus's set.seed() would accept a .Random.seed
+value as an input.  It did some basic validation checks on it and set it as
+the current .Random.seed.  I don't recall the name of the argument.  The
+format of the seed depends on the generator used - I think it used the
+nature of the proffered seed to get the likely generator, but there may
+have also been arguments to specify the generator explicitly.
+
+I think this would be a nice thing to add to R's set.seed.
+
+-Bill
+
+On Wed, Sep 14, 2022 at 8:11 AM Noah Greifer <noah.greifer at gmail.com> wrote:
+
+> Yes, set.seed() cannot accept .Random.Seed as an input; it can only take a
+> single integer. As said in this answer
+> <https://stackoverflow.com/a/13997608/6348551>, there is a one-way
+> relationship between set.seed() and .Random.Seed. My understanding is that
+> the recommended way to restore the seed is to assign the saved seed to
+> .Random.Seed in the global environment, though this is the method that is
+> not allowed by the CRAN policy. Unfortunately saving it in the environment
+> of the inner function is not sufficient.
+>
+> One potential inconsistency with CRAN's policy is that generating a random
+> number itself changes the global environment by changing the value of
+> .Random.Seed. The boot.array() code just does it manually using assign().
+> Indeed, the boot.array() code does less damage to the global environment in
+> that it resets the seed to what it would have been had boot.array() not
+> been run.
+>
+> Noah
+>
+> On Wed, Sep 14, 2022 at 10:39 AM James Pustejovsky <jepusto at gmail.com>
+> wrote:
+>
+> > I'm interested in this question too. Noah, is there a reason you are
+> using
+> > assign(".Random.seed",...) rather than set.seed()?
+> >
+> > On Wed, Sep 14, 2022 at 9:31 AM Noah Greifer <noah.greifer at gmail.com>
+> > wrote:
+> >
+> >> Hello fellow developers,
+> >>
+> >> I am attempting to solve the problem of saving the state of the random
+> >> generator so that the state can be recovered in a future call.
+> >> Essentially,
+> >> my function generates random numbers, performs an operation on them
+> >> (saving
+> >> the result), and throws them out (saving them would require too much
+> >> memory). A second function is meant to take the output of the first
+> >> function, generate the same random numbers, and perform a different
+> >> operation on them.
+> >>
+> >> This is exactly what happens in the *boot* package: the boot() function
+> >> saves the random seed (extracted from .Random.Seed), and the
+> boot.array()
+> >> function extracts the saved seed from the boot() output, sets the seed
+> to
+> >> that value, re-generates the same set of random numbers, and then
+> >> re-sets the seed to what it was before boot.array() was called. This has
+> >> the following benefits: 1) it allows the same random numbers to be
+> drawn;
+> >> 2) the random numbers don't need to be saved, which is good because they
+> >> would take up a lot of memory and boot.array() is an optional function
+> (it
+> >> is used in boot.ci() with type = "bca" for those curious); and 3) the
+> >> seed
+> >> carries on from where it left off before boot.array() was called instead
+> >> of
+> >> being set to what it was after boot() was called.
+> >>
+> >> This is implemented in boot in the following way (code abbreviated):
+> >>
+> >> boot <- function(...) {
+> >>   seed <- .Random.Seed
+> >>   #Random numbers generated
+> >>   out <- list(seed = seed
+> >>                   #Other stuff is in this list
+> >>               )
+> >>   out
+> >> }
+> >>
+> >> boot.array <- function(boot.out) {
+> >>   #Save current random seed in `temp`
+> >>   if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
+> >>     temp <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+> >>   else temp <- NULL
+> >>
+> >>   #Assign saved seed from boot.out
+> >>   assign(".Random.seed", boot.out$seed, envir = .GlobalEnv)
+> >>
+> >>   #Generate same random numbers from boot() call
+> >>
+> >>   #Restore random seed to what it was before boot.array() call
+> >>   if (!is.null(temp))
+> >>     assign(".Random.seed", temp, envir = .GlobalEnv)
+> >>   else rm(.Random.seed, pos = 1)
+> >> }
+> >>
+> >> This seems to work as intended. However, this violates the CRAN policy
+> of
+> >> changing the global environment. When I used this exact code in a
+> package
+> >> I
+> >> submitted, the package was rejected for it. The message I received was
+> >>
+> >> > Please do not modify the .GlobalEnv (e.g.: by changing the
+> .Random.seed
+> >> > which is part of the global environment). This is not allowed by the
+> >> CRAN
+> >> > policies.
+> >>
+> >>
+> >> I'm curious what you think the best course of action might be, and what
+> >> the
+> >> current policy means for the *boot* package. Thanks for your help.
+> >>
+> >> Noah
+> >>
+> >>         [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-package-devel at r-project.org mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >>
+> >
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Thu Sep 15 00:15:05 2022
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Thu, 15 Sep 2022 00:15:05 +0200
+Subject: [R-pkg-devel] Unable to create manual
+In-Reply-To: <a51aa30d-bff0-2824-fd6f-948a70975e06@gmail.com>
+References: <CAEf_eRCTaa5Xnv6TkHX=Jncqv+Fu7PMTM=_w7WLFj9SDGVKm5g@mail.gmail.com>
+ <a51aa30d-bff0-2824-fd6f-948a70975e06@gmail.com>
+Message-ID: <a325c931-4074-ca48-5d0a-42f410429eff@statistik.tu-dortmund.de>
+
+
+
+On 14.09.2022 23:54, Duncan Murdoch wrote:
+> On 12/09/2022 9:09 a.m., Edward Wei wrote:
+>> This is the following error message I get from R CMD check:
+>>
+>> LaTeX errors when creating PDF version.
+>> This typically indicates Rd problems.
+>> * checking PDF version of manual without index ... ERROR
+>> Re-running with no redirection of stdout/stderr.
+>> Hmm ... looks like a package
+>> Converting parsed Rd's to LaTeX ...
+>> Creating pdf output from LaTeX ...
+>> Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet = 
+>> quiet,? :
+>> ?? pdflatex is not available
+> 
+> This looks like a problem in the way tools::texi2dvi detects pdflatex. 
+> If you have a valid LaTeX file, try running
+> 
+> tools::texi2dvi(filename, pdf = TRUE)
+> 
+> If that gives the same message, then debug(tools::texi2dvi), and repeat, 
+> single stepping through the function to see what test it uses, and 
+> figure out why it fails on your system.
+
+Or the env var PATH is overwritten once R get started, perhaps you have 
+it in one of the files R process it at startup?
+Does Sys.getenv("PATH") show the pat to the LaTeX binary?
+
+Best,
+Uwe Ligges
+
+
+> Duncan Murdoch
+> 
+> 
+>> Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet = 
+>> quiet,? :
+>> ?? pdflatex is not available
+>> Error in running tools::texi2pdf()
+>> You may want to clean up by 'rm -Rf
+>> C:/Users/edmon/AppData/Local/Temp/RtmpWkD7Iy/Rd2pdf35d81e3e188c'
+>> * DONE
+>>
+>> Status: 1 ERROR, 1 WARNING, 2 NOTEs
+>>
+>>
+>> Then, I tried debugging by isolating errors from the Rd to PDF 
+>> conversion.
+>>
+>>
+>> C:\Users\edmon\Documents\R\RFIN> R CMD Rd2pdf avfintools --no-clean
+>> Hmm ... looks like a package
+>> Converting Rd files to LaTeX ...
+>> Creating pdf output from LaTeX ...
+>> Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet = 
+>> quiet,? :
+>> ?? pdflatex is not available
+>> Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet = 
+>> quiet,? :
+>> ?? pdflatex is not available
+>> Error in running tools::texi2pdf()
+>> You may want to clean up by 'rm -Rf .Rd2pdf27964'
+>>
+>>
+>> In this folder is the file Rd2.tex which I tried to complie into a 
+>> pdf. But
+>> this error returns and PDF cannot be compiled. :
+>>
+>>
+>> LaTeX Error: File `Rd.sty' not found.
+>>
+>> Type X to quit or <RETURN> to proceed,
+>> or enter new name. (Default extension: sty)
+>>
+>> Enter file name:
+>> ! Emergency stop.
+>> <read *>
+>>
+>> l.4 \usepackage
+>> ??????????????? {makeidx}^^M
+>> ==> Fatal error occurred, no output PDF file produced!
+>>
+>>
+>> Thanks for your help,
+>>
+>> ????[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Thu Sep 15 01:39:34 2022
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Thu, 15 Sep 2022 11:39:34 +1200
+Subject: [R-pkg-devel] windows i386
+In-Reply-To: <trinity-7de81137-380d-46a3-adb6-198126558649-1663067674244@3c-app-gmx-bap62>
+References: <trinity-0cc11150-2256-4a44-8c4f-03621ce6b847-1662838897962@3c-app-gmx-bs14>
+ <trinity-7de81137-380d-46a3-adb6-198126558649-1663067674244@3c-app-gmx-bap62>
+Message-ID: <5C91E80D-D67C-4D97-B890-AA3BA7B816F9@R-project.org>
+
+Florian,
+
+since there was no direct response and given the earlier discussion I figured I chime. The main problem seems to be your build system that doesn't work. Since you didn't post the actual version of the package, I can only see the CRAN version which still don't set any of the necessary flags from R so it won't work (the error is that it can't even use the C compiler). Your package has to work both in 32-bit and 64-bit, so you need to make sure you pass the correct flags for cmake for each architecture - it's really the same concept as discussed earlier. As for multi-arch, if you have configure.win then you may need to use --merge-multiarch such that each architecture is built separately and the merged into one binary.
+
+I think an easier approach would be if you simply dropped configure* and just used Makevars to build the dependent library as part of the build process since you are building in a sub-directory, so you don't really need the configure and could build both archs in one R CMD INSTALL run.
+
+Cheers,
+Simon
+
+
+
+> On 13/09/2022, at 11:14 PM, Florian Schwendinger <FlorianSchwendinger at gmx.at> wrote:
+> 
+> Dear R-package-developers,
+> 
+> On 'r-oldrel-windows-ix86_x86_64' I get in 'check.log' the error message
+> "Error: package 'highs' is not installed for 'arch = i386'"
+> the statement that for arch = i386 the package is not installed is correct and expected,
+> since in 'install.out' I see the warning
+> "Warning: this package has a non-empty 'configure.win' file, so building only the main architecture"
+> 
+> Looking at r-package-devel archive, I found the suggestion to set Biarch TRUE in the DESCRIPTION file.
+> I don't want to force the build of "i386" by setting Biarch: TRUE,
+> since as far as I see from the source I link to this should not work and I don't want
+> to alter the library I link to as little as possible.
+> Therefore, I want skip the step "loading checks for arch 'i386'". Is this possible?
+> 
+> I know locally this can be resolved by adding the option '--no-multiarch',
+> but can a similar effect be accomplished at the CRAN checks?
+> Furthermore, I know I can could this issue by adding R >= 4.2 to the depends since Rtools 4.2
+> does not build for i386. But this does not seem like a nice fix.
+> 
+> Is there a better option and how would it work?
+> 
+> Best regards,
+> Florian
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
