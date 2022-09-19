@@ -22847,3 +22847,74 @@ Tomas
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From F|or|@nSchwend|nger @end|ng |rom gmx@@t  Sun Sep 18 16:55:00 2022
+From: F|or|@nSchwend|nger @end|ng |rom gmx@@t (Florian Schwendinger)
+Date: Sun, 18 Sep 2022 16:55:00 +0200
+Subject: [R-pkg-devel] windows i386
+In-Reply-To: <5C91E80D-D67C-4D97-B890-AA3BA7B816F9@R-project.org>
+References: <trinity-0cc11150-2256-4a44-8c4f-03621ce6b847-1662838897962@3c-app-gmx-bs14>
+ <trinity-7de81137-380d-46a3-adb6-198126558649-1663067674244@3c-app-gmx-bap62>
+ <5C91E80D-D67C-4D97-B890-AA3BA7B816F9@R-project.org>
+Message-ID: <trinity-2f5f282f-442b-4fbb-b755-465b6c40a9ad-1663512900653@3c-app-gmx-bs27>
+
+Dear Simon,
+
+The repo is at https://gitlab.com/roigrp/solver/highs .
+
+Thank you. If I tried the Makevars approach but this leads to other issues
+with the 32-bit version.
+I resubmittet the the version with the configure file.
+
+Cheers,
+Florian
+?
+
+Gesendet:?Donnerstag, 15. September 2022 um 01:39 Uhr
+Von:?"Simon Urbanek" <simon.urbanek at R-project.org>
+An:?"Florian Schwendinger" <FlorianSchwendinger at gmx.at>
+Cc:?r-package-devel at r-project.org
+Betreff:?Re: [R-pkg-devel] windows i386
+Florian,
+
+since there was no direct response and given the earlier discussion I figured I chime. The main problem seems to be your build system that doesn't work. Since you didn't post the actual version of the package, I can only see the CRAN version which still don't set any of the necessary flags from R so it won't work (the error is that it can't even use the C compiler). Your package has to work both in 32-bit and 64-bit, so you need to make sure you pass the correct flags for cmake for each architecture - it's really the same concept as discussed earlier. As for multi-arch, if you have configure.win then you may need to use --merge-multiarch such that each architecture is built separately and the merged into one binary.
+
+I think an easier approach would be if you simply dropped configure* and just used Makevars to build the dependent library as part of the build process since you are building in a sub-directory, so you don't really need the configure and could build both archs in one R CMD INSTALL run.
+
+Cheers,
+Simon
+
+
+
+> On 13/09/2022, at 11:14 PM, Florian Schwendinger <FlorianSchwendinger at gmx.at> wrote:
+>
+> Dear R-package-developers,
+>
+> On 'r-oldrel-windows-ix86_x86_64' I get in 'check.log' the error message
+> "Error: package 'highs' is not installed for 'arch = i386'"
+> the statement that for arch = i386 the package is not installed is correct and expected,
+> since in 'install.out' I see the warning
+> "Warning: this package has a non-empty 'configure.win' file, so building only the main architecture"
+>
+> Looking at r-package-devel archive, I found the suggestion to set Biarch TRUE in the DESCRIPTION file.
+> I don't want to force the build of "i386" by setting Biarch: TRUE,
+> since as far as I see from the source I link to this should not work and I don't want
+> to alter the library I link to as little as possible.
+> Therefore, I want skip the step "loading checks for arch 'i386'". Is this possible?
+>
+> I know locally this can be resolved by adding the option '--no-multiarch',
+> but can a similar effect be accomplished at the CRAN checks?
+> Furthermore, I know I can could this issue by adding R >= 4.2 to the depends since Rtools 4.2
+> does not build for i386. But this does not seem like a nice fix.
+>
+> Is there a better option and how would it work?
+>
+> Best regards,
+> Florian
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+?
+
+
