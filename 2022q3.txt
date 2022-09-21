@@ -23320,3 +23320,702 @@ On Mon, Sep 19, 2022 at 12:53 PM Igor L <igorlaltuf at gmail.com> wrote:
 	[[alternative HTML version deleted]]
 
 
+From jo@n@zh@ng @end|ng |rom emory@edu  Tue Sep 20 05:28:09 2022
+From: jo@n@zh@ng @end|ng |rom emory@edu (Zhang, Xueqiong)
+Date: Tue, 20 Sep 2022 03:28:09 +0000
+Subject: [R-pkg-devel] debian - how to replicate the error
+Message-ID: <BN8PR05MB59539CD1589E1AA71851338E924C9@BN8PR05MB5953.namprd05.prod.outlook.com>
+
+Hi,
+    I am seeking help on error messages from Debian-gcc check  ?
+
+  1.  My package passed checks on windows and macos,  but failed on debian-gcc with testthat.R error. I don?t have a linux box, and was not able to check it via r-hub-linux-platforms since some of bioc dependencies are not installed on r-hub. What should I do for the error check, any ideas?
+  2.  testthat.R runs pretty well on my macos machine. I am thinking error from debian was caused by tempdir()? this is the code of how I created the temp folder  fd_out = as.character(paste0(tempdir(), "/", "outputs", "/")) . The error will go away if I change the code to fd_out = tempdir() ?
+  3.  Also,  tempdir() is something like this "/var/folders/_p/vkt5cmsn2559zqnyhpdwnnsr0000gn/T//RtmpUHe1uR" .  I wonder if the double slashes doesn?t recognized by linux?
+
+Thanks,
+
+Joan Zhang
+
+Version: 0.1.2
+Check: tests
+Result: ERROR
+     Running ?testthat.R? [157s/277s]
+    Running the tests in ?tests/testthat.R? failed.
+    Complete output:
+     > library(testthat)
+     > library(epitopR)
+     >
+     > test_check("epitopR")
+     [ FAIL 1 | WARN 0 | SKIP 2 | PASS 0 ]
+
+     ?? Skipped tests ???????????????????????????????????????????????????????????????
+     ? empty test (2)
+
+     ?? Failed tests ????????????????????????????????????????????????????????????????
+     ?? Error (test-core_mut.R:10:3): test core_mut ????????????????????????????????
+     <vctrs_error_subscript_oob/vctrs_error_subscript/rlang_error/error/condition>
+     Error in `select(., -c(id, seq_num))`: Can't subset columns that don't exist.
+     x Column `id` doesn't exist.
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Sep 20 09:25:46 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 20 Sep 2022 10:25:46 +0300
+Subject: [R-pkg-devel] debian - how to replicate the error
+In-Reply-To: <BN8PR05MB59539CD1589E1AA71851338E924C9@BN8PR05MB5953.namprd05.prod.outlook.com>
+References: <BN8PR05MB59539CD1589E1AA71851338E924C9@BN8PR05MB5953.namprd05.prod.outlook.com>
+Message-ID: <20220920102546.439fc1b2@Tarkus>
+
+On Tue, 20 Sep 2022 03:28:09 +0000
+"Zhang, Xueqiong" <joan.zhang at emory.edu> wrote:
+
+> I don?t have a linux box, and was not able to check it via
+> r-hub-linux-platforms since some of bioc dependencies are not
+> installed on r-hub. What should I do for the error check, any ideas?
+
+There are Debian builds for both x86_64 and arm64, so it should be
+possible to set up a virtual machine on your Mac that would be
+relatively quick thanks to hardware virtualisation. For example, you
+could start with a Dockerfile for an R-hub builder [1], add the missing
+Bioconductor packages and try to reproduce the error there.
+
+This way lies a lot of work, though. Worst case scenario, after you're
+done setting up the virtual machine, the test may pass.
+
+> I am thinking error from debian was caused by tempdir()? this is the
+> code of how I created the temp folder  fd_out =
+> as.character(paste0(tempdir(), "/", "outputs", "/")) . The error will
+> go away if I change the code to fd_out = tempdir()?
+
+Doesn't look likely to me. True, you could use file.path(tempdir(),
+'outputs') instead of paste0(...), but that shouldn't cause any
+differences between two POSIX-compatible systems that both use a
+forward slash as a directory separator.
+
+An error due to file paths would look like "file not found", or tests
+for file paths being equivalent failing due to a spurious slash or
+something. Your error looks different:
+
+> Error in `select(., -c(id, seq_num))`: Can't subset columns that
+> don't exist.
+> x Column `id` doesn't exist.
+
+Try instrumenting your tests to produce more output around that line?
+(Not sure how to do that with testthat.) Since we don't see the code,
+we can't say much else. Where does that data.frame come from? What
+could be the reasons for it to miss an "id" column? Does seq_num exist
+there too?
+
+> Also, tempdir() is something like this
+> "/var/folders/_p/vkt5cmsn2559zqnyhpdwnnsr0000gn/T//RtmpUHe1uR" .  I
+> wonder if the double slashes doesn?t recognized by linux?
+
+No, that's not the problem. POSIX allows an operating system to treat a
+double slash in the beginning of a path specially, but on Linux,
+multiple slashes anywhere are equivalent to a single slash:
+
+cd ////////usr///////bin && pwd
+# /usr/bin
+
+-- 
+Best regards,
+Ivan
+
+[1] https://github.com/r-hub/rhub-linux-builders
+
+
+From S@rm|@th@@D@@ @end|ng |rom STJUDE@ORG  Mon Sep 19 08:14:56 2022
+From: S@rm|@th@@D@@ @end|ng |rom STJUDE@ORG (Das, Sarmistha)
+Date: Mon, 19 Sep 2022 06:14:56 +0000
+Subject: [R-pkg-devel] ERROR DUE TO EXISTING BIOCONDUCTOR PACKAGES NOT
+ WORKING ON R-DEVEL
+Message-ID: <CH2PR04MB7093340D7FBEAA5AC50A2BE4854D9@CH2PR04MB7093.namprd04.prod.outlook.com>
+
+Hello,
+I ran (1) R CMD check --as-cran mypackage.tar.gz without any error. But it gives an error while running the package on (2) current version-of-R-devel as my package uses Bioconductor package (that does not run on R version 4.3). Please help me with any idea how to fix this error. I have attached the check results below.
+
+Thanks,
+Sarmistha
+**********************************************
+R CMD check results:
+**********************************************
+
+(1)  * using log directory
+  ?/.../multiomicsR.Rcheck?
+*
+  using R version 4.2.1 (2022-06-23)
+* using platform:
+  x86_64-apple-darwin17.0 (64-bit)
+* using session
+  charset: UTF-8
+* using option ?--as-cran?
+*
+  checking for file ?multiomicsR/DESCRIPTION? ...
+  OK
+* this is package ?multiomicsR? version
+  ?0.1?
+* package encoding: UTF-8
+* checking CRAN
+  incoming feasibility ... NOTE
+Maintainer:
+  ?Sarmistha Das <sarmistha.das at stjude.org>?
+
+New
+  submission
+* checking package namespace information
+  ... OK
+* checking package dependencies ... OK
+*
+  checking if this is a source package ... OK
+*
+  checking if there is a namespace ... OK
+* checking
+  for executable files ... OK
+* checking for hidden
+  files and directories ... OK
+* checking for portable
+  file names ... OK
+* checking for sufficient/correct
+  file permissions ... OK
+* checking whether package
+  ?multiomicsR? can be installed ... OK
+* checking
+  installed package size ... OK
+* checking package
+  directory ... OK
+* checking for future file
+  timestamps ... OK
+* checking DESCRIPTION
+  meta-information ... OK
+* checking top-level files
+  ... OK
+* checking for left-over files ... OK
+*
+  checking index information ... OK
+* checking package
+  subdirectories ... OK
+* checking R files for
+  non-ASCII characters ... OK
+* checking R files for
+  syntax errors ... OK
+* checking whether the package
+  can be loaded ... OK
+* checking whether the package
+  can be loaded with stated dependencies ... OK
+*
+  checking whether the package can be unloaded cleanly
+  ... OK
+* checking whether the namespace can be
+  loaded with stated dependencies ... OK
+* checking
+  whether the namespace can be unloaded cleanly ...
+  OK
+* checking use of S3 registration ... OK
+*
+  checking dependencies in R code ... OK
+* checking S3
+  generic/method consistency ... OK
+* checking
+  replacement functions ... OK
+* checking foreign
+  function calls ... OK
+* checking R code for possible
+  problems ... OK
+* checking Rd files ... OK
+*
+  checking Rd metadata ... OK
+* checking Rd line
+  widths ... OK
+* checking Rd cross-references ...
+  OK
+* checking for missing documentation entries ...
+  OK
+* checking for code/documentation mismatches ...
+  OK
+* checking Rd \usage sections ... OK
+* checking
+  Rd contents ... OK
+* checking for unstated
+  dependencies in examples ... OK
+* checking examples
+  ... NOTE
+Examples with CPU (user + system) or
+  elapsed time > 5s
+           user system
+  elapsed
+iosearchR 59.22  5.586 211.242
+* checking
+  PDF version of manual ... OK
+* checking for
+  non-standard things in the check directory ...
+  NOTE
+Found the following files/directories:
+
+  ?GDCdata? ?MANIFEST.txt? ?TCGAbiolinks?
+  ?clinical_InfoFile.txt?
+  ?omic1_Group1.txt?
+  ?omic1_Group2.txt? ?omic2_Group1.txt?
+
+  ?omic2_Group2.txt? ?pathway_genes.csv?
+  ?pathway_omic1.expr.csv?
+
+  ?pathway_omic2.expr.csv?
+  ?samplesheet_file.txt? ?status.txt?
+
+  ?subid.all.0.txt? ?subid.all.1.txt?
+*
+  checking for detritus in the temp directory ... OK
+*
+  DONE
+Status: 3
+  NOTEs
+
+***********************************************
+***********************************************
+
+(2)
+  On windows-x86_64-devel (r-devel)
+  checking package
+  dependencies ... ERROR
+  Packages required but not
+  available:
+    'AnnotationDbi', 'KEGGREST',
+  'org.Hs.eg.db', 'TCGAbiolinks'
+
+  See section
+  'The DESCRIPTION file' in the 'Writing R
+  Extensions'
+  manual.
+
+1 error ? | 0 warnings
+  ? | 0 notes ?
+
+*************************************************************************
+Sarmistha Das, PhD. (she/her)
+Postdoctoral Research Associate
+Department of Biostatistics, St. Jude Children's Research Hospital
+262 Danny Thomas Place
+Room R6025A (Longinotti Building); Mail Stop 768
+Memphis, TN 38105
+Email: sarmistha.das at stjude.org
+Phone: 901-595-1160
+
+________________________________
+
+Email Disclaimer: www.stjude.org/emaildisclaimer
+Consultation Disclaimer: www.stjude.org/consultationdisclaimer
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Sep 20 15:06:55 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 20 Sep 2022 09:06:55 -0400
+Subject: [R-pkg-devel] ERROR DUE TO EXISTING BIOCONDUCTOR PACKAGES NOT
+ WORKING ON R-DEVEL
+In-Reply-To: <CH2PR04MB7093340D7FBEAA5AC50A2BE4854D9@CH2PR04MB7093.namprd04.prod.outlook.com>
+References: <CH2PR04MB7093340D7FBEAA5AC50A2BE4854D9@CH2PR04MB7093.namprd04.prod.outlook.com>
+Message-ID: <c7a737c1-975f-10ba-ecbf-5a07586e3d22@gmail.com>
+
+If the Bioconductor packages are unconditional requirements, maybe you 
+should submit your package to Bioconductor rather than CRAN.  Just from 
+the name ("multiomicsR") it looks like it might be appropriate there.
+
+Duncan Murdoch
+
+
+
+On 19/09/2022 2:14 a.m., Das, Sarmistha wrote:
+> Hello,
+> I ran (1) R CMD check --as-cran mypackage.tar.gz without any error. But it gives an error while running the package on (2) current version-of-R-devel as my package uses Bioconductor package (that does not run on R version 4.3). Please help me with any idea how to fix this error. I have attached the check results below.
+> 
+> Thanks,
+> Sarmistha
+> **********************************************
+> R CMD check results:
+> **********************************************
+> 
+> (1)  * using log directory
+>    ?/.../multiomicsR.Rcheck?
+> *
+>    using R version 4.2.1 (2022-06-23)
+> * using platform:
+>    x86_64-apple-darwin17.0 (64-bit)
+> * using session
+>    charset: UTF-8
+> * using option ?--as-cran?
+> *
+>    checking for file ?multiomicsR/DESCRIPTION? ...
+>    OK
+> * this is package ?multiomicsR? version
+>    ?0.1?
+> * package encoding: UTF-8
+> * checking CRAN
+>    incoming feasibility ... NOTE
+> Maintainer:
+>    ?Sarmistha Das <sarmistha.das at stjude.org>?
+> 
+> New
+>    submission
+> * checking package namespace information
+>    ... OK
+> * checking package dependencies ... OK
+> *
+>    checking if this is a source package ... OK
+> *
+>    checking if there is a namespace ... OK
+> * checking
+>    for executable files ... OK
+> * checking for hidden
+>    files and directories ... OK
+> * checking for portable
+>    file names ... OK
+> * checking for sufficient/correct
+>    file permissions ... OK
+> * checking whether package
+>    ?multiomicsR? can be installed ... OK
+> * checking
+>    installed package size ... OK
+> * checking package
+>    directory ... OK
+> * checking for future file
+>    timestamps ... OK
+> * checking DESCRIPTION
+>    meta-information ... OK
+> * checking top-level files
+>    ... OK
+> * checking for left-over files ... OK
+> *
+>    checking index information ... OK
+> * checking package
+>    subdirectories ... OK
+> * checking R files for
+>    non-ASCII characters ... OK
+> * checking R files for
+>    syntax errors ... OK
+> * checking whether the package
+>    can be loaded ... OK
+> * checking whether the package
+>    can be loaded with stated dependencies ... OK
+> *
+>    checking whether the package can be unloaded cleanly
+>    ... OK
+> * checking whether the namespace can be
+>    loaded with stated dependencies ... OK
+> * checking
+>    whether the namespace can be unloaded cleanly ...
+>    OK
+> * checking use of S3 registration ... OK
+> *
+>    checking dependencies in R code ... OK
+> * checking S3
+>    generic/method consistency ... OK
+> * checking
+>    replacement functions ... OK
+> * checking foreign
+>    function calls ... OK
+> * checking R code for possible
+>    problems ... OK
+> * checking Rd files ... OK
+> *
+>    checking Rd metadata ... OK
+> * checking Rd line
+>    widths ... OK
+> * checking Rd cross-references ...
+>    OK
+> * checking for missing documentation entries ...
+>    OK
+> * checking for code/documentation mismatches ...
+>    OK
+> * checking Rd \usage sections ... OK
+> * checking
+>    Rd contents ... OK
+> * checking for unstated
+>    dependencies in examples ... OK
+> * checking examples
+>    ... NOTE
+> Examples with CPU (user + system) or
+>    elapsed time > 5s
+>             user system
+>    elapsed
+> iosearchR 59.22  5.586 211.242
+> * checking
+>    PDF version of manual ... OK
+> * checking for
+>    non-standard things in the check directory ...
+>    NOTE
+> Found the following files/directories:
+> 
+>    ?GDCdata? ?MANIFEST.txt? ?TCGAbiolinks?
+>    ?clinical_InfoFile.txt?
+>    ?omic1_Group1.txt?
+>    ?omic1_Group2.txt? ?omic2_Group1.txt?
+> 
+>    ?omic2_Group2.txt? ?pathway_genes.csv?
+>    ?pathway_omic1.expr.csv?
+> 
+>    ?pathway_omic2.expr.csv?
+>    ?samplesheet_file.txt? ?status.txt?
+> 
+>    ?subid.all.0.txt? ?subid.all.1.txt?
+> *
+>    checking for detritus in the temp directory ... OK
+> *
+>    DONE
+> Status: 3
+>    NOTEs
+> 
+> ***********************************************
+> ***********************************************
+> 
+> (2)
+>    On windows-x86_64-devel (r-devel)
+>    checking package
+>    dependencies ... ERROR
+>    Packages required but not
+>    available:
+>      'AnnotationDbi', 'KEGGREST',
+>    'org.Hs.eg.db', 'TCGAbiolinks'
+> 
+>    See section
+>    'The DESCRIPTION file' in the 'Writing R
+>    Extensions'
+>    manual.
+> 
+> 1 error ? | 0 warnings
+>    ? | 0 notes ?
+> 
+> *************************************************************************
+> Sarmistha Das, PhD. (she/her)
+> Postdoctoral Research Associate
+> Department of Biostatistics, St. Jude Children's Research Hospital
+> 262 Danny Thomas Place
+> Room R6025A (Longinotti Building); Mail Stop 768
+> Memphis, TN 38105
+> Email: sarmistha.das at stjude.org
+> Phone: 901-595-1160
+> 
+> ________________________________
+> 
+> Email Disclaimer: www.stjude.org/emaildisclaimer
+> Consultation Disclaimer: www.stjude.org/consultationdisclaimer
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From h@w|ckh@m @end|ng |rom gm@||@com  Wed Sep 21 02:03:51 2022
+From: h@w|ckh@m @end|ng |rom gm@||@com (Hadley Wickham)
+Date: Tue, 20 Sep 2022 19:03:51 -0500
+Subject: [R-pkg-devel] Non-ASCII and CRAN Checks
+In-Reply-To: <CAHGVjrnurVanApXpvnCcuaKZOGtFEVQZf=-eptzH3-pPq7r1ng@mail.gmail.com>
+References: <CAHGVjrnurVanApXpvnCcuaKZOGtFEVQZf=-eptzH3-pPq7r1ng@mail.gmail.com>
+Message-ID: <CABdHhvF=+SVVJoQrzJMKPORzJBL5QKuXK4+Av8kSnT6DEV8VDg@mail.gmail.com>
+
+In my experience this NOTE does not interfere with CRAN submission and you
+can ignore it.
+
+Hadley
+
+On Monday, September 19, 2022, Igor L <igorlaltuf at gmail.com> wrote:
+
+> Hello everybody,
+>
+> I'm testing my package with the devtools::check() function and I got a
+> warning about found non-ASCII strings.
+>
+> These characters are in a dataframe and, as they are names of institutions
+> used to filter databases, it makes no sense to translate them.
+>
+> Is there any way to make the check accept these characters?
+>
+> They are in latin1 encoding.
+>
+> Thanks in advance!
+>
+> --
+> *Igor Laltuf Marques*
+> Economist (UFF)
+> Master in urban and regional planning (IPPUR-UFRJ)
+> Researcher at ETTERN e CiDMob
+> https://igorlaltuf.github.io/
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+-- 
+http://hadley.nz
+
+	[[alternative HTML version deleted]]
+
+
+From jo@n@zh@ng @end|ng |rom emory@edu  Wed Sep 21 02:12:47 2022
+From: jo@n@zh@ng @end|ng |rom emory@edu (Zhang, Xueqiong)
+Date: Wed, 21 Sep 2022 00:12:47 +0000
+Subject: [R-pkg-devel] 
+ [External] Re:  debian - how to replicate the error
+In-Reply-To: <20220920102546.439fc1b2@Tarkus>
+References: <BN8PR05MB59539CD1589E1AA71851338E924C9@BN8PR05MB5953.namprd05.prod.outlook.com>
+ <20220920102546.439fc1b2@Tarkus>
+Message-ID: <BN8PR05MB5953EB8372C4981645232565924F9@BN8PR05MB5953.namprd05.prod.outlook.com>
+
+Hi Ivan, thanks for these helpful inputs! I have tested my package on an ubuntu box, it seemed work well. I am currently working on setting up a  debian instance on aws, and hopefully I can catch the bug from there. Will keep you posted if the bug is something we need be aware of. Thanks, ?
+
+Joan Zhang
+
+
+From: Ivan Krylov <krylov.r00t at gmail.com>
+Date: Tuesday, September 20, 2022 at 3:26 AM
+To: Zhang, Xueqiong <joan.zhang at emory.edu>
+Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: [External] Re: [R-pkg-devel] debian - how to replicate the error
+On Tue, 20 Sep 2022 03:28:09 +0000
+"Zhang, Xueqiong" <joan.zhang at emory.edu> wrote:
+
+> I don?t have a linux box, and was not able to check it via
+> r-hub-linux-platforms since some of bioc dependencies are not
+> installed on r-hub. What should I do for the error check, any ideas?
+
+There are Debian builds for both x86_64 and arm64, so it should be
+possible to set up a virtual machine on your Mac that would be
+relatively quick thanks to hardware virtualisation. For example, you
+could start with a Dockerfile for an R-hub builder [1], add the missing
+Bioconductor packages and try to reproduce the error there.
+
+This way lies a lot of work, though. Worst case scenario, after you're
+done setting up the virtual machine, the test may pass.
+
+> I am thinking error from debian was caused by tempdir()? this is the
+> code of how I created the temp folder  fd_out =
+> as.character(paste0(tempdir(), "/", "outputs", "/")) . The error will
+> go away if I change the code to fd_out = tempdir()?
+
+Doesn't look likely to me. True, you could use file.path(tempdir(),
+'outputs') instead of paste0(...), but that shouldn't cause any
+differences between two POSIX-compatible systems that both use a
+forward slash as a directory separator.
+
+An error due to file paths would look like "file not found", or tests
+for file paths being equivalent failing due to a spurious slash or
+something. Your error looks different:
+
+> Error in `select(., -c(id, seq_num))`: Can't subset columns that
+> don't exist.
+> x Column `id` doesn't exist.
+
+Try instrumenting your tests to produce more output around that line?
+(Not sure how to do that with testthat.) Since we don't see the code,
+we can't say much else. Where does that data.frame come from? What
+could be the reasons for it to miss an "id" column? Does seq_num exist
+there too?
+
+> Also, tempdir() is something like this
+> "/var/folders/_p/vkt5cmsn2559zqnyhpdwnnsr0000gn/T//RtmpUHe1uR" .  I
+> wonder if the double slashes doesn?t recognized by linux?
+
+No, that's not the problem. POSIX allows an operating system to treat a
+double slash in the beginning of a path specially, but on Linux,
+multiple slashes anywhere are equivalent to a single slash:
+
+cd ////////usr///////bin && pwd
+# /usr/bin
+
+--
+Best regards,
+Ivan
+
+[1] https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fgithub.com%2Fr-hub%2Frhub-linux-builders&amp;data=05%7C01%7Cjoan.zhang%40emory.edu%7Cea374061de6946ffc5f308da9ad957a4%7Ce004fb9cb0a4424fbcd0322606d5df38%7C0%7C0%7C637992555687410710%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=i21TZo3IQ3ni6ttETec%2F70CQlZgKr%2FnrrkujRaX50Js%3D&amp;reserved=0
+
+	[[alternative HTML version deleted]]
+
+
+From greg @end|ng |rom ||rm@n@y@h@com  Wed Sep 21 03:00:36 2022
+From: greg @end|ng |rom ||rm@n@y@h@com (Greg Hunt)
+Date: Wed, 21 Sep 2022 11:00:36 +1000
+Subject: [R-pkg-devel] Non-ASCII and CRAN Checks
+In-Reply-To: <CABdHhvF=+SVVJoQrzJMKPORzJBL5QKuXK4+Av8kSnT6DEV8VDg@mail.gmail.com>
+References: <CAHGVjrnurVanApXpvnCcuaKZOGtFEVQZf=-eptzH3-pPq7r1ng@mail.gmail.com>
+ <CABdHhvF=+SVVJoQrzJMKPORzJBL5QKuXK4+Av8kSnT6DEV8VDg@mail.gmail.com>
+Message-ID: <CAAS8PALq=YnbZ905GZ--Ro3nZ3Y61WSrSmMrSH4RLRey7a+sJA@mail.gmail.com>
+
+Leaving data in the wrong encoding is leaving a bug around waiting to
+surface.  Is the data correctly encoded as Latin1 (codepage 8859-1),
+Windows 8 bit (codepage 1252, also sometimes referred to as Latin1) or some
+Unicode encoding (likely UTF-8)?
+
+Character mapping is not such an issue for mapping characters between the
+traditional 8 bit character sets (they do very little interpretation), but
+in going in and out of Unicode with incorrectly encoded data you can end up
+with non-characters (a concept that does not exist in 8 bit character sets)
+in your data which bite you much later when other systems require data to
+be Unicode characters.  I also had some extremely odd behaviour from R
+around the beginning of the year when some Unicode accented characters got
+into some variable names and data frame data access got quite weird.
+
+Greg
+
+On Wed, 21 Sept 2022 at 10:04, Hadley Wickham <h.wickham at gmail.com> wrote:
+
+> In my experience this NOTE does not interfere with CRAN submission and you
+> can ignore it.
+>
+> Hadley
+>
+> On Monday, September 19, 2022, Igor L <igorlaltuf at gmail.com> wrote:
+>
+> > Hello everybody,
+> >
+> > I'm testing my package with the devtools::check() function and I got a
+> > warning about found non-ASCII strings.
+> >
+> > These characters are in a dataframe and, as they are names of
+> institutions
+> > used to filter databases, it makes no sense to translate them.
+> >
+> > Is there any way to make the check accept these characters?
+> >
+> > They are in latin1 encoding.
+> >
+> > Thanks in advance!
+> >
+> > --
+> > *Igor Laltuf Marques*
+> > Economist (UFF)
+> > Master in urban and regional planning (IPPUR-UFRJ)
+> > Researcher at ETTERN e CiDMob
+> > https://igorlaltuf.github.io/
+> >
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >
+>
+>
+> --
+> http://hadley.nz
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
