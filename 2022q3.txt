@@ -24879,3 +24879,1251 @@ On Thu, 22 Sept 2022 at 22:25, Ben Bolker <bbolker at gmail.com> wrote:
 	[[alternative HTML version deleted]]
 
 
+From r|ko@ke|ter @end|ng |rom un|-@|egen@de  Fri Sep 23 08:59:37 2022
+From: r|ko@ke|ter @end|ng |rom un|-@|egen@de (Riko Kelter)
+Date: Fri, 23 Sep 2022 08:59:37 +0200
+Subject: [R-pkg-devel] Warning about ggplot although no ggplot is used
+ anywhere in the package
+In-Reply-To: <CAERMt4c2GeL2u4G3s+Duv2T3PtmRgycKC3fxA=hWmtdPdCXD+w@mail.gmail.com>
+References: <CAERMt4c2GeL2u4G3s+Duv2T3PtmRgycKC3fxA=hWmtdPdCXD+w@mail.gmail.com>
+Message-ID: <66F61137-8D38-4DF8-B99D-943C595CD801@getmailspring.com>
+
+Hello again,
+
+thanks for the help. Here is a link to download the .tar.gz package:
+https://uni-siegen.sciebo.de/s/Z9BKwutIPGMieGh
+I followed the advice to scan the examples, source code and vignettes with the trace function for occurrences of the element_line call.
+
+Results: Only when loading either the fbst package (which also loads rstanarm) or loading rstanarm any appearance of element_line is noticed by the tracer (see below). This is regardless of whether a size option is specified or not.
+As mentioned earlier as a potential solution, rstanarm loads bayesplot and indeed two functions in bayesplot make use of the size option in ggplot2::element_line(). However, I do not use these functions but they are loaded when using library(rstanarm) I guess. I see no way to load rstanarm then. Any suggestions?
+> trace(ggplot2::element_line)
+
+> library(fbst)
+
+Lade n?tiges Paket: cubature
+Lade n?tiges Paket: ks
+
+Warnung: Paket ?ks? wurde unter R Version 4.0.5 erstellt
+Lade n?tiges Paket: viridis
+Lade n?tiges Paket: viridisLite
+
+Lade n?tiges Paket: rstanarm
+
+Lade n?tiges Paket: Rcpp
+Registered S3 methods overwritten by 'htmltools':
+
+method from print.html
+tools:rstudio
+print.shiny.tag
+
+tools:rstudio
+print.shiny.tag.list
+
+tools:rstudio
+
+Registered S3 method overwritten by 'htmlwidgets':
+
+method from print.htmlwidget tools:rstudio
+trace: element_line
+
+trace: element_line
+
+trace: element_line
+trace: element_line
+
+trace: element_line
+
+trace: element_line
+
+trace: element_line
+
+This is rstanarm version 2.21.3
+-
+
+See https://mc-stan.org/rstanarm/articles/priors for changes to default priors!
+-
+
+Default priors may change, so it's safest to specify priors, even if equivalent to
+the defaults.
+- For execution on a local, multicore CPU with excess RAM we recommend
+
+calling
+options(mc.cores = parallel::detectCores())
+
+Kind regards,
+Riko
+
+On Sep. 22 2022, at 5:05 pm, Alexandre Courtiol <alexandre.courtiol at gmail.com> wrote:
+> Hi Riko,
+> That element_line() is called while loading is not a problem, this is probably just the loading of the NAMESPACE from rstanarm.
+>
+> There is nothing wrong with this function.
+> The problem is only when it is used with the argument `size = ` within it.
+> You need to figure out when that happens.
+> ++
+>
+>
+>
+>
+> On Thu, 22 Sept 2022 at 15:49, Kelter, Riko <Riko.Kelter at uni-siegen.de (mailto:Riko.Kelter at uni-siegen.de)> wrote:
+> > Hello everyone,
+> >
+> >
+> >
+> > thanks a lot for the help.
+> >
+> >
+> > I tried the approach to use the trace function to identify where the element_line() command is actually used. In fact, the vignette twodimfbst.Rmd is the problem, but weirdly even if I only load the rstanarm package the trace function tells me that the code is used.
+> >
+> >
+> > Thus, it seems that one cannot even load the rstanarm package without getting this warning (see the appended PDF screenshot). In fact, the element_line() is identified by the trace function only if the rstanarm or fbst package are loaded inside the vignette. I also tried to replace rstanarm with rstan instead but the same happens because both packages rely on ggplot2.
+> >
+> >
+> > I also appended the .tar.gz package file so you can check the vignette code yourself if interested.
+> >
+> >
+> > Has anyone an idea how to avoid this warning on R devel when rstanarm is loaded inside a vignette? I currently see no way to solve this except for not using rstanarm which is inconvenient.
+> >
+> >
+> > Kind regards,
+> > Riko
+> >
+> >
+> >
+> >
+> >
+> >
+> >
+> > From: Alexandre Courtiol <alexandre.courtiol at gmail.com (mailto:alexandre.courtiol at gmail.com)>
+> > Sent: 22 September 2022 14:06
+> > To: Kelter, Riko
+> > Cc: r-package-devel at r-project.org (mailto:r-package-devel at r-project.org)
+> > Subject: Re: [R-pkg-devel] Warning about ggplot although no ggplot is used anywhere in the package
+> >
+> >
+> > In rstanarm, the function posterior_vs_prior and pp_validate use bayesplot::grid_lines which is defined as:
+> >
+> > function (color = "gray50", size = 0.2)
+> > {
+> > theme(panel.grid.major = element_line(color = color, size = size),
+> > panel.grid.minor = element_line(color = color, size = size *
+> > 0.5))
+> > }
+> >
+> >
+> > so bayesplot seems to be the culprit if you use these functions.
+> >
+> > On Thu, 22 Sept 2022 at 13:51, Alexandre Courtiol <alexandre.courtiol at gmail.com (mailto:alexandre.courtiol at gmail.com)> wrote:
+> > > You could trace the ggplot function using trace(ggplot2::element_line)
+> > > and then load the package and run your examples.
+> > > Whenever the function is used in the background, it should tell you.
+> > > ++
+> > >
+> > >
+> > >
+> > >
+> > > On Thu, 22 Sept 2022 at 13:40, Duncan Murdoch <murdoch.duncan at gmail.com (mailto:murdoch.duncan at gmail.com)> wrote:
+> > > > On 21/09/2022 5:09 p.m., Riko Kelter wrote:
+> > > > > Hello everyone,
+> > > > >
+> > > > > I ran R CMD check --as-cran without any errors. However, when I run a check on the current version of r-devel I obtain the following strange error about some ggplot function:
+> > > > > * installing *source* package 'fbst' ...
+> > > > > ** using staged installation
+> > > > > ** R
+> > > > > ** inst
+> > > > > ** byte-compile and prepare package for lazy loading
+> > > > > Warning message:
+> > > > > The `size` argument of `element_line()` is deprecated as of ggplot2 3.4.0.
+> > > > > Please use the `linewidth` argument instead.
+> > > > > The weird thing is: Although my package fbst depends on the package rstanarm which itself imports ggplot,
+> > > > > (1) no package code uses ggplot in any form,
+> > > > > (2) no examples use any ggplot commands and
+> > > > > (3) no vignette uses any ggplot command.
+> > > > >
+> > > > > Logs are available at https://win-builder.r-project.org/CX36AbHDU6Tl/
+> > > > > I am thankful for any suggestion why this error occurs.
+> > > > > All the best and kind regards,
+> > > > > Riko
+> > > >
+> > > > Could you provide the source for the package? I can see the DESCRIPTION
+> > > > file at win-builder, but can't install it myself since I don't use Windows.
+> > > >
+> > > > Duncan Murdoch
+> > > > ______________________________________________
+> > > > R-package-devel at r-project.org (mailto:R-package-devel at r-project.org) mailing list
+> > > > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> > >
+> > >
+> > >
+> > >
+> > > --
+> > > Alexandre Courtiol, www.datazoogang.de (http://www.datazoogang.de)
+> > >
+> > >
+> >
+> >
+> >
+> >
+> > --
+> > Alexandre Courtiol, www.datazoogang.de (http://www.datazoogang.de)
+> >
+> >
+> >
+> >
+> >
+> >
+> >
+>
+>
+>
+>
+> --
+> Alexandre Courtiol, www.datazoogang.de
+>
+>
+
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Sep 23 11:47:26 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 23 Sep 2022 05:47:26 -0400
+Subject: [R-pkg-devel] Warning about ggplot although no ggplot is used
+ anywhere in the package
+In-Reply-To: <66F61137-8D38-4DF8-B99D-943C595CD801@getmailspring.com>
+References: <CAERMt4c2GeL2u4G3s+Duv2T3PtmRgycKC3fxA=hWmtdPdCXD+w@mail.gmail.com>
+ <66F61137-8D38-4DF8-B99D-943C595CD801@getmailspring.com>
+Message-ID: <24e3dbfd-e2e8-9f5a-612e-38b682e1e4e0@gmail.com>
+
+I installed your tarball, and I do see element_line being called while 
+loading it, though I don't get the warning.
+
+The call I see is from ggplot2::theme_grey, which is called (eventually) 
+from .onLoad in the stan package.
+
+I'm using the CRAN version of ggplot2, which is version 3.3.6.  Your 
+error message indicates that you (or winbuilder?) are using 3.4.0.  It 
+doesn't really make sense that ggplot2 would have this error in its 
+theme_grey function in 3.4.0 (it doesn't in the current Github version), 
+so I would guess that something has resulted in you using functions from 
+a mix of package versions.
+
+There was a discussion recently on the R-devel list about the fact that 
+the methods package caches versions of code from other packages, and 
+this causes problems when those other packages change their 
+requirements.  See 
+https://stat.ethz.ch/pipermail/r-devel/2022-September/081971.html .  So 
+I'd guess ggplot2 3.4.0 was installed on the bad machine long enough for 
+some parts of it to be cached, but now it is back to 3.3.6.
+
+I didn't see anywhere in that discussion that you could do something to 
+fix or work around this issue.  Probably the problem will go away when 
+all involved machines finally install ggplot2 3.4.0, but before that, I 
+don't see anything you can do to fix it.
+
+Duncan Murdoch
+
+
+
+
+On 23/09/2022 2:59 a.m., Riko Kelter wrote:
+> Hello again,
+> 
+> thanks for the help. Here is a link to download the .tar.gz package:
+> https://uni-siegen.sciebo.de/s/Z9BKwutIPGMieGh
+> I followed the advice to scan the examples, source code and vignettes with the trace function for occurrences of the element_line call.
+> 
+> Results: Only when loading either the fbst package (which also loads rstanarm) or loading rstanarm any appearance of element_line is noticed by the tracer (see below). This is regardless of whether a size option is specified or not.
+> As mentioned earlier as a potential solution, rstanarm loads bayesplot and indeed two functions in bayesplot make use of the size option in ggplot2::element_line(). However, I do not use these functions but they are loaded when using library(rstanarm) I guess. I see no way to load rstanarm then. Any suggestions?
+>> trace(ggplot2::element_line)
+> 
+>> library(fbst)
+> 
+> Lade n?tiges Paket: cubature
+> Lade n?tiges Paket: ks
+> 
+> Warnung: Paket ?ks? wurde unter R Version 4.0.5 erstellt
+> Lade n?tiges Paket: viridis
+> Lade n?tiges Paket: viridisLite
+> 
+> Lade n?tiges Paket: rstanarm
+> 
+> Lade n?tiges Paket: Rcpp
+> Registered S3 methods overwritten by 'htmltools':
+> 
+> method from print.html
+> tools:rstudio
+> print.shiny.tag
+> 
+> tools:rstudio
+> print.shiny.tag.list
+> 
+> tools:rstudio
+> 
+> Registered S3 method overwritten by 'htmlwidgets':
+> 
+> method from print.htmlwidget tools:rstudio
+> trace: element_line
+> 
+> trace: element_line
+> 
+> trace: element_line
+> trace: element_line
+> 
+> trace: element_line
+> 
+> trace: element_line
+> 
+> trace: element_line
+> 
+> This is rstanarm version 2.21.3
+> -
+> 
+> See https://mc-stan.org/rstanarm/articles/priors for changes to default priors!
+> -
+> 
+> Default priors may change, so it's safest to specify priors, even if equivalent to
+> the defaults.
+> - For execution on a local, multicore CPU with excess RAM we recommend
+> 
+> calling
+> options(mc.cores = parallel::detectCores())
+> 
+> Kind regards,
+> Riko
+> 
+> On Sep. 22 2022, at 5:05 pm, Alexandre Courtiol <alexandre.courtiol at gmail.com> wrote:
+>> Hi Riko,
+>> That element_line() is called while loading is not a problem, this is probably just the loading of the NAMESPACE from rstanarm.
+>>
+>> There is nothing wrong with this function.
+>> The problem is only when it is used with the argument `size = ` within it.
+>> You need to figure out when that happens.
+>> ++
+>>
+>>
+>>
+>>
+>> On Thu, 22 Sept 2022 at 15:49, Kelter, Riko <Riko.Kelter at uni-siegen.de (mailto:Riko.Kelter at uni-siegen.de)> wrote:
+>>> Hello everyone,
+>>>
+>>>
+>>>
+>>> thanks a lot for the help.
+>>>
+>>>
+>>> I tried the approach to use the trace function to identify where the element_line() command is actually used. In fact, the vignette twodimfbst.Rmd is the problem, but weirdly even if I only load the rstanarm package the trace function tells me that the code is used.
+>>>
+>>>
+>>> Thus, it seems that one cannot even load the rstanarm package without getting this warning (see the appended PDF screenshot). In fact, the element_line() is identified by the trace function only if the rstanarm or fbst package are loaded inside the vignette. I also tried to replace rstanarm with rstan instead but the same happens because both packages rely on ggplot2.
+>>>
+>>>
+>>> I also appended the .tar.gz package file so you can check the vignette code yourself if interested.
+>>>
+>>>
+>>> Has anyone an idea how to avoid this warning on R devel when rstanarm is loaded inside a vignette? I currently see no way to solve this except for not using rstanarm which is inconvenient.
+>>>
+>>>
+>>> Kind regards,
+>>> Riko
+>>>
+>>>
+>>>
+>>>
+>>>
+>>>
+>>>
+>>> From: Alexandre Courtiol <alexandre.courtiol at gmail.com (mailto:alexandre.courtiol at gmail.com)>
+>>> Sent: 22 September 2022 14:06
+>>> To: Kelter, Riko
+>>> Cc: r-package-devel at r-project.org (mailto:r-package-devel at r-project.org)
+>>> Subject: Re: [R-pkg-devel] Warning about ggplot although no ggplot is used anywhere in the package
+>>>
+>>>
+>>> In rstanarm, the function posterior_vs_prior and pp_validate use bayesplot::grid_lines which is defined as:
+>>>
+>>> function (color = "gray50", size = 0.2)
+>>> {
+>>> theme(panel.grid.major = element_line(color = color, size = size),
+>>> panel.grid.minor = element_line(color = color, size = size *
+>>> 0.5))
+>>> }
+>>>
+>>>
+>>> so bayesplot seems to be the culprit if you use these functions.
+>>>
+>>> On Thu, 22 Sept 2022 at 13:51, Alexandre Courtiol <alexandre.courtiol at gmail.com (mailto:alexandre.courtiol at gmail.com)> wrote:
+>>>> You could trace the ggplot function using trace(ggplot2::element_line)
+>>>> and then load the package and run your examples.
+>>>> Whenever the function is used in the background, it should tell you.
+>>>> ++
+>>>>
+>>>>
+>>>>
+>>>>
+>>>> On Thu, 22 Sept 2022 at 13:40, Duncan Murdoch <murdoch.duncan at gmail.com (mailto:murdoch.duncan at gmail.com)> wrote:
+>>>>> On 21/09/2022 5:09 p.m., Riko Kelter wrote:
+>>>>>> Hello everyone,
+>>>>>>
+>>>>>> I ran R CMD check --as-cran without any errors. However, when I run a check on the current version of r-devel I obtain the following strange error about some ggplot function:
+>>>>>> * installing *source* package 'fbst' ...
+>>>>>> ** using staged installation
+>>>>>> ** R
+>>>>>> ** inst
+>>>>>> ** byte-compile and prepare package for lazy loading
+>>>>>> Warning message:
+>>>>>> The `size` argument of `element_line()` is deprecated as of ggplot2 3.4.0.
+>>>>>> Please use the `linewidth` argument instead.
+>>>>>> The weird thing is: Although my package fbst depends on the package rstanarm which itself imports ggplot,
+>>>>>> (1) no package code uses ggplot in any form,
+>>>>>> (2) no examples use any ggplot commands and
+>>>>>> (3) no vignette uses any ggplot command.
+>>>>>>
+>>>>>> Logs are available at https://win-builder.r-project.org/CX36AbHDU6Tl/
+>>>>>> I am thankful for any suggestion why this error occurs.
+>>>>>> All the best and kind regards,
+>>>>>> Riko
+>>>>>
+>>>>> Could you provide the source for the package? I can see the DESCRIPTION
+>>>>> file at win-builder, but can't install it myself since I don't use Windows.
+>>>>>
+>>>>> Duncan Murdoch
+>>>>> ______________________________________________
+>>>>> R-package-devel at r-project.org (mailto:R-package-devel at r-project.org) mailing list
+>>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>
+>>>>
+>>>>
+>>>>
+>>>> --
+>>>> Alexandre Courtiol, www.datazoogang.de (http://www.datazoogang.de)
+>>>>
+>>>>
+>>>
+>>>
+>>>
+>>>
+>>> --
+>>> Alexandre Courtiol, www.datazoogang.de (http://www.datazoogang.de)
+>>>
+>>>
+>>>
+>>>
+>>>
+>>>
+>>>
+>>
+>>
+>>
+>>
+>> --
+>> Alexandre Courtiol, www.datazoogang.de
+>>
+>>
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From r|ko@ke|ter @end|ng |rom un|-@|egen@de  Fri Sep 23 12:10:31 2022
+From: r|ko@ke|ter @end|ng |rom un|-@|egen@de (Riko Kelter)
+Date: Fri, 23 Sep 2022 12:10:31 +0200
+Subject: [R-pkg-devel] Warning about ggplot although no ggplot is used
+ anywhere in the package
+In-Reply-To: <24e3dbfd-e2e8-9f5a-612e-38b682e1e4e0@gmail.com>
+References: <CAERMt4c2GeL2u4G3s+Duv2T3PtmRgycKC3fxA=hWmtdPdCXD+w@mail.gmail.com>
+ <66F61137-8D38-4DF8-B99D-943C595CD801@getmailspring.com>
+ <24e3dbfd-e2e8-9f5a-612e-38b682e1e4e0@gmail.com>
+Message-ID: <4e1df889-622a-233e-d05a-f86ed506557c@uni-siegen.de>
+
+Dear Duncan,
+
+thanks for the info! This sounds quite reasonable because I used the 
+winbuilder service provided at https://win-builder.r-project.org which I 
+used for running tests on the current version of R-devel this warning 
+occurred. It seems possible that some ggplot version 3.3.4 is cached 
+there and this might be the reason why the warning is generated.
+
+On all other systems except this service for Windows binaries no warning 
+was generated. I will resubmit the package to CRAN again and see if the 
+warning is generated. If so, I will reply to the CRAN maintainer and see 
+what happens.
+
+In any case, I will reply again here to inform you of the results.
+
+Kind regards,
+
+Riko
+
+Am 23.09.22 um 11:47 schrieb Duncan Murdoch:
+> I installed your tarball, and I do see element_line being called while 
+> loading it, though I don't get the warning.
+>
+> The call I see is from ggplot2::theme_grey, which is called 
+> (eventually) from .onLoad in the stan package.
+>
+> I'm using the CRAN version of ggplot2, which is version 3.3.6. Your 
+> error message indicates that you (or winbuilder?) are using 3.4.0.? It 
+> doesn't really make sense that ggplot2 would have this error in its 
+> theme_grey function in 3.4.0 (it doesn't in the current Github 
+> version), so I would guess that something has resulted in you using 
+> functions from a mix of package versions.
+>
+> There was a discussion recently on the R-devel list about the fact 
+> that the methods package caches versions of code from other packages, 
+> and this causes problems when those other packages change their 
+> requirements.? See 
+> https://stat.ethz.ch/pipermail/r-devel/2022-September/081971.html .? 
+> So I'd guess ggplot2 3.4.0 was installed on the bad machine long 
+> enough for some parts of it to be cached, but now it is back to 3.3.6.
+>
+> I didn't see anywhere in that discussion that you could do something 
+> to fix or work around this issue.? Probably the problem will go away 
+> when all involved machines finally install ggplot2 3.4.0, but before 
+> that, I don't see anything you can do to fix it.
+>
+> Duncan Murdoch
+>
+>
+>
+>
+> On 23/09/2022 2:59 a.m., Riko Kelter wrote:
+>> Hello again,
+>>
+>> thanks for the help. Here is a link to download the .tar.gz package:
+>> https://uni-siegen.sciebo.de/s/Z9BKwutIPGMieGh
+>> I followed the advice to scan the examples, source code and vignettes 
+>> with the trace function for occurrences of the element_line call.
+>>
+>> Results: Only when loading either the fbst package (which also loads 
+>> rstanarm) or loading rstanarm any appearance of element_line is 
+>> noticed by the tracer (see below). This is regardless of whether a 
+>> size option is specified or not.
+>> As mentioned earlier as a potential solution, rstanarm loads 
+>> bayesplot and indeed two functions in bayesplot make use of the size 
+>> option in ggplot2::element_line(). However, I do not use these 
+>> functions but they are loaded when using library(rstanarm) I guess. I 
+>> see no way to load rstanarm then. Any suggestions?
+>>> trace(ggplot2::element_line)
+>>
+>>> library(fbst)
+>>
+>> Lade n?tiges Paket: cubature
+>> Lade n?tiges Paket: ks
+>>
+>> Warnung: Paket ?ks? wurde unter R Version 4.0.5 erstellt
+>> Lade n?tiges Paket: viridis
+>> Lade n?tiges Paket: viridisLite
+>>
+>> Lade n?tiges Paket: rstanarm
+>>
+>> Lade n?tiges Paket: Rcpp
+>> Registered S3 methods overwritten by 'htmltools':
+>>
+>> method from print.html
+>> tools:rstudio
+>> print.shiny.tag
+>>
+>> tools:rstudio
+>> print.shiny.tag.list
+>>
+>> tools:rstudio
+>>
+>> Registered S3 method overwritten by 'htmlwidgets':
+>>
+>> method from print.htmlwidget tools:rstudio
+>> trace: element_line
+>>
+>> trace: element_line
+>>
+>> trace: element_line
+>> trace: element_line
+>>
+>> trace: element_line
+>>
+>> trace: element_line
+>>
+>> trace: element_line
+>>
+>> This is rstanarm version 2.21.3
+>> -
+>>
+>> See https://mc-stan.org/rstanarm/articles/priors for changes to 
+>> default priors!
+>> -
+>>
+>> Default priors may change, so it's safest to specify priors, even if 
+>> equivalent to
+>> the defaults.
+>> - For execution on a local, multicore CPU with excess RAM we recommend
+>>
+>> calling
+>> options(mc.cores = parallel::detectCores())
+>>
+>> Kind regards,
+>> Riko
+>>
+>> On Sep. 22 2022, at 5:05 pm, Alexandre Courtiol 
+>> <alexandre.courtiol at gmail.com> wrote:
+>>> Hi Riko,
+>>> That element_line() is called while loading is not a problem, this 
+>>> is probably just the loading of the NAMESPACE from rstanarm.
+>>>
+>>> There is nothing wrong with this function.
+>>> The problem is only when it is used with the argument `size = ` 
+>>> within it.
+>>> You need to figure out when that happens.
+>>> ++
+>>>
+>>>
+>>>
+>>>
+>>> On Thu, 22 Sept 2022 at 15:49, Kelter, Riko 
+>>> <Riko.Kelter at uni-siegen.de (mailto:Riko.Kelter at uni-siegen.de)> wrote:
+>>>> Hello everyone,
+>>>>
+>>>>
+>>>>
+>>>> thanks a lot for the help.
+>>>>
+>>>>
+>>>> I tried the approach to use the trace function to identify where 
+>>>> the element_line() command is actually used. In fact, the vignette 
+>>>> twodimfbst.Rmd is the problem, but weirdly even if I only load the 
+>>>> rstanarm package the trace function tells me that the code is used.
+>>>>
+>>>>
+>>>> Thus, it seems that one cannot even load the rstanarm package 
+>>>> without getting this warning (see the appended PDF screenshot). In 
+>>>> fact, the element_line() is identified by the trace function only 
+>>>> if the rstanarm or fbst package are loaded inside the vignette. I 
+>>>> also tried to replace rstanarm with rstan instead but the same 
+>>>> happens because both packages rely on ggplot2.
+>>>>
+>>>>
+>>>> I also appended the .tar.gz package file so you can check the 
+>>>> vignette code yourself if interested.
+>>>>
+>>>>
+>>>> Has anyone an idea how to avoid this warning on R devel when 
+>>>> rstanarm is loaded inside a vignette? I currently see no way to 
+>>>> solve this except for not using rstanarm which is inconvenient.
+>>>>
+>>>>
+>>>> Kind regards,
+>>>> Riko
+>>>>
+>>>>
+>>>>
+>>>>
+>>>>
+>>>>
+>>>>
+>>>> From: Alexandre Courtiol <alexandre.courtiol at gmail.com 
+>>>> (mailto:alexandre.courtiol at gmail.com)>
+>>>> Sent: 22 September 2022 14:06
+>>>> To: Kelter, Riko
+>>>> Cc: r-package-devel at r-project.org 
+>>>> (mailto:r-package-devel at r-project.org)
+>>>> Subject: Re: [R-pkg-devel] Warning about ggplot although no ggplot 
+>>>> is used anywhere in the package
+>>>>
+>>>>
+>>>> In rstanarm, the function posterior_vs_prior and pp_validate use 
+>>>> bayesplot::grid_lines which is defined as:
+>>>>
+>>>> function (color = "gray50", size = 0.2)
+>>>> {
+>>>> theme(panel.grid.major = element_line(color = color, size = size),
+>>>> panel.grid.minor = element_line(color = color, size = size *
+>>>> 0.5))
+>>>> }
+>>>>
+>>>>
+>>>> so bayesplot seems to be the culprit if you use these functions.
+>>>>
+>>>> On Thu, 22 Sept 2022 at 13:51, Alexandre Courtiol 
+>>>> <alexandre.courtiol at gmail.com 
+>>>> (mailto:alexandre.courtiol at gmail.com)> wrote:
+>>>>> You could trace the ggplot function using 
+>>>>> trace(ggplot2::element_line)
+>>>>> and then load the package and run your examples.
+>>>>> Whenever the function is used in the background, it should tell you.
+>>>>> ++
+>>>>>
+>>>>>
+>>>>>
+>>>>>
+>>>>> On Thu, 22 Sept 2022 at 13:40, Duncan Murdoch 
+>>>>> <murdoch.duncan at gmail.com (mailto:murdoch.duncan at gmail.com)> wrote:
+>>>>>> On 21/09/2022 5:09 p.m., Riko Kelter wrote:
+>>>>>>> Hello everyone,
+>>>>>>>
+>>>>>>> I ran R CMD check --as-cran without any errors. However, when I 
+>>>>>>> run a check on the current version of r-devel I obtain the 
+>>>>>>> following strange error about some ggplot function:
+>>>>>>> * installing *source* package 'fbst' ...
+>>>>>>> ** using staged installation
+>>>>>>> ** R
+>>>>>>> ** inst
+>>>>>>> ** byte-compile and prepare package for lazy loading
+>>>>>>> Warning message:
+>>>>>>> The `size` argument of `element_line()` is deprecated as of 
+>>>>>>> ggplot2 3.4.0.
+>>>>>>> Please use the `linewidth` argument instead.
+>>>>>>> The weird thing is: Although my package fbst depends on the 
+>>>>>>> package rstanarm which itself imports ggplot,
+>>>>>>> (1) no package code uses ggplot in any form,
+>>>>>>> (2) no examples use any ggplot commands and
+>>>>>>> (3) no vignette uses any ggplot command.
+>>>>>>>
+>>>>>>> Logs are available at 
+>>>>>>> https://win-builder.r-project.org/CX36AbHDU6Tl/
+>>>>>>> I am thankful for any suggestion why this error occurs.
+>>>>>>> All the best and kind regards,
+>>>>>>> Riko
+>>>>>>
+>>>>>> Could you provide the source for the package? I can see the 
+>>>>>> DESCRIPTION
+>>>>>> file at win-builder, but can't install it myself since I don't 
+>>>>>> use Windows.
+>>>>>>
+>>>>>> Duncan Murdoch
+>>>>>> ______________________________________________
+>>>>>> R-package-devel at r-project.org 
+>>>>>> (mailto:R-package-devel at r-project.org) mailing list
+>>>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>>
+>>>>>
+>>>>>
+>>>>>
+>>>>> -- 
+>>>>> Alexandre Courtiol, www.datazoogang.de (http://www.datazoogang.de)
+>>>>>
+>>>>>
+>>>>
+>>>>
+>>>>
+>>>>
+>>>> -- 
+>>>> Alexandre Courtiol, www.datazoogang.de (http://www.datazoogang.de)
+>>>>
+>>>>
+>>>>
+>>>>
+>>>>
+>>>>
+>>>>
+>>>
+>>>
+>>>
+>>>
+>>> -- 
+>>> Alexandre Courtiol, www.datazoogang.de
+>>>
+>>>
+>>
+>>
+>> ????[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+From R|ko@Ke|ter @end|ng |rom un|-@|egen@de  Fri Sep 23 19:25:32 2022
+From: R|ko@Ke|ter @end|ng |rom un|-@|egen@de (Kelter, Riko)
+Date: Fri, 23 Sep 2022 17:25:32 +0000
+Subject: [R-pkg-devel] Warning about ggplot although no ggplot is used
+ anywhere in the package
+In-Reply-To: <24e3dbfd-e2e8-9f5a-612e-38b682e1e4e0@gmail.com>
+References: <CAERMt4c2GeL2u4G3s+Duv2T3PtmRgycKC3fxA=hWmtdPdCXD+w@mail.gmail.com>
+ <66F61137-8D38-4DF8-B99D-943C595CD801@getmailspring.com>
+ <24e3dbfd-e2e8-9f5a-612e-38b682e1e4e0@gmail.com>
+Message-ID: <f673ce10-cdb8-43b4-8a6c-93b5ae0cc4a9@Spark>
+
+Hello again,
+
+the solution of Duncan seems to work. When resubmitting the package everything worked without any warnings, so this seems to have been some CRAN-side issue of using ggplot 3.3.4 (maybe due to caching as explained by Duncan).
+
+Thanks again for the help.
+
+Kind regards,
+Riko
+Am 23. Sept. 2022, 11:47 +0200 schrieb Duncan Murdoch <murdoch.duncan at gmail.com>:
+I installed your tarball, and I do see element_line being called while
+
+loading it, though I don't get the warning.
+
+
+
+The call I see is from ggplot2::theme_grey, which is called (eventually)
+
+from .onLoad in the stan package.
+
+
+
+I'm using the CRAN version of ggplot2, which is version 3.3.6. Your
+
+error message indicates that you (or winbuilder?) are using 3.4.0. It
+
+doesn't really make sense that ggplot2 would have this error in its
+
+theme_grey function in 3.4.0 (it doesn't in the current Github version),
+
+so I would guess that something has resulted in you using functions from
+
+a mix of package versions.
+
+
+
+There was a discussion recently on the R-devel list about the fact that
+
+the methods package caches versions of code from other packages, and
+
+this causes problems when those other packages change their
+
+requirements. See
+
+https://stat.ethz.ch/pipermail/r-devel/2022-September/081971.html . So
+
+I'd guess ggplot2 3.4.0 was installed on the bad machine long enough for
+
+some parts of it to be cached, but now it is back to 3.3.6.
+
+
+
+I didn't see anywhere in that discussion that you could do something to
+
+fix or work around this issue. Probably the problem will go away when
+
+all involved machines finally install ggplot2 3.4.0, but before that, I
+
+don't see anything you can do to fix it.
+
+
+
+Duncan Murdoch
+
+
+
+
+
+
+
+
+
+On 23/09/2022 2:59 a.m., Riko Kelter wrote:
+
+Hello again,
+
+
+
+thanks for the help. Here is a link to download the .tar.gz package:
+
+https://uni-siegen.sciebo.de/s/Z9BKwutIPGMieGh
+
+I followed the advice to scan the examples, source code and vignettes with the trace function for occurrences of the element_line call.
+
+
+
+Results: Only when loading either the fbst package (which also loads rstanarm) or loading rstanarm any appearance of element_line is noticed by the tracer (see below). This is regardless of whether a size option is specified or not.
+
+As mentioned earlier as a potential solution, rstanarm loads bayesplot and indeed two functions in bayesplot make use of the size option in ggplot2::element_line(). However, I do not use these functions but they are loaded when using library(rstanarm) I guess. I see no way to load rstanarm then. Any suggestions?
+
+trace(ggplot2::element_line)
+
+
+
+library(fbst)
+
+
+
+Lade n?tiges Paket: cubature
+
+Lade n?tiges Paket: ks
+
+
+
+Warnung: Paket ?ks? wurde unter R Version 4.0.5 erstellt
+
+Lade n?tiges Paket: viridis
+
+Lade n?tiges Paket: viridisLite
+
+
+
+Lade n?tiges Paket: rstanarm
+
+
+
+Lade n?tiges Paket: Rcpp
+
+Registered S3 methods overwritten by 'htmltools':
+
+
+
+method from print.html
+
+tools:rstudio
+
+print.shiny.tag
+
+
+
+tools:rstudio
+
+print.shiny.tag.list
+
+
+
+tools:rstudio
+
+
+
+Registered S3 method overwritten by 'htmlwidgets':
+
+
+
+method from print.htmlwidget tools:rstudio
+
+trace: element_line
+
+
+
+trace: element_line
+
+
+
+trace: element_line
+
+trace: element_line
+
+
+
+trace: element_line
+
+
+
+trace: element_line
+
+
+
+trace: element_line
+
+
+
+This is rstanarm version 2.21.3
+
+-
+
+
+
+See https://mc-stan.org/rstanarm/articles/priors for changes to default priors!
+
+-
+
+
+
+Default priors may change, so it's safest to specify priors, even if equivalent to
+
+the defaults.
+
+- For execution on a local, multicore CPU with excess RAM we recommend
+
+
+
+calling
+
+options(mc.cores = parallel::detectCores())
+
+
+
+Kind regards,
+
+Riko
+
+
+
+On Sep. 22 2022, at 5:05 pm, Alexandre Courtiol <alexandre.courtiol at gmail.com> wrote:
+
+Hi Riko,
+
+That element_line() is called while loading is not a problem, this is probably just the loading of the NAMESPACE from rstanarm.
+
+
+
+There is nothing wrong with this function.
+
+The problem is only when it is used with the argument `size = ` within it.
+
+You need to figure out when that happens.
+
+++
+
+
+
+
+
+
+
+
+
+On Thu, 22 Sept 2022 at 15:49, Kelter, Riko <Riko.Kelter at uni-siegen.de (mailto:Riko.Kelter at uni-siegen.de)> wrote:
+
+Hello everyone,
+
+
+
+
+
+
+
+thanks a lot for the help.
+
+
+
+
+
+I tried the approach to use the trace function to identify where the element_line() command is actually used. In fact, the vignette twodimfbst.Rmd is the problem, but weirdly even if I only load the rstanarm package the trace function tells me that the code is used.
+
+
+
+
+
+Thus, it seems that one cannot even load the rstanarm package without getting this warning (see the appended PDF screenshot). In fact, the element_line() is identified by the trace function only if the rstanarm or fbst package are loaded inside the vignette. I also tried to replace rstanarm with rstan instead but the same happens because both packages rely on ggplot2.
+
+
+
+
+
+I also appended the .tar.gz package file so you can check the vignette code yourself if interested.
+
+
+
+
+
+Has anyone an idea how to avoid this warning on R devel when rstanarm is loaded inside a vignette? I currently see no way to solve this except for not using rstanarm which is inconvenient.
+
+
+
+
+
+Kind regards,
+
+Riko
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+From: Alexandre Courtiol <alexandre.courtiol at gmail.com (mailto:alexandre.courtiol at gmail.com)>
+
+Sent: 22 September 2022 14:06
+
+To: Kelter, Riko
+
+Cc: r-package-devel at r-project.org (mailto:r-package-devel at r-project.org)
+
+Subject: Re: [R-pkg-devel] Warning about ggplot although no ggplot is used anywhere in the package
+
+
+
+
+
+In rstanarm, the function posterior_vs_prior and pp_validate use bayesplot::grid_lines which is defined as:
+
+
+
+function (color = "gray50", size = 0.2)
+
+{
+
+theme(panel.grid.major = element_line(color = color, size = size),
+
+panel.grid.minor = element_line(color = color, size = size *
+
+0.5))
+
+}
+
+
+
+
+
+so bayesplot seems to be the culprit if you use these functions.
+
+
+
+On Thu, 22 Sept 2022 at 13:51, Alexandre Courtiol <alexandre.courtiol at gmail.com (mailto:alexandre.courtiol at gmail.com)> wrote:
+
+You could trace the ggplot function using trace(ggplot2::element_line)
+
+and then load the package and run your examples.
+
+Whenever the function is used in the background, it should tell you.
+
+++
+
+
+
+
+
+
+
+
+
+On Thu, 22 Sept 2022 at 13:40, Duncan Murdoch <murdoch.duncan at gmail.com (mailto:murdoch.duncan at gmail.com)> wrote:
+
+On 21/09/2022 5:09 p.m., Riko Kelter wrote:
+
+Hello everyone,
+
+
+
+I ran R CMD check --as-cran without any errors. However, when I run a check on the current version of r-devel I obtain the following strange error about some ggplot function:
+
+* installing *source* package 'fbst' ...
+
+** using staged installation
+
+** R
+
+** inst
+
+** byte-compile and prepare package for lazy loading
+
+Warning message:
+
+The `size` argument of `element_line()` is deprecated as of ggplot2 3.4.0.
+
+Please use the `linewidth` argument instead.
+
+The weird thing is: Although my package fbst depends on the package rstanarm which itself imports ggplot,
+
+(1) no package code uses ggplot in any form,
+
+(2) no examples use any ggplot commands and
+
+(3) no vignette uses any ggplot command.
+
+
+
+Logs are available at https://win-builder.r-project.org/CX36AbHDU6Tl/
+
+I am thankful for any suggestion why this error occurs.
+
+All the best and kind regards,
+
+Riko
+
+
+
+Could you provide the source for the package? I can see the DESCRIPTION
+
+file at win-builder, but can't install it myself since I don't use Windows.
+
+
+
+Duncan Murdoch
+
+______________________________________________
+
+R-package-devel at r-project.org (mailto:R-package-devel at r-project.org) mailing list
+
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+
+
+
+
+
+
+
+--
+
+Alexandre Courtiol, www.datazoogang.de (http://www.datazoogang.de)
+
+
+
+
+
+
+
+
+
+
+
+
+
+--
+
+Alexandre Courtiol, www.datazoogang.de (http://www.datazoogang.de)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--
+
+Alexandre Courtiol, www.datazoogang.de
+
+
+
+
+
+
+
+
+
+[[alternative HTML version deleted]]
+
+
+
+______________________________________________
+
+R-package-devel at r-project.org mailing list
+
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
