@@ -28339,3 +28339,149 @@ e-mail: Roy.Mendelssohn at noaa.gov www: https://www.pfeg.noaa.gov/
 "the arc of the moral universe is long, but it bends toward justice" -MLK Jr.
 
 
+From etie@@e@come m@iii@g oii u@iv-eiiiei@ir  Thu Sep 29 10:42:35 2022
+From: etie@@e@come m@iii@g oii u@iv-eiiiei@ir (etie@@e@come m@iii@g oii u@iv-eiiiei@ir)
+Date: Thu, 29 Sep 2022 10:42:35 +0200 (CEST)
+Subject: [R-pkg-devel] NOTE checking for detritus in the temp directory on
+ windows
+Message-ID: <1624161329.20817062.1664440955959.JavaMail.zimbra@ifsttar.fr>
+
+Dear all, 
+
+I'm getting the following Note for CRAN pre-tests (for package greed https://github.com/comeetie/greed) : 
+
+* checking for detritus in the temp directory ... NOTE 
+Found the following files/directories: 
+'Rscript306c1f1adf1' 'Rscript3fb41f1adf1' 
+
+this note only appears on windows : 
+
+* using R Under development (unstable) (2022-09-26 r82921 ucrt) 
+* using platform: x86_64-w64-mingw32 (64-bit) 
+
+The full pretest logs are located at https://win-builder.r-project.org/incoming_pretest/greed_0.6.1_20220927_163632/Windows/00check.log 
+
+I did not manage to reproduce it with Rhub and github action. 
+
+I've seen other questions on the mailing list about "detritus" but the root causes seems to be different in my case since i did not open a navigator and i did not create 
+files or folders in my tests or vignettes. Any hint on how to solve this note will be welcome. 
+
+Thanks a lot 
+
+Etienne 
+
+
+Etienne C?me, @comeetie 
+Charg? de Recherche 
+Universit? Gustave Eiffel 
+GRETTIA/COSYS 
+Tel : 01 81 66 87 18 
+Web : http://www.comeetie.fr 
+
+	[[alternative HTML version deleted]]
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Fri Sep 30 17:19:03 2022
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Fri, 30 Sep 2022 08:19:03 -0700
+Subject: [R-pkg-devel] 
+ NOTE checking for detritus in the temp directory on windows
+In-Reply-To: <1624161329.20817062.1664440955959.JavaMail.zimbra@ifsttar.fr>
+References: <1624161329.20817062.1664440955959.JavaMail.zimbra@ifsttar.fr>
+Message-ID: <CAFDcVCQNaP8=iLPG+Vk4vfEN1Y5zfeabca8Qnov5ZomsGLwsZA@mail.gmail.com>
+
+Hi.
+
+> * checking for detritus in the temp directory ... NOTE
+> Found the following files/directories:
+> 'Rscript306c1f1adf1' 'Rscript3fb41f1adf1'
+
+Whenever seeing detritus files with name Rscript<hexcode> like these,
+it's a strong suggestion that parallel workers on MS Windows are
+involved.  More precisely, each of them is from a separate PSOCK
+cluster node worker typically launched by parallel::makeCluster().
+When such workers are launched in example code, unit tests, or
+vignettes those files are created by R itself when running on MS
+Windows.  If the workers are not properly shutdown (e.g. forgetting to
+call parallel::stopCluster()), those files are left behind, and 'R CMD
+check' will detect them.
+
+Now, from experience, but neither fully investigated not understood
+yet, it *might* be that even if one calls parallel::stopCluster() at
+the end of examples, unit tests, or vignettes, it might be that there
+is still a race condition where the parallel workers are still in the
+process of shutting down when 'R CMD check' is checking for detritus
+files.  If that is the case, then it might be sporadic and tricky to
+reproduce this problem.  This has happened to me exactly once. I'm
+saying this, only in case you're struggle to reproduce it, but my
+guess is that this is *not* the case here. Please see below for
+options how to reproduce.
+
+Now, I see you're using 'future' for parallelization.  Because of
+this, I suspect you use plan(multisession), which launches parallel
+PSOCK workers like parallel::makeCluster().  To shut down those
+workers at the end, call plan(sequential).  My guess is that this is
+your problem.  Before you do that, I would make sure you can reproduce
+the problem first - see below.
+
+> I did not manage to reproduce it with Rhub and github action.
+
+1. Looking at your
+https://github.com/comeetie/greed/blob/master/.github/workflows/R-CMD-check.yaml,
+I see you're not checking with **R-devel** on MS Windows. I suggest
+you add that and too see if you can reproduce it there.  You could
+also add an explicit `env: _R_CHECK_THINGS_IN_TEMP_DIR_: true` just in
+case (but I'd guess --as-cran does this).
+
+2. Similarly, did you make sure to test with R-devel on MS Windows on R-hub?
+
+3. Did you try with R-devel on the win-builder service?
+
+For your future needs (pun not intended), I would make sure you can
+reproduce the problem before trying to fix it.
+
+Hope this helps,
+
+Henrik
+
+On Fri, Sep 30, 2022 at 12:14 AM <etienne.come at univ-eiffel.fr> wrote:
+>
+> Dear all,
+>
+> I'm getting the following Note for CRAN pre-tests (for package greed https://github.com/comeetie/greed) :
+>
+> * checking for detritus in the temp directory ... NOTE
+> Found the following files/directories:
+> 'Rscript306c1f1adf1' 'Rscript3fb41f1adf1'
+>
+> this note only appears on windows :
+>
+> * using R Under development (unstable) (2022-09-26 r82921 ucrt)
+> * using platform: x86_64-w64-mingw32 (64-bit)
+>
+> The full pretest logs are located at https://win-builder.r-project.org/incoming_pretest/greed_0.6.1_20220927_163632/Windows/00check.log
+>
+> I did not manage to reproduce it with Rhub and github action.
+>
+> I've seen other questions on the mailing list about "detritus" but the root causes seems to be different in my case since i did not open a navigator and i did not create
+> files or folders in my tests or vignettes. Any hint on how to solve this note will be welcome.
+>
+> Thanks a lot
+>
+> Etienne
+>
+>
+> Etienne C?me, @comeetie
+> Charg? de Recherche
+> Universit? Gustave Eiffel
+> GRETTIA/COSYS
+> Tel : 01 81 66 87 18
+> Web : http://www.comeetie.fr
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
