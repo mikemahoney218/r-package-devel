@@ -1,0 +1,488 @@
+From edwwe|2020 @end|ng |rom gm@||@com  Mon Oct  3 17:03:20 2022
+From: edwwe|2020 @end|ng |rom gm@||@com (Edward Wei)
+Date: Mon, 3 Oct 2022 08:03:20 -0700
+Subject: [R-pkg-devel] Unable to create manual
+In-Reply-To: <20220926220141.71df28e0@Tarkus>
+References: <CAEf_eRCTaa5Xnv6TkHX=Jncqv+Fu7PMTM=_w7WLFj9SDGVKm5g@mail.gmail.com>
+ <a51aa30d-bff0-2824-fd6f-948a70975e06@gmail.com>
+ <a325c931-4074-ca48-5d0a-42f410429eff@statistik.tu-dortmund.de>
+ <CAEf_eRD7qyzRiVDrX5_CA-hEQ7wj-G+3Ku-=+2X2t=+Ai+g+aw@mail.gmail.com>
+ <3275b3cb-33b1-3c2b-b86d-7ca73c8d6cb9@gmail.com>
+ <CAEf_eRCUs-zRqdkPLnFMUB0Am6+=g+=DjcGsZ==Biu62MNgjhQ@mail.gmail.com>
+ <20220926220141.71df28e0@Tarkus>
+Message-ID: <CAEf_eRBiiSdAequnQWD9OMbP1Z=NFoPBtKQfzGG+X65b8d+Mew@mail.gmail.com>
+
+Hello Ivan.
+
+The Does list.files(pattern = 'utils|Rout\\.fail') gave me something like
+an empty string.
+
+So after getting some in-person help on this issue, the key to resolving
+this error was explicitly defining the environmental variables in the
+console as:
+
+set
+PDFLATEX=C:\Users\edmon\AppData\Local\Programs\MiKTeX\miktex\bin\x64\pdflatex
+
+
+
+set
+MAKEINDEX=C:\Users\edmon\AppData\Local\Programs\MiKTeX\miktex\bin\x64\makeindex
+
+
+The makeindex was a package I was apparently missing for MikTex and I had
+to download it as part of generating the manual.
+
+
+I would have to set up the environmental variables every time that R got
+started in order for the R CMD check to run smoothly.
+
+
+Best regards,
+
+
+
+
+On Mon, Sep 26, 2022 at 12:01 PM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+
+> On Mon, 26 Sep 2022 10:50:01 -0700
+> Edward Wei <edwwei2020 at gmail.com> wrote:
+>
+> > 1. Where do I run "make check"?
+>
+> In the directory where R is built from source. If you're using a binary
+> build of R, this isn't applicable.
+>
+> > 3. I get this back when I run the "tools::testInstalledPackages(scope
+> > = "base")" on my RGUI.
+> >
+> > Error: testing 'utils' failed
+> >
+> > Where may I find the error log for this?
+>
+> testInstalledPackages() creates output files in the current directory.
+> Does list.files(pattern = 'utils|Rout\\.fail') give you anything useful?
+>
+> --
+> Best regards,
+> Ivan
+>
+
+	[[alternative HTML version deleted]]
+
+
+From etie@@e@come m@iii@g oii u@iv-eiiiei@ir  Tue Oct  4 12:25:57 2022
+From: etie@@e@come m@iii@g oii u@iv-eiiiei@ir (etie@@e@come m@iii@g oii u@iv-eiiiei@ir)
+Date: Tue, 4 Oct 2022 12:25:57 +0200 (CEST)
+Subject: [R-pkg-devel] 
+ NOTE checking for detritus in the temp directory on windows
+In-Reply-To: <CAFDcVCQNaP8=iLPG+Vk4vfEN1Y5zfeabca8Qnov5ZomsGLwsZA@mail.gmail.com>
+References: <1624161329.20817062.1664440955959.JavaMail.zimbra@ifsttar.fr>
+ <CAFDcVCQNaP8=iLPG+Vk4vfEN1Y5zfeabca8Qnov5ZomsGLwsZA@mail.gmail.com>
+Message-ID: <1104744221.26257047.1664879157504.JavaMail.zimbra@ifsttar.fr>
+
+Hi,
+
+Thanks a lot Henrik for your detailed response, the problem was the one you suspected a "plan(mutlisession)" that was not correctly closed. And following your advice I was able to reproduce it on winbuilder.
+
+So thanks again for your help!
+
+Best regards, 
+
+Etienne
+
+
+Etienne C?me, @comeetie
+Charg? de Recherche
+Universit? Gustave Eiffel
+GRETTIA/COSYS
+Tel : 01 81 66 87 18
+Web : http://www.comeetie.fr
+
+----- Mail original -----
+De: "Henrik Bengtsson" <henrik.bengtsson at gmail.com>
+?: "etienne come" <etienne.come at univ-eiffel.fr>
+Cc: "r-package-devel" <r-package-devel at r-project.org>
+Envoy?: Vendredi 30 Septembre 2022 17:19:03
+Objet: Re: [R-pkg-devel] NOTE checking for detritus in the temp directory on windows
+
+Hi.
+
+> * checking for detritus in the temp directory ... NOTE
+> Found the following files/directories:
+> 'Rscript306c1f1adf1' 'Rscript3fb41f1adf1'
+
+Whenever seeing detritus files with name Rscript<hexcode> like these,
+it's a strong suggestion that parallel workers on MS Windows are
+involved.  More precisely, each of them is from a separate PSOCK
+cluster node worker typically launched by parallel::makeCluster().
+When such workers are launched in example code, unit tests, or
+vignettes those files are created by R itself when running on MS
+Windows.  If the workers are not properly shutdown (e.g. forgetting to
+call parallel::stopCluster()), those files are left behind, and 'R CMD
+check' will detect them.
+
+Now, from experience, but neither fully investigated not understood
+yet, it *might* be that even if one calls parallel::stopCluster() at
+the end of examples, unit tests, or vignettes, it might be that there
+is still a race condition where the parallel workers are still in the
+process of shutting down when 'R CMD check' is checking for detritus
+files.  If that is the case, then it might be sporadic and tricky to
+reproduce this problem.  This has happened to me exactly once. I'm
+saying this, only in case you're struggle to reproduce it, but my
+guess is that this is *not* the case here. Please see below for
+options how to reproduce.
+
+Now, I see you're using 'future' for parallelization.  Because of
+this, I suspect you use plan(multisession), which launches parallel
+PSOCK workers like parallel::makeCluster().  To shut down those
+workers at the end, call plan(sequential).  My guess is that this is
+your problem.  Before you do that, I would make sure you can reproduce
+the problem first - see below.
+
+> I did not manage to reproduce it with Rhub and github action.
+
+1. Looking at your
+https://github.com/comeetie/greed/blob/master/.github/workflows/R-CMD-check.yaml,
+I see you're not checking with **R-devel** on MS Windows. I suggest
+you add that and too see if you can reproduce it there.  You could
+also add an explicit `env: _R_CHECK_THINGS_IN_TEMP_DIR_: true` just in
+case (but I'd guess --as-cran does this).
+
+2. Similarly, did you make sure to test with R-devel on MS Windows on R-hub?
+
+3. Did you try with R-devel on the win-builder service?
+
+For your future needs (pun not intended), I would make sure you can
+reproduce the problem before trying to fix it.
+
+Hope this helps,
+
+Henrik
+
+On Fri, Sep 30, 2022 at 12:14 AM <etienne.come at univ-eiffel.fr> wrote:
+>
+> Dear all,
+>
+> I'm getting the following Note for CRAN pre-tests (for package greed https://github.com/comeetie/greed) :
+>
+> * checking for detritus in the temp directory ... NOTE
+> Found the following files/directories:
+> 'Rscript306c1f1adf1' 'Rscript3fb41f1adf1'
+>
+> this note only appears on windows :
+>
+> * using R Under development (unstable) (2022-09-26 r82921 ucrt)
+> * using platform: x86_64-w64-mingw32 (64-bit)
+>
+> The full pretest logs are located at https://win-builder.r-project.org/incoming_pretest/greed_0.6.1_20220927_163632/Windows/00check.log
+>
+> I did not manage to reproduce it with Rhub and github action.
+>
+> I've seen other questions on the mailing list about "detritus" but the root causes seems to be different in my case since i did not open a navigator and i did not create
+> files or folders in my tests or vignettes. Any hint on how to solve this note will be welcome.
+>
+> Thanks a lot
+>
+> Etienne
+>
+>
+> Etienne C?me, @comeetie
+> Charg? de Recherche
+> Universit? Gustave Eiffel
+> GRETTIA/COSYS
+> Tel : 01 81 66 87 18
+> Web : http://www.comeetie.fr
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From v|ncentv@nhee@ @end|ng |rom gm@||@com  Tue Oct  4 16:46:03 2022
+From: v|ncentv@nhee@ @end|ng |rom gm@||@com (Vincent van Hees)
+Date: Tue, 4 Oct 2022 16:46:03 +0200
+Subject: [R-pkg-devel] Guidance on splitting up an R package?
+Message-ID: <CALnEB17ExKcv=+EH4NycFFta+jaF0N1FjbfCphttK=cnBdKgow@mail.gmail.com>
+
+Dear all,
+
+I am looking for guidance (blog posts / books / people with expertise) on
+how to split up an R package that has grown a lot in complexity and size.
+To make it worthwhile, the split needs to ease the maintenance and ongoing
+development.
+
+Here are my quick reflections on it:
+1. Where possible try to preserve the consistency of the original R
+package. So, spin-off packages should ideally become helper-packages to the
+original package and tests need to be in place to ensure compatibility of
+the original R package is preserved.
+2. Keep similar functionality together. For example, a function to read
+files does not have to be in the same package as a function to plot the
+data, but a function to adjust the color coding of the plots should be
+stored near the other plotting functions.
+3. Try to isolate external dependencies. For example, if dependency Y
+changes I ideally only have to worry about updating one of my R packages to
+it instead of several.
+
+I am wondering whether anyone else has ever made a more elaborate mapping
+of do's and don'ts when it comes to splitting up an R package or any
+software for that matter?
+
+Vincent
+
+	[[alternative HTML version deleted]]
+
+
+From th|erry@onke||nx @end|ng |rom |nbo@be  Tue Oct  4 17:45:58 2022
+From: th|erry@onke||nx @end|ng |rom |nbo@be (Thierry Onkelinx)
+Date: Tue, 4 Oct 2022 17:45:58 +0200
+Subject: [R-pkg-devel] Guidance on splitting up an R package?
+In-Reply-To: <CALnEB17ExKcv=+EH4NycFFta+jaF0N1FjbfCphttK=cnBdKgow@mail.gmail.com>
+References: <CALnEB17ExKcv=+EH4NycFFta+jaF0N1FjbfCphttK=cnBdKgow@mail.gmail.com>
+Message-ID: <CAJuCY5y8rxenG8=tHjQNQvHgp_wKJ5Q_JdN5++t8AuuWz62-Og@mail.gmail.com>
+
+Dear Vincent,
+
+Have a look at the spatstat package which was split into several smaller
+packages (https://github.com/spatstat/spatstat). Maybe the maintainers of
+that package can share some insights.
+
+Best regards,
+
+ir. Thierry Onkelinx
+Statisticus / Statistician
+
+Vlaamse Overheid / Government of Flanders
+INSTITUUT VOOR NATUUR- EN BOSONDERZOEK / RESEARCH INSTITUTE FOR NATURE AND
+FOREST
+Team Biometrie & Kwaliteitszorg / Team Biometrics & Quality Assurance
+thierry.onkelinx at inbo.be
+Havenlaan 88 bus 73, 1000 Brussel
+www.inbo.be
+
+///////////////////////////////////////////////////////////////////////////////////////////
+To call in the statistician after the experiment is done may be no more
+than asking him to perform a post-mortem examination: he may be able to say
+what the experiment died of. ~ Sir Ronald Aylmer Fisher
+The plural of anecdote is not data. ~ Roger Brinner
+The combination of some data and an aching desire for an answer does not
+ensure that a reasonable answer can be extracted from a given body of data.
+~ John Tukey
+///////////////////////////////////////////////////////////////////////////////////////////
+
+<https://www.inbo.be>
+
+
+Op di 4 okt. 2022 om 16:46 schreef Vincent van Hees <
+vincentvanhees at gmail.com>:
+
+> Dear all,
+>
+> I am looking for guidance (blog posts / books / people with expertise) on
+> how to split up an R package that has grown a lot in complexity and size.
+> To make it worthwhile, the split needs to ease the maintenance and ongoing
+> development.
+>
+> Here are my quick reflections on it:
+> 1. Where possible try to preserve the consistency of the original R
+> package. So, spin-off packages should ideally become helper-packages to the
+> original package and tests need to be in place to ensure compatibility of
+> the original R package is preserved.
+> 2. Keep similar functionality together. For example, a function to read
+> files does not have to be in the same package as a function to plot the
+> data, but a function to adjust the color coding of the plots should be
+> stored near the other plotting functions.
+> 3. Try to isolate external dependencies. For example, if dependency Y
+> changes I ideally only have to worry about updating one of my R packages to
+> it instead of several.
+>
+> I am wondering whether anyone else has ever made a more elaborate mapping
+> of do's and don'ts when it comes to splitting up an R package or any
+> software for that matter?
+>
+> Vincent
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From |gor|@|tu| @end|ng |rom gm@||@com  Tue Oct  4 20:29:54 2022
+From: |gor|@|tu| @end|ng |rom gm@||@com (Igor L)
+Date: Tue, 4 Oct 2022 15:29:54 -0300
+Subject: [R-pkg-devel] How to decrease time to import files in xlsx format?
+Message-ID: <CAHGVjr=K9YbwVhEhxq_=9v_uxkT5FXzqhoyomdPWKn_erDsvDA@mail.gmail.com>
+
+Hello all,
+
+I'm developing an R package that basically downloads, imports, cleans and
+merges nine files in xlsx format updated monthly from a public institution.
+
+The problem is that importing files in xlsx format is time consuming.
+
+My initial idea was to parallelize the execution of the read_xlsx function
+according to the number of cores in the user's processor, but apparently it
+didn't make much difference, since when trying to parallelize it the
+execution time went from 185.89 to 184.12 seconds:
+
+# not parallelized code
+y <- purrr::map_dfr(paste0(dir.temp, '/', lista.arquivos.locais),
+               readxl::read_excel, sheet = 1, skip = 4, col_types =
+c(rep('text', 30)))
+
+# parallelized code
+plan(strategy = future::multicore(workers = 4))
+y <- furrr::future_map_dfr(paste0(dir.temp, '/', lista.arquivos.locais),
+                             readxl::read_excel, sheet = 1, skip = 4,
+col_types = c(rep('text', 30)))
+
+ Any suggestions to reduce the import processing time?
+
+Thanks in advance!
+
+-- 
+*Igor Laltuf Marques*
+Economist (UFF)
+Master in Urban and Regional Planning (IPPUR-UFRJ)
+Researcher at ETTERN and CiDMob
+https://igorlaltuf.github.io/
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Oct  4 21:39:08 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 4 Oct 2022 22:39:08 +0300
+Subject: [R-pkg-devel] 
+ How to decrease time to import files in xlsx format?
+In-Reply-To: <CAHGVjr=K9YbwVhEhxq_=9v_uxkT5FXzqhoyomdPWKn_erDsvDA@mail.gmail.com>
+References: <CAHGVjr=K9YbwVhEhxq_=9v_uxkT5FXzqhoyomdPWKn_erDsvDA@mail.gmail.com>
+Message-ID: <20221004223908.0f9894b7@Tarkus>
+
+On Tue, 4 Oct 2022 15:29:54 -0300
+Igor L <igorlaltuf at gmail.com> wrote:
+
+> The problem is that importing files in xlsx format is time consuming.
+
+Do the openxlsx or XLConnect packages fare any better?
+
+> plan(strategy = future::multicore(workers = 4))
+
+As far as I understand the documentation, multicore only works on
+POSIX-compatible operating systems when not running under RStudio (and
+even then, some macOS APIs may be not fork()-safe). Which operating
+system are you running? Does it get any better if you use
+future::multisession?
+
+Have you tried profiling the code? Do you see it using 100% of one
+core in some kind of task manager?
+
+-- 
+Best regards,
+Ivan
+
+
+From ||@t@ @end|ng |rom reve||e@net  Tue Oct  4 21:42:19 2022
+From: ||@t@ @end|ng |rom reve||e@net (William Revelle)
+Date: Tue, 4 Oct 2022 14:42:19 -0500
+Subject: [R-pkg-devel] Guidance on splitting up an R package?
+In-Reply-To: <CALnEB17ExKcv=+EH4NycFFta+jaF0N1FjbfCphttK=cnBdKgow@mail.gmail.com>
+References: <CALnEB17ExKcv=+EH4NycFFta+jaF0N1FjbfCphttK=cnBdKgow@mail.gmail.com>
+Message-ID: <5AD2FF42-DEBA-4907-8DFC-3A7D6D7FB45D@revelle.net>
+
+In 2019, I split psych into psych and psychTools to meet the 5MB space restriction.  I moved several of vignettes, data sets, and a few helper functions over to psychTools. This mainly allowed for more vignettes but also allows me to add new data sets to psychTools without needing to recompile psych.   This is discussed in the news file for psych and psychTools.
+
+Bill
+
+
+
+
+> On Oct 4, 2022, at 9:46 AM, Vincent van Hees <vincentvanhees at gmail.com> wrote:
+> 
+> Dear all,
+> 
+> I am looking for guidance (blog posts / books / people with expertise) on
+> how to split up an R package that has grown a lot in complexity and size.
+> To make it worthwhile, the split needs to ease the maintenance and ongoing
+> development.
+> 
+> Here are my quick reflections on it:
+> 1. Where possible try to preserve the consistency of the original R
+> package. So, spin-off packages should ideally become helper-packages to the
+> original package and tests need to be in place to ensure compatibility of
+> the original R package is preserved.
+> 2. Keep similar functionality together. For example, a function to read
+> files does not have to be in the same package as a function to plot the
+> data, but a function to adjust the color coding of the plots should be
+> stored near the other plotting functions.
+> 3. Try to isolate external dependencies. For example, if dependency Y
+> changes I ideally only have to worry about updating one of my R packages to
+> it instead of several.
+> 
+> I am wondering whether anyone else has ever made a more elaborate mapping
+> of do's and don'ts when it comes to splitting up an R package or any
+> software for that matter?
+> 
+> Vincent
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Tue Oct  4 21:58:27 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Tue, 04 Oct 2022 12:58:27 -0700
+Subject: [R-pkg-devel] 
+ How to decrease time to import files in xlsx format?
+In-Reply-To: <CAHGVjr=K9YbwVhEhxq_=9v_uxkT5FXzqhoyomdPWKn_erDsvDA@mail.gmail.com>
+References: <CAHGVjr=K9YbwVhEhxq_=9v_uxkT5FXzqhoyomdPWKn_erDsvDA@mail.gmail.com>
+Message-ID: <802EE163-77AE-48A3-987F-3F01DFB452A8@dcn.davis.ca.us>
+
+It looks like you are reading directly from URLs? How do you know the delay is not network I/O delay?
+
+Parallel computation is not a panacea. It allows tasks _that are CPU-bound_ to get through the CPU-intensive work faster. You need to be certain that your tasks actually can benefit from parallelism before using it... there is a significant overhead and added complexity to using parallel processing that will lead to SLOWER processing if mis-used.
+
+On October 4, 2022 11:29:54 AM PDT, Igor L <igorlaltuf at gmail.com> wrote:
+>Hello all,
+>
+>I'm developing an R package that basically downloads, imports, cleans and
+>merges nine files in xlsx format updated monthly from a public institution.
+>
+>The problem is that importing files in xlsx format is time consuming.
+>
+>My initial idea was to parallelize the execution of the read_xlsx function
+>according to the number of cores in the user's processor, but apparently it
+>didn't make much difference, since when trying to parallelize it the
+>execution time went from 185.89 to 184.12 seconds:
+>
+># not parallelized code
+>y <- purrr::map_dfr(paste0(dir.temp, '/', lista.arquivos.locais),
+>               readxl::read_excel, sheet = 1, skip = 4, col_types =
+>c(rep('text', 30)))
+>
+># parallelized code
+>plan(strategy = future::multicore(workers = 4))
+>y <- furrr::future_map_dfr(paste0(dir.temp, '/', lista.arquivos.locais),
+>                             readxl::read_excel, sheet = 1, skip = 4,
+>col_types = c(rep('text', 30)))
+>
+> Any suggestions to reduce the import processing time?
+>
+>Thanks in advance!
+>
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
