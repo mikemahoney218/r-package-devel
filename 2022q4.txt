@@ -814,3 +814,83 @@ On Wed, 5 Oct 2022 at 10:02, Igor L <igorlaltuf at gmail.com> wrote:
 	[[alternative HTML version deleted]]
 
 
+From @|ex@ndre@court|o| @end|ng |rom gm@||@com  Sun Oct  9 14:14:40 2022
+From: @|ex@ndre@court|o| @end|ng |rom gm@||@com (Alexandre Courtiol)
+Date: Sun, 9 Oct 2022 14:14:40 +0200
+Subject: [R-pkg-devel] Issue handling datetimes: possible differences
+ between computers
+Message-ID: <CAERMt4eYyTKadiTk6ZVgM5UmVXQ83PbBJQzfBOEW7=KZqsBC+w@mail.gmail.com>
+
+Hi R pkg developers,
+
+We are facing a datetime handling issue which manifests itself in a
+package we are working on.
+
+In context, we noticed that reading datetime info from an excel file
+resulted in different data depending on the computer we used.
+
+We are aware that timezone and regional settings are general sources
+of troubles, but the code we are using was trying to circumvent this.
+We went only as far as figuring out that the issue happens when
+converting a POSIXlt into a POSIXct.
+
+Please find below, a minimal reproducible example where `foo` is
+converted to `bar` on two different computers.
+`foo` is a POSIXlt with a defined time zone and upon conversion to a
+POSIXct, despite using a set time zone, we end up with `bar` being
+different on Linux and on a Windows machine.
+
+We noticed that the difference emerges from the system call
+`.Internal(as.POSIXct())` within `as.POSIXct.POSIXlt()`.
+We also noticed that the internal function in R actually calls
+getenv("TZ") within C, which is probably what explains where the
+difference comes from.
+
+Such a behaviour is probably expected and not a bug, but what would be
+the strategy to convert a POSIXlt into a POSIXct that would not be
+machine dependent?
+
+We finally noticed that depending on the datetime used as a starting
+point and on the time zone used when calling `as.POSIXct()`, we
+sometimes have a difference between computers and sometimes not...
+which adds to our puzzlement.
+
+Many thanks.
+Alex & Liam
+
+
+``` r
+## On Linux
+foo <- structure(list(sec = 0, min = 0L, hour = 0L, mday = 1L, mon =
+9L, year = 121L, wday = 5L, yday = 273L, isdst = 0L),
+                 class = c("POSIXlt", "POSIXt"), tzone = "UTC")
+
+bar <- as.POSIXct(foo, tz = "Europe/Berlin")
+
+bar
+#> [1] "2021-10-01 01:00:00 CEST"
+
+dput(bar)
+#> structure(1633042800, class = c("POSIXct", "POSIXt"), tzone =
+"Europe/Berlin")
+```
+
+``` r
+## On Windows
+foo <- structure(list(sec = 0, min = 0L, hour = 0L, mday = 1L, mon =
+9L, year = 121L, wday = 5L, yday = 273L, isdst = 0L),
+                 class = c("POSIXlt", "POSIXt"), tzone = "UTC")
+
+bar <- as.POSIXct(foo, tz = "Europe/Berlin")
+
+bar
+#> [1] "2021-10-01 CEST"
+
+dput(bar)
+structure(1633046400, class = c("POSIXct", "POSIXt"), tzone = "Europe/Berlin")
+```
+
+-- 
+Alexandre Courtiol, www.datazoogang.de
+
+
