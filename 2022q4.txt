@@ -1881,3 +1881,330 @@ On October 10, 2022 9:40:42 AM PDT, Hadley Wickham <h.wickham at gmail.com> wrot
 Sent from my phone. Please excuse my brevity.
 
 
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Tue Oct 11 08:58:01 2022
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Tue, 11 Oct 2022 08:58:01 +0200
+Subject: [R-pkg-devel] Issue handling datetimes: possible differences
+ between computers
+In-Reply-To: <2e92f0f1-ddfd-1c74-4805-ac65821ccd81@gmail.com>
+References: <CAERMt4eYyTKadiTk6ZVgM5UmVXQ83PbBJQzfBOEW7=KZqsBC+w@mail.gmail.com>
+ <24D0D7FC-F6DF-4AB2-B5A3-7E14D631804C@R-project.org>
+ <16B5505C-DAE0-4735-AED3-92B86E7A0DD8@dcn.davis.ca.us>
+ <CABdHhvFv32jRvm9WHX4dckOjWs1LK=tV=134K-0cOAgzvvDi=A@mail.gmail.com>
+ <C86BDDF6-44EE-4B9B-9515-F19F954B5337@liamdbailey.com>
+ <03EBA665-067E-45F4-A97B-4E94E98D65A8@R-project.org>
+ <CAERMt4doKk0OFujPOzi7vNz6NrzHV8c56=5=CKMhfWBtyFbY3Q@mail.gmail.com>
+ <2e92f0f1-ddfd-1c74-4805-ac65821ccd81@gmail.com>
+Message-ID: <25413.5113.302768.190731@stat.math.ethz.ch>
+
+>>>>> Ben Bolker 
+>>>>>     on Mon, 10 Oct 2022 16:59:35 -0400 writes:
+
+    > Right now as.POSIXlt.Date() is just
+    > function (x, ...)
+    > .Internal(Date2POSIXlt(x))
+
+It has been quite a bit different in R-devel  for a little
+while.  NEWS entries  (there are more already, and more coming
+on the wide topic)
+
+    * The as.POSIXlt(<POSIXlt>) and as.POSIXct(<POSIXct>) default
+      methods now do obey their tz argument, also in this case.
+
+    * as.POSIXlt(<Date>) now does apply a tz (timezone) argument, as
+      does as.POSIXct(); partly suggested by Roland Fuss on the R-devel
+      mailing list.
+
+and indeed it would have been good had you used (and read) the
+R-devel mailing list  which is much more appropriate on the
+topic of *changing* base R behavior.
+
+
+
+
+    > How expensive would it be to throw a warning when '...' is provided by 
+    > the user/discarded ??
+
+    > Alternately, perhaps the documentation could be amended, although I'm 
+    > not quite sure what to suggest. (The sentence Liam refers to, "Dates 
+    > without times are treated as being at midnight UTC." is correct but 
+    > terse ...)
+
+
+    > On 2022-10-10 4:50 p.m., Alexandre Courtiol wrote:
+    >> Hi Simon,
+    >> 
+    >> Thanks for the clarification.
+    >> 
+    >> From a naive developer point of view, we were initially baffled that the
+    >> generic as.POSIXlt() does very different things on a character and on a
+    >> Date input:
+    >> 
+    >> as.POSIXlt(as.character(foo), "Europe/Berlin")
+    >> [1] "1992-09-27 CEST"
+    >> 
+    >> as.POSIXlt(foo, "Europe/Berlin")
+    >> [1] "1992-09-27 UTC"
+    >> 
+    >> Based on what you said, it does make sense: it is only when creating the
+    >> date/time that we want to include the time zone and that only happens when
+    >> we don't already work on a previously created date.
+    >> That is your subtle but spot-on distinction between "parsing" and
+    >> "changing" the time zone.
+    >> 
+    >> Yet, we do find it dangerous that as.POSIXlt.Date() accepts a time zone but
+    >> does nothing of it, especially when the help file starts with:
+    >> 
+    >> Usage
+    >> as.POSIXlt(x, tz = "", ...)
+    >> 
+    >> The behaviour is documented, as Liam reported it, but still, we will almost
+    >> certainly not be the last one tripping on this (without even adding the
+    >> additional issue of as.POSIXct() behaving differently across OS).
+    >> 
+    >> Thanks again,
+    >> 
+    >> Alex & Liam
+    >> 
+    >> 
+    >> 
+    >> 
+    >> On Mon, 10 Oct 2022 at 22:13, Simon Urbanek <simon.urbanek at r-project.org>
+    >> wrote:
+    >> 
+    >>> Liam,
+    >>> 
+    >>> I think I have failed to convey my main point in the last e-mail - which
+    >>> was that you want to parse the date/time in the timezone that you care
+    >>> about so in your example that would be
+    >>> 
+    >>>> foo <- as.Date(33874, origin = "1899-12-30")
+    >>>> foo
+    >>> [1] "1992-09-27"
+    >>>> as.POSIXlt(as.character(foo), "Europe/Berlin")
+    >>> [1] "1992-09-27 CEST"
+    >>> 
+    >>> I was explicitly saying that you do NOT want to simply change the time
+    >>> zone on POSIXlt objects as that won't work for reasons I explained - see my
+    >>> last e-mail.
+    >>> 
+    >>> Cheers,
+    >>> Simon
+    >>> 
+    >>> 
+    >>>> On 11/10/2022, at 6:31 AM, Liam Bailey <liam.bailey at liamdbailey.com>
+    >>> wrote:
+    >>>> 
+    >>>> Hi all,
+    >>>> 
+    >>>> Thanks Simon for the detailed response, that helps us understand a lot
+    >>> better what?s going on! However, with your response in mind, we still
+    >>> encounter some behaviour that we did not expect.
+    >>>> 
+    >>>> I?ve included another minimum reproducible example below to expand on
+    >>> the situation. In this example, `foo` is a Date object that we generate
+    >>> from a numeric input. Following your advice, `bar` is then a POSIXlt object
+    >>> where we now explicitly define timezone using argument tz. However, even
+    >>> though we are explicit about the timezone the POSIXlt that is generated is
+    >>> always in UTC. This then leads to the issues outlined by Alexandre above,
+    >>> which we now understand are caused by DST.
+    >>>> 
+    >>>> ``` r
+    >>>> #Generate date from numeric
+    >>>> #Not possible to specify tz at this point
+    >>>> foo <- as.Date(33874, origin = "1899-12-30")
+    >>>> dput(foo)
+    >>>> #> structure(8305, class = "Date")
+    >>>> 
+    >>>> #Convert to POSIXlt specifying UTC timezone
+    >>>> bar <- as.POSIXlt(foo, tz = "UTC")
+    >>>> dput(bar)
+    >>>> #> structure(list(sec = 0, min = 0L, hour = 0L, mday = 27L, mon = 8L,
+    >>>> #>     year = 92L, wday = 0L, yday = 270L, isdst = 0L), class =
+    >>> c("POSIXlt",
+    >>>> #> "POSIXt"), tzone = "UTC")
+    >>>> 
+    >>>> #Convert to POSIXlt specifying Europe/Berlin.
+    >>>> #Time zone is still UTC
+    >>>> bar <- as.POSIXlt(foo, tz = "Europe/Berlin")
+    >>>> dput(bar)
+    >>>> #> structure(list(sec = 0, min = 0L, hour = 0L, mday = 27L, mon = 8L,
+    >>>> #>     year = 92L, wday = 0L, yday = 270L, isdst = 0L), class =
+    >>> c("POSIXlt",
+    >>>> #> "POSIXt"), tzone = "UTC")
+    >>>> ```
+    >>>> 
+    >>>> 
+    >>>> We noticed that this occurs because the tz argument is not passed to
+    >>> `.Internal(Date2POSIXlt())` inside `as.POSIXlt.Date()`.
+    >>>> 
+    >>>> Reading through the documentation for `as.POSIX*` we can see that this
+    >>> behaviour is described:
+    >>>> 
+    >>>> > ?Dates without times are treated as being at midnight UTC.?
+    >>>> 
+    >>>> In this case, if we want to convert a Date object to POSIX* and specify
+    >>> a (non-UTC) timezone would the best strategy be to first coerce our Date
+    >>> object to character? Alternatively, `lubridate::as_datetime()` does seem to
+    >>> recognise the tz argument and convert a Date object to POSIX* with non-UTC
+    >>> time zone (see second example below). But it would be nice to know if there
+    >>> are subtle differences between these two approaches that we should be aware
+    >>> of.
+    >>>> 
+    >>>> ``` r
+    >>>> foo <- as.Date(33874, origin = "1899-12-30")
+    >>>> dput(foo)
+    >>>> #> structure(8305, class = "Date")
+    >>>> 
+    >>>> #Convert to POSIXct specifying UTC timezone
+    >>>> bar <- lubridate::as_datetime(foo, tz = "UTC")
+    >>>> dput(as.POSIXlt(bar))
+    >>>> #> structure(list(sec = 0, min = 0L, hour = 0L, mday = 27L, mon = 8L,
+    >>>> #>     year = 92L, wday = 0L, yday = 270L, isdst = 0L), class =
+    >>> c("POSIXlt",
+    >>>> #> "POSIXt"), tzone = "UTC")
+    >>>> 
+    >>>> #Convert to POSIXct specifying Europe/Berlin
+    >>>> bar <- lubridate::as_datetime(foo, tz = "Europe/Berlin")
+    >>>> dput(as.POSIXlt(bar))
+    >>>> #> structure(list(sec = 0, min = 0L, hour = 0L, mday = 27L, mon = 8L,
+    >>>> #>     year = 92L, wday = 0L, yday = 270L, isdst = 1L, zone = "CEST",
+    >>>> #>     gmtoff = 7200L), class = c("POSIXlt", "POSIXt"), tzone =
+    >>> c("Europe/Berlin",
+    >>>> #> "CET", "CEST"))
+    >>>> ```
+    >>>> 
+    >>>> Thanks again for all your help.
+    >>>> Alex & Liam
+    >>>> 
+    >>>>> On 10 Oct 2022, at 6:40 pm, Hadley Wickham <h.wickham at gmail.com> wrote:
+    >>>>> 
+    >>>>> On Sun, Oct 9, 2022 at 9:31 PM Jeff Newmiller <jdnewmil at dcn.davis.ca.us>
+    >>> wrote:
+    >>>>>> 
+>>>>> ... which is why tidyverse functions and Python datetime handling irk
+    >>> me so much.
+    >>>>>> 
+>>>>> Is tidyverse time handling intrinsically broken? They have a standard
+    >>> practice of reading time as UTC and then using force_tz to fix the
+    >>> "mistake". Same as Python.
+    >>>>> 
+    >>>>> Can you point to any docs that lead you to this conclusion so we can
+    >>>>> get them fixed? I strongly encourage people to parse date-times in the
+    >>>>> correct time zone; this is why lubridate::ymd_hms() and friends have a
+    >>>>> tz argument.
+    >>>>> 
+    >>>>> Hadley
+    >>>>> 
+    >>>>> --
+    >>>>> http://hadley.nz
+    >>>> 
+    >>> 
+    >>> 
+    >> 
+
+    > -- 
+    > Dr. Benjamin Bolker
+    > Professor, Mathematics & Statistics and Biology, McMaster University
+    > Director, School of Computational Science and Engineering
+    > (Acting) Graduate chair, Mathematics & Statistics
+    >> E-mail is sent at my convenience; I don't expect replies outside of 
+    > working hours.
+
+    > ______________________________________________
+    > R-package-devel at r-project.org mailing list
+    > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Oct 11 09:38:35 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 11 Oct 2022 10:38:35 +0300
+Subject: [R-pkg-devel] Identify Original Column Names of Model Matrix
+In-Reply-To: <SY2PR01MB30033EFCF280CCC2EB45B06DCD209@SY2PR01MB3003.ausprd01.prod.outlook.com>
+References: <SY2PR01MB30033EFCF280CCC2EB45B06DCD209@SY2PR01MB3003.ausprd01.prod.outlook.com>
+Message-ID: <20221011103835.0a003d6d@Tarkus>
+
+On Mon, 10 Oct 2022 08:00:04 +0000
+Dario Strbenac <dstr7320 at uni.sydney.edu.au> wrote:
+
+> It requires input data to be in one-hot encoding, which is created by
+> Matrix::sparse.model.matrix. For further analysis, such as variable
+> importance, is there a way to identify which original feature each
+> column of a sparse.model.matrix result was derived from?
+
+?Matrix::sparse.model.matrix seems to recommend
+MatrixModel::model.Matrix for this reason. The latter function returns
+an object with additional slots `assign` and `contrasts`, which should
+make it possible to recover the original columns.
+
+-- 
+Best regards,
+Ivan
+
+
+From Qu|r|n_St|er @end|ng |rom gmx@de  Tue Oct 11 09:35:10 2022
+From: Qu|r|n_St|er @end|ng |rom gmx@de (Quirin Stier)
+Date: Tue, 11 Oct 2022 09:35:10 +0200
+Subject: [R-pkg-devel] R package development using GPU based on R package
+ OpenCL
+Message-ID: <570b824b-c239-aa61-c0e2-5a553ebf91ae@gmx.de>
+
+Dear members,
+
+I have difficulties packing my OpenCL functions together as a complete R
+package. I did not find any exemplary R package building upon the R
+OpenCL Package. Currently I can only run the OpenCL functions as was
+presented by the OpenCL examples of the OpenCL package itself. So,
+assuming I have working OpenCL files, how can I create the MakeVars (or
+whatever necessity needs to be done), in order to create a fully
+functional R package?
+
+Best regards,
+
+Quirin
+
+
+From mtmorg@n@b|oc @end|ng |rom gm@||@com  Tue Oct 11 18:16:03 2022
+From: mtmorg@n@b|oc @end|ng |rom gm@||@com (Martin Morgan)
+Date: Tue, 11 Oct 2022 16:16:03 +0000
+Subject: [R-pkg-devel] 
+ R package development using GPU based on R package OpenCL
+In-Reply-To: <570b824b-c239-aa61-c0e2-5a553ebf91ae@gmx.de>
+References: <570b824b-c239-aa61-c0e2-5a553ebf91ae@gmx.de>
+Message-ID: <BY5PR04MB6627ECE1F2AFE9B7C331E49EF9239@BY5PR04MB6627.namprd04.prod.outlook.com>
+
+I?m not particularly experienced with this but wrote a ?proof-of-concept? skeleton of a package at https://github.com/mtmorgan/ocl . The basics are
+
+
+  *   Import OpenCL in the DESCRIPTION file
+  *   Write OpenCL scripts in inst/ (dnorm implemented in OpenCL)
+  *   Use the helper function in R/ocl.R to source the code
+  *   Provide a user-friendly interface as in R/examples.R (dnorm_ocl)
+
+Martin
+
+From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Quirin Stier <Quirin_Stier at gmx.de>
+Date: Tuesday, October 11, 2022 at 10:46 AM
+To: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: [R-pkg-devel] R package development using GPU based on R package OpenCL
+Dear members,
+
+I have difficulties packing my OpenCL functions together as a complete R
+package. I did not find any exemplary R package building upon the R
+OpenCL Package. Currently I can only run the OpenCL functions as was
+presented by the OpenCL examples of the OpenCL package itself. So,
+assuming I have working OpenCL files, how can I create the MakeVars (or
+whatever necessity needs to be done), in order to create a fully
+functional R package?
+
+Best regards,
+
+Quirin
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+	[[alternative HTML version deleted]]
+
+
