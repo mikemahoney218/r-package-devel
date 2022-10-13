@@ -2208,3 +2208,283 @@ https://stat.ethz.ch/mailman/listinfo/r-package-devel
 	[[alternative HTML version deleted]]
 
 
+From r@turner @end|ng |rom @uck|@nd@@c@nz  Wed Oct 12 23:36:05 2022
+From: r@turner @end|ng |rom @uck|@nd@@c@nz (Rolf Turner)
+Date: Thu, 13 Oct 2022 10:36:05 +1300
+Subject: [R-pkg-devel] Guidance on splitting up an R package?
+In-Reply-To: <CALnEB17ExKcv=+EH4NycFFta+jaF0N1FjbfCphttK=cnBdKgow@mail.gmail.com>
+References: <CALnEB17ExKcv=+EH4NycFFta+jaF0N1FjbfCphttK=cnBdKgow@mail.gmail.com>
+Message-ID: <20221013103605.6244b4ff@rolf-Latitude-E7470>
+
+
+On Tue, 4 Oct 2022 16:46:03 +0200
+Vincent van Hees <vincentvanhees at gmail.com> wrote:
+
+> Dear all,
+> 
+> I am looking for guidance (blog posts / books / people with
+> expertise) on how to split up an R package that has grown a lot in
+> complexity and size. To make it worthwhile, the split needs to ease
+> the maintenance and ongoing development.
+
+<SNIP>
+
+Here is some advice based on our experience in splitting the
+'spatstat' package (over 170,000 lines of code, now split into 10
+sub-packages, which took us about one person-year of work).
+
+See https://github.com/spatstat/spatstat.
+
+1. Don't split your package unless you must.
+
+Splitting a package into sub-packages takes considerable effort.
+Maintaining a set of sub-packages requires much more effort than
+maintaining a single large package.  We estimate, quasi-seriously,
+that the amount of effort required is O(n^2) where n is the number
+of sub-packages.  :-)
+
+If you split a package, the CRAN servers will have less work, but
+almost everyone else --- developers, maintainers, CRAN team, users
+--- will have more work.  You won't even reduce the number of emails
+from CRAN: the R package checker complains when a package is large,
+but it also complains when the package Depends on many sub-packages.
+
+2. Design the split.
+
+Do not start tinkering until you have a plan.  Print out a list
+of the functions (or the R files and help files) in your package,
+and think about a simple rule for splitting/grouping them.
+
+The rule for splitting the package needs to be simple and easy
+to apply for developers and users.  For example in spatstat we
+separated 'exploratory' statistical summaries from 'parametric'
+statistical models because we can all remember what that means.
+(Note that *users* have to ?apply? the splitting rule in order
+to know where to find/look for a particular function after the
+package has been split.)
+
+A good splitting rule is something to do with the fundamental purpose
+of each function.  The amount of trouble you will have after the
+split is related to the number of dependencies (between functions)
+that cross these boundaries, and the easiest way to minimise this
+is to group the functions according to their fundamental purpose.
+
+Give plenty of notice to the maintainers of packages that depend
+on your package.
+
+3. Use 'make' and 'filepp' to implement the split.
+
+Leave the original source files where they are.  Maintain the
+original source files as the master copies (i.e. bug fixes are
+fixed in these original files).
+
+For each sub-package, set up a new folder/directory with a Makefile
+that copies selected source files from the original package into
+the new directory.  The Makefile can include rules that invoke
+'filepp' to filter the source files. Arguments to the 'filepp' call
+can specify the names of variables that will then be substituted
+into the source code, or used as variables in 'if/then' directives
+to switch on/off blocks of code.  This setup makes it much easier
+to keep track of the fate of each file, and to change your mind
+if needed.
+
+The "make" tool is extremely powerful and useful, and is ubiquitously
+applied by software developers.  However its syntax is not perspicuous,
+and can be daunting until you become experienced.  If you are not
+completely comfortable with "make" you might find the tutorials at
+
+    https://makefiletutorial.com
+
+and
+
+    https://cs.colby.edu/maxwell/courses/tutorials/maketutor
+
+to be helpful.
+
+For information on filepp see https://www-users.york.ac.uk/~dm26/filepp
+
+4. Do the split offline.
+
+Develop the sub-packages on your own machine until they all pass
+the package checker.
+
+5.  Consider the sequence of steps to get the packages on CRAN.
+
+CRAN has no mechanism for submitting a set of packages at the
+same time.  Each submission is checked individually, on several
+different servers, using several versions of R, using the packages
+that are installed on that server.  Hence the submission of your new
+sub-packages must be carried out according to a carefully considered
+incremental process.
+
+Problems that can occur include:
+
+a. Incompatibility between your new submission and the packages
+currently on the particular  server.
+
+b. Cycles (loops) in the dependence graph.  The dependence between
+functions in the packages may include loops where A depends on B
+which depends on C which depends on A, etc.
+
+c. Hard crashes.  Crashes can occur if you use compiled functions
+(e.g. C language) or if your package is byte-compiled.  In either
+case, changes to the interface (argument sequence) of compiled or
+byte-compiled code in one sub-package can result in an error or
+hard crash when another sub-package tries to call a function using
+the wrong interface.
+
+There is no sure way to prevent these happening.  The best defence
+is to use the version number dependency rules in the DESCRIPTION
+file (to prevent the use of incompatible packages), and to allow
+about a week for each submitted package to propagate through the
+CRAN testing network (to ensure that the latest versions are used).
+
+Despite this, you can expect to have correspondence with CRAN about
+such problems.
+
+Allow plenty of time between submitting successive sub-packages.
+Give plenty of notice to users and maintainers of dependent packages.
+
+Hope this helps.
+
+cheers,
+
+Rolf Turner (on behalf of Adrian Baddeley and Ege Rubak)
+
+P.S.  I hope that this posting is not too late to be useful.  The
+lateness is entirely the fault of Rolf Turner.
+
+R.T.
+
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Phone: +64-9-373-7599 ext. 88276
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Thu Oct 13 03:16:20 2022
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Wed, 12 Oct 2022 20:16:20 -0500
+Subject: [R-pkg-devel] =?utf-8?q?Problems_with_news_in_=E2=80=98NEWS?=
+ =?utf-8?b?4oCZ?=
+In-Reply-To: <20221013005510.eff91cf747f7bc84@rhub.io>
+References: <20221013005510.eff91cf747f7bc84@rhub.io>
+Message-ID: <f1198681-8078-8b40-3aa2-63bec1066b73@effectivedefense.org>
+
+Hello, All:
+
+
+	  devtools::check_rhub("Ecdat") complained:
+
+
+Problems with news in ?NEWS?:
+    Cannot process chunk/lines:
+      2022-10-12:
+    Cannot process chunk/lines:
+      Ecdat 0.4-2 updated "terrorism" to 2020.
+...
+
+
+	  For more see below.  This is with the current version of
+
+
+https://github.com/sbgraves237/Ecdat
+
+
+	  I copied NEWS to NEWS.md and tried to format it as described in:
+
+
+https://r-pkgs.org/other-markdown.html#news
+
+
+	  Sadly, I still get the same error.  It seems to be ignoring my 
+NEWS.md file and continuing to tell me I haven't fixed NEWS.
+
+
+	  What do you suggest?
+	  Thanks,
+	  Spencer Graves
+
+
+-------- Forwarded Message --------
+Subject: 	Ecdat 0.4-2: NOTE
+Date: 	Thu, 13 Oct 2022 00:55:10 +0000
+From: 	R-hub builder <support at rhub.io>
+To: 	spencer.graves at effectivedefense.org
+
+
+
+Ecdat 0.4-2: NOTE
+	
+Ecdat 0.4-2: NOTE
+*Build ID:* 	|Ecdat_0.4-2.tar.gz-aec6a2cb4b8a43cfbab0405f54e67c64|
+*Platform:* 	Windows Server 2022, R-devel, 64 bit
+*Submitted:* 	5 minutes 25 seconds ago
+*Build time:* 	5 minutes 16.2 seconds
+
+
+       NOTES:
+
+* checking package subdirectories ... NOTE
+Problems with news in 'NEWS':
+    Cannot process chunk/lines:
+      2022-10-12:
+    Cannot process chunk/lines:
+      Ecdat 0.4-2 updated "terrorism" to 2020.
+    Cannot process chunk/lines:
+      2022-07-01:
+    Cannot process chunk/lines:
+      Ecdat 0.4-1 replaced non-breaking spaces that used Latin-1 
+encoding with " " in 4 "demoFiles/NIPA6.16*.csv" files, because the said 
+non-breaking spaces were not valid in UTF-8 and were rejected by a 
+development version of R.
+      2022-06-14:
+    Cannot process chunk/lines:
+      Ecdat 0.4-0 adds new datasets USnewspapers and USPS (US Postal 
+Service) while adding federal government budget data to USGDPpresidents.
+    Cannot process chunk/lines:
+      2020-11-01:
+    Cannot process chunk/lines:
+      Ecdat 0.3-9 deletes ~demoFiles/*_data.xls, because they were used 
+to test Ecfun::financialDataFiles and Ecfun::readFinancialDataFiles, and 
+those two functions were removed, because they used gdata, which was not 
+being maintained, and the work required to maintain them exceeded the 
+current need of the maintainer.
+    Cannot process chunk/lines:
+      2020-02-08:  Ecdat 0.3-6 adds variables popM, popYr, GDP_B, and 
+GDPyr to data set "nuclearWeaponStates".
+    Cannot process chunk/lines:
+      2019-12-05:  Ecdat 0.3-5 corrects the description of Crime$density 
+to read, "hundreds of people per square mile" from "people per square 
+mile".  Thanks to Yungfong "Frank" Tang for identifying this error and 
+confirming the needed correction.
+    Cannot process chunk/lines:
+      2019-11-05:  Ecdat 0.3-4 adds variable 'firstTestYr' to 
+'nuclearWeaponStates'.  It also corrects an error in the 'Mroz' data 
+set, in that "work" had the names of the levels incorrectly swapped.
+    Cannot process chunk/lines:
+      Ecdat 0.3-3 adds data set "nuclearWeaponStates", which might be 
+used to model the probability distribution of the time to the next new 
+nuclear weapon state.
+    Cannot process chunk/lines:
+
+* checking for detritus in the temp directory ... NOTE
+Found the following files/directories:
+    'lastMiKTeXException'
+
+See the full build log: HTML 
+<https://builder.r-hub.io/status/Ecdat_0.4-2.tar.gz-aec6a2cb4b8a43cfbab0405f54e67c64>, 
+text 
+<https://builder.r-hub.io/status/original/Ecdat_0.4-2.tar.gz-aec6a2cb4b8a43cfbab0405f54e67c64>, 
+artifacts 
+<https://artifacts.r-hub.io/Ecdat_0.4-2.tar.gz-aec6a2cb4b8a43cfbab0405f54e67c64>. 
+
+Have questions, suggestions or want to report a bug? Please file an 
+issue ticket at GitHub <https://github.com/r-hub/rhub/issues>. Thank You 
+for using the R-hub builder.
+
+(c) 2016 The R Consortium
+
+
