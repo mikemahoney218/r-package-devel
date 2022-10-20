@@ -3331,3 +3331,521 @@ g,
 >
 
 
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Wed Oct 19 09:39:15 2022
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Wed, 19 Oct 2022 09:39:15 +0200
+Subject: [R-pkg-devel] Error when install binary from CRAN but not if
+ install from source - Macintoh, lme4, Matrix, buildmer
+In-Reply-To: <485893d7-d898-0f04-957d-a81d5f6e5d03@gmail.com>
+References: <CADtpigZfFG8oNO0NF2g6tku2whAFL2ycF_2JbWSL=AGkRf2F5w@mail.gmail.com>
+ <485893d7-d898-0f04-957d-a81d5f6e5d03@gmail.com>
+Message-ID: <25423.43427.527855.288051@stat.math.ethz.ch>
+
+>>>>> Duncan Murdoch 
+>>>>>     on Tue, 18 Oct 2022 15:17:33 -0400 writes:
+
+    > I see the same thing.  This sounds like a problem in the handling of 
+    > methods that has been discussed somewhat recently:
+
+    > https://stat.ethz.ch/pipermail/r-devel/2022-September/081971.html
+
+    > The problem is that when the binary is built, some code from other 
+    > packages is kept as part of it.  When that other package is updated, you 
+    > need a new source install of your own package (or a rebuild at CRAN to 
+    > replace the binary) to cache the new code.
+
+    > This can also be done explicitly by package startup code; I think this 
+    > thread
+
+    > https://stat.ethz.ch/pipermail/r-package-devel/2022q3/008481.html
+
+    > turned out to be a case where rstan was caching something, and an update 
+    > to ggplot2 didn't work with the cached data.  Given the error message, 
+    > your issue sounds more like the first one.
+
+    > I don't recall if there was a resolution.  Maybe you can ask the CRAN 
+    > maintainers to rebuild buildmer.
+
+    > Duncan Murdoch
+
+Yes, thank you, Duncan!
+
+The binary version of 'builmer' (or also lme4 ?) must have been created
+with an older version of Matrix  (which did not have the
+dgeMatrix_getDiag C code)  and the respective maintainer of the
+binary builds (*) must rebuild the binary versions of those
+Matrix-reverse-dependant packages,
+---
+*) in this case the macOS ones (both for Intel and ARM Macs)
+
+Martin Maechler
+(maintainer of Matrix)
+
+
+
+
+
+
+
+
+    > On 18/10/2022 2:51 p.m., Carl Schwarz wrote:
+    >> I've run into a problem where if you install the lme4, Matrix, and buildmer
+    >> packages using the binaries from CRAN on a Mac, I get an error message
+    >> about a missing method, but if I install the same packages from SOURCE, the
+    >> code runs fine.
+    >> 
+    >> I would have thought that installing from source or using the binary
+    >> should look the same.
+    >> 
+    >> Any suggestions on how to proceed to resolve this issue?
+    >> 
+    >> The maintainer of buildmer is also puzzled.
+    >> You can follow the issue in more detail at:
+    >> https://github.com/cvoeten/buildmer/issues/20
+    >> 
+    >> This is way above my paygrade...
+    >> 
+    >> Carl Schwarz
+    >> 
+    >> ------------------------------------------------------
+    >> 
+    >> Tried this on an intel-Mac and arm-Mac with the same result.
+    >> Works fine on Windows machines under both scenarios.
+    >> 
+    >> Here is a test example
+    >> 
+    >> library(buildmer)
+    >> library(lme4)
+    >> 
+    >> nrow <- 100
+    >> 
+    >> test <- data.frame(x01=runif(nrow),
+    >> y=runif(nrow)<.1, block=as.factor(floor((1:nrow)/50)))
+    >> head(test)
+    >> 
+    >> 
+    >> fit.model <- lme4::glmer(y~x01 + (1|block), data=test,
+    >> family=binomial(link="logit"))
+    >> fit.model # this works
+    >> 
+    >> class(fit.model)
+    >> 
+    >> summary(fit.model)
+    >> # gives the following error message
+    >> Error in diag(from, names = FALSE) : object 'dgeMatrix_getDiag' not found
+    >> 
+    >> A pdf document showing output is attached (shows the sessionInfo etc).
+    >> 
+    >> When you install the buildmer and Matrix packages from SOURCE, it runs fine.
+    >> 
+    >> I've tried all combinations of installing binary/source and only if both
+    >> packages (Matrix and buidmer) are installed from source, does the code run.
+    >> 
+    >> Same issue on an intel-Mac.
+    >> Same issue when running under the R directly rather than Rstudio on a Mac.
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Wed Oct 19 09:45:34 2022
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Wed, 19 Oct 2022 09:45:34 +0200
+Subject: [R-pkg-devel] Error when install binary from CRAN but not if
+ install from source - Macintoh, lme4, Matrix, buildmer
+In-Reply-To: <25423.43427.527855.288051@stat.math.ethz.ch>
+References: <CADtpigZfFG8oNO0NF2g6tku2whAFL2ycF_2JbWSL=AGkRf2F5w@mail.gmail.com>
+ <485893d7-d898-0f04-957d-a81d5f6e5d03@gmail.com>
+ <25423.43427.527855.288051@stat.math.ethz.ch>
+Message-ID: <14101416-4d54-23d8-3b23-4271c9fe4a6d@statistik.tu-dortmund.de>
+
+Please let the Simon (Mac maintainer for CRAN) know.
+For Windows, the revdeps get rebuild automatically.
+
+Best,
+Uwe Ligges
+
+
+On 19.10.2022 09:39, Martin Maechler wrote:
+>>>>>> Duncan Murdoch
+>>>>>>      on Tue, 18 Oct 2022 15:17:33 -0400 writes:
+> 
+>      > I see the same thing.  This sounds like a problem in the handling of
+>      > methods that has been discussed somewhat recently:
+> 
+>      > https://stat.ethz.ch/pipermail/r-devel/2022-September/081971.html
+> 
+>      > The problem is that when the binary is built, some code from other
+>      > packages is kept as part of it.  When that other package is updated, you
+>      > need a new source install of your own package (or a rebuild at CRAN to
+>      > replace the binary) to cache the new code.
+> 
+>      > This can also be done explicitly by package startup code; I think this
+>      > thread
+> 
+>      > https://stat.ethz.ch/pipermail/r-package-devel/2022q3/008481.html
+> 
+>      > turned out to be a case where rstan was caching something, and an update
+>      > to ggplot2 didn't work with the cached data.  Given the error message,
+>      > your issue sounds more like the first one.
+> 
+>      > I don't recall if there was a resolution.  Maybe you can ask the CRAN
+>      > maintainers to rebuild buildmer.
+> 
+>      > Duncan Murdoch
+> 
+> Yes, thank you, Duncan!
+> 
+> The binary version of 'builmer' (or also lme4 ?) must have been created
+> with an older version of Matrix  (which did not have the
+> dgeMatrix_getDiag C code)  and the respective maintainer of the
+> binary builds (*) must rebuild the binary versions of those
+> Matrix-reverse-dependant packages,
+> ---
+> *) in this case the macOS ones (both for Intel and ARM Macs)
+> 
+> Martin Maechler
+> (maintainer of Matrix)
+> 
+> 
+> 
+> 
+> 
+> 
+> 
+> 
+>      > On 18/10/2022 2:51 p.m., Carl Schwarz wrote:
+>      >> I've run into a problem where if you install the lme4, Matrix, and buildmer
+>      >> packages using the binaries from CRAN on a Mac, I get an error message
+>      >> about a missing method, but if I install the same packages from SOURCE, the
+>      >> code runs fine.
+>      >>
+>      >> I would have thought that installing from source or using the binary
+>      >> should look the same.
+>      >>
+>      >> Any suggestions on how to proceed to resolve this issue?
+>      >>
+>      >> The maintainer of buildmer is also puzzled.
+>      >> You can follow the issue in more detail at:
+>      >> https://github.com/cvoeten/buildmer/issues/20
+>      >>
+>      >> This is way above my paygrade...
+>      >>
+>      >> Carl Schwarz
+>      >>
+>      >> ------------------------------------------------------
+>      >>
+>      >> Tried this on an intel-Mac and arm-Mac with the same result.
+>      >> Works fine on Windows machines under both scenarios.
+>      >>
+>      >> Here is a test example
+>      >>
+>      >> library(buildmer)
+>      >> library(lme4)
+>      >>
+>      >> nrow <- 100
+>      >>
+>      >> test <- data.frame(x01=runif(nrow),
+>      >> y=runif(nrow)<.1, block=as.factor(floor((1:nrow)/50)))
+>      >> head(test)
+>      >>
+>      >>
+>      >> fit.model <- lme4::glmer(y~x01 + (1|block), data=test,
+>      >> family=binomial(link="logit"))
+>      >> fit.model # this works
+>      >>
+>      >> class(fit.model)
+>      >>
+>      >> summary(fit.model)
+>      >> # gives the following error message
+>      >> Error in diag(from, names = FALSE) : object 'dgeMatrix_getDiag' not found
+>      >>
+>      >> A pdf document showing output is attached (shows the sessionInfo etc).
+>      >>
+>      >> When you install the buildmer and Matrix packages from SOURCE, it runs fine.
+>      >>
+>      >> I've tried all combinations of installing binary/source and only if both
+>      >> packages (Matrix and buidmer) are installed from source, does the code run.
+>      >>
+>      >> Same issue on an intel-Mac.
+>      >> Same issue when running under the R directly rather than Rstudio on a Mac.
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Oct 19 20:55:24 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 19 Oct 2022 14:55:24 -0400
+Subject: [R-pkg-devel] Error when install binary from CRAN but not if
+ install from source - Macintoh, lme4, Matrix, buildmer
+In-Reply-To: <25423.43427.527855.288051@stat.math.ethz.ch>
+References: <CADtpigZfFG8oNO0NF2g6tku2whAFL2ycF_2JbWSL=AGkRf2F5w@mail.gmail.com>
+ <485893d7-d898-0f04-957d-a81d5f6e5d03@gmail.com>
+ <25423.43427.527855.288051@stat.math.ethz.ch>
+Message-ID: <c9086e98-79f6-27b2-748b-40bf98afe70d@gmail.com>
+
+It seems that this could be mostly avoided if instead of caching copies 
+of Matrix methods when buildmer was installed, R would cache promises to 
+get those methods.  Then if the method for some particular signature 
+changed, on first use buildmer would retrieve the current version.
+
+There would still be a problem if Matrix completely dropped a method or 
+it migrated to a different package, but I think that's less frequent 
+than a change to the internal implementation.
+
+Has any thought been given to making this change for R 4.3.0?
+
+Duncan Murdoch
+
+
+
+On 19/10/2022 3:39 a.m., Martin Maechler wrote:
+>>>>>> Duncan Murdoch
+>>>>>>      on Tue, 18 Oct 2022 15:17:33 -0400 writes:
+> 
+>      > I see the same thing.  This sounds like a problem in the handling of
+>      > methods that has been discussed somewhat recently:
+> 
+>      > https://stat.ethz.ch/pipermail/r-devel/2022-September/081971.html
+> 
+>      > The problem is that when the binary is built, some code from other
+>      > packages is kept as part of it.  When that other package is updated, you
+>      > need a new source install of your own package (or a rebuild at CRAN to
+>      > replace the binary) to cache the new code.
+> 
+>      > This can also be done explicitly by package startup code; I think this
+>      > thread
+> 
+>      > https://stat.ethz.ch/pipermail/r-package-devel/2022q3/008481.html
+> 
+>      > turned out to be a case where rstan was caching something, and an update
+>      > to ggplot2 didn't work with the cached data.  Given the error message,
+>      > your issue sounds more like the first one.
+> 
+>      > I don't recall if there was a resolution.  Maybe you can ask the CRAN
+>      > maintainers to rebuild buildmer.
+> 
+>      > Duncan Murdoch
+> 
+> Yes, thank you, Duncan!
+> 
+> The binary version of 'builmer' (or also lme4 ?) must have been created
+> with an older version of Matrix  (which did not have the
+> dgeMatrix_getDiag C code)  and the respective maintainer of the
+> binary builds (*) must rebuild the binary versions of those
+> Matrix-reverse-dependant packages,
+> ---
+> *) in this case the macOS ones (both for Intel and ARM Macs)
+> 
+> Martin Maechler
+> (maintainer of Matrix)
+> 
+> 
+> 
+> 
+> 
+> 
+> 
+> 
+>      > On 18/10/2022 2:51 p.m., Carl Schwarz wrote:
+>      >> I've run into a problem where if you install the lme4, Matrix, and buildmer
+>      >> packages using the binaries from CRAN on a Mac, I get an error message
+>      >> about a missing method, but if I install the same packages from SOURCE, the
+>      >> code runs fine.
+>      >>
+>      >> I would have thought that installing from source or using the binary
+>      >> should look the same.
+>      >>
+>      >> Any suggestions on how to proceed to resolve this issue?
+>      >>
+>      >> The maintainer of buildmer is also puzzled.
+>      >> You can follow the issue in more detail at:
+>      >> https://github.com/cvoeten/buildmer/issues/20
+>      >>
+>      >> This is way above my paygrade...
+>      >>
+>      >> Carl Schwarz
+>      >>
+>      >> ------------------------------------------------------
+>      >>
+>      >> Tried this on an intel-Mac and arm-Mac with the same result.
+>      >> Works fine on Windows machines under both scenarios.
+>      >>
+>      >> Here is a test example
+>      >>
+>      >> library(buildmer)
+>      >> library(lme4)
+>      >>
+>      >> nrow <- 100
+>      >>
+>      >> test <- data.frame(x01=runif(nrow),
+>      >> y=runif(nrow)<.1, block=as.factor(floor((1:nrow)/50)))
+>      >> head(test)
+>      >>
+>      >>
+>      >> fit.model <- lme4::glmer(y~x01 + (1|block), data=test,
+>      >> family=binomial(link="logit"))
+>      >> fit.model # this works
+>      >>
+>      >> class(fit.model)
+>      >>
+>      >> summary(fit.model)
+>      >> # gives the following error message
+>      >> Error in diag(from, names = FALSE) : object 'dgeMatrix_getDiag' not found
+>      >>
+>      >> A pdf document showing output is attached (shows the sessionInfo etc).
+>      >>
+>      >> When you install the buildmer and Matrix packages from SOURCE, it runs fine.
+>      >>
+>      >> I've tried all combinations of installing binary/source and only if both
+>      >> packages (Matrix and buidmer) are installed from source, does the code run.
+>      >>
+>      >> Same issue on an intel-Mac.
+>      >> Same issue when running under the R directly rather than Rstudio on a Mac.
+
+
+From v|ncent@p|@gno| @end|ng |rom gm@||@com  Thu Oct 20 00:39:57 2022
+From: v|ncent@p|@gno| @end|ng |rom gm@||@com (Vincent Plagnol)
+Date: Wed, 19 Oct 2022 23:39:57 +0100
+Subject: [R-pkg-devel] R package build- C compilation issue related to math.h
+Message-ID: <CAJ0YOWiTFYMTb9DqAZ1bUggLH0LkiBbDXOKYFNCcZJqL2WjJSg@mail.gmail.com>
+
+Dear all at R-package-devel,
+
+I am struggling with a R package build.
+It builds fine on my mac, which is my usual work environment. But when I
+submit to CRAN, while the windows version is fine, the debian version fails
+with a cryptic message:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+** installing *source* package ?ExomeDepth? ...** using staged
+installation** libsg++-12  -std=gnu++14 -I"/home/hornik/tmp/R/include"
+-DNDEBUG   -I/usr/local/include -DUSE_TYPE_CHECKING_STRICT
+-D_FORTIFY_SOURCE=2   -fpic  -g -O2 -Wall -pedantic -mtune=native  -c
+CNV_estimate.cpp -o CNV_estimate.ogcc-12  -I"/home/hornik/tmp/R/include"
+-DNDEBUG   -I/usr/local/include -DUSE_TYPE_CHECKING_STRICT
+-D_FORTIFY_SOURCE=2   -fpic  -g -O2 -Wall -Wstrict-prototypes -pedantic
+-mtune=native  -c ExomeDepth_init.c -o ExomeDepth_init.ogcc-12
+ -I"/home/hornik/tmp/R/include" -DNDEBUG   -I/usr/local/include
+-DUSE_TYPE_CHECKING_STRICT -D_FORTIFY_SOURCE=2   -fpic  -g -O2 -Wall
+-Wstrict-prototypes -pedantic -mtune=native  -c VP_gamma.c -o VP_gamma.oIn
+file included from gsl_math.h:22,                 from
+VP_gamma.c:23:/usr/include/x86_64-linux-gnu/bits/mathcalls.h:85:1: error:
+expected ?;? before ?extern?   85 | __MATHCALL_VEC (acosh,, (_Mdouble_
+__x));      |
+^~~~~~~~~~~~~~/usr/include/x86_64-linux-gnu/bits/mathcalls.h:87:1: error:
+expected ?;? before ?extern?   87 | __MATHCALL_VEC (asinh,, (_Mdouble_
+__x));      | ^~~~~~~~~~~~~~*
+
+
+It is painful to debug because I don't have a debian machine. Furthermore
+the issue seems to be in the file called at line 22 of gsl_math.sh which is
+#include <math.h>
+These are rather arcane (to me) building blocks of C and I don't get why it
+would suddenly create some issue on Debian (but not on mac or windows).
+
+My issue is perhaps that I copied substantial amount of the GSL library (as
+opposed to using it as dependency) but it would be painful to do otherwise
+now (this is an old package that has started to complain only recently).
+
+Any and all advice is welcome to help me interpret what I see here.
+
+Thanks,
+
+Vincent
+
+	[[alternative HTML version deleted]]
+
+
+From @kw@|mmo @end|ng |rom gm@||@com  Thu Oct 20 02:03:34 2022
+From: @kw@|mmo @end|ng |rom gm@||@com (Andrew Simmons)
+Date: Wed, 19 Oct 2022 20:03:34 -0400
+Subject: [R-pkg-devel] R package build- C compilation issue related to
+ math.h
+In-Reply-To: <CAJ0YOWiTFYMTb9DqAZ1bUggLH0LkiBbDXOKYFNCcZJqL2WjJSg@mail.gmail.com>
+References: <CAJ0YOWiTFYMTb9DqAZ1bUggLH0LkiBbDXOKYFNCcZJqL2WjJSg@mail.gmail.com>
+Message-ID: <CAPcHnpQnuivdJomDYk2quL0wpnmHGSb8QYTGeXOghQzudWrF2g@mail.gmail.com>
+
+You could install VirtualBox if you wanted to test it yourself, or if you
+have the tarball available online somewhere, I can try building it.
+
+On Wed., Oct. 19, 2022, 19:57 Vincent Plagnol, <vincent.plagnol at gmail.com>
+wrote:
+
+> Dear all at R-package-devel,
+>
+> I am struggling with a R package build.
+> It builds fine on my mac, which is my usual work environment. But when I
+> submit to CRAN, while the windows version is fine, the debian version fails
+> with a cryptic message:
+>
+>
+>
+>
+>
+>
+>
+>
+>
+>
+>
+>
+>
+>
+> ** installing *source* package ?ExomeDepth? ...** using staged
+> installation** libsg++-12  -std=gnu++14 -I"/home/hornik/tmp/R/include"
+> -DNDEBUG   -I/usr/local/include -DUSE_TYPE_CHECKING_STRICT
+> -D_FORTIFY_SOURCE=2   -fpic  -g -O2 -Wall -pedantic -mtune=native  -c
+> CNV_estimate.cpp -o CNV_estimate.ogcc-12  -I"/home/hornik/tmp/R/include"
+> -DNDEBUG   -I/usr/local/include -DUSE_TYPE_CHECKING_STRICT
+> -D_FORTIFY_SOURCE=2   -fpic  -g -O2 -Wall -Wstrict-prototypes -pedantic
+> -mtune=native  -c ExomeDepth_init.c -o ExomeDepth_init.ogcc-12
+>  -I"/home/hornik/tmp/R/include" -DNDEBUG   -I/usr/local/include
+> -DUSE_TYPE_CHECKING_STRICT -D_FORTIFY_SOURCE=2   -fpic  -g -O2 -Wall
+> -Wstrict-prototypes -pedantic -mtune=native  -c VP_gamma.c -o VP_gamma.oIn
+> file included from gsl_math.h:22,                 from
+> VP_gamma.c:23:/usr/include/x86_64-linux-gnu/bits/mathcalls.h:85:1: error:
+> expected ?;? before ?extern?   85 | __MATHCALL_VEC (acosh,, (_Mdouble_
+> __x));      |
+> ^~~~~~~~~~~~~~/usr/include/x86_64-linux-gnu/bits/mathcalls.h:87:1: error:
+> expected ?;? before ?extern?   87 | __MATHCALL_VEC (asinh,, (_Mdouble_
+> __x));      | ^~~~~~~~~~~~~~*
+>
+>
+> It is painful to debug because I don't have a debian machine. Furthermore
+> the issue seems to be in the file called at line 22 of gsl_math.sh which is
+> #include <math.h>
+> These are rather arcane (to me) building blocks of C and I don't get why it
+> would suddenly create some issue on Debian (but not on mac or windows).
+>
+> My issue is perhaps that I copied substantial amount of the GSL library (as
+> opposed to using it as dependency) but it would be painful to do otherwise
+> now (this is an old package that has started to complain only recently).
+>
+> Any and all advice is welcome to help me interpret what I see here.
+>
+> Thanks,
+>
+> Vincent
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
