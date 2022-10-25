@@ -4420,3 +4420,54 @@ which should give you plenty of examples.
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From ||one| @end|ng |rom r@tud|o@com  Mon Oct 24 13:47:34 2022
+From: ||one| @end|ng |rom r@tud|o@com (Lionel Henry)
+Date: Mon, 24 Oct 2022 13:47:34 +0200
+Subject: [R-pkg-devel] Frictionless alternative for `-Wstrict-prototypes`
+Message-ID: <CAJf4E3pCqzbdpTaVWZyS1b9xntge+5nsQ0kS47UBwqjxUzNpqQ@mail.gmail.com>
+
+Davis Vaughan and I were looking into the `-Wstrict-prototypes`
+warnings for C code that were recently added to the R-devel checks. We
+did a little research and found that these warnings are intended to
+catch old-style definitions and declarations that were deprecated a
+long time ago. This includes:
+
+1. Unspecified types like `void fn(x, y);`
+2. Unspecified parameter lists like `void fn();`.
+
+We also found:
+
+- That only unspecified types (case 1) will become defunct. For
+  unspecified parameter lists (case 2), it was announced recently that
+  the C standard committee has decided to simply change the meaning to
+  "no arguments" in C23. This aligns with what most people think it
+  means, and is what C++ does. See item 13 of page 130 in the C23
+  working draft at https://open-std.org/JTC1/SC22/WG14/www/docs/n3054.pdf.
+
+- The new `-Wdeprecated-non-prototype` option for clang-15 does not
+  warn for empty parameter lists, allowing for a smooth transition
+  that allows this widespread usage.
+
+Since the no arguments case is both incredibly common and will become
+fully legal C syntax in a close future, it seems it might not be worth
+it to require all packages to update their code to an intermediary
+form that reads less well, is not as intuitive to most people (and so
+might crop up back in further updates), and will become standard in
+the future anyway.
+
+Perhaps a good course of action would be:
+
+- Using `-Wno-strict-prototypes` to disable the stringent checks.
+
+- Enabling the new `-Wdeprecated-non-prototype` in clang to catch
+  old-style definitions and declarations.
+
+This way CRAN would be able to catch deprecated syntax while allowing
+the soon-to-be-legal syntax of empty parameter lists. We hope that
+this would mean less code churn on CRAN, which means less work for the
+CRAN maintainers as well as for the maintainers of CRAN packages.
+
+Best,
+Lionel & Davis
+
+
