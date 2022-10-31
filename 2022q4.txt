@@ -5123,3 +5123,132 @@ With regards,
 Martin
 
 
+From r m@iii@g oii @be@@@ch  Sun Oct 30 14:48:05 2022
+From: r m@iii@g oii @be@@@ch (r m@iii@g oii @be@@@ch)
+Date: Sun, 30 Oct 2022 14:48:05 +0100
+Subject: [R-pkg-devel] Latex issue on CRAN: Package pdftex.def Error
+Message-ID: <C6BE8AAE-92A0-4FD4-9224-C316E1D60314@nbenn.ch>
+
+Dear list
+
+Trying to push a fix to CRAN, I?m now running into a Latex issue. I can neither relate the issue I?m trying to resolve, nor my fix, to this new problem, so I?m a bit lost (and slightly frustrated).
+
+I cannot reproduce this specific issue anywhere, neither locally (macOS), nor on win devel, r-hub and Github (there are some other issues on Gh and r-hub, but I don?t believe them to be relevant here).
+
+All I have to go on is:
+
+- A WARNING in ?checking PDF version of manual?: LaTeX errors found: ! Package pdftex.def Error: File `...' not found: using draft setting.
+- An ERROR in ?checking PDF version of manual without index?
+- A NOTE in ?checking for non-standard things in the check directory?: Found the following files/directories: ?...-manual.tex?
+
+It seems like when building the PDF manual, an image that should be included is not found and then things fall apart, causing both the error and note. For all I know, the image should be there unter `man/figures/`.
+
+The problem is showing up in the same way for both ?Windows? and ?Debian? (with slightly different notes due to intermediate files not being cleaned up properly).
+
+Have there been and Latex-related changes to CRAN recently? Are others seeing similar problems? Any ideas what could be causing this?
+
+For completeness: https://win-builder.r-project.org/incoming_pretest/ricu_0.5.4_20221030_131320/
+
+Best,
+Nicolas 
+
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sun Oct 30 15:00:05 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sun, 30 Oct 2022 17:00:05 +0300
+Subject: [R-pkg-devel] Latex issue on CRAN: Package pdftex.def Error
+In-Reply-To: <C6BE8AAE-92A0-4FD4-9224-C316E1D60314@nbenn.ch>
+References: <C6BE8AAE-92A0-4FD4-9224-C316E1D60314@nbenn.ch>
+Message-ID: <20221030170005.41ef0b2f@Tarkus>
+
+? Sun, 30 Oct 2022 14:48:05 +0100
+r at nbenn.ch ?????:
+
+> It seems like when building the PDF manual, an image that should be
+> included is not found and then things fall apart, causing both the
+> error and note. For all I know, the image should be there unter
+> `man/figures/`.
+
+Is it the following change?
+
+https://github.com/eth-mds/ricu/commit/b4ac31a2cc22da236e56ce9875b2d799ae172d46
+
+The updated Rd file now says "\figure{man/figures/sofa-sep-3-1.png}".
+According to WRE 2.7, paths to the figures should be specified relative
+to man/figures. In other words, in order to reference
+man/figures/sofa-sep-3-1.png, use \figure{sofa-sep-3-1.png}.
+
+-- 
+Best regards,
+Ivan
+
+
+From cont@ct @end|ng |rom @te|@n@ngr|ck@net  Sun Oct 30 08:56:03 2022
+From: cont@ct @end|ng |rom @te|@n@ngr|ck@net (Stefan Angrick)
+Date: Sun, 30 Oct 2022 16:56:03 +0900
+Subject: [R-pkg-devel] Best way to restore an archived CRAN package
+Message-ID: <d01a36ff-d779-41cc-b3b7-df2414d8cbaf@app.fastmail.com>
+
+Hi,
+
+I'm looking for advice on how to resurrect an archived R package.
+
+I have a couple of scripts that rely on the CC0-licensed BIS package (https://cran.r-project.org/package=BIS) which downloads and parses data from the Bank for International Settlements. The package was archived in 2021, presumably because the format of the source data changed which I imagine caused examples to fail. Writing code to digest the new data format is straightforward, so I'd like to bring the package back. Unfortunately I'm unable to reach the original author, so I'm unsure how to proceed.
+
+Does CRAN allow for people other than the original author to bring back a package? Or would it be preferable to create a new package with a new name? In either case, how would the original package author be acknowledged?
+
+Thanks,
+Stefan
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sun Oct 30 15:58:03 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sun, 30 Oct 2022 17:58:03 +0300
+Subject: [R-pkg-devel] Best way to restore an archived CRAN package
+In-Reply-To: <d01a36ff-d779-41cc-b3b7-df2414d8cbaf@app.fastmail.com>
+References: <d01a36ff-d779-41cc-b3b7-df2414d8cbaf@app.fastmail.com>
+Message-ID: <20221030175803.4106533d@Tarkus>
+
+? Sun, 30 Oct 2022 16:56:03 +0900
+"Stefan Angrick" <contact at stefanangrick.net> ?????:
+
+> Writing code to digest the new data format is straightforward, so I'd
+> like to bring the package back. Unfortunately I'm unable to reach the
+> original author, so I'm unsure how to proceed.
+> 
+> Does CRAN allow for people other than the original author to bring
+> back a package?
+
+According to the CRAN policy [*], it should be possible to submit the
+fixed package under the original name with an explanation that the
+previous maintainer is unavailable:
+
+>> Explain any change in the maintainer?s email address and if possible
+>> send confirmation from the previous address (by a separate email to
+>> CRAN-submissions at R-project.org) or explain why it is not possible.
+
+Disclaimer: I've never done this myself.
+
+For the record, the author's GitHub and Twitter accounts are trivial to
+find; there is a bit of activity in the former (only once in 2022), and
+the last update in the latter was in 2020.
+
+> In either case, how would the original package author be acknowledged?
+
+Make sure to mention Eric Persson in the Authors: field of the
+DESCRIPTION file as a full author, but not the maintainer.
+
+You will also need to make sure that the examples never crash, even if
+there's no connection to the Internet, which may have been part of the
+original reason the package had been archived.
+
+-- 
+Best regards,
+Ivan
+
+[*] https://cran.r-project.org/web/packages/policies.html
+
+
