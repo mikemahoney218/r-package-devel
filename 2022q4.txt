@@ -5306,3 +5306,140 @@ Uwe Ligges
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From @kw@|mmo @end|ng |rom gm@||@com  Fri Nov  4 02:09:42 2022
+From: @kw@|mmo @end|ng |rom gm@||@com (Andrew Simmons)
+Date: Thu, 3 Nov 2022 21:09:42 -0400
+Subject: [R-pkg-devel] Compiled code should not call non-API entry points in
+ R
+Message-ID: <CAPcHnpTdWg4H8a0n3emLBJgdHVZQBVW+BPi75wV4iX-GnNfm8w@mail.gmail.com>
+
+Hi everyone,
+
+
+I had some R code for dealing with connections, and I was using
+summary.connection(). I rewrote it in C, so I was doing something more
+like:
+
+#include <R_ext/Connections.h>
+
+Rconnection Rcon = R_GetConnection(file);
+Rcon->description or Rcon->class
+
+but now, when checking my package, I get the following note:
+
+* checking compiled code ... NOTE
+File 'this.path/libs/x64/this.path.dll':
+  Found non-API call to R: 'R_GetConnection'
+
+Compiled code should not call non-API entry points in R.
+
+See 'Writing portable packages' in the 'Writing R Extensions' manual.
+
+This isn't surprising, <R_ext/Connections.h> (seen here:
+https://github.com/wch/r-source/blob/50ff41b742a1ac655314be5e25897a12d3096661/src/include/R_ext/Connections.h#L21)
+says that it is not part of the R API, and later on says that it is
+subject to change without notice or backwards compatibility.
+
+R_GetConnection was added in R 3.3.0, so I added "Depends: R (>=
+3.3.0)" to my DESCRIPTION, then I added something like this to my
+header:
+
+#if !defined(R_CONNECTIONS_VERSION)
+    #error why is R_CONNECTIONS_VERSION not defined????
+#elif R_CONNECTIONS_VERSION == 1
+    extern Rconnection R_GetConnection(SEXP sConn);
+#else
+    #error this.path is only implemented for R_CONNECTIONS_VERSION 1
+#endif
+
+but the NOTE still remains. I think I've taken all the precautions I
+can, is there anything more I can do? Will I be unable to submit the
+update for my package? Will the CRAN team ignore the NOTE if I explain
+the precautions I added?
+
+
+From edd @end|ng |rom deb|@n@org  Fri Nov  4 02:44:07 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 3 Nov 2022 20:44:07 -0500
+Subject: [R-pkg-devel] 
+ Compiled code should not call non-API entry points in R
+In-Reply-To: <CAPcHnpTdWg4H8a0n3emLBJgdHVZQBVW+BPi75wV4iX-GnNfm8w@mail.gmail.com>
+References: <CAPcHnpTdWg4H8a0n3emLBJgdHVZQBVW+BPi75wV4iX-GnNfm8w@mail.gmail.com>
+Message-ID: <25444.28263.410340.140167@rob.eddelbuettel.com>
+
+
+On 3 November 2022 at 21:09, Andrew Simmons wrote:
+| I had some R code for dealing with connections, and I was using
+| summary.connection(). I rewrote it in C, so I was doing something more
+| like:
+| 
+| #include <R_ext/Connections.h>
+| 
+| Rconnection Rcon = R_GetConnection(file);
+| Rcon->description or Rcon->class
+| 
+| but now, when checking my package, I get the following note:
+| 
+| * checking compiled code ... NOTE
+| File 'this.path/libs/x64/this.path.dll':
+|   Found non-API call to R: 'R_GetConnection'
+| 
+| Compiled code should not call non-API entry points in R.
+| 
+| See 'Writing portable packages' in the 'Writing R Extensions' manual.
+| 
+| This isn't surprising, <R_ext/Connections.h> (seen here:
+| https://github.com/wch/r-source/blob/50ff41b742a1ac655314be5e25897a12d3096661/src/include/R_ext/Connections.h#L21)
+| says that it is not part of the R API, and later on says that it is
+| subject to change without notice or backwards compatibility.
+| 
+| R_GetConnection was added in R 3.3.0, so I added "Depends: R (>=
+| 3.3.0)" to my DESCRIPTION, then I added something like this to my
+| header:
+| 
+| #if !defined(R_CONNECTIONS_VERSION)
+|     #error why is R_CONNECTIONS_VERSION not defined????
+| #elif R_CONNECTIONS_VERSION == 1
+|     extern Rconnection R_GetConnection(SEXP sConn);
+| #else
+|     #error this.path is only implemented for R_CONNECTIONS_VERSION 1
+| #endif
+| 
+| but the NOTE still remains. I think I've taken all the precautions I
+| can, is there anything more I can do? Will I be unable to submit the
+| update for my package? Will the CRAN team ignore the NOTE if I explain
+| the precautions I added?
+
+The R API is owned by R Core. So they can do as they please.
+
+And so they do as they are acutely aware of the cost of maintaining an
+'enlarged surface'. And they try to keep it small. Understandably so.
+
+Some of us package developers have asked for more interfaces. Repeatedly so
+for connections for what is (likely already, else soon) twenty years. Alas...
+
+Then there is https://en.wikipedia.org/wiki/Fundamental_theorem_of_software_engineering
+so eventually we run out of patience.
+
+Hence, as both trial baloons as well as intial use case I published two packages
+  RApiDatetime    exposing some unexported datetime conversion
+  RApiSerialize   exposing some (basic) connections facilities
+
+RApiSerialize really owes a Thank You! to RhpcBLASctl as Junji and Ei-ji
+showed me the way of what one could do here.
+
+Now, do I think these packages are the best answer? Far from it. Vendoring,
+as done here, casts existing interfaces (and behavior) in conrete. It is less
+than ideal. The code can atrophy. But it provides access when those who own
+the access refuse to provide it (for what remain defensible reasons).
+
+All told, not ideal either way. But venues for workarounds exist. So
+sometimes they are taken. Because we can. Just look for the least-evil way.
+
+Dirk
+ 
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
