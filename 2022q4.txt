@@ -5443,3 +5443,79 @@ Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From ||oruppr @end|ng |rom gm@||@com  Fri Nov  4 12:15:36 2022
+From: ||oruppr @end|ng |rom gm@||@com (Florian Rupprecht)
+Date: Fri, 4 Nov 2022 12:15:36 +0100
+Subject: [R-pkg-devel] 
+ Compiled code should not call non-API entry points in R
+In-Reply-To: <CAPcHnpTdWg4H8a0n3emLBJgdHVZQBVW+BPi75wV4iX-GnNfm8w@mail.gmail.com>
+References: <CAPcHnpTdWg4H8a0n3emLBJgdHVZQBVW+BPi75wV4iX-GnNfm8w@mail.gmail.com>
+Message-ID: <CAHTZEhD1KFHvqtCrERQZbVPXWZ6B-=fAwrZ6hasc4N17M427-g@mail.gmail.com>
+
+When a public C interface is missing you could always load and call the R
+interface.
+
+Definitely slower, but the API will be more stable than when vendoring (and
+CRAN will be happier).
+
+Best,
+Florian
+
+
+
+On Fri, Nov 4, 2022, 02:10 Andrew Simmons <akwsimmo at gmail.com> wrote:
+
+> Hi everyone,
+>
+>
+> I had some R code for dealing with connections, and I was using
+> summary.connection(). I rewrote it in C, so I was doing something more
+> like:
+>
+> #include <R_ext/Connections.h>
+>
+> Rconnection Rcon = R_GetConnection(file);
+> Rcon->description or Rcon->class
+>
+> but now, when checking my package, I get the following note:
+>
+> * checking compiled code ... NOTE
+> File 'this.path/libs/x64/this.path.dll':
+>   Found non-API call to R: 'R_GetConnection'
+>
+> Compiled code should not call non-API entry points in R.
+>
+> See 'Writing portable packages' in the 'Writing R Extensions' manual.
+>
+> This isn't surprising, <R_ext/Connections.h> (seen here:
+>
+> https://github.com/wch/r-source/blob/50ff41b742a1ac655314be5e25897a12d3096661/src/include/R_ext/Connections.h#L21
+> )
+> says that it is not part of the R API, and later on says that it is
+> subject to change without notice or backwards compatibility.
+>
+> R_GetConnection was added in R 3.3.0, so I added "Depends: R (>=
+> 3.3.0)" to my DESCRIPTION, then I added something like this to my
+> header:
+>
+> #if !defined(R_CONNECTIONS_VERSION)
+>     #error why is R_CONNECTIONS_VERSION not defined????
+> #elif R_CONNECTIONS_VERSION == 1
+>     extern Rconnection R_GetConnection(SEXP sConn);
+> #else
+>     #error this.path is only implemented for R_CONNECTIONS_VERSION 1
+> #endif
+>
+> but the NOTE still remains. I think I've taken all the precautions I
+> can, is there anything more I can do? Will I be unable to submit the
+> update for my package? Will the CRAN team ignore the NOTE if I explain
+> the precautions I added?
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
