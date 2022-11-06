@@ -5519,3 +5519,312 @@ On Fri, Nov 4, 2022, 02:10 Andrew Simmons <akwsimmo at gmail.com> wrote:
 	[[alternative HTML version deleted]]
 
 
+From jm@yu@n @end|ng |rom out|ook@com  Sat Nov  5 15:41:45 2022
+From: jm@yu@n @end|ng |rom out|ook@com (Jiaming Yuan)
+Date: Sat, 5 Nov 2022 22:41:45 +0800
+Subject: [R-pkg-devel] Examples with CPU time is greater than elapsed time.
+Message-ID: <OS3P286MB085027CB079AAE4DF4FE7FAAF63A9@OS3P286MB0850.JPNP286.PROD.OUTLOOK.COM>
+
+Hi all,
+
+I tried to submit an update to the xgboost package but didn't pass the 
+pre-tests with the following note (solved the other one, but this one is 
+a bit confusing):
+
+```
+Flavor: r-devel-linux-x86_64-debian-gcc
+Check: examples, Result: NOTE
+   Examples with CPU time > 2.5 times elapsed time
+                        user system elapsed ratio
+   cb.gblinear.history 1.454  0.017    0.49 3.002
+
+```
+
+I can't reproduce the note on win-builder: 
+https://win-builder.r-project.org/ as it's running on Windows but the 
+note appears on debian tests. I'm not able to reproduce it on my local 
+machine either with Ubuntu 22.04. I'm wondering what the note is trying 
+to tell me and how can I resolve it with confidence.
+
+
+The full log is here: 
+https://win-builder.r-project.org/incoming_pretest/xgboost_1.7.1.1_20221104_194252/Debian/00check.log 
+.
+
+
+Many thanks!
+
+Jiaming
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Sat Nov  5 19:22:52 2022
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Sat, 5 Nov 2022 11:22:52 -0700
+Subject: [R-pkg-devel] 
+ Examples with CPU time is greater than elapsed time.
+In-Reply-To: <OS3P286MB085027CB079AAE4DF4FE7FAAF63A9@OS3P286MB0850.JPNP286.PROD.OUTLOOK.COM>
+References: <OS3P286MB085027CB079AAE4DF4FE7FAAF63A9@OS3P286MB0850.JPNP286.PROD.OUTLOOK.COM>
+Message-ID: <CAFDcVCS2LHT9a9Q07E4tOqxE8TTGuXZ4NPpUv+S715gF2G6=ZQ@mail.gmail.com>
+
+I think it's because it suggests that the package uses more than 250%
+of CPU load on average, which suggests it runs in parallel with more
+than two parallel workers, which is the upper limit in the CRAN
+Policies (https://cran.r-project.org/web/packages/policies.html);
+
+"If running a package uses multiple threads/cores it must never use
+more than two simultaneously: the check farm is a shared resource and
+will typically be running many checks simultaneously. "
+
+>From the R Internals
+(https://cran.r-project.org/doc/manuals/r-release/R-ints.html):
+
+"_R_CHECK_EXAMPLE_TIMING_CPU_TO_ELAPSED_THRESHOLD_: For checks with
+timings enabled, report examples where the ratio of CPU time to
+elapsed time exceeds this threshold (and the CPU time is at least one
+second). This can help detect the simultaneous use of multiple CPU
+cores. Default: NA."
+
+It looks like CRAN incoming sets
+_R_CHECK_EXAMPLE_TIMING_CPU_TO_ELAPSED_THRESHOLD_=2.5.
+
+If multi-threading is involved, I guess you need to make sure to limit
+it to ~2 parallel threads.
+
+/Henrik
+
+On Sat, Nov 5, 2022 at 11:10 AM Jiaming Yuan <jm.yuan at outlook.com> wrote:
+>
+> Hi all,
+>
+> I tried to submit an update to the xgboost package but didn't pass the
+> pre-tests with the following note (solved the other one, but this one is
+> a bit confusing):
+>
+> ```
+> Flavor: r-devel-linux-x86_64-debian-gcc
+> Check: examples, Result: NOTE
+>    Examples with CPU time > 2.5 times elapsed time
+>                         user system elapsed ratio
+>    cb.gblinear.history 1.454  0.017    0.49 3.002
+>
+> ```
+>
+> I can't reproduce the note on win-builder:
+> https://win-builder.r-project.org/ as it's running on Windows but the
+> note appears on debian tests. I'm not able to reproduce it on my local
+> machine either with Ubuntu 22.04. I'm wondering what the note is trying
+> to tell me and how can I resolve it with confidence.
+>
+>
+> The full log is here:
+> https://win-builder.r-project.org/incoming_pretest/xgboost_1.7.1.1_20221104_194252/Debian/00check.log
+> .
+>
+>
+> Many thanks!
+>
+> Jiaming
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sat Nov  5 19:30:28 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sat, 5 Nov 2022 21:30:28 +0300
+Subject: [R-pkg-devel] 
+ Examples with CPU time is greater than elapsed time.
+In-Reply-To: <OS3P286MB085027CB079AAE4DF4FE7FAAF63A9@OS3P286MB0850.JPNP286.PROD.OUTLOOK.COM>
+References: <OS3P286MB085027CB079AAE4DF4FE7FAAF63A9@OS3P286MB0850.JPNP286.PROD.OUTLOOK.COM>
+Message-ID: <20221105213028.10861c68@Tarkus>
+
+On Sat, 5 Nov 2022 22:41:45 +0800
+Jiaming Yuan <jm.yuan at outlook.com> wrote:
+
+>    Examples with CPU time > 2.5 times elapsed time
+
+> I'm wondering what the note is trying to tell me and how can I
+> resolve it with confidence.
+
+Henrik Bengtsson already gave a good explanation of the problem.
+
+Not sure what exactly is the right thing to do, but one way to get rid
+of this warning could be to pass the argument nthread =
+min(parallel::detectCores(), 2) to the xgb.cv invocation (if you
+already use the parallel package anywhere) or maybe to hard-code the
+use of only one thread in the example.
+
+-- 
+Best regards,
+Ivan
+
+
+From d@v|dhughjone@ @end|ng |rom gm@||@com  Sat Nov  5 20:32:29 2022
+From: d@v|dhughjone@ @end|ng |rom gm@||@com (David Hugh-Jones)
+Date: Sat, 5 Nov 2022 19:32:29 +0000
+Subject: [R-pkg-devel] Writing to users config directory for CRAN package
+Message-ID: <CAARY7kiaUcEpf3h3eCbA=cOZaDJCsY-s-YqWScz4DTALu9eC3Q@mail.gmail.com>
+
+Hi,
+
+I'm considering submitting the package onetime (
+https://github.com/hughjonesd/onetime/) to CRAN.
+
+Onetime has functions for showing a message or warning only once (ever per
+user). It does this by writing to a file in the user's configuration
+directory, as reported by rappdirs::user_config_dir().
+
+I know that CRAN has rules about not writing to the user's file system
+without permission. What would be an appropriate way to do this? For
+example, the function onetime_message_confirm() prints a message and then
+asks "Show this again?[yN]" Would a "no" count as permission to write the
+file?
+
+Cheers,
+David
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Sat Nov  5 21:29:20 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Sat, 5 Nov 2022 15:29:20 -0500
+Subject: [R-pkg-devel] 
+ Writing to users config directory for CRAN package
+In-Reply-To: <CAARY7kiaUcEpf3h3eCbA=cOZaDJCsY-s-YqWScz4DTALu9eC3Q@mail.gmail.com>
+References: <CAARY7kiaUcEpf3h3eCbA=cOZaDJCsY-s-YqWScz4DTALu9eC3Q@mail.gmail.com>
+Message-ID: <25446.51104.360520.856815@rob.eddelbuettel.com>
+
+
+On 5 November 2022 at 19:32, David Hugh-Jones wrote:
+| I'm considering submitting the package onetime (
+| https://github.com/hughjonesd/onetime/) to CRAN.
+| 
+| Onetime has functions for showing a message or warning only once (ever per
+| user). It does this by writing to a file in the user's configuration
+| directory, as reported by rappdirs::user_config_dir().
+
+There is a base R function tools::R_user_dir() which I use in a few packages
+along with packageName() to store config information across sessions. A quick
+search at GitHub's 'cran' org mirroring CRAN finds 110 hits:
+
+   https://github.com/search?q=org%3Acran+R_user_dir&type=code
+
+You could keep a hashmap in that directory, and maybe (before it has been
+written a first time) alert the user that you cannot write without (initial)
+permission.  As I recall, the idea behind the (sensible) CRAN Policy is to
+not litter user directories with random files with the user knowing.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From jm@yu@n @end|ng |rom out|ook@com  Sat Nov  5 22:03:55 2022
+From: jm@yu@n @end|ng |rom out|ook@com (Jiaming Yuan)
+Date: Sun, 6 Nov 2022 05:03:55 +0800
+Subject: [R-pkg-devel] 
+ Examples with CPU time is greater than elapsed time.
+In-Reply-To: <CAFDcVCS2LHT9a9Q07E4tOqxE8TTGuXZ4NPpUv+S715gF2G6=ZQ@mail.gmail.com>
+References: <OS3P286MB085027CB079AAE4DF4FE7FAAF63A9@OS3P286MB0850.JPNP286.PROD.OUTLOOK.COM>
+ <CAFDcVCS2LHT9a9Q07E4tOqxE8TTGuXZ4NPpUv+S715gF2G6=ZQ@mail.gmail.com>
+Message-ID: <TYCP286MB08635B2EDE4411360B339052F63A9@TYCP286MB0863.JPNP286.PROD.OUTLOOK.COM>
+
+Thank you for the detailed explanation, that's really helpful!
+
+On 11/6/22 02:22, Henrik Bengtsson wrote:
+> I think it's because it suggests that the package uses more than 250%
+> of CPU load on average, which suggests it runs in parallel with more
+> than two parallel workers, which is the upper limit in the CRAN
+> Policies (https://cran.r-project.org/web/packages/policies.html);
+>
+> "If running a package uses multiple threads/cores it must never use
+> more than two simultaneously: the check farm is a shared resource and
+> will typically be running many checks simultaneously. "
+>
+>  From the R Internals
+> (https://cran.r-project.org/doc/manuals/r-release/R-ints.html):
+>
+> "_R_CHECK_EXAMPLE_TIMING_CPU_TO_ELAPSED_THRESHOLD_: For checks with
+> timings enabled, report examples where the ratio of CPU time to
+> elapsed time exceeds this threshold (and the CPU time is at least one
+> second). This can help detect the simultaneous use of multiple CPU
+> cores. Default: NA."
+>
+> It looks like CRAN incoming sets
+> _R_CHECK_EXAMPLE_TIMING_CPU_TO_ELAPSED_THRESHOLD_=2.5.
+>
+> If multi-threading is involved, I guess you need to make sure to limit
+> it to ~2 parallel threads.
+>
+> /Henrik
+>
+> On Sat, Nov 5, 2022 at 11:10 AM Jiaming Yuan <jm.yuan at outlook.com> wrote:
+>> Hi all,
+>>
+>> I tried to submit an update to the xgboost package but didn't pass the
+>> pre-tests with the following note (solved the other one, but this one is
+>> a bit confusing):
+>>
+>> ```
+>> Flavor: r-devel-linux-x86_64-debian-gcc
+>> Check: examples, Result: NOTE
+>>     Examples with CPU time > 2.5 times elapsed time
+>>                          user system elapsed ratio
+>>     cb.gblinear.history 1.454  0.017    0.49 3.002
+>>
+>> ```
+>>
+>> I can't reproduce the note on win-builder:
+>> https://win-builder.r-project.org/ as it's running on Windows but the
+>> note appears on debian tests. I'm not able to reproduce it on my local
+>> machine either with Ubuntu 22.04. I'm wondering what the note is trying
+>> to tell me and how can I resolve it with confidence.
+>>
+>>
+>> The full log is here:
+>> https://win-builder.r-project.org/incoming_pretest/xgboost_1.7.1.1_20221104_194252/Debian/00check.log
+>> .
+>>
+>>
+>> Many thanks!
+>>
+>> Jiaming
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From jm@yu@n @end|ng |rom out|ook@com  Sat Nov  5 22:07:49 2022
+From: jm@yu@n @end|ng |rom out|ook@com (Jiaming Yuan)
+Date: Sun, 6 Nov 2022 05:07:49 +0800
+Subject: [R-pkg-devel] 
+ Examples with CPU time is greater than elapsed time.
+In-Reply-To: <20221105213028.10861c68@Tarkus>
+References: <OS3P286MB085027CB079AAE4DF4FE7FAAF63A9@OS3P286MB0850.JPNP286.PROD.OUTLOOK.COM>
+ <20221105213028.10861c68@Tarkus>
+Message-ID: <TYCP286MB0863F129E32B83DCC3C9AA3EF63A9@TYCP286MB0863.JPNP286.PROD.OUTLOOK.COM>
+
+Thank you for the suggestions! I think I will hard-code the number of 
+threads to 2 in that specific example.
+
+On 11/6/22 02:30, Ivan Krylov wrote:
+> On Sat, 5 Nov 2022 22:41:45 +0800
+> Jiaming Yuan <jm.yuan at outlook.com> wrote:
+>
+>>     Examples with CPU time > 2.5 times elapsed time
+>> I'm wondering what the note is trying to tell me and how can I
+>> resolve it with confidence.
+> Henrik Bengtsson already gave a good explanation of the problem.
+>
+> Not sure what exactly is the right thing to do, but one way to get rid
+> of this warning could be to pass the argument nthread =
+> min(parallel::detectCores(), 2) to the xgb.cv invocation (if you
+> already use the parallel package anywhere) or maybe to hard-code the
+> use of only one thread in the example.
+>
+
+
