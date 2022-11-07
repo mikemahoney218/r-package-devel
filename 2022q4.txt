@@ -5828,3 +5828,148 @@ On 11/6/22 02:30, Ivan Krylov wrote:
 >
 
 
+From A@J@God|rey @end|ng |rom m@@@ey@@c@nz  Sun Nov  6 07:32:55 2022
+From: A@J@God|rey @end|ng |rom m@@@ey@@c@nz (Jonathan Godfrey)
+Date: Sun, 6 Nov 2022 06:32:55 +0000
+Subject: [R-pkg-devel] FW: Writing to users config directory for CRAN package
+In-Reply-To: <MEAPR01MB3829B8B0F7F587BB4BB2BF5E933D9@MEAPR01MB3829.ausprd01.prod.outlook.com>
+References: <CAARY7kiaUcEpf3h3eCbA=cOZaDJCsY-s-YqWScz4DTALu9eC3Q@mail.gmail.com>
+ <25446.51104.360520.856815@rob.eddelbuettel.com>
+ <MEAPR01MB3829B8B0F7F587BB4BB2BF5E933D9@MEAPR01MB3829.ausprd01.prod.outlook.com>
+Message-ID: <MEAPR01MB382908AB14EE517DF0FDC7AA933D9@MEAPR01MB3829.ausprd01.prod.outlook.com>
+
+
+Further to Dirk's advice, my BrailleR package creates a folder (dumping ground). Users are asked if they want to use  one of my choosing, or a temporary one. If they choose temporary, they get asked again and again until they cave in to my wishes!
+
+
+BrailleR also writes files to the current working directory, but these are done because the user has chosen to run a command that has the purpose of creating files. I put a warning in the documentation for such functions.
+
+I'm not suggesting my solution is the gold standard, but it is working well enough to keep the CRAN checkers happy.
+
+Jonathan
+
+
+-----Original Message-----
+From: R-package-devel <r-package-devel-bounces at r-project.org> On Behalf Of Dirk Eddelbuettel
+Sent: Sunday, 6 November 2022 9:29 am
+To: David Hugh-Jones <davidhughjones at gmail.com>
+Cc: R package devel <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Writing to users config directory for CRAN package
+
+
+On 5 November 2022 at 19:32, David Hugh-Jones wrote:
+| I'm considering submitting the package onetime (
+| https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fgithub.com%2Fhughjonesd%2Fonetime%2F&amp;data=05%7C01%7Ca.j.godfrey%40massey.ac.nz%7C33d5f70186284052580908dabf6c7826%7C388728e1bbd0437898dcf8682e644300%7C1%7C0%7C638032769864581576%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=EbBh9XCyyKsRTACo7eLxASZW3pm%2BTrXxzKjjnxBa%2Fpo%3D&amp;reserved=0) to CRAN.
+| 
+| Onetime has functions for showing a message or warning only once (ever 
+| per user). It does this by writing to a file in the user's 
+| configuration directory, as reported by rappdirs::user_config_dir().
+
+There is a base R function tools::R_user_dir() which I use in a few packages along with packageName() to store config information across sessions. A quick search at GitHub's 'cran' org mirroring CRAN finds 110 hits:
+
+   https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fgithub.com%2Fsearch%3Fq%3Dorg%253Acran%2BR_user_dir%26type%3Dcode&amp;data=05%7C01%7Ca.j.godfrey%40massey.ac.nz%7C33d5f70186284052580908dabf6c7826%7C388728e1bbd0437898dcf8682e644300%7C1%7C0%7C638032769864737810%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=Wlqbm0tZX0h25rm0veh%2F15IAwJ5mqP9VNPUovlaPhdY%3D&amp;reserved=0
+
+You could keep a hashmap in that directory, and maybe (before it has been written a first time) alert the user that you cannot write without (initial) permission.  As I recall, the idea behind the (sensible) CRAN Policy is to not litter user directories with random files with the user knowing.
+
+Dirk
+
+--
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-package-devel&amp;data=05%7C01%7Ca.j.godfrey%40massey.ac.nz%7C33d5f70186284052580908dabf6c7826%7C388728e1bbd0437898dcf8682e644300%7C1%7C0%7C638032769864737810%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=kB8nHrtC5yGEm4tnOTZDOAGT%2FmtDViGblNvieFlZq7g%3D&amp;reserved=0
+
+
+From d@v|dhughjone@ @end|ng |rom gm@||@com  Sun Nov  6 07:41:08 2022
+From: d@v|dhughjone@ @end|ng |rom gm@||@com (David Hugh-Jones)
+Date: Sun, 6 Nov 2022 06:41:08 +0000
+Subject: [R-pkg-devel] FW: Writing to users config directory for CRAN
+ package
+In-Reply-To: <MEAPR01MB382908AB14EE517DF0FDC7AA933D9@MEAPR01MB3829.ausprd01.prod.outlook.com>
+References: <CAARY7kiaUcEpf3h3eCbA=cOZaDJCsY-s-YqWScz4DTALu9eC3Q@mail.gmail.com>
+ <25446.51104.360520.856815@rob.eddelbuettel.com>
+ <MEAPR01MB3829B8B0F7F587BB4BB2BF5E933D9@MEAPR01MB3829.ausprd01.prod.outlook.com>
+ <MEAPR01MB382908AB14EE517DF0FDC7AA933D9@MEAPR01MB3829.ausprd01.prod.outlook.com>
+Message-ID: <CAARY7kjUR4y59_wrgZBgsKmJYhHaYxcK3A=sf=FnYkAhG_yuHQ@mail.gmail.com>
+
+Thank you both. I guess the package can dog food itself by asking one time
+whether it can store its files.
+D
+
+
+
+On Sun, 6 Nov 2022 at 06:33, Jonathan Godfrey <A.J.Godfrey at massey.ac.nz>
+wrote:
+
+>
+> Further to Dirk's advice, my BrailleR package creates a folder (dumping
+> ground). Users are asked if they want to use  one of my choosing, or a
+> temporary one. If they choose temporary, they get asked again and again
+> until they cave in to my wishes!
+>
+>
+> BrailleR also writes files to the current working directory, but these are
+> done because the user has chosen to run a command that has the purpose of
+> creating files. I put a warning in the documentation for such functions.
+>
+> I'm not suggesting my solution is the gold standard, but it is working
+> well enough to keep the CRAN checkers happy.
+>
+> Jonathan
+>
+>
+> -----Original Message-----
+> From: R-package-devel <r-package-devel-bounces at r-project.org> On Behalf
+> Of Dirk Eddelbuettel
+> Sent: Sunday, 6 November 2022 9:29 am
+> To: David Hugh-Jones <davidhughjones at gmail.com>
+> Cc: R package devel <r-package-devel at r-project.org>
+> Subject: Re: [R-pkg-devel] Writing to users config directory for CRAN
+> package
+>
+>
+> On 5 November 2022 at 19:32, David Hugh-Jones wrote:
+> | I'm considering submitting the package onetime (
+> |
+> https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fgithub.com%2Fhughjonesd%2Fonetime%2F&amp;data=05%7C01%7Ca.j.godfrey%40massey.ac.nz%7C33d5f70186284052580908dabf6c7826%7C388728e1bbd0437898dcf8682e644300%7C1%7C0%7C638032769864581576%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=EbBh9XCyyKsRTACo7eLxASZW3pm%2BTrXxzKjjnxBa%2Fpo%3D&amp;reserved=0)
+> to CRAN.
+> |
+> | Onetime has functions for showing a message or warning only once (ever
+> | per user). It does this by writing to a file in the user's
+> | configuration directory, as reported by rappdirs::user_config_dir().
+>
+> There is a base R function tools::R_user_dir() which I use in a few
+> packages along with packageName() to store config information across
+> sessions. A quick search at GitHub's 'cran' org mirroring CRAN finds 110
+> hits:
+>
+>
+> https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fgithub.com%2Fsearch%3Fq%3Dorg%253Acran%2BR_user_dir%26type%3Dcode&amp;data=05%7C01%7Ca.j.godfrey%40massey.ac.nz%7C33d5f70186284052580908dabf6c7826%7C388728e1bbd0437898dcf8682e644300%7C1%7C0%7C638032769864737810%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=Wlqbm0tZX0h25rm0veh%2F15IAwJ5mqP9VNPUovlaPhdY%3D&amp;reserved=0
+>
+> You could keep a hashmap in that directory, and maybe (before it has been
+> written a first time) alert the user that you cannot write without
+> (initial) permission.  As I recall, the idea behind the (sensible) CRAN
+> Policy is to not litter user directories with random files with the user
+> knowing.
+>
+> Dirk
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+>
+> https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-package-devel&amp;data=05%7C01%7Ca.j.godfrey%40massey.ac.nz%7C33d5f70186284052580908dabf6c7826%7C388728e1bbd0437898dcf8682e644300%7C1%7C0%7C638032769864737810%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=kB8nHrtC5yGEm4tnOTZDOAGT%2FmtDViGblNvieFlZq7g%3D&amp;reserved=0
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+-- 
+Sent from Gmail Mobile
+
+	[[alternative HTML version deleted]]
+
+
