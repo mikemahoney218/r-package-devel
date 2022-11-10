@@ -6438,3 +6438,130 @@ much!
 Martin
 
 
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Wed Nov  9 10:51:23 2022
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Wed, 9 Nov 2022 10:51:23 +0100
+Subject: [R-pkg-devel] cross-ref possible ext.pkg's --not mentioned in
+ DESCRIPTION file-- in non-code sections in .Rd files
+In-Reply-To: <CAPcHnpTnQrZ0ohB40geJuAaQhXxiRqJhKAmFQ5yUsmiDEO3R_w@mail.gmail.com>
+References: <4093b254-b157-3a90-9dfc-b28692ca0247@web.de>
+ <CAPcHnpTnQrZ0ohB40geJuAaQhXxiRqJhKAmFQ5yUsmiDEO3R_w@mail.gmail.com>
+Message-ID: <25451.30747.336839.265433@stat.math.ethz.ch>
+
+>>>>> Andrew Simmons 
+>>>>>     on Mon, 7 Nov 2022 12:19:48 -0500 writes:
+
+    > Packages in Suggests and Enhances do not create a circular dependency, only
+    > the packages in the Depends and Imports need to be installed at INSTALL and
+    > loaded at load time. Packages in Suggests and Enhances are only needed at
+    > check time, and even then it's more of a desire to be loaded than actually
+    > needing to be loaded.
+
+    > I would just put them in Suggests or Enhances
+
+Thank you, Andrew.
+
+'Enhances'  I think would be preferable.
+
+Still, as Peter, I am not very happy about this NOTE.
+Notably as I guess people will use (even) less \link{..} in
+their R documentation (*).
+
+... but yes, we can live with it, and I'm sure Peter will keep
+his Rd files well maintained in spite ..
+
+Martin
+
+
+--
+*) which is often lacking anyway, in my view
+   because things like roxygen implicitly/indirectly suggest to
+   many package authors that documentation is something you do as
+   quickly and as shortly as possible..
+
+    > On Mon, Nov 7, 2022, 11:10 Peter Ruckdeschel <peter.ruckdeschel at web.de>
+    > wrote:
+
+    >> Hi,
+    >> 
+    >> triggered by some new NOTEs uncovering infallacities in my packages on
+    >> CRAN, I stumbled upon
+    >> 
+    >> Result: NOTE     Undeclared packages ?distrMod?, ?RobAStBase? in Rd xrefs
+    >> 
+    >> which is issued in R-devel-linux-x86_64-fedora-clang (but not otherwise).
+    >> 
+    >> Digging into it, this comes from a text in a \seealso section where
+    >> through something like
+    >> 
+    >> \code{\{link}[<ext.pkg>]{<generic>}
+    >> 
+    >> we want to link to a method provided in some extension package <ext.pkg>
+    >> for a generic
+    >> <generic> documented in Rd-file of the current package.
+    >> 
+    >> In this case, we intentionally do not have <ext.pkg> in any of the entries
+    >> "Depends", "Suggests",
+    >> "Imports", "Enhances" in the DESCRIPTION file, as <ext.pkg> is neither
+    >> needed visible for the
+    >> user, nor for the code in the current package nor for testing code nor for
+    >> example code and vignettes
+    >> of the current package, and because having it in "Suggests" would produce
+    >> a circular dependence
+    >> as <ext.pkg> has the current package in its "Imports" section.
+    >> 
+    >> Of course, in "Writing R extesions" we find that
+    >> 
+    >> "Packages referred to by these ?other forms? should be declared in the
+    >> DESCRIPTION file, in
+    >> the ?Depends?, ?Imports?, ?Suggests? or ?Enhances? fields. "
+    >> 
+    >> so I am aware that this is my fault, as I use these 'other forms'  without
+    >> declaration in the DESCRIPTION file.
+    >> Now I guess I could wrap my conditional cross-ref into some R-code,
+    >> testing whether <ext.pkg> is available,
+    >> i.e., something like
+    >> 
+    >> \Sexpr[eval=TRUE,stage=render,results=text]{if("<ext.pkg>" %in%
+    >> installed.packages()[,1] )
+    >> cat("\\code{\\{link}[<ext.pkg>]{<generic>}") else cat("<generic> from
+    >> package \\pkg{<ext.pkg>})
+    >> 
+    >> and so produce the link only if <ext.pkg> is installed at rendering time,
+    >> but I would guess such a
+    >> conditional linkage would be something which could be of interest to a
+    >> broader scope of R-package
+    >> developers and hence could and should be implemented in a less cumbersome,
+    >> and more
+    >> efficient way.
+    >> 
+    >> Any suggestions welcome,
+    >> best, Peter
+    >> 
+    >> --
+    >> %******************************************************************
+    >> % Prof. Dr. Peter Ruckdeschel
+    >> % Institut fuer Mathematik, Fakultaet V - Mathematik und
+    >> Naturwissenschaften
+    >> % Carl von Ossietzky Universitaet Oldenburg,
+    >> % Postfach 5634,  26111 Oldenburg
+    >> % Office: Wechloy W1 02-227 Tel: +49 (0)441 798-3240  Fax: +49 (0)441
+    >> 798-193240
+    >> %peter.ruckdeschel at uni-oldenburg.de
+    >> %http://www.uni-oldenburg.de/peter-ruckdeschel
+    >> %******************************************************************
+    >> 
+    >> [[alternative HTML version deleted]]
+    >> 
+    >> ______________________________________________
+    >> R-package-devel at r-project.org mailing list
+    >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+    >> 
+
+    > [[alternative HTML version deleted]]
+
+    > ______________________________________________
+    > R-package-devel at r-project.org mailing list
+    > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
