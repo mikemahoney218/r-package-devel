@@ -6565,3 +6565,289 @@ Martin
     > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From ||oruppr @end|ng |rom gm@||@com  Fri Nov 11 12:31:06 2022
+From: ||oruppr @end|ng |rom gm@||@com (Florian Rupprecht)
+Date: Fri, 11 Nov 2022 12:31:06 +0100
+Subject: [R-pkg-devel] R, Rust and CRAN
+Message-ID: <CAHTZEhAicFU8iqJui5QrOSfGkqx7y1ZgMh=R=i3hPM7yZmy2oQ@mail.gmail.com>
+
+Hi all,
+
+Are there any current recommendations on integrating Rust (and Cargo, its
+official package manager) in an R package complying to CRAN's policies?
+
+To be clear: This question is not about how to integrate Rust in the
+package, it is about how to do it without creating friction with the CRAN
+team and infrastructure. I want to write the Rust-C-R interface and build
+scripts myself.
+
+To me, Rust seems like a very good fit for R interop as it has a native C
+FFI, and has address and UB safety guarantees that top the strictest C++
+compiler warnings. However Rust's standard library is very small by design,
+so Cargo integration would be needed.
+
+I know there is:
+
+- rextendr (https://cran.r-project.org/package=rextendr):
+I don't think there is a package using this on CRAN yet.
+
+- cargo-framework (https://CRAN.R-project.org/package=cargo)
+Removed from CRAN.
+
+- r-rust/gifski (https://cran.r-project.org/package=gifski)
+Downloads precompiled binaries on windows for CRAN (which is, as I
+understand it, strongly discouraged for a number of reasons:
+https://stat.ethz.ch/pipermail/r-devel/2022-September/082027.html).
+
+Thank you very much for your time,
+Florian
+
+	[[alternative HTML version deleted]]
+
+
+From d@n@gro@e @end|ng |rom |@nc@@ter@@c@uk  Fri Nov 11 13:54:52 2022
+From: d@n@gro@e @end|ng |rom |@nc@@ter@@c@uk (Grose, Daniel)
+Date: Fri, 11 Nov 2022 12:54:52 +0000
+Subject: [R-pkg-devel] vignettes - size of pdf
+Message-ID: <LO2P265MB4151D13D9C623A51896A6269BE009@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+
+Hi
+
+I have the file cpop.ltx file (containg LaTeX) in my package which gets processed to produce a pdf file for the vignettes when the package gets installed. However, CRAN checks give
+
+* checking sizes of PDF files under 'inst/doc' ... WARNING
+  'gs+qpdf' made some significant size reductions:
+     compacted 'cpop.pdf' from 805Kb to 547Kb
+  consider running tools::compactPDF(gs_quality = "ebook") on these files
+
+I do not understand how I can do this given that the pdf is produced when installing the package. Any ideas ?
+
+Daniel Grose
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Nov 11 14:06:13 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 11 Nov 2022 16:06:13 +0300
+Subject: [R-pkg-devel] vignettes - size of pdf
+In-Reply-To: <LO2P265MB4151D13D9C623A51896A6269BE009@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+References: <LO2P265MB4151D13D9C623A51896A6269BE009@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+Message-ID: <20221111160613.0ea4a7ab@arachnoid>
+
+? Fri, 11 Nov 2022 12:54:52 +0000
+"Grose, Daniel" <dan.grose at lancaster.ac.uk> ?????:
+
+> * checking sizes of PDF files under 'inst/doc' ... WARNING
+>   'gs+qpdf' made some significant size reductions:
+>      compacted 'cpop.pdf' from 805Kb to 547Kb
+>   consider running tools::compactPDF(gs_quality = "ebook") on these
+> files
+> 
+> I do not understand how I can do this given that the pdf is produced
+> when installing the package. Any ideas ?
+
+I think that the PDF file is built during R CMD build, not (only) R CMD
+INSTALL. At the very least, the source package currently on CRAN
+contains both the *.pdf and the *.ltx files under inst/doc:
+https://github.com/cran/cpop/tree/master/inst/doc
+
+Does it help to pass the --compact-vignettes=gs+qpdf argument to R CMD
+build? It seems to be off by default.
+
+-- 
+Best regards,
+Ivan
+
+
+From m@tth|@@-gond@n @end|ng |rom gmx@de  Fri Nov 11 20:20:40 2022
+From: m@tth|@@-gond@n @end|ng |rom gmx@de (matthias-gondan)
+Date: Fri, 11 Nov 2022 20:20:40 +0100
+Subject: [R-pkg-devel] R, Rust and CRAN
+In-Reply-To: <CAHTZEhAicFU8iqJui5QrOSfGkqx7y1ZgMh=R=i3hPM7yZmy2oQ@mail.gmail.com>
+Message-ID: <1N7zFj-1p6PkM38SZ-0153Dm@mail.gmx.net>
+
+Hi Florian,?I am doing something similar with Swi-Prolog. Feel free to contact me if needed. My steps were:Get swipl to compile on Windows,? MSYS2, then Rtools4.2.Then, an R package rswipl that just includes the swipl runtime for those people who don't have swipl installed.?Then (basically right now, not yet on CRAN), an R package that does the interface between R and swipl (either installed on the system or the R package.Best wishes?Matthias?
+-------- Urspr?ngliche Nachricht --------Von: Florian Rupprecht <floruppr at gmail.com> Datum: 11.11.22  12:31  (GMT+01:00) An: List r-package-devel <r-package-devel at r-project.org> Betreff: [R-pkg-devel] R, Rust and CRAN Hi all,Are there any current recommendations on integrating Rust (and Cargo, itsofficial package manager) in an R package complying to CRAN's policies?To be clear: This question is not about how to integrate Rust in thepackage, it is about how to do it without creating friction with the CRANteam and infrastructure. I want to write the Rust-C-R interface and buildscripts myself.To me, Rust seems like a very good fit for R interop as it has a native CFFI, and has address and UB safety guarantees that top the strictest C++compiler warnings. However Rust's standard library is very small by design,so Cargo integration would be needed.I know there is:- rextendr (https://cran.r-project.org/package=rextendr):I don't think there is a package using this on CRAN yet.- cargo-framework (https://CRAN.R-project.org/package=cargo)Removed from CRAN.- r-rust/gifski (https://cran.r-project.org/package=gifski)Downloads precompiled binaries on windows for CRAN (which is, as Iunderstand it, strongly discouraged for a number of reasons:https://stat.ethz.ch/pipermail/r-devel/2022-September/082027.html).Thank you very much for your time,Florian	[[alternative HTML version deleted]]______________________________________________R-package-devel at r-project.org mailing listhttps://stat.ethz.ch/mailman/listinfo/r-package-devel
+	[[alternative HTML version deleted]]
+
+
+From ||oruppr @end|ng |rom gm@||@com  Fri Nov 11 20:34:54 2022
+From: ||oruppr @end|ng |rom gm@||@com (Florian Rupprecht)
+Date: Fri, 11 Nov 2022 20:34:54 +0100
+Subject: [R-pkg-devel] R, Rust and CRAN
+In-Reply-To: <1N7zFj-1p6PkM38SZ-0153Dm@mail.gmx.net>
+References: <CAHTZEhAicFU8iqJui5QrOSfGkqx7y1ZgMh=R=i3hPM7yZmy2oQ@mail.gmail.com>
+ <1N7zFj-1p6PkM38SZ-0153Dm@mail.gmx.net>
+Message-ID: <CAHTZEhD2Bb58gNjgN3kF+sJxvTuGsJLF5iCSshR8ees36dvb9g@mail.gmail.com>
+
+Hi Matthias,
+
+Thank you very much for your response!
+
+Putting the entire compiler toolchain of Rust into an R package is likely
+just too much (it would need to compile the entire LLVM compiler which
+would take hours just to build alone).
+However, it is a very interesting idea to consider with dependencies.
+(Having a separate optional package that contains the source code of all
+Rust-dependencies necessary for the package) So thank you for sharing!
+
+I was also made aware of this similar thread:
+https://stat.ethz.ch/pipermail/r-package-devel/2022q3/008291.html
+
+Best,
+Florian
+
+On Fri, Nov 11, 2022 at 8:21 PM matthias-gondan <matthias-gondan at gmx.de>
+wrote:
+
+> Hi Florian, I am doing something similar with Swi-Prolog. Feel free to
+> contact me if needed. My steps were:Get swipl to compile on Windows,
+> MSYS2, then Rtools4.2.Then, an R package rswipl that just includes the
+> swipl runtime for those people who don't have swipl installed. Then
+> (basically right now, not yet on CRAN), an R package that does the
+> interface between R and swipl (either installed on the system or the R
+> package.Best wishes Matthias
+> -------- Urspr?ngliche Nachricht --------Von: Florian Rupprecht <
+> floruppr at gmail.com> Datum: 11.11.22  12:31  (GMT+01:00) An: List
+> r-package-devel <r-package-devel at r-project.org> Betreff: [R-pkg-devel] R,
+> Rust and CRAN Hi all,Are there any current recommendations on integrating
+> Rust (and Cargo, itsofficial package manager) in an R package complying to
+> CRAN's policies?To be clear: This question is not about how to integrate
+> Rust in thepackage, it is about how to do it without creating friction with
+> the CRANteam and infrastructure. I want to write the Rust-C-R interface and
+> buildscripts myself.To me, Rust seems like a very good fit for R interop as
+> it has a native CFFI, and has address and UB safety guarantees that top the
+> strictest C++compiler warnings. However Rust's standard library is very
+> small by design,so Cargo integration would be needed.I know there is:-
+> rextendr (https://cran.r-project.org/package=rextendr):I don't think
+> there is a package using this on CRAN yet.- cargo-framework (
+> https://CRAN.R-project.org/package=cargo)Removed from CRAN.-
+> r-rust/gifski (https://cran.r-project.org/package=gifski)Downloads
+> precompiled binaries on windows for CRAN (which is, as Iunderstand it,
+> strongly discouraged for a number of reasons:
+> https://stat.ethz.ch/pipermail/r-devel/2022-September/082027.html).Thank
+> you very much for your time,Florian     [[alternative HTML version
+> deleted]]______________________________________________
+> R-package-devel at r-project.org mailing listhttps://
+> stat.ethz.ch/mailman/listinfo/r-package-devel
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Fri Nov 11 20:56:29 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 11 Nov 2022 13:56:29 -0600
+Subject: [R-pkg-devel] vignettes - size of pdf
+In-Reply-To: <20221111160613.0ea4a7ab@arachnoid>
+References: <LO2P265MB4151D13D9C623A51896A6269BE009@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+ <20221111160613.0ea4a7ab@arachnoid>
+Message-ID: <25454.43245.673488.61706@rob.eddelbuettel.com>
+
+
+On 11 November 2022 at 16:06, Ivan Krylov wrote:
+| ? Fri, 11 Nov 2022 12:54:52 +0000
+| "Grose, Daniel" <dan.grose at lancaster.ac.uk> ?????:
+| 
+| > * checking sizes of PDF files under 'inst/doc' ... WARNING
+| >   'gs+qpdf' made some significant size reductions:
+| >      compacted 'cpop.pdf' from 805Kb to 547Kb
+| >   consider running tools::compactPDF(gs_quality = "ebook") on these
+| > files
+| > 
+| > I do not understand how I can do this given that the pdf is produced
+| > when installing the package. Any ideas ?
+| 
+| I think that the PDF file is built during R CMD build, not (only) R CMD
+| INSTALL. At the very least, the source package currently on CRAN
+| contains both the *.pdf and the *.ltx files under inst/doc:
+| https://github.com/cran/cpop/tree/master/inst/doc
+| 
+| Does it help to pass the --compact-vignettes=gs+qpdf argument to R CMD
+| build? It seems to be off by default.
+
+I find command-line helper scripts convenient in my workflow, and so I added
+dozens in the examples/ folder of the littler package. I had already relied
+on 'build.r' to build the source packages and find this message tedious too
+so about a year ago I changed it to default to compact at _source_ build
+time. The script is (thanks to doctopt) all of about five lines of which the
+final three are
+
+  argv <- if (opt$fast) c("--no-build-vignettes", "--no-manual", opt$PACKAGES) else opt$PACKAGES
+
+  extraargs <- c("--compact-vignettes=both", "--resave-data", argv)
+
+  tools:::.build_packages(extraargs, no.q=interactive())
+
+Does the trick for me (and CRAN as I get no nags on packages made this way).
+
+Dirk
+
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Sat Nov 12 00:49:05 2022
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Sat, 12 Nov 2022 12:49:05 +1300
+Subject: [R-pkg-devel] R, Rust and CRAN
+In-Reply-To: <CAHTZEhAicFU8iqJui5QrOSfGkqx7y1ZgMh=R=i3hPM7yZmy2oQ@mail.gmail.com>
+References: <CAHTZEhAicFU8iqJui5QrOSfGkqx7y1ZgMh=R=i3hPM7yZmy2oQ@mail.gmail.com>
+Message-ID: <5E16F164-5FDF-49D4-BF7E-7C4F8BF4DDEE@R-project.org>
+
+Florian,
+
+this does not directly address your question, but I think it would make a lot of sense to standardize the process, given how many issues there were with packages using Rust (mainly not detecting compilers correctly, not supplying source code, unsolicited writing into user's directories, not checking binaries etc.). Doing this right is not entirely trivial which is presumably where the "friction" comes from. I'm not a Rust user myself, but just based on the other languages that have interfaces from R I would think that Rust users could coalesce and write a package that does the heavy lifting and can be used by packages that contain Rust code as a foundation - that's what most other language interfaces do. (It's quite possible that some of the projects you listed would be a good start). I would not recommend putting that burden onto each package author as it screams maintenance nightmare.
+
+Cheers,
+Simon
+
+
+> On Nov 12, 2022, at 12:31 AM, Florian Rupprecht <floruppr at gmail.com> wrote:
+> 
+> Hi all,
+> 
+> Are there any current recommendations on integrating Rust (and Cargo, its
+> official package manager) in an R package complying to CRAN's policies?
+> 
+> To be clear: This question is not about how to integrate Rust in the
+> package, it is about how to do it without creating friction with the CRAN
+> team and infrastructure. I want to write the Rust-C-R interface and build
+> scripts myself.
+> 
+> To me, Rust seems like a very good fit for R interop as it has a native C
+> FFI, and has address and UB safety guarantees that top the strictest C++
+> compiler warnings. However Rust's standard library is very small by design,
+> so Cargo integration would be needed.
+> 
+> I know there is:
+> 
+> - rextendr (https://cran.r-project.org/package=rextendr):
+> I don't think there is a package using this on CRAN yet.
+> 
+> - cargo-framework (https://CRAN.R-project.org/package=cargo)
+> Removed from CRAN.
+> 
+> - r-rust/gifski (https://cran.r-project.org/package=gifski)
+> Downloads precompiled binaries on windows for CRAN (which is, as I
+> understand it, strongly discouraged for a number of reasons:
+> https://stat.ethz.ch/pipermail/r-devel/2022-September/082027.html).
+> 
+> Thank you very much for your time,
+> Florian
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
