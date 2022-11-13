@@ -6851,3 +6851,207 @@ Simon
 > 
 
 
+From jeroen @end|ng |rom berke|ey@edu  Sat Nov 12 19:27:40 2022
+From: jeroen @end|ng |rom berke|ey@edu (Jeroen Ooms)
+Date: Sat, 12 Nov 2022 19:27:40 +0100
+Subject: [R-pkg-devel] R, Rust and CRAN
+In-Reply-To: <5E16F164-5FDF-49D4-BF7E-7C4F8BF4DDEE@R-project.org>
+References: <CAHTZEhAicFU8iqJui5QrOSfGkqx7y1ZgMh=R=i3hPM7yZmy2oQ@mail.gmail.com>
+ <5E16F164-5FDF-49D4-BF7E-7C4F8BF4DDEE@R-project.org>
+Message-ID: <CABFfbXt-PQ4=iL7mN+Rg-+wRc34NpoELG-_uxvVKe9o6-uMeJg@mail.gmail.com>
+
+On Sat, Nov 12, 2022 at 12:49 AM Simon Urbanek
+<simon.urbanek at r-project.org> wrote:
+>
+> this does not directly address your question, but I think it would make a lot of sense to standardize the process, given how many issues there were with packages using Rust (mainly not detecting compilers correctly, not supplying source code, unsolicited writing into user's directories, not checking binaries etc.). Doing this right is not entirely trivial which is presumably where the "friction" comes from.
+
+All we need is the rustc/cargo toolchain to be installed on the CRAN
+win/mac builders (it already is on Fedora/Debian). As mentioned above
+(and before in e.g. https://jeroen.github.io/erum2018), rust uses the
+native C FFI, does not need any runtime library, and can be called
+directly from an R package using the C interface.  There is really no
+need for frameworks or engines (like Rcpp/rJava/V8), this is precisely
+what makes Rust so nice as an embedded language, and why it is being
+adopted in many C projects such the Linux kernel, that would never
+want to deal with Java/C++/JS.
+
+> I'm not a Rust user myself, but just based on the other languages that have interfaces from R I would think that Rust users could coalesce and write a package that does the heavy lifting and can be used by packages that contain Rust code as a foundation - that's what most other language interfaces do. (It's quite possible that some of the projects you listed would be a good start). I would not recommend putting that burden onto each package author as it screams maintenance nightmare.
+
+I understand the sentiment but Rust is very different from e.g. Java.
+There really isn't much "heavy lifting" to do, because there are no
+complex type conversions or runtime library involved. If the same
+structs are used in C and Rust, the C functions can directly call Rust
+functions and vice versa. Therefore it is possible for libraries to
+incrementally port pieces of C code to Rust without breaking the ABI.
+Just have a look at the hello world examples such as:
+https://github.com/r-rust/hellorust or for a real world example:
+https://cran.r-project.org/package=gifski
+
+
+From edd @end|ng |rom deb|@n@org  Sat Nov 12 19:59:05 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Sat, 12 Nov 2022 12:59:05 -0600
+Subject: [R-pkg-devel] R, Rust and CRAN
+In-Reply-To: <CABFfbXt-PQ4=iL7mN+Rg-+wRc34NpoELG-_uxvVKe9o6-uMeJg@mail.gmail.com>
+References: <CAHTZEhAicFU8iqJui5QrOSfGkqx7y1ZgMh=R=i3hPM7yZmy2oQ@mail.gmail.com>
+ <5E16F164-5FDF-49D4-BF7E-7C4F8BF4DDEE@R-project.org>
+ <CABFfbXt-PQ4=iL7mN+Rg-+wRc34NpoELG-_uxvVKe9o6-uMeJg@mail.gmail.com>
+Message-ID: <25455.60665.478368.792317@rob.eddelbuettel.com>
+
+
+On 12 November 2022 at 19:27, Jeroen Ooms wrote:
+| On Sat, Nov 12, 2022 at 12:49 AM Simon Urbanek
+| <simon.urbanek at r-project.org> wrote:
+| >
+| > this does not directly address your question, but I think it would make a lot of sense to standardize the process, given how many issues there were with packages using Rust (mainly not detecting compilers correctly, not supplying source code, unsolicited writing into user's directories, not checking binaries etc.). Doing this right is not entirely trivial which is presumably where the "friction" comes from.
+| 
+| All we need is the rustc/cargo toolchain to be installed on the CRAN
+| win/mac builders (it already is on Fedora/Debian). As mentioned above
+| (and before in e.g. https://jeroen.github.io/erum2018), rust uses the
+| native C FFI, does not need any runtime library, and can be called
+| directly from an R package using the C interface.  There is really no
+| need for frameworks or engines (like Rcpp/rJava/V8), this is precisely
+| what makes Rust so nice as an embedded language, and why it is being
+| adopted in many C projects such the Linux kernel, that would never
+| want to deal with Java/C++/JS.
+
+Seconded. CRAN works best when tools are uniformly provided. It would be good
+to have that for Rust too.
+
+(Small nit about C++ here. Its compatibility with C and use of FFI via C is a
+major reason for its success. As you know there is no run-time so equating
+with Java or VS is a little off, at least on my ledger.)
+ 
+| > I'm not a Rust user myself, but just based on the other languages that have interfaces from R I would think that Rust users could coalesce and write a package that does the heavy lifting and can be used by packages that contain Rust code as a foundation - that's what most other language interfaces do. (It's quite possible that some of the projects you listed would be a good start). I would not recommend putting that burden onto each package author as it screams maintenance nightmare.
+| 
+| I understand the sentiment but Rust is very different from e.g. Java.
+| There really isn't much "heavy lifting" to do, because there are no
+| complex type conversions or runtime library involved. If the same
+| structs are used in C and Rust, the C functions can directly call Rust
+| functions and vice versa. Therefore it is possible for libraries to
+| incrementally port pieces of C code to Rust without breaking the ABI.
+| Just have a look at the hello world examples such as:
+| https://github.com/r-rust/hellorust or for a real world example:
+| https://cran.r-project.org/package=gifski
+
+Again, ditto for C++ but Rust is another very compelling candidate that would
+be good to support (and to e.g. access projects like polars more easily).
+
+CRAN is often seen as having somewhat difficult-to-overcome resistance for
+outside help (with Rtools4 a very notable and successful exception).
+
+Maybe enabling Rust support could be a pilot-project for another approach?
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Sat Nov 12 20:15:11 2022
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Sun, 13 Nov 2022 08:15:11 +1300
+Subject: [R-pkg-devel] R, Rust and CRAN
+In-Reply-To: <CABFfbXt-PQ4=iL7mN+Rg-+wRc34NpoELG-_uxvVKe9o6-uMeJg@mail.gmail.com>
+References: <CAHTZEhAicFU8iqJui5QrOSfGkqx7y1ZgMh=R=i3hPM7yZmy2oQ@mail.gmail.com>
+ <5E16F164-5FDF-49D4-BF7E-7C4F8BF4DDEE@R-project.org>
+ <CABFfbXt-PQ4=iL7mN+Rg-+wRc34NpoELG-_uxvVKe9o6-uMeJg@mail.gmail.com>
+Message-ID: <5C76BF99-A16F-4D09-82DE-6C75B8A961AC@R-project.org>
+
+Jeroen,
+
+sorry, I think you misunderstood: CRAN machines have the compilers, but the packages were not detecting it properly and/or were violating the CRAN policies as noted, so that's why I was saying that it would make sense to have a unified approach so that each package author doesn't have to make the same mistakes over again.
+
+Cheers,
+Simon
+
+
+> On Nov 13, 2022, at 7:27 AM, Jeroen Ooms <jeroen at berkeley.edu> wrote:
+> 
+> On Sat, Nov 12, 2022 at 12:49 AM Simon Urbanek
+> <simon.urbanek at r-project.org> wrote:
+>> 
+>> this does not directly address your question, but I think it would make a lot of sense to standardize the process, given how many issues there were with packages using Rust (mainly not detecting compilers correctly, not supplying source code, unsolicited writing into user's directories, not checking binaries etc.). Doing this right is not entirely trivial which is presumably where the "friction" comes from.
+> 
+> All we need is the rustc/cargo toolchain to be installed on the CRAN
+> win/mac builders (it already is on Fedora/Debian). As mentioned above
+> (and before in e.g. https://jeroen.github.io/erum2018), rust uses the
+> native C FFI, does not need any runtime library, and can be called
+> directly from an R package using the C interface.  There is really no
+> need for frameworks or engines (like Rcpp/rJava/V8), this is precisely
+> what makes Rust so nice as an embedded language, and why it is being
+> adopted in many C projects such the Linux kernel, that would never
+> want to deal with Java/C++/JS.
+> 
+>> I'm not a Rust user myself, but just based on the other languages that have interfaces from R I would think that Rust users could coalesce and write a package that does the heavy lifting and can be used by packages that contain Rust code as a foundation - that's what most other language interfaces do. (It's quite possible that some of the projects you listed would be a good start). I would not recommend putting that burden onto each package author as it screams maintenance nightmare.
+> 
+> I understand the sentiment but Rust is very different from e.g. Java.
+> There really isn't much "heavy lifting" to do, because there are no
+> complex type conversions or runtime library involved. If the same
+> structs are used in C and Rust, the C functions can directly call Rust
+> functions and vice versa. Therefore it is possible for libraries to
+> incrementally port pieces of C code to Rust without breaking the ABI.
+> Just have a look at the hello world examples such as:
+> https://github.com/r-rust/hellorust or for a real world example:
+> https://cran.r-project.org/package=gifski
+> 
+
+
+From edd @end|ng |rom deb|@n@org  Sat Nov 12 21:20:08 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Sat, 12 Nov 2022 14:20:08 -0600
+Subject: [R-pkg-devel] R, Rust and CRAN
+In-Reply-To: <5C76BF99-A16F-4D09-82DE-6C75B8A961AC@R-project.org>
+References: <CAHTZEhAicFU8iqJui5QrOSfGkqx7y1ZgMh=R=i3hPM7yZmy2oQ@mail.gmail.com>
+ <5E16F164-5FDF-49D4-BF7E-7C4F8BF4DDEE@R-project.org>
+ <CABFfbXt-PQ4=iL7mN+Rg-+wRc34NpoELG-_uxvVKe9o6-uMeJg@mail.gmail.com>
+ <5C76BF99-A16F-4D09-82DE-6C75B8A961AC@R-project.org>
+Message-ID: <25455.65528.951832.584750@rob.eddelbuettel.com>
+
+
+On 13 November 2022 at 08:15, Simon Urbanek wrote:
+| sorry, I think you misunderstood: CRAN machines have the compilers, but the packages were not detecting it properly and/or were violating the CRAN policies as noted, so that's why I was saying that it would make sense to have a unified approach so that each package author doesn't have to make the same mistakes over again.
+
+Would you be able to provide a sample package, say, "hello.rust", that does
+that to guide us all?
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Sat Nov 12 23:04:39 2022
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Sun, 13 Nov 2022 11:04:39 +1300
+Subject: [R-pkg-devel] R, Rust and CRAN
+In-Reply-To: <25455.65528.951832.584750@rob.eddelbuettel.com>
+References: <CAHTZEhAicFU8iqJui5QrOSfGkqx7y1ZgMh=R=i3hPM7yZmy2oQ@mail.gmail.com>
+ <5E16F164-5FDF-49D4-BF7E-7C4F8BF4DDEE@R-project.org>
+ <CABFfbXt-PQ4=iL7mN+Rg-+wRc34NpoELG-_uxvVKe9o6-uMeJg@mail.gmail.com>
+ <5C76BF99-A16F-4D09-82DE-6C75B8A961AC@R-project.org>
+ <25455.65528.951832.584750@rob.eddelbuettel.com>
+Message-ID: <69C069BE-1AC8-4792-8909-0865A14BF861@R-project.org>
+
+No, because I don't use Rust. That's why I was saying that the Rust users should get together and create a such package. Some of the packages listed have experience in fixing the problems, so I would hope they can provide guidance or a good starting point. This is something for the interested community to do.
+
+Cheers,
+Simon
+
+
+> On Nov 13, 2022, at 9:20 AM, Dirk Eddelbuettel <edd at debian.org> wrote:
+> 
+> 
+> On 13 November 2022 at 08:15, Simon Urbanek wrote:
+> | sorry, I think you misunderstood: CRAN machines have the compilers, but the packages were not detecting it properly and/or were violating the CRAN policies as noted, so that's why I was saying that it would make sense to have a unified approach so that each package author doesn't have to make the same mistakes over again.
+> 
+> Would you be able to provide a sample package, say, "hello.rust", that does
+> that to guide us all?
+> 
+> Dirk
+> 
+> -- 
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> 
+
+
