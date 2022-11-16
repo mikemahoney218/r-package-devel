@@ -7117,3 +7117,152 @@ dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 	[[alternative HTML version deleted]]
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Mon Nov 14 15:03:24 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Mon, 14 Nov 2022 17:03:24 +0300
+Subject: [R-pkg-devel] How ton print in the console from Rcpp
+In-Reply-To: <SJ0PR10MB5719655A3220440969E96921FE029@SJ0PR10MB5719.namprd10.prod.outlook.com>
+References: <CALcKxsq1EYdsSh3i2MPLop8fxngVpAKfY8ZqMCmbG+k280VJoA@mail.gmail.com>
+ <20221020144644.38d04ef0@arachnoid>
+ <25425.16943.184057.68532@rob.eddelbuettel.com>
+ <SJ0PR10MB5719CC02075B1218B23F2A1FFE2A9@SJ0PR10MB5719.namprd10.prod.outlook.com>
+ <25427.64684.611479.503767@rob.eddelbuettel.com>
+ <SJ0PR10MB5719655A3220440969E96921FE029@SJ0PR10MB5719.namprd10.prod.outlook.com>
+Message-ID: <20221114170324.08ff0540@arachnoid>
+
+? Sun, 13 Nov 2022 11:29:21 +0000
+Elys?e Aristide <ariel92and at gmail.com> ?????:
+
+> The only difference I saw is that all those packages put
+> 
+> #define NDEBUG
+> 
+> after #include <RcppArmadillo.h>.
+> I did the same thing without understanding :)
+
+Glad you got it working! If you're curious why it helped, see
+<https://en.cppreference.com/w/c/error/assert>.
+
+I wouldn't have guessed this to be the problem, because I "knew" that R
+CMD INSTALL defines NDEBUG during compilation in order to prevent
+assert() from crashing the process. Indeed, it's easy to verify that
+RcppArmadillo removes the NDEBUG preprocessor symbol:
+
+https://github.com/RcppCore/RcppArmadillo/search?q=NDEBUG&type=code
+
+Seeing the search results, I can't help but wonder whether Armadillo
+still makes any decisions based on this preprocessor definition,
+though. Is the whole of Armadillo included as part of the package?
+Shouldn't there be other mentions of NDEBUG besides the "#undef NDEBUG"
+and the package changelog?
+
+I don't see NDEBUG mentioned in the Armadillo source repo, either:
+https://gitlab.com/search?search=NDEBUG&nav_source=navbar&project_id=6604173&search_code=true&repository_ref=11.4.x
+
+Could the #undef NDEBUG line be safely removed now without affecting
+the debugging tests performed by Armadillo?
+
+-- 
+Best regards,
+Ivan
+
+
+From edd @end|ng |rom deb|@n@org  Mon Nov 14 16:09:24 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Mon, 14 Nov 2022 09:09:24 -0600
+Subject: [R-pkg-devel] How ton print in the console from Rcpp
+In-Reply-To: <20221114170324.08ff0540@arachnoid>
+References: <CALcKxsq1EYdsSh3i2MPLop8fxngVpAKfY8ZqMCmbG+k280VJoA@mail.gmail.com>
+ <20221020144644.38d04ef0@arachnoid>
+ <25425.16943.184057.68532@rob.eddelbuettel.com>
+ <SJ0PR10MB5719CC02075B1218B23F2A1FFE2A9@SJ0PR10MB5719.namprd10.prod.outlook.com>
+ <25427.64684.611479.503767@rob.eddelbuettel.com>
+ <SJ0PR10MB5719655A3220440969E96921FE029@SJ0PR10MB5719.namprd10.prod.outlook.com>
+ <20221114170324.08ff0540@arachnoid>
+Message-ID: <25458.23076.693589.60544@rob.eddelbuettel.com>
+
+
+Ivan,
+
+Thanks for following-up but I think this issue is local to the OP as R is
+already setup exactly that way to skip `assert()` in builds (in perfect
+congruence with the CRAN Repository Policy)
+
+  edd at rob:~$ grep NDEBUG /etc/R/Makeconf 
+  R_XTRA_CPPFLAGS =  -I"$(R_INCLUDE_DIR)" -DNDEBUG
+  ALL_CPPFLAGS =  -I"$(R_INCLUDE_DIR)" -DNDEBUG $(PKG_CPPFLAGS) $(CLINK_CPPFLAGS) $(CPPFLAGS) 
+  edd at rob:~$ 
+
+Armadillo (upstream) is very widely used, RcppArmadillo is now used by over
+1000 packages and had (by partial counts from the subset of CRAN mirrors
+offering logs) over 25 million downloads. I would be rather surprised if
+there were a systemic issue we have not seen. So per Occam's Razor, I would
+look under a different street light.
+
+Best, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From @r|e|92@nd @end|ng |rom gm@||@com  Mon Nov 14 16:34:57 2022
+From: @r|e|92@nd @end|ng |rom gm@||@com (=?UTF-8?Q?Elys=C3=A9e_Aristide?=)
+Date: Mon, 14 Nov 2022 16:34:57 +0100
+Subject: [R-pkg-devel] How ton print in the console from Rcpp
+In-Reply-To: <25458.23076.693589.60544@rob.eddelbuettel.com>
+References: <CALcKxsq1EYdsSh3i2MPLop8fxngVpAKfY8ZqMCmbG+k280VJoA@mail.gmail.com>
+ <20221020144644.38d04ef0@arachnoid>
+ <25425.16943.184057.68532@rob.eddelbuettel.com>
+ <SJ0PR10MB5719CC02075B1218B23F2A1FFE2A9@SJ0PR10MB5719.namprd10.prod.outlook.com>
+ <25427.64684.611479.503767@rob.eddelbuettel.com>
+ <SJ0PR10MB5719655A3220440969E96921FE029@SJ0PR10MB5719.namprd10.prod.outlook.com>
+ <20221114170324.08ff0540@arachnoid>
+ <25458.23076.693589.60544@rob.eddelbuettel.com>
+Message-ID: <CALcKxsqWY+vKgm77_4qAb-6CG6Ewiq-XbZLDrZjeMjny2_eSQg@mail.gmail.com>
+
+Hello,
+
+I was convinced that the issue is local. The warning message only appears
+on MAC.
+I did not try with another computer. I used CRAN macbuilder service and got
+the warning message. I guess this is also the computer CRAN uses.
+
+Best regards,
+
+Aristide Elys?e HOUNDETOUNGAN
+*Assistant Professor of Economics*
+*Website: *www.ahoundetoungan.com
+
+
+
+
+On Mon, Nov 14, 2022 at 4:09 PM Dirk Eddelbuettel <edd at debian.org> wrote:
+
+>
+> Ivan,
+>
+> Thanks for following-up but I think this issue is local to the OP as R is
+> already setup exactly that way to skip `assert()` in builds (in perfect
+> congruence with the CRAN Repository Policy)
+>
+>   edd at rob:~$ grep NDEBUG /etc/R/Makeconf
+>   R_XTRA_CPPFLAGS =  -I"$(R_INCLUDE_DIR)" -DNDEBUG
+>   ALL_CPPFLAGS =  -I"$(R_INCLUDE_DIR)" -DNDEBUG $(PKG_CPPFLAGS)
+> $(CLINK_CPPFLAGS) $(CPPFLAGS)
+>   edd at rob:~$
+>
+> Armadillo (upstream) is very widely used, RcppArmadillo is now used by over
+> 1000 packages and had (by partial counts from the subset of CRAN mirrors
+> offering logs) over 25 million downloads. I would be rather surprised if
+> there were a systemic issue we have not seen. So per Occam's Razor, I would
+> look under a different street light.
+>
+> Best, Dirk
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+
+	[[alternative HTML version deleted]]
+
+
