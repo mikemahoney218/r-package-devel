@@ -8612,3 +8612,138 @@ Uwe Ligges
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From Feder|co@ROTOLO @end|ng |rom @@no||@com  Fri Nov 25 10:59:10 2022
+From: Feder|co@ROTOLO @end|ng |rom @@no||@com (ROTOLO, Federico /FR)
+Date: Fri, 25 Nov 2022 09:59:10 +0000
+Subject: [R-pkg-devel] Note on submission Found the following
+ files/directories: 'NUL'
+Message-ID: <DB9PR05MB8251B255B07946B34B846AC2970E9@DB9PR05MB8251.eurprd05.prod.outlook.com>
+
+Dear all,
+
+When submitting my package parfm, I get the following note
+Flavor: r-devel-linux-x86_64-debian-gcc
+Check: for non-standard things in the check directory, Result: NOTE
+  Found the following files/directories:
+    'NUL'
+so that my submission is rejected.
+
+I cannot find any file or directory called NUL in my package.
+Do you have any suggestion?
+
+Thanks in advance to anybody providing their feedback
+
+Best
+Federico Rotolo
+
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Nov 25 11:10:39 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 25 Nov 2022 13:10:39 +0300
+Subject: [R-pkg-devel] Note on submission Found the following
+ files/directories: 'NUL'
+In-Reply-To: <DB9PR05MB8251B255B07946B34B846AC2970E9@DB9PR05MB8251.eurprd05.prod.outlook.com>
+References: <DB9PR05MB8251B255B07946B34B846AC2970E9@DB9PR05MB8251.eurprd05.prod.outlook.com>
+Message-ID: <20221125131039.418a9480@arachnoid>
+
+? Fri, 25 Nov 2022 09:59:10 +0000
+"ROTOLO, Federico /FR" <Federico.ROTOLO at sanofi.com> ?????:
+
+> When submitting my package parfm, I get the following note
+> Flavor: r-devel-linux-x86_64-debian-gcc
+> Check: for non-standard things in the check directory, Result: NOTE
+>   Found the following files/directories:
+>     'NUL'
+> so that my submission is rejected.
+> 
+> I cannot find any file or directory called NUL in my package.
+> Do you have any suggestion?
+
+The file gets created during the check when you call sink('NUL'):
+https://github.com/cran/parfm/blob/8c3f45291514aedde67cecf0b090ddd3487f3ada/R/parfm.R#L260-L299
+
+It mostly works on Windows, where "nul" with any extension in any
+directory is the null file, but it creates a file named 'NUL' on other
+operating systems. It also breaks the non-default sink, if any was set
+up by the user.
+
+Does optimx::optimx produce output that can't be turned off otherwise?
+(Does it help to set control$trace = 0?) Have you tried
+suppressMessages() or capture.output() with nullfile()?
+
+-- 
+Best regards,
+Ivan
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Nov 25 11:34:05 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 25 Nov 2022 13:34:05 +0300
+Subject: [R-pkg-devel] Note on submission Found the following
+ files/directories: 'NUL'
+In-Reply-To: <20221125131039.418a9480@arachnoid>
+References: <DB9PR05MB8251B255B07946B34B846AC2970E9@DB9PR05MB8251.eurprd05.prod.outlook.com>
+ <20221125131039.418a9480@arachnoid>
+Message-ID: <20221125133405.3ef4faa6@arachnoid>
+
+? Fri, 25 Nov 2022 13:10:39 +0300
+Ivan Krylov <krylov.r00t at gmail.com> ?????:
+
+> It also breaks the non-default sink, if any was set up by the user.
+
+That's not correct, I'm sorry. sink() maintains a stack of diversions
+and will automatically restore the user-chosen sink(), if any was set
+up, when you call sink(NULL).
+
+-- 
+Best regards,
+Ivan
+
+
+From pro|jcn@@h @end|ng |rom gm@||@com  Fri Nov 25 13:59:10 2022
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Fri, 25 Nov 2022 07:59:10 -0500
+Subject: [R-pkg-devel] Note on submission Found the following
+ files/directories: 'NUL'
+In-Reply-To: <20221125131039.418a9480@arachnoid>
+References: <DB9PR05MB8251B255B07946B34B846AC2970E9@DB9PR05MB8251.eurprd05.prod.outlook.com>
+ <20221125131039.418a9480@arachnoid>
+Message-ID: <bd61b121-8dc7-9513-26e6-1a2ffae7e3c7@gmail.com>
+
+FWIW: optimx::optimx is outdated and only there for legacy use.
+Better to use the optimx::optimr() function for single solvers.
+
+JN
+
+
+On 2022-11-25 05:10, Ivan Krylov wrote:
+> ? Fri, 25 Nov 2022 09:59:10 +0000
+> "ROTOLO, Federico /FR" <Federico.ROTOLO at sanofi.com> ?????:
+> 
+>> When submitting my package parfm, I get the following note
+>> Flavor: r-devel-linux-x86_64-debian-gcc
+>> Check: for non-standard things in the check directory, Result: NOTE
+>>    Found the following files/directories:
+>>      'NUL'
+>> so that my submission is rejected.
+>>
+>> I cannot find any file or directory called NUL in my package.
+>> Do you have any suggestion?
+> 
+> The file gets created during the check when you call sink('NUL'):
+> https://github.com/cran/parfm/blob/8c3f45291514aedde67cecf0b090ddd3487f3ada/R/parfm.R#L260-L299
+> 
+> It mostly works on Windows, where "nul" with any extension in any
+> directory is the null file, but it creates a file named 'NUL' on other
+> operating systems. It also breaks the non-default sink, if any was set
+> up by the user.
+> 
+> Does optimx::optimx produce output that can't be turned off otherwise?
+> (Does it help to set control$trace = 0?) Have you tried
+> suppressMessages() or capture.output() with nullfile()?
+>
+
+
