@@ -10829,3 +10829,155 @@ On Mon, Dec 5, 2022 at 12:01 PM Ivan Krylov <krylov.r00t at gmail.com> wrote:
 	[[alternative HTML version deleted]]
 
 
+From edd @end|ng |rom deb|@n@org  Thu Dec  8 21:19:48 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 8 Dec 2022 14:19:48 -0600
+Subject: [R-pkg-devel] Minimum macOS version ?
+Message-ID: <25490.18148.48709.87556@rob.eddelbuettel.com>
+
+
+One package I stand behind as maintainer does
+
+  ## Take care of 10.14 requirement for Intel macOS
+  if test x"${uname}" = x"Darwin" -a x"${machine}" = x"x86_64"; then
+      AC_MSG_CHECKING([for Darwin x86_64 use minimum version override])
+      CXX17_MACOS="-mmacosx-version-min=10.14"
+      AC_MSG_RESULT([${CXX17_MACOS}])
+  fi
+
+We now contemplate going to 10.15 as minimum macOS version. Is that an issue
+for CRAN?
+
+Apologies for the somewhat ignorant question but I was not aware where I
+could have looked this up. So thanks in advance for any pointers.
+
+Thanks,  Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Thu Dec  8 22:00:54 2022
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Fri, 9 Dec 2022 10:00:54 +1300
+Subject: [R-pkg-devel] Minimum macOS version ?
+In-Reply-To: <25490.18148.48709.87556@rob.eddelbuettel.com>
+References: <25490.18148.48709.87556@rob.eddelbuettel.com>
+Message-ID: <B1F0C4A3-2842-4BEB-9BD4-C23F904FD439@R-project.org>
+
+Dirk,
+
+the minimum required version for the high-sierra build is 10.13 and for big-sur build is 11.0 (as the names imply). Although it is not unrealistic to move Intel to macOS 10.14, it would be more problematic to move to 10.15 since it is the version that killed 32-bit support so 10.14 is actually more prevalent than 10.15 as a lot of users will never upgrade due to that loss. Given that Intel binaries are there only to support legacy hardware it's unlikely to move forward much more (i.e. I can see the immediate argument saying that those macOS version are unsupported, but so are the machines running them, but that doesn't mean R users won't use them).
+
+What exactly do you need the higher macOS versions for? Generally, there were no major changes in the Mach-O format recently, so it shouldn't really matter - the main difference would be SDK/run-time - are there  specific features you require? Some of it could be addressed by providing more recent run-times separately - that's why I'm asking.
+
+Cheers,
+Simon
+
+
+> On 9/12/2022, at 9:19 AM, Dirk Eddelbuettel <edd at debian.org> wrote:
+> 
+> 
+> One package I stand behind as maintainer does
+> 
+>  ## Take care of 10.14 requirement for Intel macOS
+>  if test x"${uname}" = x"Darwin" -a x"${machine}" = x"x86_64"; then
+>      AC_MSG_CHECKING([for Darwin x86_64 use minimum version override])
+>      CXX17_MACOS="-mmacosx-version-min=10.14"
+>      AC_MSG_RESULT([${CXX17_MACOS}])
+>  fi
+> 
+> We now contemplate going to 10.15 as minimum macOS version. Is that an issue
+> for CRAN?
+> 
+> Apologies for the somewhat ignorant question but I was not aware where I
+> could have looked this up. So thanks in advance for any pointers.
+> 
+> Thanks,  Dirk
+> 
+> -- 
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From edd @end|ng |rom deb|@n@org  Thu Dec  8 23:10:27 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 8 Dec 2022 16:10:27 -0600
+Subject: [R-pkg-devel] Minimum macOS version ?
+In-Reply-To: <B1F0C4A3-2842-4BEB-9BD4-C23F904FD439@R-project.org>
+References: <25490.18148.48709.87556@rob.eddelbuettel.com>
+ <B1F0C4A3-2842-4BEB-9BD4-C23F904FD439@R-project.org>
+Message-ID: <25490.24787.872776.664367@rob.eddelbuettel.com>
+
+
+Simon,
+
+On 9 December 2022 at 10:00, Simon Urbanek wrote:
+| the minimum required version for the high-sierra build is 10.13 and for big-sur build is 11.0 (as the names imply). Although it is not unrealistic to move Intel to macOS 10.14, it would be more problematic to move to 10.15 since it is the version that killed 32-bit support so 10.14 is actually more prevalent than 10.15 as a lot of users will never upgrade due to that loss. Given that Intel binaries are there only to support legacy hardware it's unlikely to move forward much more (i.e. I can see the immediate argument saying that those macOS version are unsupported, but so are the machines running them, but that doesn't mean R users won't use them).
+| 
+| What exactly do you need the higher macOS versions for? Generally, there were no major changes in the Mach-O format recently, so it shouldn't really matter - the main difference would be SDK/run-time - are there  specific features you require? Some of it could be addressed by providing more recent run-times separately - that's why I'm asking.
+
+In this case: std::filesystem which is from C++20 and errors on macOS.
+
+We will #ifdef it out of existence on that platform but use it on other
+platforms where we can.
+
+Thaks, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Fri Dec  9 01:24:46 2022
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Fri, 9 Dec 2022 13:24:46 +1300
+Subject: [R-pkg-devel] Minimum macOS version ?
+In-Reply-To: <25490.24787.872776.664367@rob.eddelbuettel.com>
+References: <25490.18148.48709.87556@rob.eddelbuettel.com>
+ <B1F0C4A3-2842-4BEB-9BD4-C23F904FD439@R-project.org>
+ <25490.24787.872776.664367@rob.eddelbuettel.com>
+Message-ID: <34C1E69B-D00F-42E9-BA60-3EE21D466492@R-project.org>
+
+Dirk,
+
+thanks, got it. If you have a work-around avoiding std::filesystem then can use something like
+
+// no filesystem support before macOS Catalina
+#if defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101500
+// no std::filesystem
+#endif
+
+(derived from https://github.com/nlohmann/json/pull/3101 - some of the comments there may be of use - it also mentions MinGW etc.)
+
+The "offical" macros for macOS availability tests are AvailabilityMacros.h but they boil down to the above.
+
+Cheers,
+Simon
+
+
+> On 9/12/2022, at 11:10 AM, Dirk Eddelbuettel <edd at debian.org> wrote:
+> 
+> 
+> Simon,
+> 
+> On 9 December 2022 at 10:00, Simon Urbanek wrote:
+> | the minimum required version for the high-sierra build is 10.13 and for big-sur build is 11.0 (as the names imply). Although it is not unrealistic to move Intel to macOS 10.14, it would be more problematic to move to 10.15 since it is the version that killed 32-bit support so 10.14 is actually more prevalent than 10.15 as a lot of users will never upgrade due to that loss. Given that Intel binaries are there only to support legacy hardware it's unlikely to move forward much more (i.e. I can see the immediate argument saying that those macOS version are unsupported, but so are the machines running them, but that doesn't mean R users won't use them).
+> | 
+> | What exactly do you need the higher macOS versions for? Generally, there were no major changes in the Mach-O format recently, so it shouldn't really matter - the main difference would be SDK/run-time - are there  specific features you require? Some of it could be addressed by providing more recent run-times separately - that's why I'm asking.
+> 
+> In this case: std::filesystem which is from C++20 and errors on macOS.
+> 
+> We will #ifdef it out of existence on that platform but use it on other
+> platforms where we can.
+> 
+> Thaks, Dirk
+> 
+> -- 
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> 
+
+
