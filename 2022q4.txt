@@ -10981,3 +10981,619 @@ Simon
 > 
 
 
+From @tco|em@ @end|ng |rom tcd@|e  Fri Dec  9 18:29:21 2022
+From: @tco|em@ @end|ng |rom tcd@|e (Stephen Coleman)
+Date: Fri, 9 Dec 2022 17:29:21 +0000
+Subject: [R-pkg-devel] Package fails on Debian
+Message-ID: <CAGrBscUk2QBmBtf8HzeP4D7jkPfcnTApWrGtwWBmok6KVSa5gg@mail.gmail.com>
+
+Hi all,
+
+I am trying to get my R package to pass CRAN checks for Debian. According
+to ``rhub::check_on_debian()`` my error is:
+
+``outlierComponentFactory.h:37:15: error: ?unique_ptr? in namespace ?std?
+does not name a template type``.
+
+I have included ``CXX_STD = CXX17`` in my Makevars file and my package
+passes checks for Ubuntu and Windows. I do not know how to progress and any
+advice is appreciated.
+
+Package: https://github.com/stcolema/MDIr
+Full check report:
+https://builder.r-hub.io/status/MDIr_0.7.0.tar.gz-1374f5af71fb4a1f903feb928f5c41f3
+
+Thank you,
+Stephen
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sat Dec 10 14:09:47 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sat, 10 Dec 2022 16:09:47 +0300
+Subject: [R-pkg-devel] Package fails on Debian
+In-Reply-To: <CAGrBscUk2QBmBtf8HzeP4D7jkPfcnTApWrGtwWBmok6KVSa5gg@mail.gmail.com>
+References: <CAGrBscUk2QBmBtf8HzeP4D7jkPfcnTApWrGtwWBmok6KVSa5gg@mail.gmail.com>
+Message-ID: <20221210160947.717ca7fe@Tarkus>
+
+On Fri, 9 Dec 2022 17:29:21 +0000
+Stephen Coleman <stcolema at tcd.ie> wrote:
+
+> ``outlierComponentFactory.h:37:15: error: ?unique_ptr? in namespace
+> ?std? does not name a template type``.
+
+Does it help to explicitly #include <memory> in
+outlierComponentFactory.h in order to provide the definition of the
+template class unique_ptr<T>?
+
+-- 
+Best regards,
+Ivan
+
+
+From roy@mende|@@ohn @end|ng |rom no@@@gov  Sat Dec 10 23:00:22 2022
+From: roy@mende|@@ohn @end|ng |rom no@@@gov (Roy Mendelssohn - NOAA Federal)
+Date: Sat, 10 Dec 2022 14:00:22 -0800
+Subject: [R-pkg-devel] Do you run R on Fedora or Debian?
+Message-ID: <949F9A62-ACB1-4816-9331-4816C2F8DC8C@noaa.gov>
+
+CRAN has sent me a notice about the following:
+
+https://www.stats.ox.ac.uk/pub/bdr/donttest/rerddapXtracto.out
+
+I can not reproduce it.  I test on my Mac,  the cache space is properly handled  (by a package outside mine).  Same with Debian on r-hub.  I installed Fedora on a virtual machine, no problem  (it is assigned a space in /tmp).  I would really appreciate it if someone who runs Debian or Fedora could test the following:
+
+install.packages("rerddap",  dependencies = TRUE)
+library(rerddap)
+cache_setup(temp_dir = TRUE)
+
+The last line should print where the cache is setup.  That is called at the start of all of my functions that do downloads.  If you could run that and send me the result I would appreciate it (snd privately no need to spam the list with that).  I am at a loss as to how to respond to CRAN because I can't reproduce that error on anything I can test.  The cacheing is actually done by the package 'crul'.  
+
+Thanks,
+
+-Roy
+
+
+
+**********************
+"The contents of this message do not reflect any position of the U.S. Government or NOAA."
+**********************
+Roy Mendelssohn
+Supervisory Operations Research Analyst
+NOAA/NMFS
+Environmental Research Division
+Southwest Fisheries Science Center
+***Note new street address***
+110 McAllister Way
+Santa Cruz, CA 95060
+Phone: (831)-420-3666
+Fax: (831) 420-3980
+e-mail: Roy.Mendelssohn at noaa.gov www: https://www.pfeg.noaa.gov/
+
+"Old age and treachery will overcome youth and skill."
+"From those who have been given much, much will be expected" 
+"the arc of the moral universe is long, but it bends toward justice" -MLK Jr.
+
+
+From edd @end|ng |rom deb|@n@org  Sat Dec 10 23:16:05 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Sat, 10 Dec 2022 16:16:05 -0600
+Subject: [R-pkg-devel] Do you run R on Fedora or Debian?
+In-Reply-To: <949F9A62-ACB1-4816-9331-4816C2F8DC8C@noaa.gov>
+References: <949F9A62-ACB1-4816-9331-4816C2F8DC8C@noaa.gov>
+Message-ID: <25493.1317.94818.395969@rob.eddelbuettel.com>
+
+
+On 10 December 2022 at 14:00, Roy Mendelssohn - NOAA Federal via R-package-devel wrote:
+| CRAN has sent me a notice about the following:
+| 
+| https://www.stats.ox.ac.uk/pub/bdr/donttest/rerddapXtracto.out
+| 
+| I can not reproduce it.  I test on my Mac,  the cache space is properly handled  (by a package outside mine).  Same with Debian on r-hub.  I installed Fedora on a virtual machine, no problem  (it is assigned a space in /tmp).  I would really appreciate it if someone who runs Debian or Fedora could test the following:
+| 
+| install.packages("rerddap",  dependencies = TRUE)
+| library(rerddap)
+| cache_setup(temp_dir = TRUE)
+| 
+| The last line should print where the cache is setup.  That is called at the start of all of my functions that do downloads.  If you could run that and send me the result I would appreciate it (snd privately no need to spam the list with that).  I am at a loss as to how to respond to CRAN because I can't reproduce that error on anything I can test.  The cacheing is actually done by the package 'crul'.  
+
+I used r2u [1] here to install the thirty-six (!!) required dependencies in a
+five or so seconds [2], for convenience in Docker with the Ubuntu 22.04
+image.  So from
+
+  docker run --rm -ti eddelbuettel/r2u:jammy bash
+
+to
+
+  apt update -qq 
+  install.r rerddap
+
+and then as you requested
+
+  > library(rerddap)
+  > cache_setup(temp_dir = TRUE)
+  [1] "/tmp/Rtmp3sVsk1/R/rerddap"
+  > 
+
+which seems correct: within the per-R-session temp directory.
+
+Hth, Dirk
+
+[1] See https://eddelbuettel.github.io/r2u/
+[2] That's the point of r2u. See [1].
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From roy@mende|@@ohn @end|ng |rom no@@@gov  Sat Dec 10 23:27:46 2022
+From: roy@mende|@@ohn @end|ng |rom no@@@gov (Roy Mendelssohn - NOAA Federal)
+Date: Sat, 10 Dec 2022 14:27:46 -0800
+Subject: [R-pkg-devel] Do you run R on Fedora or Debian?
+In-Reply-To: <25493.1317.94818.395969@rob.eddelbuettel.com>
+References: <949F9A62-ACB1-4816-9331-4816C2F8DC8C@noaa.gov>
+ <25493.1317.94818.395969@rob.eddelbuettel.com>
+Message-ID: <A391008D-A8BE-4614-B0D0-600C75490038@noaa.gov>
+
+Perfect.  Thanks.  That is what I am seeing and that is what is expected.  I have even gotten into a debugger,  and looked at to where the file was downloaded,  right after the download,  and it is in a proper temporary space.
+
+Dirk if you really want to be a glutton for punishment,  could you try this:
+
+install.packages("rerddapXtracto",  dependencies = TRUE)
+library(rerddapXtracto)
+xcoord <- mbnms$Longitude
+ycoord <- mbnms$Latitude
+dataInfo <- rerddap::info('etopo180')
+parameter = 'altitude'
+xName <- 'longitude'
+yName <- 'latitude'
+bathy <- rxtractogon (dataInfo, parameter = parameter, xcoord = xcoord,
+                      ycoord = ycoord)
+
+What you would be looking for is any sign that this has left a file in cache in the user's space.  I don't find any in my virtual machine
+
+Assuming that pans out,  now my question is how to respond to CRAN.  I can give you one guess who from CRAN sent me the notice,  As I said,  I don't know how to fix something when everything I am have available to behaves properly.
+
+Thanks,
+
+-Roy
+
+> On Dec 10, 2022, at 2:16 PM, Dirk Eddelbuettel <edd at debian.org> wrote:
+> 
+> 
+> On 10 December 2022 at 14:00, Roy Mendelssohn - NOAA Federal via R-package-devel wrote:
+> | CRAN has sent me a notice about the following:
+> | 
+> | https://www.stats.ox.ac.uk/pub/bdr/donttest/rerddapXtracto.out
+> | 
+> | I can not reproduce it.  I test on my Mac,  the cache space is properly handled  (by a package outside mine).  Same with Debian on r-hub.  I installed Fedora on a virtual machine, no problem  (it is assigned a space in /tmp).  I would really appreciate it if someone who runs Debian or Fedora could test the following:
+> | 
+> | install.packages("rerddap",  dependencies = TRUE)
+> | library(rerddap)
+> | cache_setup(temp_dir = TRUE)
+> | 
+> | The last line should print where the cache is setup.  That is called at the start of all of my functions that do downloads.  If you could run that and send me the result I would appreciate it (snd privately no need to spam the list with that).  I am at a loss as to how to respond to CRAN because I can't reproduce that error on anything I can test.  The cacheing is actually done by the package 'crul'.  
+> 
+> I used r2u [1] here to install the thirty-six (!!) required dependencies in a
+> five or so seconds [2], for convenience in Docker with the Ubuntu 22.04
+> image.  So from
+> 
+>  docker run --rm -ti eddelbuettel/r2u:jammy bash
+> 
+> to
+> 
+>  apt update -qq 
+>  install.r rerddap
+> 
+> and then as you requested
+> 
+>> library(rerddap)
+>> cache_setup(temp_dir = TRUE)
+>  [1] "/tmp/Rtmp3sVsk1/R/rerddap"
+>> 
+> 
+> which seems correct: within the per-R-session temp directory.
+> 
+> Hth, Dirk
+> 
+> [1] See https://eddelbuettel.github.io/r2u/
+> [2] That's the point of r2u. See [1].
+> 
+> -- 
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+**********************
+"The contents of this message do not reflect any position of the U.S. Government or NOAA."
+**********************
+Roy Mendelssohn
+Supervisory Operations Research Analyst
+NOAA/NMFS
+Environmental Research Division
+Southwest Fisheries Science Center
+***Note new street address***
+110 McAllister Way
+Santa Cruz, CA 95060
+Phone: (831)-420-3666
+Fax: (831) 420-3980
+e-mail: Roy.Mendelssohn at noaa.gov www: https://www.pfeg.noaa.gov/
+
+"Old age and treachery will overcome youth and skill."
+"From those who have been given much, much will be expected" 
+"the arc of the moral universe is long, but it bends toward justice" -MLK Jr.
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sat Dec 10 23:36:07 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sun, 11 Dec 2022 01:36:07 +0300
+Subject: [R-pkg-devel] Do you run R on Fedora or Debian?
+In-Reply-To: <949F9A62-ACB1-4816-9331-4816C2F8DC8C@noaa.gov>
+References: <949F9A62-ACB1-4816-9331-4816C2F8DC8C@noaa.gov>
+Message-ID: <20221211013607.5ea55f9d@Tarkus>
+
+On Sat, 10 Dec 2022 14:00:22 -0800
+Roy Mendelssohn - NOAA Federal via R-package-devel
+<r-package-devel at r-project.org> wrote:
+
+> cache_setup(temp_dir = TRUE)
+
+Unfortunately, it prints a path under tempdir() for me on my Debian
+oldstable machine.
+
+I see that the error came from the "donttest" check from an extra test
+that's not on by default with --as-cran. Unfortunately, not even
+running _R_CHECK_DONTTEST_EXAMPLES_=true \
+_R_CHECK_THINGS_IN_OTHER_DIRS_=TRUE R CMD check --as-cran \
+--run-donttest rerddapXtracto_1.1.3.tar.gz reproduces the issue for me.
+
+As a measure of last resort, could it help to manually go over
+rerddapXtracto examples and see if any are wrapped in \donttest{} and
+may be missing a cache setting?
+
+-- 
+Best regards,
+Ivan
+
+
+From edd @end|ng |rom deb|@n@org  Sat Dec 10 23:53:27 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Sat, 10 Dec 2022 16:53:27 -0600
+Subject: [R-pkg-devel] Do you run R on Fedora or Debian?
+In-Reply-To: <A391008D-A8BE-4614-B0D0-600C75490038@noaa.gov>
+References: <949F9A62-ACB1-4816-9331-4816C2F8DC8C@noaa.gov>
+ <25493.1317.94818.395969@rob.eddelbuettel.com>
+ <A391008D-A8BE-4614-B0D0-600C75490038@noaa.gov>
+Message-ID: <25493.3559.819391.823840@rob.eddelbuettel.com>
+
+
+On 10 December 2022 at 14:27, Roy Mendelssohn - NOAA Federal wrote:
+| Perfect.  Thanks.  That is what I am seeing and that is what is expected.  I have even gotten into a debugger,  and looked at to where the file was downloaded,  right after the download,  and it is in a proper temporary space.
+| 
+| Dirk if you really want to be a glutton for punishment,  could you try this:
+| 
+| install.packages("rerddapXtracto",  dependencies = TRUE)
+| library(rerddapXtracto)
+| xcoord <- mbnms$Longitude
+| ycoord <- mbnms$Latitude
+| dataInfo <- rerddap::info('etopo180')
+| parameter = 'altitude'
+| xName <- 'longitude'
+| yName <- 'latitude'
+| bathy <- rxtractogon (dataInfo, parameter = parameter, xcoord = xcoord,
+|                       ycoord = ycoord)
+| 
+| What you would be looking for is any sign that this has left a file in cache in the user's space.  I don't find any in my virtual machine
+
+As luck would have it [1] I still had that container session open in a tab
+from byobu [2] so continuing (and another 102 (!!!!!!!) packages as binaries
+installed in three or four seconds, gotta bless #r2u) 
+
+> install.packages("rerddapXtracto",  dependencies = TRUE) # argument is > redundant, btw
+Install system packages as root...
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+Ign https://r2u.stat.illinois.edu/ubuntu jammy InRelease
+Hit https://r2u.stat.illinois.edu/ubuntu jammy Release
+[ ... many lines from r2u & bspm processing omitted ... ]
+Setting up r-cran-plotdap (1.0.0-1.ca2204.1) ...
+Setting up r-cran-rerddapxtracto (1.1.3-1.ca2204.1) ...
+Processing triggers for libc-bin (2.35-0ubuntu3.1) ...
+> library(rerddapXtracto)
+> xcoord <- mbnms$Longitude
+> ycoord <- mbnms$Latitude
+> dataInfo <- rerddap::info('etopo180')
+> parameter = 'altitude'
+> xName <- 'longitude'
+> yName <- 'latitude'
+> bathy <- rxtractogon (dataInfo, parameter = parameter, xcoord = xcoord, ycoord = ycoord)
+> 
+> getwd()                                                                     
+[1] "/"
+>
+
+Nothing spewn to stdout. Jumping into the same Docker session via the
+much-underappreciated backdoor trick:
+
+edd at rob:~/git/digest(master)$ docker ps
+CONTAINER ID   IMAGE                    COMMAND   CREATED          STATUS          PORTS     NAMES
+18f6bf0e3bb1   eddelbuettel/r2u:jammy   "bash"    39 minutes ago   Up 39 minutes             nervous_black
+edd at rob:~/git/digest(master)$ docker exec -ti nervous_black bash
+root at 18f6bf0e3bb1:/# ls
+bin  boot  dev  etc  home  lib  lib32  lib64  libx32  media  mnt  opt  proc  root  run  sbin  srv  sys  tmp  usr  var
+root at 18f6bf0e3bb1:/# cd ~
+root at 18f6bf0e3bb1:~# ls
+root at 18f6bf0e3bb1:~#
+
+we see no files in / (where we started) or $HOME.
+
+| Assuming that pans out,  now my question is how to respond to CRAN.  I can give you one guess who from CRAN sent me the notice,  As I said,  I don't know how to fix something when everything I am have available to behaves properly.
+
+I have no idea. But I would trust Ivan's advice as he is essentially always
+spot on and minimize / control interaction.  If CRAN reports this to you,
+they see it. You should have access to `tempdir()` and friends to make things
+per-session, or else you need to ask the user (once) and then store in
+user-supplied location.  I think that was discussed here recently.
+
+Good luck,  Dirk
+
+[1] Also commonly called 'attention deficit disorder'
+[2] A more user-friendly variant of tmux
+
+
+| Thanks,
+| 
+| -Roy
+| 
+| > On Dec 10, 2022, at 2:16 PM, Dirk Eddelbuettel <edd at debian.org> wrote:
+| > 
+| > 
+| > On 10 December 2022 at 14:00, Roy Mendelssohn - NOAA Federal via R-package-devel wrote:
+| > | CRAN has sent me a notice about the following:
+| > | 
+| > | https://www.stats.ox.ac.uk/pub/bdr/donttest/rerddapXtracto.out
+| > | 
+| > | I can not reproduce it.  I test on my Mac,  the cache space is properly handled  (by a package outside mine).  Same with Debian on r-hub.  I installed Fedora on a virtual machine, no problem  (it is assigned a space in /tmp).  I would really appreciate it if someone who runs Debian or Fedora could test the following:
+| > | 
+| > | install.packages("rerddap",  dependencies = TRUE)
+| > | library(rerddap)
+| > | cache_setup(temp_dir = TRUE)
+| > | 
+| > | The last line should print where the cache is setup.  That is called at the start of all of my functions that do downloads.  If you could run that and send me the result I would appreciate it (snd privately no need to spam the list with that).  I am at a loss as to how to respond to CRAN because I can't reproduce that error on anything I can test.  The cacheing is actually done by the package 'crul'.  
+| > 
+| > I used r2u [1] here to install the thirty-six (!!) required dependencies in a
+| > five or so seconds [2], for convenience in Docker with the Ubuntu 22.04
+| > image.  So from
+| > 
+| >  docker run --rm -ti eddelbuettel/r2u:jammy bash
+| > 
+| > to
+| > 
+| >  apt update -qq 
+| >  install.r rerddap
+| > 
+| > and then as you requested
+| > 
+| >> library(rerddap)
+| >> cache_setup(temp_dir = TRUE)
+| >  [1] "/tmp/Rtmp3sVsk1/R/rerddap"
+| >> 
+| > 
+| > which seems correct: within the per-R-session temp directory.
+| > 
+| > Hth, Dirk
+| > 
+| > [1] See https://eddelbuettel.github.io/r2u/
+| > [2] That's the point of r2u. See [1].
+| > 
+| > -- 
+| > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+| 
+| **********************
+| "The contents of this message do not reflect any position of the U.S. Government or NOAA."
+| **********************
+| Roy Mendelssohn
+| Supervisory Operations Research Analyst
+| NOAA/NMFS
+| Environmental Research Division
+| Southwest Fisheries Science Center
+| ***Note new street address***
+| 110 McAllister Way
+| Santa Cruz, CA 95060
+| Phone: (831)-420-3666
+| Fax: (831) 420-3980
+| e-mail: Roy.Mendelssohn at noaa.gov www: https://www.pfeg.noaa.gov/
+| 
+| "Old age and treachery will overcome youth and skill."
+| "From those who have been given much, much will be expected" 
+| "the arc of the moral universe is long, but it bends toward justice" -MLK Jr.
+| 
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From roy@mende|@@ohn @end|ng |rom no@@@gov  Sun Dec 11 00:02:06 2022
+From: roy@mende|@@ohn @end|ng |rom no@@@gov (Roy Mendelssohn - NOAA Federal)
+Date: Sat, 10 Dec 2022 15:02:06 -0800
+Subject: [R-pkg-devel] Do you run R on Fedora or Debian?
+In-Reply-To: <25493.3559.819391.823840@rob.eddelbuettel.com>
+References: <949F9A62-ACB1-4816-9331-4816C2F8DC8C@noaa.gov>
+ <25493.1317.94818.395969@rob.eddelbuettel.com>
+ <A391008D-A8BE-4614-B0D0-600C75490038@noaa.gov>
+ <25493.3559.819391.823840@rob.eddelbuettel.com>
+Message-ID: <D7DDE091-D788-42D8-968D-18F6D07CF6C5@noaa.gov>
+
+Thanks for the effort.  Yep that is what I see when I run in my virtual machine. I will play with it some more,  and hopefully someone from CRAN will see this and chime in.  I am more than willing to try to fix this,  I just can not reproduce the error.
+
+-Roy
+
+> On Dec 10, 2022, at 2:53 PM, Dirk Eddelbuettel <edd at debian.org> wrote:
+> 
+> 
+> On 10 December 2022 at 14:27, Roy Mendelssohn - NOAA Federal wrote:
+> | Perfect.  Thanks.  That is what I am seeing and that is what is expected.  I have even gotten into a debugger,  and looked at to where the file was downloaded,  right after the download,  and it is in a proper temporary space.
+> | 
+> | Dirk if you really want to be a glutton for punishment,  could you try this:
+> | 
+> | install.packages("rerddapXtracto",  dependencies = TRUE)
+> | library(rerddapXtracto)
+> | xcoord <- mbnms$Longitude
+> | ycoord <- mbnms$Latitude
+> | dataInfo <- rerddap::info('etopo180')
+> | parameter = 'altitude'
+> | xName <- 'longitude'
+> | yName <- 'latitude'
+> | bathy <- rxtractogon (dataInfo, parameter = parameter, xcoord = xcoord,
+> |                       ycoord = ycoord)
+> | 
+> | What you would be looking for is any sign that this has left a file in cache in the user's space.  I don't find any in my virtual machine
+> 
+> As luck would have it [1] I still had that container session open in a tab
+> from byobu [2] so continuing (and another 102 (!!!!!!!) packages as binaries
+> installed in three or four seconds, gotta bless #r2u) 
+> 
+>> install.packages("rerddapXtracto",  dependencies = TRUE) # argument is > redundant, btw
+> Install system packages as root...
+> Reading package lists... Done
+> Building dependency tree... Done
+> Reading state information... Done
+> Ign https://r2u.stat.illinois.edu/ubuntu jammy InRelease
+> Hit https://r2u.stat.illinois.edu/ubuntu jammy Release
+> [ ... many lines from r2u & bspm processing omitted ... ]
+> Setting up r-cran-plotdap (1.0.0-1.ca2204.1) ...
+> Setting up r-cran-rerddapxtracto (1.1.3-1.ca2204.1) ...
+> Processing triggers for libc-bin (2.35-0ubuntu3.1) ...
+>> library(rerddapXtracto)
+>> xcoord <- mbnms$Longitude
+>> ycoord <- mbnms$Latitude
+>> dataInfo <- rerddap::info('etopo180')
+>> parameter = 'altitude'
+>> xName <- 'longitude'
+>> yName <- 'latitude'
+>> bathy <- rxtractogon (dataInfo, parameter = parameter, xcoord = xcoord, ycoord = ycoord)
+>> 
+>> getwd()                                                                     
+> [1] "/"
+>> 
+> 
+> Nothing spewn to stdout. Jumping into the same Docker session via the
+> much-underappreciated backdoor trick:
+> 
+> edd at rob:~/git/digest(master)$ docker ps
+> CONTAINER ID   IMAGE                    COMMAND   CREATED          STATUS          PORTS     NAMES
+> 18f6bf0e3bb1   eddelbuettel/r2u:jammy   "bash"    39 minutes ago   Up 39 minutes             nervous_black
+> edd at rob:~/git/digest(master)$ docker exec -ti nervous_black bash
+> root at 18f6bf0e3bb1:/# ls
+> bin  boot  dev  etc  home  lib  lib32  lib64  libx32  media  mnt  opt  proc  root  run  sbin  srv  sys tmp  usr  var
+> root at 18f6bf0e3bb1:/# cd ~
+> root at 18f6bf0e3bb1:~# ls
+> root at 18f6bf0e3bb1:~#
+> 
+> we see no files in / (where we started) or $HOME.
+> 
+> | Assuming that pans out,  now my question is how to respond to CRAN.  I can give you one guess who from CRAN sent me the notice,  As I said,  I don't know how to fix something when everything I am have available to behaves properly.
+> 
+> I have no idea. But I would trust Ivan's advice as he is essentially always
+> spot on and minimize / control interaction.  If CRAN reports this to you,
+> they see it. You should have access to `tempdir()` and friends to make things
+> per-session, or else you need to ask the user (once) and then store in
+> user-supplied location.  I think that was discussed here recently.
+> 
+> Good luck,  Dirk
+> 
+> [1] Also commonly called 'attention deficit disorder'
+> [2] A more user-friendly variant of tmux
+> 
+> 
+> | Thanks,
+> | 
+> | -Roy
+> | 
+> | > On Dec 10, 2022, at 2:16 PM, Dirk Eddelbuettel <edd at debian.org> wrote:
+> | > 
+> | > 
+> | > On 10 December 2022 at 14:00, Roy Mendelssohn - NOAA Federal via R-package-devel wrote:
+> | > | CRAN has sent me a notice about the following:
+> | > | 
+> | > | https://www.stats.ox.ac.uk/pub/bdr/donttest/rerddapXtracto.out
+> | > | 
+> | > | I can not reproduce it.  I test on my Mac,  the cache space is properly handled  (by a package outside mine).  Same with Debian on r-hub.  I installed Fedora on a virtual machine, no problem  (it is assigned a space in /tmp).  I would really appreciate it if someone who runs Debian or Fedora could test the following:
+> | > | 
+> | > | install.packages("rerddap",  dependencies = TRUE)
+> | > | library(rerddap)
+> | > | cache_setup(temp_dir = TRUE)
+> | > | 
+> | > | The last line should print where the cache is setup.  That is called at the start of all of my functions that do downloads.  If you could run that and send me the result I would appreciate it (snd privately no need to spam the list with that).  I am at a loss as to how to respond to CRAN because I can't reproduce that error on anything I can test.  The cacheing is actually done by the package 'crul'.  
+> | > 
+> | > I used r2u [1] here to install the thirty-six (!!) required dependencies in a
+> | > five or so seconds [2], for convenience in Docker with the Ubuntu 22.04
+> | > image.  So from
+> | > 
+> | >  docker run --rm -ti eddelbuettel/r2u:jammy bash
+> | > 
+> | > to
+> | > 
+> | >  apt update -qq 
+> | >  install.r rerddap
+> | > 
+> | > and then as you requested
+> | > 
+> | >> library(rerddap)
+> | >> cache_setup(temp_dir = TRUE)
+> | >  [1] "/tmp/Rtmp3sVsk1/R/rerddap"
+> | >> 
+> | > 
+> | > which seems correct: within the per-R-session temp directory.
+> | > 
+> | > Hth, Dirk
+> | > 
+> | > [1] See https://eddelbuettel.github.io/r2u/
+> | > [2] That's the point of r2u. See [1].
+> | > 
+> | > -- 
+> | > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> | 
+> | **********************
+> | "The contents of this message do not reflect any position of the U.S. Government or NOAA."
+> | **********************
+> | Roy Mendelssohn
+> | Supervisory Operations Research Analyst
+> | NOAA/NMFS
+> | Environmental Research Division
+> | Southwest Fisheries Science Center
+> | ***Note new street address***
+> | 110 McAllister Way
+> | Santa Cruz, CA 95060
+> | Phone: (831)-420-3666
+> | Fax: (831) 420-3980
+> | e-mail: Roy.Mendelssohn at noaa.gov www: https://www.pfeg.noaa.gov/
+> | 
+> | "Old age and treachery will overcome youth and skill."
+> | "From those who have been given much, much will be expected" 
+> | "the arc of the moral universe is long, but it bends toward justice" -MLK Jr.
+> | 
+> 
+> -- 
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+**********************
+"The contents of this message do not reflect any position of the U.S. Government or NOAA."
+**********************
+Roy Mendelssohn
+Supervisory Operations Research Analyst
+NOAA/NMFS
+Environmental Research Division
+Southwest Fisheries Science Center
+***Note new street address***
+110 McAllister Way
+Santa Cruz, CA 95060
+Phone: (831)-420-3666
+Fax: (831) 420-3980
+e-mail: Roy.Mendelssohn at noaa.gov www: https://www.pfeg.noaa.gov/
+
+"Old age and treachery will overcome youth and skill."
+"From those who have been given much, much will be expected" 
+"the arc of the moral universe is long, but it bends toward justice" -MLK Jr.
+
+
