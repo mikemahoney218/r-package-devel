@@ -14217,3 +14217,373 @@ Chemistry and Mathematics Tutoring
 Free/Libre and Open Source Software (FLOSS) Consultation
 
 
+From d@v|d@kepp||nger @end|ng |rom gm@||@com  Thu Dec 15 00:19:31 2022
+From: d@v|d@kepp||nger @end|ng |rom gm@||@com (David Kepplinger)
+Date: Wed, 14 Dec 2022 18:19:31 -0500
+Subject: [R-pkg-devel] NOTE about use of `:::`
+Message-ID: <CAGmyFCE9_jfJ28evgU9Zqp2+C70N7faCG-uVmcJWC+42s54hCw@mail.gmail.com>
+
+Dear List,
+
+I am working on updating the pense package and refactored some of the
+methods. I have several functions which take the same arguments, hence I'm
+sending all these arguments to an internal function, called `parse_args()`.
+Since I want to evaluate the arguments in the caller's environment, I'm
+using the following code
+
+  call <- match.call(expand.dots = TRUE)
+  call[[1]] <- quote(pense:::parse_args)
+  args <- eval.parent(call)
+
+Of course, R CMD CHECK complains about the use of `:::`, as it's almost
+never needed. I think the above usage would fall into that area of
+"almost", but I'm not sure if (a) there's a better approach and (b) the
+CRAN team would agree with me. I would have to test (b) by submitting and
+working with the CRAN team, but I wanted to ask the list first to see if
+I'm missing something obvious. I don't want to export the function
+parse_args() as it's not useful for a user, and the use is truly internal.
+
+Thanks and all the best,
+David
+
+	[[alternative HTML version deleted]]
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Thu Dec 15 01:11:43 2022
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Thu, 15 Dec 2022 13:11:43 +1300
+Subject: [R-pkg-devel] NOTE about use of `:::`
+In-Reply-To: <CAGmyFCE9_jfJ28evgU9Zqp2+C70N7faCG-uVmcJWC+42s54hCw@mail.gmail.com>
+References: <CAGmyFCE9_jfJ28evgU9Zqp2+C70N7faCG-uVmcJWC+42s54hCw@mail.gmail.com>
+Message-ID: <5485973B-4615-44D9-9B26-8716EE3B685F@R-project.org>
+
+David,
+
+why not
+
+call[[1]] <- parse_args
+
+The assignment is evaluated in your namespace so that makes sure the call is that of your function. The only downside I see is that in a stack trace you'll see the definition instead of the name.
+Or possibly
+
+do.call(parse_args, as.list(call[-1]))
+
+Cheers,
+Simon
+
+PS: Note that ::: is expensive - it probably doesn't matter here, but would in repeatedly called functions.
+
+
+> On 15/12/2022, at 12:19 PM, David Kepplinger <david.kepplinger at gmail.com> wrote:
+> 
+> Dear List,
+> 
+> I am working on updating the pense package and refactored some of the
+> methods. I have several functions which take the same arguments, hence I'm
+> sending all these arguments to an internal function, called `parse_args()`.
+> Since I want to evaluate the arguments in the caller's environment, I'm
+> using the following code
+> 
+>  call <- match.call(expand.dots = TRUE)
+>  call[[1]] <- quote(pense:::parse_args)
+>  args <- eval.parent(call)
+> 
+> Of course, R CMD CHECK complains about the use of `:::`, as it's almost
+> never needed. I think the above usage would fall into that area of
+> "almost", but I'm not sure if (a) there's a better approach and (b) the
+> CRAN team would agree with me. I would have to test (b) by submitting and
+> working with the CRAN team, but I wanted to ask the list first to see if
+> I'm missing something obvious. I don't want to export the function
+> parse_args() as it's not useful for a user, and the use is truly internal.
+> 
+> Thanks and all the best,
+> David
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From d@v|d@kepp||nger @end|ng |rom gm@||@com  Thu Dec 15 02:35:57 2022
+From: d@v|d@kepp||nger @end|ng |rom gm@||@com (David Kepplinger)
+Date: Wed, 14 Dec 2022 20:35:57 -0500
+Subject: [R-pkg-devel] NOTE about use of `:::`
+In-Reply-To: <5485973B-4615-44D9-9B26-8716EE3B685F@R-project.org>
+References: <CAGmyFCE9_jfJ28evgU9Zqp2+C70N7faCG-uVmcJWC+42s54hCw@mail.gmail.com>
+ <5485973B-4615-44D9-9B26-8716EE3B685F@R-project.org>
+Message-ID: <CAGmyFCFndJ6WtM5uYK30sC+XN7=0NL0Pjs8rXoZaSxS41eUFCA@mail.gmail.com>
+
+Thank you both for the suggestions. I would prefer a clean stack trace in
+case of errors as input errors are caught by this function and hence users
+might very well see errors emitted from it. It seems more informative to me
+if the error message would say "Error in .parse_args?" than "Error in
+new.env(?". But since this solution was suggested by both of you it is
+likely that CRAN too would demand this or a similar approach instead of
+using `:::`. I know `:::` is expansive, but the computations that follow
+are typically at least a few minutes so anything that takes less than a few
+seconds won't be noticeable.
+
+I also thought about using `...` before, but then the signature of the
+user-facing functions would be incomplete and IDEs won't be able to provide
+suggestions.
+
+Thanks for the help!
+
+-- David
+
+On Wed, Dec 14, 2022 at 7:11 PM Simon Urbanek <simon.urbanek at r-project.org>
+wrote:
+
+> David,
+>
+> why not
+>
+> call[[1]] <- parse_args
+>
+> The assignment is evaluated in your namespace so that makes sure the call
+> is that of your function. The only downside I see is that in a stack trace
+> you'll see the definition instead of the name.
+> Or possibly
+>
+> do.call(parse_args, as.list(call[-1]))
+>
+> Cheers,
+> Simon
+>
+> PS: Note that ::: is expensive - it probably doesn't matter here, but
+> would in repeatedly called functions.
+>
+>
+> > On 15/12/2022, at 12:19 PM, David Kepplinger <david.kepplinger at gmail.com>
+> wrote:
+> >
+> > Dear List,
+> >
+> > I am working on updating the pense package and refactored some of the
+> > methods. I have several functions which take the same arguments, hence
+> I'm
+> > sending all these arguments to an internal function, called
+> `parse_args()`.
+> > Since I want to evaluate the arguments in the caller's environment, I'm
+> > using the following code
+> >
+> >  call <- match.call(expand.dots = TRUE)
+> >  call[[1]] <- quote(pense:::parse_args)
+> >  args <- eval.parent(call)
+> >
+> > Of course, R CMD CHECK complains about the use of `:::`, as it's almost
+> > never needed. I think the above usage would fall into that area of
+> > "almost", but I'm not sure if (a) there's a better approach and (b) the
+> > CRAN team would agree with me. I would have to test (b) by submitting and
+> > working with the CRAN team, but I wanted to ask the list first to see if
+> > I'm missing something obvious. I don't want to export the function
+> > parse_args() as it's not useful for a user, and the use is truly
+> internal.
+> >
+> > Thanks and all the best,
+> > David
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From w||||@mwdun|@p @end|ng |rom gm@||@com  Thu Dec 15 02:39:53 2022
+From: w||||@mwdun|@p @end|ng |rom gm@||@com (Bill Dunlap)
+Date: Wed, 14 Dec 2022 17:39:53 -0800
+Subject: [R-pkg-devel] NOTE about use of `:::`
+In-Reply-To: <CAGmyFCE9_jfJ28evgU9Zqp2+C70N7faCG-uVmcJWC+42s54hCw@mail.gmail.com>
+References: <CAGmyFCE9_jfJ28evgU9Zqp2+C70N7faCG-uVmcJWC+42s54hCw@mail.gmail.com>
+Message-ID: <CAHqSRuTjBmO+gfu3xxmZMF5c+nZJinO2zq0ZyUS3A7kDOLOXTQ@mail.gmail.com>
+
+You could add an 'envir' argument to parse_args() and do your eval(...,
+envir=envir) stuff inside parse_args().  Then change
+  call[[1]] <- quote(pense:::parse_args)
+  args <- eval.parent(call)
+to
+   call[[1]] <- quote(parse_args)
+   call$envir <- parent.frame()
+   args <- eval(call)
+[That code is completely untested.]
+
+-Bill
+
+On Wed, Dec 14, 2022 at 3:19 PM David Kepplinger <david.kepplinger at gmail.com>
+wrote:
+
+> Dear List,
+>
+> I am working on updating the pense package and refactored some of the
+> methods. I have several functions which take the same arguments, hence I'm
+> sending all these arguments to an internal function, called `parse_args()`.
+> Since I want to evaluate the arguments in the caller's environment, I'm
+> using the following code
+>
+>   call <- match.call(expand.dots = TRUE)
+>   call[[1]] <- quote(pense:::parse_args)
+>   args <- eval.parent(call)
+>
+> Of course, R CMD CHECK complains about the use of `:::`, as it's almost
+> never needed. I think the above usage would fall into that area of
+> "almost", but I'm not sure if (a) there's a better approach and (b) the
+> CRAN team would agree with me. I would have to test (b) by submitting and
+> working with the CRAN team, but I wanted to ask the list first to see if
+> I'm missing something obvious. I don't want to export the function
+> parse_args() as it's not useful for a user, and the use is truly internal.
+>
+> Thanks and all the best,
+> David
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @kw@|mmo @end|ng |rom gm@||@com  Thu Dec 15 03:06:31 2022
+From: @kw@|mmo @end|ng |rom gm@||@com (Andrew Simmons)
+Date: Wed, 14 Dec 2022 21:06:31 -0500
+Subject: [R-pkg-devel] NOTE about use of `:::`
+In-Reply-To: <CAGmyFCFndJ6WtM5uYK30sC+XN7=0NL0Pjs8rXoZaSxS41eUFCA@mail.gmail.com>
+References: <CAGmyFCE9_jfJ28evgU9Zqp2+C70N7faCG-uVmcJWC+42s54hCw@mail.gmail.com>
+ <5485973B-4615-44D9-9B26-8716EE3B685F@R-project.org>
+ <CAGmyFCFndJ6WtM5uYK30sC+XN7=0NL0Pjs8rXoZaSxS41eUFCA@mail.gmail.com>
+Message-ID: <CAPcHnpRDH4S9n8SVum_-xhnbj446DDtvEcP2_DQcRFuPKjRx4w@mail.gmail.com>
+
+Here's another suggestion, not sure if it's any good, but you could
+structure your functions like
+
+parse_args <- function (envir = parent.frame())
+{
+    evalq(list(a = a, b = b, ..., y = y, z = z), envir)
+    <...>
+}
+
+exported_fun <- function (a, b, ..., y, z)
+{
+    parse_args()
+    <...>
+}
+
+It's seriously ugly, but it could work. You could also do some bquote
+substitution
+
+parse_args_expr <- quote(parse_args(a = a, b = b, ..., y = y, z = z))
+
+exported_fun <- function (a, b, ..., y, z) NULL
+body(exported_fun) <- bquote({
+   .(parse_args_expr)
+    <...>
+})
+
+On Wed, Dec 14, 2022, 20:36 David Kepplinger <david.kepplinger at gmail.com>
+wrote:
+
+> Thank you both for the suggestions. I would prefer a clean stack trace in
+> case of errors as input errors are caught by this function and hence users
+> might very well see errors emitted from it. It seems more informative to me
+> if the error message would say "Error in .parse_args?" than "Error in
+> new.env(?". But since this solution was suggested by both of you it is
+> likely that CRAN too would demand this or a similar approach instead of
+> using `:::`. I know `:::` is expansive, but the computations that follow
+> are typically at least a few minutes so anything that takes less than a few
+> seconds won't be noticeable.
+>
+> I also thought about using `...` before, but then the signature of the
+> user-facing functions would be incomplete and IDEs won't be able to provide
+> suggestions.
+>
+> Thanks for the help!
+>
+> -- David
+>
+> On Wed, Dec 14, 2022 at 7:11 PM Simon Urbanek <simon.urbanek at r-project.org
+> >
+> wrote:
+>
+> > David,
+> >
+> > why not
+> >
+> > call[[1]] <- parse_args
+> >
+> > The assignment is evaluated in your namespace so that makes sure the call
+> > is that of your function. The only downside I see is that in a stack
+> trace
+> > you'll see the definition instead of the name.
+> > Or possibly
+> >
+> > do.call(parse_args, as.list(call[-1]))
+> >
+> > Cheers,
+> > Simon
+> >
+> > PS: Note that ::: is expensive - it probably doesn't matter here, but
+> > would in repeatedly called functions.
+> >
+> >
+> > > On 15/12/2022, at 12:19 PM, David Kepplinger <
+> david.kepplinger at gmail.com>
+> > wrote:
+> > >
+> > > Dear List,
+> > >
+> > > I am working on updating the pense package and refactored some of the
+> > > methods. I have several functions which take the same arguments, hence
+> > I'm
+> > > sending all these arguments to an internal function, called
+> > `parse_args()`.
+> > > Since I want to evaluate the arguments in the caller's environment, I'm
+> > > using the following code
+> > >
+> > >  call <- match.call(expand.dots = TRUE)
+> > >  call[[1]] <- quote(pense:::parse_args)
+> > >  args <- eval.parent(call)
+> > >
+> > > Of course, R CMD CHECK complains about the use of `:::`, as it's almost
+> > > never needed. I think the above usage would fall into that area of
+> > > "almost", but I'm not sure if (a) there's a better approach and (b) the
+> > > CRAN team would agree with me. I would have to test (b) by submitting
+> and
+> > > working with the CRAN team, but I wanted to ask the list first to see
+> if
+> > > I'm missing something obvious. I don't want to export the function
+> > > parse_args() as it's not useful for a user, and the use is truly
+> > internal.
+> > >
+> > > Thanks and all the best,
+> > > David
+> > >
+> > >       [[alternative HTML version deleted]]
+> > >
+> > > ______________________________________________
+> > > R-package-devel at r-project.org mailing list
+> > > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> > >
+> >
+> >
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
