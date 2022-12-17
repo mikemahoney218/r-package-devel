@@ -14587,3 +14587,300 @@ wrote:
 	[[alternative HTML version deleted]]
 
 
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Dec 15 10:39:22 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 15 Dec 2022 04:39:22 -0500
+Subject: [R-pkg-devel] NOTE about use of `:::`
+In-Reply-To: <CAGmyFCFndJ6WtM5uYK30sC+XN7=0NL0Pjs8rXoZaSxS41eUFCA@mail.gmail.com>
+References: <CAGmyFCE9_jfJ28evgU9Zqp2+C70N7faCG-uVmcJWC+42s54hCw@mail.gmail.com>
+ <5485973B-4615-44D9-9B26-8716EE3B685F@R-project.org>
+ <CAGmyFCFndJ6WtM5uYK30sC+XN7=0NL0Pjs8rXoZaSxS41eUFCA@mail.gmail.com>
+Message-ID: <bd1b20b5-d9e8-21dd-51ef-aa3fd69f0957@gmail.com>
+
+If you want the name of the function to appear, then you can put the 
+function in an environment whose parent is where most of the evaluation 
+should take place.  For example,
+
+f <- function(...) {
+   call <- match.call(expand.dots = TRUE)
+   call[[1]] <- quote(parse_args)
+   envir <- new.env(parent = parent.frame())
+   envir$parse_args <- parse_args
+
+   eval(call, envir)
+}
+
+parse_args <- function(...) {
+   cat("args were ", names(list(...)), "\n")
+   stop("Error in parse_args")
+}
+
+f(a = 1, b = 2)
+#> args were  a b
+#> Error in parse_args(a = 1, b = 2): Error in parse_args
+
+Duncan Murdoch
+
+
+On 14/12/2022 8:35 p.m., David Kepplinger wrote:
+> Thank you both for the suggestions. I would prefer a clean stack trace in
+> case of errors as input errors are caught by this function and hence users
+> might very well see errors emitted from it. It seems more informative to me
+> if the error message would say "Error in .parse_args?" than "Error in
+> new.env(?". But since this solution was suggested by both of you it is
+> likely that CRAN too would demand this or a similar approach instead of
+> using `:::`. I know `:::` is expansive, but the computations that follow
+> are typically at least a few minutes so anything that takes less than a few
+> seconds won't be noticeable.
+> 
+> I also thought about using `...` before, but then the signature of the
+> user-facing functions would be incomplete and IDEs won't be able to provide
+> suggestions.
+> 
+> Thanks for the help!
+> 
+> -- David
+> 
+> On Wed, Dec 14, 2022 at 7:11 PM Simon Urbanek <simon.urbanek at r-project.org>
+> wrote:
+> 
+>> David,
+>>
+>> why not
+>>
+>> call[[1]] <- parse_args
+>>
+>> The assignment is evaluated in your namespace so that makes sure the call
+>> is that of your function. The only downside I see is that in a stack trace
+>> you'll see the definition instead of the name.
+>> Or possibly
+>>
+>> do.call(parse_args, as.list(call[-1]))
+>>
+>> Cheers,
+>> Simon
+>>
+>> PS: Note that ::: is expensive - it probably doesn't matter here, but
+>> would in repeatedly called functions.
+>>
+>>
+>>> On 15/12/2022, at 12:19 PM, David Kepplinger <david.kepplinger at gmail.com>
+>> wrote:
+>>>
+>>> Dear List,
+>>>
+>>> I am working on updating the pense package and refactored some of the
+>>> methods. I have several functions which take the same arguments, hence
+>> I'm
+>>> sending all these arguments to an internal function, called
+>> `parse_args()`.
+>>> Since I want to evaluate the arguments in the caller's environment, I'm
+>>> using the following code
+>>>
+>>>   call <- match.call(expand.dots = TRUE)
+>>>   call[[1]] <- quote(pense:::parse_args)
+>>>   args <- eval.parent(call)
+>>>
+>>> Of course, R CMD CHECK complains about the use of `:::`, as it's almost
+>>> never needed. I think the above usage would fall into that area of
+>>> "almost", but I'm not sure if (a) there's a better approach and (b) the
+>>> CRAN team would agree with me. I would have to test (b) by submitting and
+>>> working with the CRAN team, but I wanted to ask the list first to see if
+>>> I'm missing something obvious. I don't want to export the function
+>>> parse_args() as it's not useful for a user, and the use is truly
+>> internal.
+>>>
+>>> Thanks and all the best,
+>>> David
+>>>
+>>>        [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>
+>>
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From oto@kh|@| @end|ng |rom gm@||@com  Thu Dec 15 15:34:44 2022
+From: oto@kh|@| @end|ng |rom gm@||@com (Ismail Otoakhia)
+Date: Thu, 15 Dec 2022 15:34:44 +0100
+Subject: [R-pkg-devel] How to reduce examples in a package that takes more
+ than 5 seconds to run?
+Message-ID: <CAG01fEbGO_9etume6wc091k+H_rWSbUBSrpoR8ydC+iTRh568w@mail.gmail.com>
+
+The R package 'ardl.nardl' has some examples that take more than 5 seconds
+to run. I was advised by the CRAN team to reduce the run time to less than
+5 seconds.
+
+
+
+How can this be achieved?
+
+
+
+E. I Otoakhia
+
+	[[alternative HTML version deleted]]
+
+
+From br|@n @end|ng |rom br@verock@com  Thu Dec 15 15:57:06 2022
+From: br|@n @end|ng |rom br@verock@com (Brian G. Peterson)
+Date: Thu, 15 Dec 2022 08:57:06 -0600
+Subject: [R-pkg-devel] 
+ How to reduce examples in a package that takes more
+ than 5 seconds to run?
+In-Reply-To: <CAG01fEbGO_9etume6wc091k+H_rWSbUBSrpoR8ydC+iTRh568w@mail.gmail.com>
+References: <CAG01fEbGO_9etume6wc091k+H_rWSbUBSrpoR8ydC+iTRh568w@mail.gmail.com>
+Message-ID: <0ee52453-012b-20f4-6be0-4af0996d09b4@braverock.com>
+
+On 12/15/22 08:34, Ismail Otoakhia wrote:
+> The R package 'ardl.nardl' has some examples that take more than 5 seconds
+> to run. I was advised by the CRAN team to reduce the run time to less than
+> 5 seconds.
+>
+> How can this be achieved?
+
+- you can lower the amount of data in the example
+
+- you can use a faster method than your default method
+
+- you can wrap the example in a dontrun tag so it will not run during 
+checking
+
+
+From bbo|ker @end|ng |rom gm@||@com  Thu Dec 15 16:02:30 2022
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Thu, 15 Dec 2022 10:02:30 -0500
+Subject: [R-pkg-devel] 
+ How to reduce examples in a package that takes more
+ than 5 seconds to run?
+In-Reply-To: <0ee52453-012b-20f4-6be0-4af0996d09b4@braverock.com>
+References: <CAG01fEbGO_9etume6wc091k+H_rWSbUBSrpoR8ydC+iTRh568w@mail.gmail.com>
+ <0ee52453-012b-20f4-6be0-4af0996d09b4@braverock.com>
+Message-ID: <eaa319dc-eefd-d7e8-6ea8-0b468d95a1d1@gmail.com>
+
+
+
+On 2022-12-15 9:57 a.m., Brian G. Peterson wrote:
+> On 12/15/22 08:34, Ismail Otoakhia wrote:
+>> The R package 'ardl.nardl' has some examples that take more than 5 
+>> seconds
+>> to run. I was advised by the CRAN team to reduce the run time to less 
+>> than
+>> 5 seconds.
+>>
+>> How can this be achieved?
+> 
+> - you can lower the amount of data in the example
+> 
+> - you can use a faster method than your default method
+> 
+> - you can wrap the example in a dontrun tag so it will not run during 
+> checking
+> 
+
+   If your example involves something like a fitted model object that 
+takes a long time to compute, you can pre-compute the model fit and 
+store the object in an inst/testdata directory, then use something like
+
+fitted_model <- readRDS(system.file("testdata", "my_example.rds", 
+package = "mypackage"))
+
+to retrieve it
+
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+(Acting) Graduate chair, Mathematics & Statistics
+ > E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Thu Dec 15 16:25:34 2022
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Thu, 15 Dec 2022 09:25:34 -0600
+Subject: [R-pkg-devel] 
+ How to reduce examples in a package that takes more
+ than 5 seconds to run?
+In-Reply-To: <eaa319dc-eefd-d7e8-6ea8-0b468d95a1d1@gmail.com>
+References: <CAG01fEbGO_9etume6wc091k+H_rWSbUBSrpoR8ydC+iTRh568w@mail.gmail.com>
+ <0ee52453-012b-20f4-6be0-4af0996d09b4@braverock.com>
+ <eaa319dc-eefd-d7e8-6ea8-0b468d95a1d1@gmail.com>
+Message-ID: <d2cd5279-347b-8dad-fb96-0db7b700eb46@effectivedefense.org>
+
+
+
+On 12/15/22 9:02 AM, Ben Bolker wrote:
+> 
+> 
+> On 2022-12-15 9:57 a.m., Brian G. Peterson wrote:
+>> On 12/15/22 08:34, Ismail Otoakhia wrote:
+>>> The R package 'ardl.nardl' has some examples that take more than 5 
+>>> seconds
+>>> to run. I was advised by the CRAN team to reduce the run time to less 
+>>> than
+>>> 5 seconds.
+>>>
+>>> How can this be achieved?
+>>
+>> - you can lower the amount of data in the example
+>>
+>> - you can use a faster method than your default method
+>>
+>> - you can wrap the example in a dontrun tag so it will not run during 
+>> checking
+>>
+> 
+>  ? If your example involves something like a fitted model object that 
+> takes a long time to compute, you can pre-compute the model fit and 
+> store the object in an inst/testdata directory, then use something like
+> 
+> fitted_model <- readRDS(system.file("testdata", "my_example.rds", 
+> package = "mypackage"))
+> 
+> to retrieve it
+
+
+	  The "sos" package includes a function "CRAN", which is used for that 
+purpose.  The examples section in "findfn.Rd" includes the following:
+
+
+# Skip these tests on CRAN,
+# because they take more than 5 seconds
+if(!CRAN()){
+...
+}
+
+
+	  I know that some on this list do not like this construct, but it has 
+helped me manage this problem for several years.  NOTE:  This CRAN 
+function is NOT maintained by anyone on CRAN, so it is NOT guaranteed to 
+work.  However, the "sos" package is currently on CRAN, and I have not 
+seen an email asking me to avoid it ;-)
+
+
+https://github.com/sbgraves237/sos/blob/master/man/findFn.Rd
+
+
+	  Hope this helps.
+	  Spencer Graves
+> 
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
