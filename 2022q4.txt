@@ -16656,3 +16656,157 @@ considerate choice.
 Duncan Murdoch
 
 
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Dec 28 14:09:32 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 28 Dec 2022 08:09:32 -0500
+Subject: [R-pkg-devel] 
+ How to reduce examples in a package that takes more
+ than 5 seconds to run?
+In-Reply-To: <575D583F-72D9-40A4-9E38-F2563CE09A73@dal.ca>
+References: <575D583F-72D9-40A4-9E38-F2563CE09A73@dal.ca>
+Message-ID: <912a8c37-8d88-2c03-3e80-56677adffb2b@gmail.com>
+
+On 28/12/2022 7:06 a.m., Daniel Kelley wrote:
+>  > I've been reminded today why this is such a bad idea. ?I'm preparing an
+> update of the rgl package. ?As I attempt to be a good citizen, I'm doing
+> comparison checks of all of the 300 packages that use it, to see if my
+> updates break anything.
+> 
+> Hi Duncan, I'm wondering whether you are checking against CRAN sources 
+> or github/gitlab/etc sources.
+
+CRAN sources only.  Unreleased packages may have lots of errors in them, 
+and it's up to their authors to test them.  Users shouldn't rely on 
+those packages, but they might rely on CRAN packages, and I don't want 
+to cause extra headaches for them.
+> I ask because the scheme I use in my packages is that I have lots of 
+> tests that only get done if a certain local file (or directory) is 
+> present. ?Those files/directories are listed in .Rbuildignore, so the 
+> CRAN tests skip those tests. ?Some of these files/directories are stored 
+> in the same github repo as the package code, and some are not. ?The 
+> latter are because the datasets are huge, or because they are private 
+> data sent to me by users to test new features. ?(Often users share data 
+> for testing, as I develop new code. They need to keep the data private 
+> until they publish papers and theses.)
+> 
+> I know rgl does not depend on oce, so my question is not exactly 
+> pertinent to you, but I would appreciate it if you could comment on 
+> whether what I am doing seems to be useful. ?To be honest, I am a bit 
+> lost in how folks are supposed to handle slow tests; I'd not be happy to 
+> report how many times I've done web searches to find out just what 
+> \dontrun and \donttest do, and when I should use them or should do 
+> something else.
+> 
+
+Your method sounds good.  You choose to run your tests, you don't force 
+anyone else to run them.
+
+Duncan Murdoch
+
+
+From edd @end|ng |rom deb|@n@org  Wed Dec 28 15:30:34 2022
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 28 Dec 2022 08:30:34 -0600
+Subject: [R-pkg-devel] 
+ How to reduce examples in a package that takes more
+ than 5 seconds to run?
+In-Reply-To: <5bceb16d-360c-f065-c3b6-37d290a8d14b@gmail.com>
+References: <CAG01fEbGO_9etume6wc091k+H_rWSbUBSrpoR8ydC+iTRh568w@mail.gmail.com>
+ <0ee52453-012b-20f4-6be0-4af0996d09b4@braverock.com>
+ <eaa319dc-eefd-d7e8-6ea8-0b468d95a1d1@gmail.com>
+ <d2cd5279-347b-8dad-fb96-0db7b700eb46@effectivedefense.org>
+ <5bceb16d-360c-f065-c3b6-37d290a8d14b@gmail.com>
+Message-ID: <25516.21258.957067.807031@rob.eddelbuettel.com>
+
+
+On 27 December 2022 at 13:27, Duncan Murdoch wrote:
+| On 15/12/2022 10:25 a.m., Spencer Graves wrote:
+| > 	  I know that some on this list do not like this construct, but it has
+| > helped me manage this problem for several years.  NOTE:  This CRAN
+| > function is NOT maintained by anyone on CRAN, so it is NOT guaranteed to
+| > work.  However, the "sos" package is currently on CRAN, and I have not
+| > seen an email asking me to avoid it ;-)
+| 
+| I've been reminded today why this is such a bad idea.  I'm preparing an 
+| update of the rgl package.  As I attempt to be a good citizen, I'm doing 
+| comparison checks of all of the 300 packages that use it, to see if my 
+| updates break anything.  I am not CRAN, so if any of those packages 
+| follow Spencer's scheme, I'll have to wait even longer for the run to 
+| finish.  (Currently it's about 15 hours predicted time on my slow laptop.)
+
+100% agree. This never struck me as a good idea, nomatter how widespread the
+practice became.
+
+| It's more considerate to have a function that defaults to not running 
+| slow tests unless you specifically ask for them to be run.  The testthat 
+| package does this using the NOTCRAN environment variable:  it assumes 
+| everyone is CRAN unless they specifically declare themselves not to be. 
+| Strange choice of name, but it achieves what I'm suggesting.  The 
+| tinytest package has an "at_home" argument to some functions; when 
+| testing a whole package, it defaults to FALSE, which is also the 
+| considerate choice.
+
+And its documention mentions how some packages use their own toggle variable
+to turn tests on and off; Rcpp is one of those.
+
+Second email:
+
+On 28 December 2022 at 08:09, Duncan Murdoch wrote:
+| On 28/12/2022 7:06 a.m., Daniel Kelley wrote:
+| >  > I've been reminded today why this is such a bad idea. ?I'm preparing an
+| > update of the rgl package. ?As I attempt to be a good citizen, I'm doing
+| > comparison checks of all of the 300 packages that use it, to see if my
+| > updates break anything.
+| > 
+| > Hi Duncan, I'm wondering whether you are checking against CRAN sources 
+| > or github/gitlab/etc sources.
+| 
+| CRAN sources only.  Unreleased packages may have lots of errors in them, 
+| and it's up to their authors to test them.  Users shouldn't rely on 
+| those packages, but they might rely on CRAN packages, and I don't want 
+| to cause extra headaches for them.
+
+Same for Rcpp, RcppArmadillo, BH, ...  I wrote (and use) a simply (and still
+fairly raw) package 'prrd' for 'parallel running of reverse depends' to do
+this (across a job queue to which one can add runners as clients), but I do
+this via a courtesy shell account on a machine so slow that Rcpp and its
+2600+ packages now take 48 hours for one run. Oh well. 
+
+| > I ask because the scheme I use in my packages is that I have lots of 
+| > tests that only get done if a certain local file (or directory) is 
+| > present. ?Those files/directories are listed in .Rbuildignore, so the 
+| > CRAN tests skip those tests. ?Some of these files/directories are stored 
+| > in the same github repo as the package code, and some are not. ?The 
+| > latter are because the datasets are huge, or because they are private 
+| > data sent to me by users to test new features. ?(Often users share data 
+| > for testing, as I develop new code. They need to keep the data private 
+| > until they publish papers and theses.)
+
+I do exactly that (keeping some test files from the .tar.gz) for some other
+packages where local tests. Use of all tests is as simple as this in tinytest 
+    Rscript -e 'tinytest::run_test_dir("inst/tinytest")'
+and the package gets shorter default run.         
+
+| > I know rgl does not depend on oce, so my question is not exactly 
+| > pertinent to you, but I would appreciate it if you could comment on 
+| > whether what I am doing seems to be useful. ?To be honest, I am a bit 
+| > lost in how folks are supposed to handle slow tests; I'd not be happy to 
+| > report how many times I've done web searches to find out just what 
+| > \dontrun and \donttest do, and when I should use them or should do 
+| > something else.
+| 
+| Your method sounds good.  You choose to run your tests, you don't force 
+| anyone else to run them.
+
+Agree! I had not much luck with \dontrun and \donttest which still get
+overruled. The tinytest package is a very good here because "tests files are
+just R scripts" so I can condition as I please and `exit_file()` as
+needed. Which I use quite a lot to skip for various reasons (time, platform,
+API additions unavailable in tests with older libraries etc).
+
+Cheers, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
