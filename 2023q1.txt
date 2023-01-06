@@ -163,3 +163,142 @@ https://github.com/sbgraves237/sos
 >
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Jan  4 10:18:40 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 4 Jan 2023 12:18:40 +0300
+Subject: [R-pkg-devel] Current recommendations re. GitHub Action?
+In-Reply-To: <b97fe385-c884-1365-3ab2-d86a293d9a27@effectivedefense.org>
+References: <869a200d-ed9a-232e-795e-e459849ce164@effectivedefense.org>
+ <25523.9368.854032.549309@rob.eddelbuettel.com>
+ <b97fe385-c884-1365-3ab2-d86a293d9a27@effectivedefense.org>
+Message-ID: <20230104121840.7dc90239@Tarkus>
+
+On Mon, 2 Jan 2023 19:18:33 -0600
+Spencer Graves <spencer.graves at effectivedefense.org> wrote:
+
+> 	  However, Ubuntu failed with devel and oldrel1, complaining,
+> "there is no package called ?rcmdcheck?".
+
+If we start from the error message and work backwards, it's easy to see
+that `rcmdcheck` fails to install because it depends on `curl`, which
+also fails to install. `curl` fails to install because the virtual
+machine running the GitHub Action doesn't have libcurl headers
+installed; there's even an error message about that, but it's not fatal:
+
+------------------------- ANTICONF ERROR ---------------------------
+Configuration failed because libcurl was not found. Try installing:
+ * deb: libcurl4-openssl-dev (Debian, Ubuntu, etc)
+ * rpm: libcurl-devel (Fedora, CentOS, RHEL)
+If libcurl is already installed, check that 'pkg-config' is in your
+PATH and PKG_CONFIG_PATH contains a libcurl.pc file. If pkg-config
+is unavailable you can set INCLUDE_DIR and LIB_DIR manually via:
+R CMD INSTALL --configure-vars='INCLUDE_DIR=... LIB_DIR=...'
+--------------------------------------------------------------------
+
+I don't have enough experience in the abstraction layers involved, but
+if you stuff a `sudo apt install libcurl4-openssl-dev` (which should
+run as a system command line, just like the "Install system
+dependencies" step) somewhere before the "Install dependencies" step,
+it should work.
+
+-- 
+Best regards,
+Ivan
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Wed Jan  4 11:50:20 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Wed, 4 Jan 2023 11:50:20 +0100
+Subject: [R-pkg-devel] new toolchain "RTools43" for building devel binaries
+ (both R base and packages)
+Message-ID: <2d486a48-087d-4bbe-b8cd-021025cfabc8@statistik.tu-dortmund.de>
+
+Dear developers,
+
+for those building from source on Windows:
+
+A new toolchain called "RTools43" has been prepared by Tomas Kalibera.
+It is now used to build the Windows binaries (R base and contributed 
+packages) for R-devel on Windows. See
+<https://cran.r-project.org/bin/windows/Rtools/rtools43/rtools.html>.
+
+Best,
+Uwe Ligges
+
+
+From k|ng@@ @end|ng |rom um|ch@edu  Wed Jan  4 21:54:52 2023
+From: k|ng@@ @end|ng |rom um|ch@edu (Aaron A. King)
+Date: Wed, 4 Jan 2023 15:54:52 -0500
+Subject: [R-pkg-devel] S3 generic/method consistency false positive when
+ dplyr imported
+Message-ID: <CAGPRvNDXHT-ZB4H6if_RRRwSFahUFDWbuKeppFBihvVQ4DodWA@mail.gmail.com>
+
+Hi all,
+
+I'm modifying a package so as to remove its dependence on the superseded
+packages *reshape2* and *plyr*, in favor of dependence on *dplyr*.  In
+particular, I'm just importing the one function `dplyr::bind_rows`.
+
+A curious thing happens, however, as soon as I include this among the
+imports.  I begin to get R CMD check NOTEs alerting me to the presence of
+S3 generic inconsistencies.  These are associated with two functions in the
+package: `filter.mean` and `filter.traj`, which the checker mistakes for S3
+methods based on the generic `stats::filter` function.  Actually, these are
+not S3 methods.  In fact, they are S4 generics and declared as such.
+
+When *dplyr* is not imported, R CMD check is happy with these functions.
+When it is imported, R CMD check complains.
+
+Now I understand that it may be preferable to move away from functions with
+names containing dots for this reason, and in fact I am already doing so,
+but I think the question is a good one:
+
+Why does inclusion of *dplyr* in the import list appear to trigger these
+warnings when they were not there before?
+
+Thanks in advance for any insight you can give!
+
+Aaron A. King, Ph.D.
+Nelson G. Hairston Professor of Ecology, Evolutionary Biology, and Complex
+Systems
+University of Michigan
+kinglab.eeb.lsa.umich.edu
+GPG Public Key: 0x15780975
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Jan  4 22:22:09 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 5 Jan 2023 00:22:09 +0300
+Subject: [R-pkg-devel] S3 generic/method consistency false positive when
+ dplyr imported
+In-Reply-To: <CAGPRvNDXHT-ZB4H6if_RRRwSFahUFDWbuKeppFBihvVQ4DodWA@mail.gmail.com>
+References: <CAGPRvNDXHT-ZB4H6if_RRRwSFahUFDWbuKeppFBihvVQ4DodWA@mail.gmail.com>
+Message-ID: <20230105002209.6e1fae5d@Tarkus>
+
+On Wed, 4 Jan 2023 15:54:52 -0500
+"Aaron A. King" <kingaa at umich.edu> wrote:
+
+> Why does inclusion of *dplyr* in the import list appear to trigger
+> these warnings when they were not there before?
+
+I think that's because dplyr itself contains an S3 generic named
+"filter", and having a package namespace loaded (not even attached) is
+enough to take its registered S3 methods into consideration for method
+dispatch. Here we have an opposite situation, though, and your
+functions aren't registered as S3 methods. Will your function still be
+called if you artificially construct a wrong object and feed it to
+dplyr::filter while your package namespace is attached?
+
+library(YOURPACKAGE)
+dplyr::filter(structure(list(), class = 'traj'))
+
+Additionally, stats::filter doesn't seem to be an S3 generic, so that's
+one thing that the check gets confused about.
+
+-- 
+Best regards,
+Ivan
+
+
