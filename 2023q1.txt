@@ -302,3 +302,71 @@ Best regards,
 Ivan
 
 
+From k|ng@@ @end|ng |rom um|ch@edu  Thu Jan  5 23:58:47 2023
+From: k|ng@@ @end|ng |rom um|ch@edu (Aaron A. King)
+Date: Thu, 5 Jan 2023 17:58:47 -0500
+Subject: [R-pkg-devel] S3 generic/method consistency false positive when
+ dplyr imported
+In-Reply-To: <20230105002209.6e1fae5d@Tarkus>
+References: <CAGPRvNDXHT-ZB4H6if_RRRwSFahUFDWbuKeppFBihvVQ4DodWA@mail.gmail.com>
+ <20230105002209.6e1fae5d@Tarkus>
+Message-ID: <CAGPRvNAsbNQdVYiJbOTaoPow3CK-5q8fiB6tj4cpdLx22xPCfw@mail.gmail.com>
+
+Thanks for the fast reply!
+
+When I follow your suggestion above, I get
+
+library(pomp)
+dplyr::filter(structure(list(), class = 'traj'))
+
+Error in UseMethod("filter") :
+  no applicable method for 'filter' applied to an object of class "traj"
+
+Which is not what would happen if my filter.traj function were called.  So
+the S3 dispatch system is not confused.  Thus this really is a false
+positive.
+
+It still leaves open the question, why does this suddenly appear when dplyr
+is loaded?  If I understand you correctly, it would be triggered by the
+inclusion of the generic 'filter' in dplyr, which was previously not
+present. However, since the S3 dispatch system is not itself confused, I
+suppose it must be the case that the S3 generic/method consistency checker
+itself is confused.  I wonder, how does the checker decide when to throw a
+NOTE?  Is it a simple pattern-matching system, something like "If X.Y is
+exported, where X is a generic and Y is any string and X.Y is not declared
+as an S3 method, then throw NOTE"?
+
+Dr. Aaron A. King
+University of Michigan
+
+
+On Wed, Jan 4, 2023 at 4:22 PM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+
+> On Wed, 4 Jan 2023 15:54:52 -0500
+> "Aaron A. King" <kingaa at umich.edu> wrote:
+>
+> > Why does inclusion of *dplyr* in the import list appear to trigger
+> > these warnings when they were not there before?
+>
+> I think that's because dplyr itself contains an S3 generic named
+> "filter", and having a package namespace loaded (not even attached) is
+> enough to take its registered S3 methods into consideration for method
+> dispatch. Here we have an opposite situation, though, and your
+> functions aren't registered as S3 methods. Will your function still be
+> called if you artificially construct a wrong object and feed it to
+> dplyr::filter while your package namespace is attached?
+>
+> library(YOURPACKAGE)
+> dplyr::filter(structure(list(), class = 'traj'))
+>
+> Additionally, stats::filter doesn't seem to be an S3 generic, so that's
+> one thing that the check gets confused about.
+>
+> --
+> Best regards,
+> Ivan
+>
+
+	[[alternative HTML version deleted]]
+
+
