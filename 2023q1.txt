@@ -370,3 +370,179 @@ On Wed, Jan 4, 2023 at 4:22 PM Ivan Krylov <krylov.r00t at gmail.com> wrote:
 	[[alternative HTML version deleted]]
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Jan  6 09:21:49 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 6 Jan 2023 11:21:49 +0300
+Subject: [R-pkg-devel] S3 generic/method consistency false positive when
+ dplyr imported
+In-Reply-To: <CAGPRvNAsbNQdVYiJbOTaoPow3CK-5q8fiB6tj4cpdLx22xPCfw@mail.gmail.com>
+References: <CAGPRvNDXHT-ZB4H6if_RRRwSFahUFDWbuKeppFBihvVQ4DodWA@mail.gmail.com>
+ <20230105002209.6e1fae5d@Tarkus>
+ <CAGPRvNAsbNQdVYiJbOTaoPow3CK-5q8fiB6tj4cpdLx22xPCfw@mail.gmail.com>
+Message-ID: <20230106112149.10207568@Tarkus>
+
+On Thu, 5 Jan 2023 17:58:47 -0500
+"Aaron A. King" <kingaa at umich.edu> wrote:
+
+> However, since the S3 dispatch system is not itself confused, I
+> suppose it must be the case that the S3 generic/method consistency
+> checker itself is confused.  I wonder, how does the checker decide
+> when to throw a NOTE?  Is it a simple pattern-matching system,
+> something like "If X.Y is exported, where X is a generic and Y is any
+> string and X.Y is not declared as an S3 method, then throw NOTE"?
+
+The aim of the check is a bit different: "if an S3 method for generic X
+and class Y exists, and the formal arguments of X.Y don't extend the
+formal arguments of X in a certain way, then throw a NOTE", but then
+something gets wrong about deciding whether X.Y is an S3 method, and
+once filter.mean is decided to be an S3 method, of course it doesn't
+match the formals of filter.
+
+This function is even a public API of the tools package, see
+?tools::checkS3methods:
+https://github.com/r-devel/r-svn/blob/b57918fd104962415a752ea7db12dcf4f3f5219f/src/library/tools/R/QC.R#L2310-L2560
+
+> When I follow your suggestion above, I get
+> 
+> library(pomp)
+> dplyr::filter(structure(list(), class = 'traj'))
+> 
+> Error in UseMethod("filter") :
+> no applicable method for 'filter' applied to an object of class "traj"
+
+Interesting. I wonder if there's are other remaining ways to confuse
+the S3 dispatch system into thinking your function is an S3 method that
+the check is supposed to guard against. For instance, the following is
+likely to work with your package:
+
+library(pomp)
+library(dplyr)
+identical(filter.traj, getS3method('filter', 'traj'))
+# as long as there's a visible 'filter' generic, getS3method will
+# locate filter.traj as the method
+
+...despite the method lookup seems to (correctly) fail, as you've just
+demonstrated. But on older versions of R, this used to wrongly resolve
+the call:
+
+library(Ropj)
+read <- function(x, ...) UseMethod('read')
+identical(read.opj, getS3method('read','opj')) # works in R-devel
+# [1] TRUE
+read(structure(0, class = 'opj')) # calls read.opj in old R
+# Error in read_opj(file, encoding, tree) :
+#   Expecting a single string value: [type=double; extent=1].
+
+I'm afraid I'm out of my depth here. The old, wrong behaviour seems to
+match the R language definition
+<https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Definition>.
+The current behaviour seems to do the right thing? by letting the
+functions opt into being methods, but then getS3method() seems to
+contradict what actually gets called. Should we be fixing the
+documentation, the implementation, or the check?
+
+Can you try stepping through tools::checkS3methods('pomp') (or
+tools::checkS3methods(dir = 'path/to/source/directory')) to see where
+'filter' appears in the list of generics and where the 
+
+-- 
+Best regards,
+Ivan
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Jan  6 09:24:13 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 6 Jan 2023 11:24:13 +0300
+Subject: [R-pkg-devel] S3 generic/method consistency false positive when
+ dplyr imported
+In-Reply-To: <20230106112149.10207568@Tarkus>
+References: <CAGPRvNDXHT-ZB4H6if_RRRwSFahUFDWbuKeppFBihvVQ4DodWA@mail.gmail.com>
+ <20230105002209.6e1fae5d@Tarkus>
+ <CAGPRvNAsbNQdVYiJbOTaoPow3CK-5q8fiB6tj4cpdLx22xPCfw@mail.gmail.com>
+ <20230106112149.10207568@Tarkus>
+Message-ID: <20230106112413.478d82da@Tarkus>
+
+(Sorry for the unfinished message. I've got to do something about my
+mailer to make it harder to send them accidentally.)
+
+On Fri, 6 Jan 2023 11:21:49 +0300
+Ivan Krylov <krylov.r00t at gmail.com> wrote:
+
+> to see where 'filter' appears in the list of generics and where the
+
+filter.traj function gets matched to it as a method?
+
+-- 
+Best regards,
+Ivan
+
+
+From k|ng@@ @end|ng |rom um|ch@edu  Fri Jan  6 19:56:10 2023
+From: k|ng@@ @end|ng |rom um|ch@edu (Aaron A. King)
+Date: Fri, 6 Jan 2023 13:56:10 -0500
+Subject: [R-pkg-devel] S3 generic/method consistency false positive when
+ dplyr imported
+In-Reply-To: <20230106112413.478d82da@Tarkus>
+References: <CAGPRvNDXHT-ZB4H6if_RRRwSFahUFDWbuKeppFBihvVQ4DodWA@mail.gmail.com>
+ <20230105002209.6e1fae5d@Tarkus>
+ <CAGPRvNAsbNQdVYiJbOTaoPow3CK-5q8fiB6tj4cpdLx22xPCfw@mail.gmail.com>
+ <20230106112149.10207568@Tarkus> <20230106112413.478d82da@Tarkus>
+Message-ID: <CAGPRvNC2T5Ce-ZdcKdwsmh53uQ1JVYf75CTC=i6Bbf2mL7B0Jw@mail.gmail.com>
+
+Excellent suggestion, Ivan. Thanks for pointing out just where to look.
+
+I stepped through tools::checkS3methods("pomp") and it does appear to be
+roughly as I conjectured.  Namely, all functions are extracted from the
+pomp namespace and checked against a list of generics.  The check that is
+performed is a simple pattern-match (i.e.,
+startsWith(paste0(genericname,"."), functionname)).  Clearly this is prone
+to false positives.  I wonder what would be involved in tightening this up
+so that it agrees with what the actual dispatch mechanism gives....
+
+Interestingly, there is a whitelist, implemented mostly via
+tools::nonS3methods().  The function (plyr::rbind.fill) that I had been
+importing is there but its replacement (dplyr::bind_rows) is not. So this
+answers my original question.
+
+The whitelist appears to be a somewhat arbitrary compilation of functions
+from various packages, with no obvious theme.  For example, dplyr is not on
+the list, but ElectoGraph is; reshape is on the list but reshape2 is not.
+The impression of arbitrariness is reinforced by the fact that packages
+that Wickham has for whatever reason decided are superseded are present in
+that list and packages he considers for the moment to be worth maintaining
+are not.  Doing a quick 'git blame' I see that the whitelist was mostly put
+together in 2013, with a few additions in 2015 and much more occasionally
+since.
+
+It occurs to me that there ought to be a mechanism whereby a package author
+could add to the list of non-S3 methods.  I see from the mailing list
+archives that there was discussion of this back in 2015 (
+https://stat.ethz.ch/pipermail/r-devel/2015-June/071356.html), with what
+looked like consensus that there ought to be such a facility, but nothing
+seems to have actually been done about it.  I conjecture that the decision
+was to just fold false positives into the whitelist on an ad hoc basis.
+
+Dr. Aaron A. King
+University of Michigan
+
+
+On Fri, Jan 6, 2023 at 3:24 AM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+
+> (Sorry for the unfinished message. I've got to do something about my
+> mailer to make it harder to send them accidentally.)
+>
+> On Fri, 6 Jan 2023 11:21:49 +0300
+> Ivan Krylov <krylov.r00t at gmail.com> wrote:
+>
+> > to see where 'filter' appears in the list of generics and where the
+>
+> filter.traj function gets matched to it as a method?
+>
+> --
+> Best regards,
+> Ivan
+>
+
+	[[alternative HTML version deleted]]
+
+
