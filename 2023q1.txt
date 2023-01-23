@@ -3740,3 +3740,1084 @@ Duncan Murdoch
 >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Sat Jan 21 03:47:34 2023
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Fri, 20 Jan 2023 20:47:34 -0600
+Subject: [R-pkg-devel] corrupted NAMESPACE file
+In-Reply-To: <5ee1615c-ad65-4985-8c39-55fd2be125de@gmail.com>
+References: <992486ed-6a0c-4b12-f306-1a18cb573d4e@effectivedefense.org>
+ <20230120175356.5d529f5e@arachnoid>
+ <d056790f-4d02-2e62-ba07-231ed597479e@statistik.tu-dortmund.de>
+ <776c66ca-e417-946b-0ce7-a84c327351d3@effectivedefense.org>
+ <CAHqSRuScBCQPZq9jEw+zWHibQE8yXbbExoENxUzB+LrABz006w@mail.gmail.com>
+ <CAAS8PAL17HH74yNxGGfrsgJT6ND+T2CvGHQtS=K8EK91EiiThA@mail.gmail.com>
+ <ed1093ac-d50a-8f64-c48b-a3e4b02df0ea@gmail.com>
+ <b80a813c-d02e-0f4f-d8f5-6671a39711c0@effectivedefense.org>
+ <5ee1615c-ad65-4985-8c39-55fd2be125de@gmail.com>
+Message-ID: <21cf6c3c-07de-f0bf-8f80-c2cd5ab8f6b6@effectivedefense.org>
+
+
+
+On 1/20/23 7:32 PM, Duncan Murdoch wrote:
+> On 20/01/2023 8:16 p.m., Spencer Graves wrote:
+>> Hello, All:
+>>
+>>
+>> ????? My attempts to fix this problem exposed what seems to be a 
+>> completely
+>> unrelated problem:? All five GitHub Actions end now with:
+>>
+>>
+>> Error: package or namespace load failed for ?fda? in namespaceExport(ns,
+>> exports):
+>> ?? undefined exports: refinery
+>>
+>>
+>> ????? The package includes ~man/refinery.Rd, ~data/refinery.rda, and
+>> NAMESPACE includes "export( ... refinery, ...)".
+> 
+> 
+> I think if you declare something as data by putting it in the data 
+> directory and using LazyData:true, you shouldn't also declare it as an 
+> export in the NAMESPACE file.
+
+
+	  I got the same negative results after deleting "LazyData: true" from 
+DESCRIPTION.  (That's what I would expect, because there are 17 other 
+*.rda files in the data subdirectory that are are mentioned in NAMESPACE 
+and are not creating a problem.  In 2009 the package included both 
+"data/refinery.rda" and "man/refinery.Rd".  They were erroneously 
+removed at some point.  I'm now trying to restore them.)
+
+
+	  Thanks,
+	  Spencer
+
+> 
+> Duncan Murdoch
+> 
+>>
+>>
+>> ????? ???
+>> ????? I have Bitdefender installed on this computer.? A "Quick Scan"
+>> produced nothing just now.
+>>
+>>
+>> ????? Thanks,
+>> ????? Spencer
+>>
+>>
+>> On 1/20/23 5:08 PM, Duncan Murdoch wrote:
+>>> On 20/01/2023 6:02 p.m., Greg Hunt wrote:
+>>>> xFEFF isn't a BOM in a UTF-8 file, its not anything.?? The UTF-8 BOM 
+>>>> is a
+>>>> different sequence of bits.? If tools treat it as a BOM, that is
+>>>> arguably a
+>>>> problem.
+>>>
+>>> You're right.? FEFF is the UTF-16 big endian BOM.? UTF-16 is a 16 bit
+>>> encoding, not at all the same as UTF-8.? I don't know how to read UTF-16
+>>> in R. Uwe's advice was for UTF-8.
+>>>
+>>> Duncan Murdoch
+>>>
+>>>>
+>>>> On Sat, 21 Jan 2023 at 05:09, Bill Dunlap <williamwdunlap at gmail.com>
+>>>> wrote:
+>>>>
+>>>>> Setting the locale to "C" (or perhaps some other non-UTF-8 locale) 
+>>>>> will
+>>>>> show the BOM bytes.? E.g., on Windows I get:
+>>>>>
+>>>>>> Sys.getlocale()
+>>>>> [1] "LC_COLLATE=English_United States.utf8;LC_CTYPE=English_United
+>>>>> States.utf8;LC_MONETARY=English_United
+>>>>> States.utf8;LC_NUMERIC=C;LC_TIME=English_United States.utf8"
+>>>>>> tools::showNonASCIIfile('
+>>>>> https://raw.githubusercontent.com/JamesRamsay5/fda/master/NAMESPACE')
+>>>>>> rawToChar(readBin('
+>>>>> https://raw.githubusercontent.com/JamesRamsay5/fda/master/NAMESPACE',
+>>>>> what="raw", n=20))
+>>>>> [1] "?export(AmpPhasDec"
+>>>>>> Sys.setlocale(locale="C")
+>>>>> [1] "C"
+>>>>>> tools::showNonASCIIfile('
+>>>>> https://raw.githubusercontent.com/JamesRamsay5/fda/master/NAMESPACE')
+>>>>> 1: <ef><bb><bf>export(AmpPhasDecomp,
+>>>>>> rawToChar(readBin('
+>>>>> https://raw.githubusercontent.com/JamesRamsay5/fda/master/NAMESPACE',
+>>>>> what="raw", n=20))
+>>>>> [1] "\357\273\277export(AmpPhasDec"
+>>>>>
+>>>>> -Bill
+>>>>>
+>>>>>
+>>>>> On Fri, Jan 20, 2023 at 9:16 AM Spencer Graves <
+>>>>> spencer.graves at effectivedefense.org> wrote:
+>>>>>
+>>>>>> Hi, Ivan and Uwe:
+>>>>>>
+>>>>>>
+>>>>>> ??????????? Thanks for your suggestions, but I've so far been unable
+>>>>>> to get
+>>>>>> them
+>>>>>> to work.? see below.
+>>>>>>
+>>>>>>
+>>>>>> On 1/20/23 9:22 AM, Uwe Ligges wrote:
+>>>>>>>
+>>>>>>>
+>>>>>>> On 20.01.2023 15:53, Ivan Krylov wrote:
+>>>>>>>> ? Fri, 20 Jan 2023 08:41:25 -0600
+>>>>>>>> Spencer Graves <spencer.graves at effectivedefense.org> ?????:
+>>>>>>>>
+>>>>>>>>> ** byte-compile and prepare package for lazy loading
+>>>>>>>>> Error in parse(nsFile, keep.source = FALSE, srcfile = NULL) :
+>>>>>>>>> ????? 1:1: unexpected input
+>>>>>>>>
+>>>>>>>> tools::showNonASCIIfile('
+>>>>>> https://raw.githubusercontent.com/JamesRamsay5/fda/master/NAMESPACE')
+>>>>>>>> # 1: <ef><bb><bf>export(AmpPhaseDecomp,
+>>>>>>>>
+>>>>>>>> Your NAMESPACE file starts with a U+FEFF ZERO WIDTH NO-BREAK SPACE.
+>>>>>>>> You'll need to remove it, e.g. by re-creating the first line.
+>>>>>>>
+>>>>>>>
+>>>>>>> Note that this is also called "byte order mark" (BOM). Tell your
+>>>>>>> editor
+>>>>>>> not to create files with BOM.
+>>>>>>>
+>>>>>>> You can also fix in R:
+>>>>>>>
+>>>>>>> x <- readLines(..., encoding="UTF-8-BOM")
+>>>>>>> writeLines(x, ......)
+>>>>>>
+>>>>>>
+>>>>>> ??????????? In RStudio 2022.12.0+353 (the current version),
+>>>>>>
+>>>>>>
+>>>>>> tools::showNonASCIIfile('
+>>>>>> https://raw.githubusercontent.com/JamesRamsay5/fda/master/NAMESPACE')
+>>>>>>
+>>>>>>
+>>>>>> returned "char(0)".? 'readLines' and 'writeLines' as Uwe suggested
+>>>>>> failed to fix it for me.
+>>>>>>
+>>>>>>
+>>>>>> ??????????? The first problem I noticed with this was that RStudio 
+>>>>>> could
+>>>>> not
+>>>>>> read
+>>>>>> the NAMESPACE file.? When I tried, it said, "File is binary rather 
+>>>>>> than
+>>>>>> text so cannot be opened by the source editor."? I changed something
+>>>>>> using a different editor and did "git commit" and "git push", and got
+>>>>>> the error on GitHub that I reported above.? I copied the file
+>>>>>> elsewhere,
+>>>>>> deleted it locally and from GitHub, then recreated it in 
+>>>>>> LibreOffice by
+>>>>>> manually typing the first and last lines then copying the rest from a
+>>>>>> copy I had saved elsewhere.? The RStudio would open the file, but I
+>>>>>> still get the same error message as above from both "R CMD build fda"
+>>>>>> locally and from GitHub Action at:
+>>>>>>
+>>>>>>
+>>>>>> https://github.com/JamesRamsay5/fda
+>>>>>>
+>>>>>>
+>>>>>> ??????????? Other suggestions?
+>>>>>> ??????????? Thanks,
+>>>>>> ??????????? Spencer Graves
+>>>>>>
+>>>>>>>
+>>>>>>> Best,
+>>>>>>> Uwe Ligges
+>>>>>>>
+>>>>>>>
+>>>>>>>
+>>>>>>>
+>>>>>>>
+>>>>>>
+>>>>>> ______________________________________________
+>>>>>> R-package-devel at r-project.org mailing list
+>>>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>>>
+>>>>>
+>>>>> ????????? [[alternative HTML version deleted]]
+>>>>>
+>>>>> ______________________________________________
+>>>>> R-package-devel at r-project.org mailing list
+>>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>>
+>>>>
+>>>> ?????[[alternative HTML version deleted]]
+>>>>
+>>>> ______________________________________________
+>>>> R-package-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Sat Jan 21 08:47:35 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Sat, 21 Jan 2023 08:47:35 +0100
+Subject: [R-pkg-devel] corrupted NAMESPACE file
+In-Reply-To: <21cf6c3c-07de-f0bf-8f80-c2cd5ab8f6b6@effectivedefense.org>
+References: <992486ed-6a0c-4b12-f306-1a18cb573d4e@effectivedefense.org>
+ <20230120175356.5d529f5e@arachnoid>
+ <d056790f-4d02-2e62-ba07-231ed597479e@statistik.tu-dortmund.de>
+ <776c66ca-e417-946b-0ce7-a84c327351d3@effectivedefense.org>
+ <CAHqSRuScBCQPZq9jEw+zWHibQE8yXbbExoENxUzB+LrABz006w@mail.gmail.com>
+ <CAAS8PAL17HH74yNxGGfrsgJT6ND+T2CvGHQtS=K8EK91EiiThA@mail.gmail.com>
+ <ed1093ac-d50a-8f64-c48b-a3e4b02df0ea@gmail.com>
+ <b80a813c-d02e-0f4f-d8f5-6671a39711c0@effectivedefense.org>
+ <5ee1615c-ad65-4985-8c39-55fd2be125de@gmail.com>
+ <21cf6c3c-07de-f0bf-8f80-c2cd5ab8f6b6@effectivedefense.org>
+Message-ID: <d949af12-bb03-a0ac-8aa0-87f5880078f9@statistik.tu-dortmund.de>
+
+
+
+On 21.01.2023 03:47, Spencer Graves wrote:
+> 
+> 
+> On 1/20/23 7:32 PM, Duncan Murdoch wrote:
+>> On 20/01/2023 8:16 p.m., Spencer Graves wrote:
+>>> Hello, All:
+>>>
+>>>
+>>> ????? My attempts to fix this problem exposed what seems to be a 
+>>> completely
+>>> unrelated problem:? All five GitHub Actions end now with:
+>>>
+>>>
+>>> Error: package or namespace load failed for ?fda? in namespaceExport(ns,
+>>> exports):
+>>> ?? undefined exports: refinery
+>>>
+>>>
+>>> ????? The package includes ~man/refinery.Rd, ~data/refinery.rda, and
+>>> NAMESPACE includes "export( ... refinery, ...)".
+>>
+>>
+>> I think if you declare something as data by putting it in the data 
+>> directory and using LazyData:true, you shouldn't also declare it as an 
+>> export in the NAMESPACE file.
+> 
+> 
+>  ????? I got the same negative results after deleting "LazyData: true" 
+> from DESCRIPTION.? (That's what I would expect, because there are 17 
+> other *.rda files in the data subdirectory that are are mentioned in 
+> NAMESPACE and are not creating a problem.? In 2009 the package included 
+> both "data/refinery.rda" and "man/refinery.Rd".? They were erroneously 
+> removed at some point.? I'm now trying to restore them.)
+
+So you have declared LazyData: true?
+How does the other package access the data object? By imprt directives?
+Perhaps you exported the data in the past via the NAMSPACE file? But 
+then it has to be in sysdata.rda?
+
+
+
+Sorry for the confusion with the BOM.
+The encoding sting for UTF-16  with byte order mark is "UTF-16BE".
+I'd believe much more should have gone wrong then. Perhaps it was some 
+editor that really messed it up?
+
+Best,
+Uwe Ligges
+
+
+
+> 
+>  ????? Thanks,
+>  ????? Spencer
+> 
+>>
+>> Duncan Murdoch
+>>
+>>>
+>>>
+>>> ????? ???
+>>> ????? I have Bitdefender installed on this computer.? A "Quick Scan"
+>>> produced nothing just now.
+>>>
+>>>
+>>> ????? Thanks,
+>>> ????? Spencer
+>>>
+>>>
+>>> On 1/20/23 5:08 PM, Duncan Murdoch wrote:
+>>>> On 20/01/2023 6:02 p.m., Greg Hunt wrote:
+>>>>> xFEFF isn't a BOM in a UTF-8 file, its not anything.?? The UTF-8 
+>>>>> BOM is a
+>>>>> different sequence of bits.? If tools treat it as a BOM, that is
+>>>>> arguably a
+>>>>> problem.
+>>>>
+>>>> You're right.? FEFF is the UTF-16 big endian BOM.? UTF-16 is a 16 bit
+>>>> encoding, not at all the same as UTF-8.? I don't know how to read 
+>>>> UTF-16
+>>>> in R. Uwe's advice was for UTF-8.
+>>>>
+>>>> Duncan Murdoch
+>>>>
+>>>>>
+>>>>> On Sat, 21 Jan 2023 at 05:09, Bill Dunlap <williamwdunlap at gmail.com>
+>>>>> wrote:
+>>>>>
+>>>>>> Setting the locale to "C" (or perhaps some other non-UTF-8 locale) 
+>>>>>> will
+>>>>>> show the BOM bytes.? E.g., on Windows I get:
+>>>>>>
+>>>>>>> Sys.getlocale()
+>>>>>> [1] "LC_COLLATE=English_United States.utf8;LC_CTYPE=English_United
+>>>>>> States.utf8;LC_MONETARY=English_United
+>>>>>> States.utf8;LC_NUMERIC=C;LC_TIME=English_United States.utf8"
+>>>>>>> tools::showNonASCIIfile('
+>>>>>> https://raw.githubusercontent.com/JamesRamsay5/fda/master/NAMESPACE')
+>>>>>>> rawToChar(readBin('
+>>>>>> https://raw.githubusercontent.com/JamesRamsay5/fda/master/NAMESPACE',
+>>>>>> what="raw", n=20))
+>>>>>> [1] "?export(AmpPhasDec"
+>>>>>>> Sys.setlocale(locale="C")
+>>>>>> [1] "C"
+>>>>>>> tools::showNonASCIIfile('
+>>>>>> https://raw.githubusercontent.com/JamesRamsay5/fda/master/NAMESPACE')
+>>>>>> 1: <ef><bb><bf>export(AmpPhasDecomp,
+>>>>>>> rawToChar(readBin('
+>>>>>> https://raw.githubusercontent.com/JamesRamsay5/fda/master/NAMESPACE',
+>>>>>> what="raw", n=20))
+>>>>>> [1] "\357\273\277export(AmpPhasDec"
+>>>>>>
+>>>>>> -Bill
+>>>>>>
+>>>>>>
+>>>>>> On Fri, Jan 20, 2023 at 9:16 AM Spencer Graves <
+>>>>>> spencer.graves at effectivedefense.org> wrote:
+>>>>>>
+>>>>>>> Hi, Ivan and Uwe:
+>>>>>>>
+>>>>>>>
+>>>>>>> ??????????? Thanks for your suggestions, but I've so far been unable
+>>>>>>> to get
+>>>>>>> them
+>>>>>>> to work.? see below.
+>>>>>>>
+>>>>>>>
+>>>>>>> On 1/20/23 9:22 AM, Uwe Ligges wrote:
+>>>>>>>>
+>>>>>>>>
+>>>>>>>> On 20.01.2023 15:53, Ivan Krylov wrote:
+>>>>>>>>> ? Fri, 20 Jan 2023 08:41:25 -0600
+>>>>>>>>> Spencer Graves <spencer.graves at effectivedefense.org> ?????:
+>>>>>>>>>
+>>>>>>>>>> ** byte-compile and prepare package for lazy loading
+>>>>>>>>>> Error in parse(nsFile, keep.source = FALSE, srcfile = NULL) :
+>>>>>>>>>> ????? 1:1: unexpected input
+>>>>>>>>>
+>>>>>>>>> tools::showNonASCIIfile('
+>>>>>>> https://raw.githubusercontent.com/JamesRamsay5/fda/master/NAMESPACE')
+>>>>>>>>> # 1: <ef><bb><bf>export(AmpPhaseDecomp,
+>>>>>>>>>
+>>>>>>>>> Your NAMESPACE file starts with a U+FEFF ZERO WIDTH NO-BREAK 
+>>>>>>>>> SPACE.
+>>>>>>>>> You'll need to remove it, e.g. by re-creating the first line.
+>>>>>>>>
+>>>>>>>>
+>>>>>>>> Note that this is also called "byte order mark" (BOM). Tell your
+>>>>>>>> editor
+>>>>>>>> not to create files with BOM.
+>>>>>>>>
+>>>>>>>> You can also fix in R:
+>>>>>>>>
+>>>>>>>> x <- readLines(..., encoding="UTF-8-BOM")
+>>>>>>>> writeLines(x, ......)
+>>>>>>>
+>>>>>>>
+>>>>>>> ??????????? In RStudio 2022.12.0+353 (the current version),
+>>>>>>>
+>>>>>>>
+>>>>>>> tools::showNonASCIIfile('
+>>>>>>> https://raw.githubusercontent.com/JamesRamsay5/fda/master/NAMESPACE')
+>>>>>>>
+>>>>>>>
+>>>>>>> returned "char(0)".? 'readLines' and 'writeLines' as Uwe suggested
+>>>>>>> failed to fix it for me.
+>>>>>>>
+>>>>>>>
+>>>>>>> ??????????? The first problem I noticed with this was that 
+>>>>>>> RStudio could
+>>>>>> not
+>>>>>>> read
+>>>>>>> the NAMESPACE file.? When I tried, it said, "File is binary 
+>>>>>>> rather than
+>>>>>>> text so cannot be opened by the source editor."? I changed something
+>>>>>>> using a different editor and did "git commit" and "git push", and 
+>>>>>>> got
+>>>>>>> the error on GitHub that I reported above.? I copied the file
+>>>>>>> elsewhere,
+>>>>>>> deleted it locally and from GitHub, then recreated it in 
+>>>>>>> LibreOffice by
+>>>>>>> manually typing the first and last lines then copying the rest 
+>>>>>>> from a
+>>>>>>> copy I had saved elsewhere.? The RStudio would open the file, but I
+>>>>>>> still get the same error message as above from both "R CMD build 
+>>>>>>> fda"
+>>>>>>> locally and from GitHub Action at:
+>>>>>>>
+>>>>>>>
+>>>>>>> https://github.com/JamesRamsay5/fda
+>>>>>>>
+>>>>>>>
+>>>>>>> ??????????? Other suggestions?
+>>>>>>> ??????????? Thanks,
+>>>>>>> ??????????? Spencer Graves
+>>>>>>>
+>>>>>>>>
+>>>>>>>> Best,
+>>>>>>>> Uwe Ligges
+>>>>>>>>
+>>>>>>>>
+>>>>>>>>
+>>>>>>>>
+>>>>>>>>
+>>>>>>>
+>>>>>>> ______________________________________________
+>>>>>>> R-package-devel at r-project.org mailing list
+>>>>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>>>>
+>>>>>>
+>>>>>> ????????? [[alternative HTML version deleted]]
+>>>>>>
+>>>>>> ______________________________________________
+>>>>>> R-package-devel at r-project.org mailing list
+>>>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>>>
+>>>>>
+>>>>> ?????[[alternative HTML version deleted]]
+>>>>>
+>>>>> ______________________________________________
+>>>>> R-package-devel at r-project.org mailing list
+>>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>
+>>>> ______________________________________________
+>>>> R-package-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From hhoe|||n @end|ng |rom gm@||@com  Sat Jan 21 11:15:40 2023
+From: hhoe|||n @end|ng |rom gm@||@com (Holger Hoefling)
+Date: Sat, 21 Jan 2023 11:15:40 +0100
+Subject: [R-pkg-devel] replacements of sprintf in compiled code
+Message-ID: <CAFDswJvzbtDy8v0xdNZd+KOH-r_4hUFQupuHxbLTScobw2vmpg@mail.gmail.com>
+
+Hi,
+
+In my recent re-submission with a bug-fix of the hdf5r package, I got a new
+set of warnings from the compiler, one being that I shouldn't be using
+'sprintf'.
+
+Is there a simple replacement that I can use?
+
+Thanks
+
+Holger Hoefling
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Jan 21 11:27:03 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 21 Jan 2023 05:27:03 -0500
+Subject: [R-pkg-devel] replacements of sprintf in compiled code
+In-Reply-To: <CAFDswJvzbtDy8v0xdNZd+KOH-r_4hUFQupuHxbLTScobw2vmpg@mail.gmail.com>
+References: <CAFDswJvzbtDy8v0xdNZd+KOH-r_4hUFQupuHxbLTScobw2vmpg@mail.gmail.com>
+Message-ID: <eb689815-31b5-63d1-e832-0183f01fb25e@gmail.com>
+
+On 21/01/2023 5:15 a.m., Holger Hoefling wrote:
+> Hi,
+> 
+> In my recent re-submission with a bug-fix of the hdf5r package, I got a new
+> set of warnings from the compiler, one being that I shouldn't be using
+> 'sprintf'.
+> 
+> Is there a simple replacement that I can use?
+
+You should use snprintf() which has an extra argument to state the size 
+of the buffer receiving the string.  For example,
+
+  char text[32];
+  sprintf(text, "%.4g", value);
+
+could be written as
+
+  char text[32];
+  snprintf(text, 32, "%.4g", value);
+
+This will write a string with at most 31 characters before the NUL at 
+the end, and avoids the possibility of a buffer overrun.
+
+Duncan Murdoch
+
+
+From hhoe|||n @end|ng |rom gm@||@com  Sat Jan 21 11:33:22 2023
+From: hhoe|||n @end|ng |rom gm@||@com (Holger Hoefling)
+Date: Sat, 21 Jan 2023 11:33:22 +0100
+Subject: [R-pkg-devel] replacements of sprintf in compiled code
+In-Reply-To: <eb689815-31b5-63d1-e832-0183f01fb25e@gmail.com>
+References: <CAFDswJvzbtDy8v0xdNZd+KOH-r_4hUFQupuHxbLTScobw2vmpg@mail.gmail.com>
+ <eb689815-31b5-63d1-e832-0183f01fb25e@gmail.com>
+Message-ID: <CAFDswJuzj3PLPwO+3+4ocA--2KaOZ6iKzTmfLcVu_uxiVGuB9Q@mail.gmail.com>
+
+Hi,
+
+thanks for the tip! Is that available everywhere or do I need to set
+compiler requirements?
+
+Best
+
+Holger Hoefling
+
+On Sat, Jan 21, 2023 at 11:27 AM Duncan Murdoch <murdoch.duncan at gmail.com>
+wrote:
+
+> On 21/01/2023 5:15 a.m., Holger Hoefling wrote:
+> > Hi,
+> >
+> > In my recent re-submission with a bug-fix of the hdf5r package, I got a
+> new
+> > set of warnings from the compiler, one being that I shouldn't be using
+> > 'sprintf'.
+> >
+> > Is there a simple replacement that I can use?
+>
+> You should use snprintf() which has an extra argument to state the size
+> of the buffer receiving the string.  For example,
+>
+>   char text[32];
+>   sprintf(text, "%.4g", value);
+>
+> could be written as
+>
+>   char text[32];
+>   snprintf(text, 32, "%.4g", value);
+>
+> This will write a string with at most 31 characters before the NUL at
+> the end, and avoids the possibility of a buffer overrun.
+>
+> Duncan Murdoch
+>
+
+	[[alternative HTML version deleted]]
+
+
+From m@tth|@@-gond@n @end|ng |rom gmx@de  Sat Jan 21 11:46:52 2023
+From: m@tth|@@-gond@n @end|ng |rom gmx@de (Matthias Gondan)
+Date: Sat, 21 Jan 2023 11:46:52 +0100
+Subject: [R-pkg-devel] replacements of sprintf in compiled code
+In-Reply-To: <CAFDswJuzj3PLPwO+3+4ocA--2KaOZ6iKzTmfLcVu_uxiVGuB9Q@mail.gmail.com>
+References: <CAFDswJvzbtDy8v0xdNZd+KOH-r_4hUFQupuHxbLTScobw2vmpg@mail.gmail.com>
+ <eb689815-31b5-63d1-e832-0183f01fb25e@gmail.com>
+ <CAFDswJuzj3PLPwO+3+4ocA--2KaOZ6iKzTmfLcVu_uxiVGuB9Q@mail.gmail.com>
+Message-ID: <1MeU0k-1okx2X02tg-00aYUo@mail.gmx.net>
+
+I think the function is more than 20 years old
+
+https://en.cppreference.com/w/c/io/fprintf
+
+
+
+Von: Holger Hoefling
+Gesendet: Samstag, 21. Januar 2023 11:37
+An: Duncan Murdoch
+Cc: R Package Development
+Betreff: Re: [R-pkg-devel] replacements of sprintf in compiled code
+
+Hi,
+
+thanks for the tip! Is that available everywhere or do I need to set
+compiler requirements?
+
+Best
+
+Holger Hoefling
+
+On Sat, Jan 21, 2023 at 11:27 AM Duncan Murdoch <murdoch.duncan at gmail.com>
+wrote:
+
+> On 21/01/2023 5:15 a.m., Holger Hoefling wrote:
+> > Hi,
+> >
+> > In my recent re-submission with a bug-fix of the hdf5r package, I got a
+> new
+> > set of warnings from the compiler, one being that I shouldn't be using
+> > 'sprintf'.
+> >
+> > Is there a simple replacement that I can use?
+>
+> You should use snprintf() which has an extra argument to state the size
+> of the buffer receiving the string.  For example,
+>
+>   char text[32];
+>   sprintf(text, "%.4g", value);
+>
+> could be written as
+>
+>   char text[32];
+>   snprintf(text, 32, "%.4g", value);
+>
+> This will write a string with at most 31 characters before the NUL at
+> the end, and avoids the possibility of a buffer overrun.
+>
+> Duncan Murdoch
+>
+
+	[[alternative HTML version deleted]]
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Jan 21 11:47:02 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 21 Jan 2023 05:47:02 -0500
+Subject: [R-pkg-devel] replacements of sprintf in compiled code
+In-Reply-To: <CAFDswJuzj3PLPwO+3+4ocA--2KaOZ6iKzTmfLcVu_uxiVGuB9Q@mail.gmail.com>
+References: <CAFDswJvzbtDy8v0xdNZd+KOH-r_4hUFQupuHxbLTScobw2vmpg@mail.gmail.com>
+ <eb689815-31b5-63d1-e832-0183f01fb25e@gmail.com>
+ <CAFDswJuzj3PLPwO+3+4ocA--2KaOZ6iKzTmfLcVu_uxiVGuB9Q@mail.gmail.com>
+Message-ID: <4db9b982-42d7-ccb1-580b-d37f44f45f1d@gmail.com>
+
+On 21/01/2023 5:33 a.m., Holger Hoefling wrote:
+> Hi,
+> 
+> thanks for the tip! Is that available everywhere or do I need to set 
+> compiler requirements?
+
+You shouldn't need any special requirements.  I think this was 
+standardized in C99, which is supported by default in R.  Not sure which 
+C++ version adopted it, but it's available there too.
+
+Duncan Murdoch
+
+> 
+> Best
+> 
+> Holger Hoefling
+> 
+> On Sat, Jan 21, 2023 at 11:27 AM Duncan Murdoch 
+> <murdoch.duncan at gmail.com <mailto:murdoch.duncan at gmail.com>> wrote:
+> 
+>     On 21/01/2023 5:15 a.m., Holger Hoefling wrote:
+>      > Hi,
+>      >
+>      > In my recent re-submission with a bug-fix of the hdf5r package, I
+>     got a new
+>      > set of warnings from the compiler, one being that I shouldn't be
+>     using
+>      > 'sprintf'.
+>      >
+>      > Is there a simple replacement that I can use?
+> 
+>     You should use snprintf() which has an extra argument to state the size
+>     of the buffer receiving the string.? For example,
+> 
+>      ? char text[32];
+>      ? sprintf(text, "%.4g", value);
+> 
+>     could be written as
+> 
+>      ? char text[32];
+>      ? snprintf(text, 32, "%.4g", value);
+> 
+>     This will write a string with at most 31 characters before the NUL at
+>     the end, and avoids the possibility of a buffer overrun.
+> 
+>     Duncan Murdoch
+>
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Jan 21 14:28:29 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 21 Jan 2023 08:28:29 -0500
+Subject: [R-pkg-devel] corrupted NAMESPACE file
+In-Reply-To: <21cf6c3c-07de-f0bf-8f80-c2cd5ab8f6b6@effectivedefense.org>
+References: <992486ed-6a0c-4b12-f306-1a18cb573d4e@effectivedefense.org>
+ <20230120175356.5d529f5e@arachnoid>
+ <d056790f-4d02-2e62-ba07-231ed597479e@statistik.tu-dortmund.de>
+ <776c66ca-e417-946b-0ce7-a84c327351d3@effectivedefense.org>
+ <CAHqSRuScBCQPZq9jEw+zWHibQE8yXbbExoENxUzB+LrABz006w@mail.gmail.com>
+ <CAAS8PAL17HH74yNxGGfrsgJT6ND+T2CvGHQtS=K8EK91EiiThA@mail.gmail.com>
+ <ed1093ac-d50a-8f64-c48b-a3e4b02df0ea@gmail.com>
+ <b80a813c-d02e-0f4f-d8f5-6671a39711c0@effectivedefense.org>
+ <5ee1615c-ad65-4985-8c39-55fd2be125de@gmail.com>
+ <21cf6c3c-07de-f0bf-8f80-c2cd5ab8f6b6@effectivedefense.org>
+Message-ID: <13ba278a-1b46-a7c4-c27b-d9f9b17f6665@gmail.com>
+
+On 20/01/2023 9:47 p.m., Spencer Graves wrote:
+> 
+> 
+> On 1/20/23 7:32 PM, Duncan Murdoch wrote:
+>> On 20/01/2023 8:16 p.m., Spencer Graves wrote:
+>>> Hello, All:
+>>>
+>>>
+>>>  ????? My attempts to fix this problem exposed what seems to be a
+>>> completely
+>>> unrelated problem:? All five GitHub Actions end now with:
+>>>
+>>>
+>>> Error: package or namespace load failed for ?fda? in namespaceExport(ns,
+>>> exports):
+>>>  ?? undefined exports: refinery
+>>>
+>>>
+>>>  ????? The package includes ~man/refinery.Rd, ~data/refinery.rda, and
+>>> NAMESPACE includes "export( ... refinery, ...)".
+>>
+>>
+>> I think if you declare something as data by putting it in the data
+>> directory and using LazyData:true, you shouldn't also declare it as an
+>> export in the NAMESPACE file.
+> 
+> 
+> 	  I got the same negative results after deleting "LazyData: true" from
+> DESCRIPTION.  (That's what I would expect, because there are 17 other
+> *.rda files in the data subdirectory that are are mentioned in NAMESPACE
+> and are not creating a problem.  In 2009 the package included both
+> "data/refinery.rda" and "man/refinery.Rd".  They were erroneously
+> removed at some point.  I'm now trying to restore them.)
+
+I just cloned the repository, and saw the same error as you saw.  Then I 
+followed my advice, and removed `refinery` from the NAMESPACE file, and 
+the error went away.
+
+Since you don't have `LazyData: true` in the current version, you need 
+to run `data(refinery)` to make that dataset available.  That does work.
+
+I also tried restoring `LazyData:true` as well as removing `refinery` 
+from NAMESPACE, and that works too, without the need to call 
+`data(refinery)`.  The variable is just available.
+
+I'm not sure which *.rda files you are talking about that "are mentioned 
+in NAMESPACE".  Now that I've removed `refinery` in my copy, I don't see 
+any of them.
+
+Duncan Murdoch
+
+> 
+> 
+> 	  Thanks,
+> 	  Spencer
+> 
+>>
+>> Duncan Murdoch
+>>
+>>>
+>>>
+>>>  ????? ???
+>>>  ????? I have Bitdefender installed on this computer.? A "Quick Scan"
+>>> produced nothing just now.
+>>>
+>>>
+>>>  ????? Thanks,
+>>>  ????? Spencer
+>>>
+>>>
+>>> On 1/20/23 5:08 PM, Duncan Murdoch wrote:
+>>>> On 20/01/2023 6:02 p.m., Greg Hunt wrote:
+>>>>> xFEFF isn't a BOM in a UTF-8 file, its not anything.?? The UTF-8 BOM
+>>>>> is a
+>>>>> different sequence of bits.? If tools treat it as a BOM, that is
+>>>>> arguably a
+>>>>> problem.
+>>>>
+>>>> You're right.? FEFF is the UTF-16 big endian BOM.? UTF-16 is a 16 bit
+>>>> encoding, not at all the same as UTF-8.? I don't know how to read UTF-16
+>>>> in R. Uwe's advice was for UTF-8.
+>>>>
+>>>> Duncan Murdoch
+>>>>
+>>>>>
+>>>>> On Sat, 21 Jan 2023 at 05:09, Bill Dunlap <williamwdunlap at gmail.com>
+>>>>> wrote:
+>>>>>
+>>>>>> Setting the locale to "C" (or perhaps some other non-UTF-8 locale)
+>>>>>> will
+>>>>>> show the BOM bytes.? E.g., on Windows I get:
+>>>>>>
+>>>>>>> Sys.getlocale()
+>>>>>> [1] "LC_COLLATE=English_United States.utf8;LC_CTYPE=English_United
+>>>>>> States.utf8;LC_MONETARY=English_United
+>>>>>> States.utf8;LC_NUMERIC=C;LC_TIME=English_United States.utf8"
+>>>>>>> tools::showNonASCIIfile('
+>>>>>> https://raw.githubusercontent.com/JamesRamsay5/fda/master/NAMESPACE')
+>>>>>>> rawToChar(readBin('
+>>>>>> https://raw.githubusercontent.com/JamesRamsay5/fda/master/NAMESPACE',
+>>>>>> what="raw", n=20))
+>>>>>> [1] "?export(AmpPhasDec"
+>>>>>>> Sys.setlocale(locale="C")
+>>>>>> [1] "C"
+>>>>>>> tools::showNonASCIIfile('
+>>>>>> https://raw.githubusercontent.com/JamesRamsay5/fda/master/NAMESPACE')
+>>>>>> 1: <ef><bb><bf>export(AmpPhasDecomp,
+>>>>>>> rawToChar(readBin('
+>>>>>> https://raw.githubusercontent.com/JamesRamsay5/fda/master/NAMESPACE',
+>>>>>> what="raw", n=20))
+>>>>>> [1] "\357\273\277export(AmpPhasDec"
+>>>>>>
+>>>>>> -Bill
+>>>>>>
+>>>>>>
+>>>>>> On Fri, Jan 20, 2023 at 9:16 AM Spencer Graves <
+>>>>>> spencer.graves at effectivedefense.org> wrote:
+>>>>>>
+>>>>>>> Hi, Ivan and Uwe:
+>>>>>>>
+>>>>>>>
+>>>>>>>  ??????????? Thanks for your suggestions, but I've so far been unable
+>>>>>>> to get
+>>>>>>> them
+>>>>>>> to work.? see below.
+>>>>>>>
+>>>>>>>
+>>>>>>> On 1/20/23 9:22 AM, Uwe Ligges wrote:
+>>>>>>>>
+>>>>>>>>
+>>>>>>>> On 20.01.2023 15:53, Ivan Krylov wrote:
+>>>>>>>>> ? Fri, 20 Jan 2023 08:41:25 -0600
+>>>>>>>>> Spencer Graves <spencer.graves at effectivedefense.org> ?????:
+>>>>>>>>>
+>>>>>>>>>> ** byte-compile and prepare package for lazy loading
+>>>>>>>>>> Error in parse(nsFile, keep.source = FALSE, srcfile = NULL) :
+>>>>>>>>>>  ????? 1:1: unexpected input
+>>>>>>>>>
+>>>>>>>>> tools::showNonASCIIfile('
+>>>>>>> https://raw.githubusercontent.com/JamesRamsay5/fda/master/NAMESPACE')
+>>>>>>>>> # 1: <ef><bb><bf>export(AmpPhaseDecomp,
+>>>>>>>>>
+>>>>>>>>> Your NAMESPACE file starts with a U+FEFF ZERO WIDTH NO-BREAK SPACE.
+>>>>>>>>> You'll need to remove it, e.g. by re-creating the first line.
+>>>>>>>>
+>>>>>>>>
+>>>>>>>> Note that this is also called "byte order mark" (BOM). Tell your
+>>>>>>>> editor
+>>>>>>>> not to create files with BOM.
+>>>>>>>>
+>>>>>>>> You can also fix in R:
+>>>>>>>>
+>>>>>>>> x <- readLines(..., encoding="UTF-8-BOM")
+>>>>>>>> writeLines(x, ......)
+>>>>>>>
+>>>>>>>
+>>>>>>>  ??????????? In RStudio 2022.12.0+353 (the current version),
+>>>>>>>
+>>>>>>>
+>>>>>>> tools::showNonASCIIfile('
+>>>>>>> https://raw.githubusercontent.com/JamesRamsay5/fda/master/NAMESPACE')
+>>>>>>>
+>>>>>>>
+>>>>>>> returned "char(0)".? 'readLines' and 'writeLines' as Uwe suggested
+>>>>>>> failed to fix it for me.
+>>>>>>>
+>>>>>>>
+>>>>>>>  ??????????? The first problem I noticed with this was that RStudio
+>>>>>>> could
+>>>>>> not
+>>>>>>> read
+>>>>>>> the NAMESPACE file.? When I tried, it said, "File is binary rather
+>>>>>>> than
+>>>>>>> text so cannot be opened by the source editor."? I changed something
+>>>>>>> using a different editor and did "git commit" and "git push", and got
+>>>>>>> the error on GitHub that I reported above.? I copied the file
+>>>>>>> elsewhere,
+>>>>>>> deleted it locally and from GitHub, then recreated it in
+>>>>>>> LibreOffice by
+>>>>>>> manually typing the first and last lines then copying the rest from a
+>>>>>>> copy I had saved elsewhere.? The RStudio would open the file, but I
+>>>>>>> still get the same error message as above from both "R CMD build fda"
+>>>>>>> locally and from GitHub Action at:
+>>>>>>>
+>>>>>>>
+>>>>>>> https://github.com/JamesRamsay5/fda
+>>>>>>>
+>>>>>>>
+>>>>>>>  ??????????? Other suggestions?
+>>>>>>>  ??????????? Thanks,
+>>>>>>>  ??????????? Spencer Graves
+>>>>>>>
+>>>>>>>>
+>>>>>>>> Best,
+>>>>>>>> Uwe Ligges
+>>>>>>>>
+>>>>>>>>
+>>>>>>>>
+>>>>>>>>
+>>>>>>>>
+>>>>>>>
+>>>>>>> ______________________________________________
+>>>>>>> R-package-devel at r-project.org mailing list
+>>>>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>>>>
+>>>>>>
+>>>>>>  ????????? [[alternative HTML version deleted]]
+>>>>>>
+>>>>>> ______________________________________________
+>>>>>> R-package-devel at r-project.org mailing list
+>>>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>>>
+>>>>>
+>>>>>  ?????[[alternative HTML version deleted]]
+>>>>>
+>>>>> ______________________________________________
+>>>>> R-package-devel at r-project.org mailing list
+>>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>
+>>>> ______________________________________________
+>>>> R-package-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+
+
+From w||||@mwdun|@p @end|ng |rom gm@||@com  Sat Jan 21 16:52:48 2023
+From: w||||@mwdun|@p @end|ng |rom gm@||@com (Bill Dunlap)
+Date: Sat, 21 Jan 2023 07:52:48 -0800
+Subject: [R-pkg-devel] replacements of sprintf in compiled code
+In-Reply-To: <4db9b982-42d7-ccb1-580b-d37f44f45f1d@gmail.com>
+References: <CAFDswJvzbtDy8v0xdNZd+KOH-r_4hUFQupuHxbLTScobw2vmpg@mail.gmail.com>
+ <eb689815-31b5-63d1-e832-0183f01fb25e@gmail.com>
+ <CAFDswJuzj3PLPwO+3+4ocA--2KaOZ6iKzTmfLcVu_uxiVGuB9Q@mail.gmail.com>
+ <4db9b982-42d7-ccb1-580b-d37f44f45f1d@gmail.com>
+Message-ID: <CAHqSRuS1nkvvzmxqUQUELef0c+_7LCBm8QCqd-Jdfcjk9Ey-BQ@mail.gmail.com>
+
+Even Microsoft added snprintf to Visual C++ in 2015 (not that that matters
+for R).
+
+-Bill
+
+On Sat, Jan 21, 2023 at 2:47 AM Duncan Murdoch <murdoch.duncan at gmail.com>
+wrote:
+
+> On 21/01/2023 5:33 a.m., Holger Hoefling wrote:
+> > Hi,
+> >
+> > thanks for the tip! Is that available everywhere or do I need to set
+> > compiler requirements?
+>
+> You shouldn't need any special requirements.  I think this was
+> standardized in C99, which is supported by default in R.  Not sure which
+> C++ version adopted it, but it's available there too.
+>
+> Duncan Murdoch
+>
+> >
+> > Best
+> >
+> > Holger Hoefling
+> >
+> > On Sat, Jan 21, 2023 at 11:27 AM Duncan Murdoch
+> > <murdoch.duncan at gmail.com <mailto:murdoch.duncan at gmail.com>> wrote:
+> >
+> >     On 21/01/2023 5:15 a.m., Holger Hoefling wrote:
+> >      > Hi,
+> >      >
+> >      > In my recent re-submission with a bug-fix of the hdf5r package, I
+> >     got a new
+> >      > set of warnings from the compiler, one being that I shouldn't be
+> >     using
+> >      > 'sprintf'.
+> >      >
+> >      > Is there a simple replacement that I can use?
+> >
+> >     You should use snprintf() which has an extra argument to state the
+> size
+> >     of the buffer receiving the string.  For example,
+> >
+> >        char text[32];
+> >        sprintf(text, "%.4g", value);
+> >
+> >     could be written as
+> >
+> >        char text[32];
+> >        snprintf(text, 32, "%.4g", value);
+> >
+> >     This will write a string with at most 31 characters before the NUL at
+> >     the end, and avoids the possibility of a buffer overrun.
+> >
+> >     Duncan Murdoch
+> >
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Sat Jan 21 17:13:54 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Sat, 21 Jan 2023 10:13:54 -0600
+Subject: [R-pkg-devel] replacements of sprintf in compiled code
+In-Reply-To: <eb689815-31b5-63d1-e832-0183f01fb25e@gmail.com>
+References: <CAFDswJvzbtDy8v0xdNZd+KOH-r_4hUFQupuHxbLTScobw2vmpg@mail.gmail.com>
+ <eb689815-31b5-63d1-e832-0183f01fb25e@gmail.com>
+Message-ID: <25548.3906.870374.764431@rob.eddelbuettel.com>
+
+
+On 21 January 2023 at 05:27, Duncan Murdoch wrote:
+| On 21/01/2023 5:15 a.m., Holger Hoefling wrote:
+| > Is there a simple replacement that I can use?
+| 
+| You should use snprintf() which has an extra argument to state the size 
+| of the buffer receiving the string.  For example,
+| 
+|   char text[32];
+|   sprintf(text, "%.4g", value);
+| 
+| could be written as
+| 
+|   char text[32];
+|   snprintf(text, 32, "%.4g", value);
+| 
+| This will write a string with at most 31 characters before the NUL at 
+| the end, and avoids the possibility of a buffer overrun.
+
+And even better idiom (which I only came to too late for the update of a few
+of my packages) is to rely on sizeof() as in
+
+    char text[32];
+    snprintf(text, sizeof(text), "%.4g", value);
+
+which works for many / most simple cases of such static buffers.
+
+Sometimes this sprintf compiler 'noise' is shrapnel from other packages we
+include as headers, and harder to fix.  Brian Ripley kindly alerted us to one
+remaining instance in the Rcpp headers which we fixed in October; the updated
+package is currently awaiting its fate during its bi-annual update cycle but
+is held in the dark and deep bowels of CRAN awaiting inspection (nine days
+and counting now) as is package BH which in its annual update got a number of
+headers refreshed from its upstream, plus an extra round of polish from
+me. It too is available as an update in its git repo, and otherwise hiding in
+those dark CRAN bowels.  I keep telling myself I should remain hopeful that
+maybe one day we get to take advantage of it. Hopefully soon.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
