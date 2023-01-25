@@ -5134,3 +5134,75 @@ https://ubt.tugraz.at <https://icbt.tugraz.at>
 	[[alternative HTML version deleted]]
 
 
+From m@x|m@n@z@rov @end|ng |rom open@n@|yt|c@@eu  Mon Jan 23 17:30:52 2023
+From: m@x|m@n@z@rov @end|ng |rom open@n@|yt|c@@eu (Maxim Nazarov)
+Date: Mon, 23 Jan 2023 16:30:52 +0000
+Subject: [R-pkg-devel] strange errors (non-ascii symbols) on win-builder
+ R-devel
+Message-ID: <01020185df77dd2e-3108dd58-7188-43b5-96b8-1fc0bd934d69-000000@eu-west-1.amazonses.com>
+
+Hello all,
+
+I am submitting a minor update to one of my CRAN package (BIGL), and get strange errors on R-devel on win-builder - https://win-builder.r-project.org/incoming_pretest/BIGL_1.6.7_20230119_225109/Windows/00check.log and https://win-builder.r-project.org/o339zPAR6pWG/00check.log (different symbols)
+
+It shows strange output like "`1Y???hA?..." before tests and cryptic error-messages like "unable to translate '(<be><b1><a7>m' to a wide string"
+I can also see similar output in examples - https://win-builder.r-project.org/o339zPAR6pWG/examples_and_tests/BIGL-Ex.Rout 
+
+I don't get any isses on debian R-devel, on R-release on windows, and also can't reproduce the errors locally on a windows machine with R-devel, so I am a bit lost.
+Would anyone have any idea of what goes wrong?
+
+Kind regards,
+Maxim Nazarov
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Mon Jan 23 21:49:56 2023
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Mon, 23 Jan 2023 21:49:56 +0100
+Subject: [R-pkg-devel] strange errors (non-ascii symbols) on win-builder
+ R-devel
+In-Reply-To: <01020185df77dd2e-3108dd58-7188-43b5-96b8-1fc0bd934d69-000000@eu-west-1.amazonses.com>
+References: <01020185df77dd2e-3108dd58-7188-43b5-96b8-1fc0bd934d69-000000@eu-west-1.amazonses.com>
+Message-ID: <93b9cd46-d84a-43a6-043b-ed775d077434@gmail.com>
+
+
+On 1/23/23 17:30, Maxim Nazarov wrote:
+> Hello all,
+>
+> I am submitting a minor update to one of my CRAN package (BIGL), and get strange errors on R-devel on win-builder - https://win-builder.r-project.org/incoming_pretest/BIGL_1.6.7_20230119_225109/Windows/00check.log and https://win-builder.r-project.org/o339zPAR6pWG/00check.log (different symbols)
+>
+> It shows strange output like "`1Y???hA?..." before tests and cryptic error-messages like "unable to translate '(<be><b1><a7>m' to a wide string"
+> I can also see similar output in examples - https://win-builder.r-project.org/o339zPAR6pWG/examples_and_tests/BIGL-Ex.Rout
+
+These are errors and warnings in regex operations (grep, gsub) due to 
+that the input data is not a valid string (validly encoded string). 
+Because it is not valid, it cannot be converted to a wide string, which 
+is needed for the regex operation, as this uses TRE.
+
+So, you need to find out why the input strings are invalid. Common 
+causes of such problems are that they are in a different encoding from 
+the one told to R or to some other software on the way. Also the data 
+may be corrupted.
+
+> I don't get any isses on debian R-devel, on R-release on windows, and also can't reproduce the errors locally on a windows machine with R-devel, so I am a bit lost.
+> Would anyone have any idea of what goes wrong?
+
+It should be fairly easy from the error output to find out which 
+operations have failed in the vignette. Perhaps you could find out how 
+their inputs were generated.
+
+If you have a Windows machine with R running in UTF-8 as the native 
+encoding, with recent R-devel, and the error is still not reproducible, 
+try to confirm that the inputs for the failing operations are correct.
+
+Best
+Tomas
+
+>
+> Kind regards,
+> Maxim Nazarov
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
