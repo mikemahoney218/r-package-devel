@@ -5206,3 +5206,570 @@ Tomas
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From m@x|m@n@z@rov @end|ng |rom open@n@|yt|c@@eu  Tue Jan 24 18:33:10 2023
+From: m@x|m@n@z@rov @end|ng |rom open@n@|yt|c@@eu (Maxim Nazarov)
+Date: Tue, 24 Jan 2023 17:33:10 +0000
+Subject: [R-pkg-devel] strange errors (non-ascii symbols) on win-builder
+ R-devel
+In-Reply-To: <93b9cd46-d84a-43a6-043b-ed775d077434@gmail.com>
+References: <01020185df77dd2e-3108dd58-7188-43b5-96b8-1fc0bd934d69-000000@eu-west-1.amazonses.com>
+ <93b9cd46-d84a-43a6-043b-ed775d077434@gmail.com>
+Message-ID: <01020185e4d740ca-5b632b76-ce54-4702-99c5-43446ea982ad-000000@eu-west-1.amazonses.com>
+
+Thank you, Tomas, for your insights!
+
+I think I found the root cause of the problem - my package uses the `nlsLM` function from the `minpack.lm` package and coincidentally the new version of that package was submitted to CRAN recently.
+Looking at https://win-builder.r-project.org/incoming_pretest/minpack.lm_1.2-3_20230117_110122/reverseDependencies/changes.txt - we can see that this new version of minpack.lm is causing similar errors in many of its reverse dependencies.
+
+In fact if I install that version from https://cran.r-project.org/incoming/archive/ I get the strange output when running a simple example from `nlsLM` even on linux:
+```
+install.packages("https://cran.r-project.org/incoming/archive/minpack.lm_1.2-3.tar.gz")
+library(minpack.lm)
+DNase1 <- subset(DNase, Run == 1)
+capture.output(fm1DNase1 <- nlsLM(density ~ SSlogis(log(conc), Asym, xmid, scal), DNase1))
+## produces "\xa8\002\x8c\003\x9bU"
+```
+this seems to come from the C code, which I don't fully understand.
+
+So I guess it is an unfortunate timing, and I just need to wait for the minpack.lm package to be fixed, but I'm wondering (philosophically) if it is correct that my package is checked against non-released (non-approved) version of minpack.lm and rejected because of its shortcomings?
+
+Kind regards,
+Maxim Nazarov
+
+
+----- Original Message -----
+From: "Tomas Kalibera" <tomas.kalibera at gmail.com>
+To: "Maxim Nazarov" <maxim.nazarov at openanalytics.eu>, "r-package-devel" <r-package-devel at r-project.org>
+Sent: Monday, 23 January, 2023 21:49:56
+Subject: Re: [R-pkg-devel] strange errors (non-ascii symbols) on win-builder R-devel
+
+On 1/23/23 17:30, Maxim Nazarov wrote:
+> Hello all,
+>
+> I am submitting a minor update to one of my CRAN package (BIGL), and get strange errors on R-devel on win-builder - https://win-builder.r-project.org/incoming_pretest/BIGL_1.6.7_20230119_225109/Windows/00check.log and https://win-builder.r-project.org/o339zPAR6pWG/00check.log (different symbols)
+>
+> It shows strange output like "`1Y???hA?..." before tests and cryptic error-messages like "unable to translate '(<be><b1><a7>m' to a wide string"
+> I can also see similar output in examples - https://win-builder.r-project.org/o339zPAR6pWG/examples_and_tests/BIGL-Ex.Rout
+
+These are errors and warnings in regex operations (grep, gsub) due to 
+that the input data is not a valid string (validly encoded string). 
+Because it is not valid, it cannot be converted to a wide string, which 
+is needed for the regex operation, as this uses TRE.
+
+So, you need to find out why the input strings are invalid. Common 
+causes of such problems are that they are in a different encoding from 
+the one told to R or to some other software on the way. Also the data 
+may be corrupted.
+
+> I don't get any isses on debian R-devel, on R-release on windows, and also can't reproduce the errors locally on a windows machine with R-devel, so I am a bit lost.
+> Would anyone have any idea of what goes wrong?
+
+It should be fairly easy from the error output to find out which 
+operations have failed in the vignette. Perhaps you could find out how 
+their inputs were generated.
+
+If you have a Windows machine with R running in UTF-8 as the native 
+encoding, with recent R-devel, and the error is still not reproducible, 
+try to confirm that the inputs for the failing operations are correct.
+
+Best
+Tomas
+
+>
+> Kind regards,
+> Maxim Nazarov
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Jan 24 18:43:18 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 24 Jan 2023 12:43:18 -0500
+Subject: [R-pkg-devel] strange errors (non-ascii symbols) on win-builder
+ R-devel
+In-Reply-To: <01020185e4d740ca-5b632b76-ce54-4702-99c5-43446ea982ad-000000@eu-west-1.amazonses.com>
+References: <01020185df77dd2e-3108dd58-7188-43b5-96b8-1fc0bd934d69-000000@eu-west-1.amazonses.com>
+ <93b9cd46-d84a-43a6-043b-ed775d077434@gmail.com>
+ <01020185e4d740ca-5b632b76-ce54-4702-99c5-43446ea982ad-000000@eu-west-1.amazonses.com>
+Message-ID: <a7e315b0-1b04-af8a-2cea-2de30729ddc3@gmail.com>
+
+I think that is likely bad luck, in that your package was being 
+evaluated at the same time as the new minpack.lm, and CRAN/winbuilder 
+don't isolate the builds.  If you resubmit unchanged (I'd do this on 
+winbuilder, not CRAN) you may get a more reasonable outcome.
+
+Duncan Murdoch
+
+On 24/01/2023 12:33 p.m., Maxim Nazarov wrote:
+> Thank you, Tomas, for your insights!
+> 
+> I think I found the root cause of the problem - my package uses the `nlsLM` function from the `minpack.lm` package and coincidentally the new version of that package was submitted to CRAN recently.
+> Looking at https://win-builder.r-project.org/incoming_pretest/minpack.lm_1.2-3_20230117_110122/reverseDependencies/changes.txt - we can see that this new version of minpack.lm is causing similar errors in many of its reverse dependencies.
+> 
+> In fact if I install that version from https://cran.r-project.org/incoming/archive/ I get the strange output when running a simple example from `nlsLM` even on linux:
+> ```
+> install.packages("https://cran.r-project.org/incoming/archive/minpack.lm_1.2-3.tar.gz")
+> library(minpack.lm)
+> DNase1 <- subset(DNase, Run == 1)
+> capture.output(fm1DNase1 <- nlsLM(density ~ SSlogis(log(conc), Asym, xmid, scal), DNase1))
+> ## produces "\xa8\002\x8c\003\x9bU"
+> ```
+> this seems to come from the C code, which I don't fully understand.
+> 
+> So I guess it is an unfortunate timing, and I just need to wait for the minpack.lm package to be fixed, but I'm wondering (philosophically) if it is correct that my package is checked against non-released (non-approved) version of minpack.lm and rejected because of its shortcomings?
+> 
+> Kind regards,
+> Maxim Nazarov
+> 
+> 
+> ----- Original Message -----
+> From: "Tomas Kalibera" <tomas.kalibera at gmail.com>
+> To: "Maxim Nazarov" <maxim.nazarov at openanalytics.eu>, "r-package-devel" <r-package-devel at r-project.org>
+> Sent: Monday, 23 January, 2023 21:49:56
+> Subject: Re: [R-pkg-devel] strange errors (non-ascii symbols) on win-builder R-devel
+> 
+> On 1/23/23 17:30, Maxim Nazarov wrote:
+>> Hello all,
+>>
+>> I am submitting a minor update to one of my CRAN package (BIGL), and get strange errors on R-devel on win-builder - https://win-builder.r-project.org/incoming_pretest/BIGL_1.6.7_20230119_225109/Windows/00check.log and https://win-builder.r-project.org/o339zPAR6pWG/00check.log (different symbols)
+>>
+>> It shows strange output like "`1Y???hA?..." before tests and cryptic error-messages like "unable to translate '(<be><b1><a7>m' to a wide string"
+>> I can also see similar output in examples - https://win-builder.r-project.org/o339zPAR6pWG/examples_and_tests/BIGL-Ex.Rout
+> 
+> These are errors and warnings in regex operations (grep, gsub) due to
+> that the input data is not a valid string (validly encoded string).
+> Because it is not valid, it cannot be converted to a wide string, which
+> is needed for the regex operation, as this uses TRE.
+> 
+> So, you need to find out why the input strings are invalid. Common
+> causes of such problems are that they are in a different encoding from
+> the one told to R or to some other software on the way. Also the data
+> may be corrupted.
+> 
+>> I don't get any isses on debian R-devel, on R-release on windows, and also can't reproduce the errors locally on a windows machine with R-devel, so I am a bit lost.
+>> Would anyone have any idea of what goes wrong?
+> 
+> It should be fairly easy from the error output to find out which
+> operations have failed in the vignette. Perhaps you could find out how
+> their inputs were generated.
+> 
+> If you have a Windows machine with R running in UTF-8 as the native
+> encoding, with recent R-devel, and the error is still not reproducible,
+> try to confirm that the inputs for the failing operations are correct.
+> 
+> Best
+> Tomas
+> 
+>>
+>> Kind regards,
+>> Maxim Nazarov
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Jan 24 19:12:21 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 24 Jan 2023 21:12:21 +0300
+Subject: [R-pkg-devel] strange errors (non-ascii symbols) on win-builder
+ R-devel
+In-Reply-To: <01020185e4d740ca-5b632b76-ce54-4702-99c5-43446ea982ad-000000@eu-west-1.amazonses.com>
+References: <01020185df77dd2e-3108dd58-7188-43b5-96b8-1fc0bd934d69-000000@eu-west-1.amazonses.com>
+ <93b9cd46-d84a-43a6-043b-ed775d077434@gmail.com>
+ <01020185e4d740ca-5b632b76-ce54-4702-99c5-43446ea982ad-000000@eu-west-1.amazonses.com>
+Message-ID: <20230124211221.4fe18230@Tarkus>
+
+On Tue, 24 Jan 2023 17:33:10 +0000
+Maxim Nazarov <maxim.nazarov at openanalytics.eu> wrote:
+
+> this seems to come from the C code
+
+I'm 99% sure this comes from the following changes to the package:
+
+--- minpack.lm_1.2-2/src/fcn_message.c  2020-03-23 10:54:03.000000000 +0300
++++ minpack.lm_1.2-3/src/fcn_message.c  2023-01-17 09:30:05.000000000 +0300
+@@ -3,24 +3,24 @@
+ char *fcn_message(char *msg, int info, int n, int nit)
+ {
+     if      (info == 1)
+-        sprintf(msg, "Relative error in the sum of squares is at most `ftol'.");
++        Rprintf(msg, "Relative error in the sum of squares is at most `ftol'.");
+     else if (info == 2)
+
+(And so on for other values of `info`.)
+
+sprintf() takes a string pointer to write into as its first argument.
+Rprintf(), on the other hand, prints straight to the R console; its
+first argument is the format string. Given a valid pointer to an
+uninitialised string instead of the format string, Rprintf prints stack
+garbage to the console, ignoring the following arguments. My guess is
+that the maintainers either intended to remove the msg argument
+altogether or needed to use snprintf() and pass the buffer size to
+fcn_message().
+
+-- 
+Best regards,
+Ivan
+
+
+From ur|@@ohn @end|ng |rom gm@||@com  Sun Jan 22 22:36:52 2023
+From: ur|@@ohn @end|ng |rom gm@||@com (Uri Simonsohn)
+Date: Sun, 22 Jan 2023 21:36:52 +0000
+Subject: [R-pkg-devel] 
+ If you had to choose one binary to preserve for a pkg, which would it be?
+Message-ID: <em688ae61e-9014-4e28-9c9b-7af67631a44a@6e5c1f4b.com>
+
+This is not a perfect list for this question, but possibly a good list.
+
+I maintain 'groundhog', a package that seeks to simplify reproducibility 
+of R code based on R packages.
+It has so far relied on MRAN  for binaries of older/archived versions of 
+packages, but MRAN is shutting down.
+Posit (R Studio) also has archived binaries, but they are less 
+transparent about it,  they do not have Mac binaries, and I am a little 
+uncomfortable relying on a 3rd party again, specially because their 
+archive is more difficult to navigate and this is part of a for-profit 
+venture so access is far from guaranteed. So...
+
+I will create an independent archive of all binaries for packages for 
+Windows and Mac machines.
+
+Instead of having daily backups like MRAN does/did, i will keep just one 
+binary per combination of package, version, R version, operating system.
+So a single 'rio' 0.5.0 binary for Windows for R-4.2.x, for example 
+(MRAN keeps a daily copy of such file instead, possibly with 100+ 
+identical or nearly identical copies).
+
+I need to decide whether to keep the first binary that was uploaded to 
+CRAN, the last one, or one in the middle, etc.
+In  concept binaries should work regardless of which file is chosen, but 
+there is a reason, i guess they are rebuilt so often so it may make a 
+difference in the margin which of the many builts available in MRAN is 
+chosen to be preserved. I think it has to do with changes in underlying 
+packages used to build them, but am not sure.
+This decision will also guide future archiving, which of the many 
+versions of to be uploaded to CRAN binaries are preserved.
+
+So, if you have experience or knowledge on this, which of the many 
+previously created binaries for a given package version would you choose 
+to archive long-term?
+Groundhog will always attempt to install from source if a binary fails, 
+so a certain error rate is tolerable.
+
+Uri
+
+----------------------------------
+
+Uri Simonsohn (urisohn.com)
+
+Professor of Behavioral Science, ESADE, Barcelona
+
+Senior Fellow, Wharton School, University of Pennsylvania
+
+Blog at:  DataColada.org <www.DataColada.org>
+
+Easy data sharing: ResearchBox.org
+
+Twitter: @uri_sohn
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From y||4013 @end|ng |rom med@corne||@edu  Mon Jan 23 17:51:42 2023
+From: y||4013 @end|ng |rom med@corne||@edu (Ying Li)
+Date: Mon, 23 Jan 2023 16:51:42 +0000
+Subject: [R-pkg-devel] Inconsistent R CMD Check results
+Message-ID: <PH0PR06MB71575B163CB7557D3E0E146AEDC89@PH0PR06MB7157.namprd06.prod.outlook.com>
+
+Dear all,
+
+Hope you are well! Recently, in the check before a re-submission, I got an unexpected note when doing R CMD Check using rhub::check_for_cran(), saying that "Examples with CPU (user + system) or elapsed time > 5s".
+
+I didn't expect this note to appear because the same examples didn't cause this note in the previous submission last December. Compared with the previous submission, we only edited documentation, there was no change in the R code for functions of our package.
+
+To double-check, I downloaded our previous submission from CRAN and checked it again. It's strange that this current CRAN version also has this note now. However, when submitting it last December, there were no such notes. Do you have any idea why the R CMD Check results are inconsistent?
+
+Since the examples caused no note in the last submission and were successfully submitted to CRAN, I'm not sure whether I should change the examples in this re-submission to eliminate this sudden note. Any suggestions will be appreciated!
+
+Thank you!
+Ying
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Jan 24 20:55:21 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 24 Jan 2023 14:55:21 -0500
+Subject: [R-pkg-devel] strange errors (non-ascii symbols) on win-builder
+ R-devel
+In-Reply-To: <20230124211221.4fe18230@Tarkus>
+References: <01020185df77dd2e-3108dd58-7188-43b5-96b8-1fc0bd934d69-000000@eu-west-1.amazonses.com>
+ <93b9cd46-d84a-43a6-043b-ed775d077434@gmail.com>
+ <01020185e4d740ca-5b632b76-ce54-4702-99c5-43446ea982ad-000000@eu-west-1.amazonses.com>
+ <20230124211221.4fe18230@Tarkus>
+Message-ID: <2da90e2c-1d18-dbde-507e-3f52544e65ce@gmail.com>
+
+On 24/01/2023 1:12 p.m., Ivan Krylov wrote:
+> On Tue, 24 Jan 2023 17:33:10 +0000
+> Maxim Nazarov <maxim.nazarov at openanalytics.eu> wrote:
+> 
+>> this seems to come from the C code
+> 
+> I'm 99% sure this comes from the following changes to the package:
+> 
+> --- minpack.lm_1.2-2/src/fcn_message.c  2020-03-23 10:54:03.000000000 +0300
+> +++ minpack.lm_1.2-3/src/fcn_message.c  2023-01-17 09:30:05.000000000 +0300
+> @@ -3,24 +3,24 @@
+>   char *fcn_message(char *msg, int info, int n, int nit)
+>   {
+>       if      (info == 1)
+> -        sprintf(msg, "Relative error in the sum of squares is at most `ftol'.");
+> +        Rprintf(msg, "Relative error in the sum of squares is at most `ftol'.");
+>       else if (info == 2)
+> 
+> (And so on for other values of `info`.)
+> 
+> sprintf() takes a string pointer to write into as its first argument.
+> Rprintf(), on the other hand, prints straight to the R console; its
+> first argument is the format string. Given a valid pointer to an
+> uninitialised string instead of the format string, Rprintf prints stack
+> garbage to the console, ignoring the following arguments. My guess is
+> that the maintainers either intended to remove the msg argument
+> altogether or needed to use snprintf() and pass the buffer size to
+> fcn_message().
+> 
+
+Package maintainers recently got a message telling us not to use 
+sprintf() any more.  I guess the minpack.lm maintainer either didn't 
+read the whole message carefully enough and used Rprintf as a substitute 
+instead of snprintf(), or intended to use snprintf(), but typed 
+Rprintf() out of habit.
+
+Duncan Murdoch
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Tue Jan 24 21:55:31 2023
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Tue, 24 Jan 2023 21:55:31 +0100
+Subject: [R-pkg-devel] 
+ If you had to choose one binary to preserve for a pkg, which would it be?
+In-Reply-To: <em688ae61e-9014-4e28-9c9b-7af67631a44a@6e5c1f4b.com>
+References: <em688ae61e-9014-4e28-9c9b-7af67631a44a@6e5c1f4b.com>
+Message-ID: <93e860ae-462a-2de2-aa6a-aea976f22c3d@gmail.com>
+
+On 1/22/23 22:36, Uri Simonsohn wrote:
+> This is not a perfect list for this question, but possibly a good list.
+I think this is a good match.
+> I maintain 'groundhog', a package that seeks to simplify reproducibility
+> of R code based on R packages.
+> It has so far relied on MRAN  for binaries of older/archived versions of
+> packages, but MRAN is shutting down.
+> Posit (R Studio) also has archived binaries, but they are less
+> transparent about it,  they do not have Mac binaries, and I am a little
+> uncomfortable relying on a 3rd party again, specially because their
+> archive is more difficult to navigate and this is part of a for-profit
+> venture so access is far from guaranteed. So...
+>
+> I will create an independent archive of all binaries for packages for
+> Windows and Mac machines.
+>
+> Instead of having daily backups like MRAN does/did, i will keep just one
+> binary per combination of package, version, R version, operating system.
+> So a single 'rio' 0.5.0 binary for Windows for R-4.2.x, for example
+> (MRAN keeps a daily copy of such file instead, possibly with 100+
+> identical or nearly identical copies).
+>
+> I need to decide whether to keep the first binary that was uploaded to
+> CRAN, the last one, or one in the middle, etc.
+> In  concept binaries should work regardless of which file is chosen, but
+> there is a reason, i guess they are rebuilt so often so it may make a
+> difference in the margin which of the many builts available in MRAN is
+> chosen to be preserved. I think it has to do with changes in underlying
+> packages used to build them, but am not sure.
+> This decision will also guide future archiving, which of the many
+> versions of to be uploaded to CRAN binaries are preserved.
+
+I think the date-based snapshots made sense, that corresponded to how 
+packages were tested and built together. I am afraid you cannot get 
+close to that by choosing a single version. If you really must use only 
+one, probably the latest.
+
+If I wanted some reasonably reliable repeatability of computations, I 
+would though keep a virtual machine snapshot with the matching OS, 
+matching version of R, the packages installed (probably from source in 
+case debugging became needed), and all external dependencies. Ideally 
+with disconnected network to make sure the computation works fully 
+locally, and as I would not be updating the OS, for security as well. I 
+would keep that snapshot intact - never save the machine state again to 
+it. And if possible convert it to several image formats just in case the 
+virtualization software stops being supported or no longer can read 
+certain formats.
+
+Tomas
+
+>
+> So, if you have experience or knowledge on this, which of the many
+> previously created binaries for a given package version would you choose
+> to archive long-term?
+> Groundhog will always attempt to install from source if a binary fails,
+> so a certain error rate is tolerable.
+>
+> Uri
+>
+> ----------------------------------
+>
+> Uri Simonsohn (urisohn.com)
+>
+> Professor of Behavioral Science, ESADE, Barcelona
+>
+> Senior Fellow, Wharton School, University of Pennsylvania
+>
+> Blog at:  DataColada.org <www.DataColada.org>
+>
+> Easy data sharing: ResearchBox.org
+>
+> Twitter: @uri_sohn
+>
+>
+>
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Tue Jan 24 22:01:13 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Wed, 25 Jan 2023 10:01:13 +1300
+Subject: [R-pkg-devel] 
+ If you had to choose one binary to preserve for a pkg, which would it be?
+In-Reply-To: <em688ae61e-9014-4e28-9c9b-7af67631a44a@6e5c1f4b.com>
+References: <em688ae61e-9014-4e28-9c9b-7af67631a44a@6e5c1f4b.com>
+Message-ID: <C37B7C06-5DF2-46C2-8906-B0F84A2FE8AE@R-project.org>
+
+Uri,
+
+I can speak only for macOS package binaries and they have been rarely re-built. The only time when a re-build is necessary is when a dependency is updated and breaks its backward-compatibility (sadly, yes, that happens). It is relatively rare, but recently Matrix was one example with reasonably big fall-out. Those things are likely to happen more often in the future, but if you are mainly interested in an archive then you should be able to simply go by modification dates for the macOS binaries. However, I would add a black-out period after a major R release, because what happens is that I do a full re-build of all packages after a major R release (up til then the packages are build against the beta/RC) and that can take up to a few days, so I wouldn't keep packages built before that first set is done which can be few days after the release.
+
+Cheers,
+Simon
+
+
+> On Jan 23, 2023, at 10:36 AM, Uri Simonsohn <uri.sohn at gmail.com> wrote:
+> 
+> This is not a perfect list for this question, but possibly a good list.
+> 
+> I maintain 'groundhog', a package that seeks to simplify reproducibility 
+> of R code based on R packages.
+> It has so far relied on MRAN  for binaries of older/archived versions of 
+> packages, but MRAN is shutting down.
+> Posit (R Studio) also has archived binaries, but they are less 
+> transparent about it,  they do not have Mac binaries, and I am a little 
+> uncomfortable relying on a 3rd party again, specially because their 
+> archive is more difficult to navigate and this is part of a for-profit 
+> venture so access is far from guaranteed. So...
+> 
+> I will create an independent archive of all binaries for packages for 
+> Windows and Mac machines.
+> 
+> Instead of having daily backups like MRAN does/did, i will keep just one 
+> binary per combination of package, version, R version, operating system.
+> So a single 'rio' 0.5.0 binary for Windows for R-4.2.x, for example 
+> (MRAN keeps a daily copy of such file instead, possibly with 100+ 
+> identical or nearly identical copies).
+> 
+> I need to decide whether to keep the first binary that was uploaded to 
+> CRAN, the last one, or one in the middle, etc.
+> In  concept binaries should work regardless of which file is chosen, but 
+> there is a reason, i guess they are rebuilt so often so it may make a 
+> difference in the margin which of the many builts available in MRAN is 
+> chosen to be preserved. I think it has to do with changes in underlying 
+> packages used to build them, but am not sure.
+> This decision will also guide future archiving, which of the many 
+> versions of to be uploaded to CRAN binaries are preserved.
+> 
+> So, if you have experience or knowledge on this, which of the many 
+> previously created binaries for a given package version would you choose 
+> to archive long-term?
+> Groundhog will always attempt to install from source if a binary fails, 
+> so a certain error rate is tolerable.
+> 
+> Uri
+> 
+> ----------------------------------
+> 
+> Uri Simonsohn (urisohn.com)
+> 
+> Professor of Behavioral Science, ESADE, Barcelona
+> 
+> Senior Fellow, Wharton School, University of Pennsylvania
+> 
+> Blog at:  DataColada.org <www.DataColada.org>
+> 
+> Easy data sharing: ResearchBox.org
+> 
+> Twitter: @uri_sohn
+> 
+> 
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Tue Jan 24 22:03:45 2023
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Tue, 24 Jan 2023 22:03:45 +0100
+Subject: [R-pkg-devel] Inconsistent R CMD Check results
+In-Reply-To: <PH0PR06MB71575B163CB7557D3E0E146AEDC89@PH0PR06MB7157.namprd06.prod.outlook.com>
+References: <PH0PR06MB71575B163CB7557D3E0E146AEDC89@PH0PR06MB7157.namprd06.prod.outlook.com>
+Message-ID: <12190c88-46c6-600b-2ad2-af41b28cc01d@gmail.com>
+
+On 1/23/23 17:51, Ying Li via R-package-devel wrote:
+> Dear all,
+>
+> Hope you are well! Recently, in the check before a re-submission, I got an unexpected note when doing R CMD Check using rhub::check_for_cran(), saying that "Examples with CPU (user + system) or elapsed time > 5s".
+>
+> I didn't expect this note to appear because the same examples didn't cause this note in the previous submission last December. Compared with the previous submission, we only edited documentation, there was no change in the R code for functions of our package.
+>
+> To double-check, I downloaded our previous submission from CRAN and checked it again. It's strange that this current CRAN version also has this note now. However, when submitting it last December, there were no such notes. Do you have any idea why the R CMD Check results are inconsistent?
+
+You could check on Winbuilder as that is a concrete setup used for 
+incoming checks. But in principle, the computation may take longer 
+because of changes in dependencies, external software and R. Which can 
+be due to a performance regression, a bugfix, etc. Only 
+debugging/profiling could reveal the true cause.
+
+> Since the examples caused no note in the last submission and were successfully submitted to CRAN, I'm not sure whether I should change the examples in this re-submission to eliminate this sudden note. Any suggestions will be appreciated!
+If you were close to the limit last time, it may be a coincidence and 
+you might simply reduce the examples to be on the safe side.
+
+Tomas
+
+>
+> Thank you!
+> Ying
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
