@@ -5927,3 +5927,70 @@ Uwe Ligges
 	[[alternative HTML version deleted]]
 
 
+From m@x|m@n@z@rov @end|ng |rom open@n@|yt|c@@eu  Thu Jan 26 11:33:33 2023
+From: m@x|m@n@z@rov @end|ng |rom open@n@|yt|c@@eu (Maxim Nazarov)
+Date: Thu, 26 Jan 2023 10:33:33 +0000
+Subject: [R-pkg-devel] strange errors (non-ascii symbols) on win-builder
+ R-devel
+In-Reply-To: <2da90e2c-1d18-dbde-507e-3f52544e65ce@gmail.com>
+References: <01020185df77dd2e-3108dd58-7188-43b5-96b8-1fc0bd934d69-000000@eu-west-1.amazonses.com>
+ <93b9cd46-d84a-43a6-043b-ed775d077434@gmail.com>
+ <01020185e4d740ca-5b632b76-ce54-4702-99c5-43446ea982ad-000000@eu-west-1.amazonses.com>
+ <20230124211221.4fe18230@Tarkus>
+ <2da90e2c-1d18-dbde-507e-3f52544e65ce@gmail.com>
+Message-ID: <01020185eda3cc99-f47e3053-d8f0-40ef-9a3c-dbd4a4a7cbd0-000000@eu-west-1.amazonses.com>
+
+Thank you, Duncan and Ivan for helpful feedback.
+I reached out to the maintainer of the package, and she was able to quickly resolve the issue and resubmit.
+Consequently my re-submission was accepted.
+
+Kind regards,
+Maxim Nazarov
+
+
+----- Original Message -----
+From: "Duncan Murdoch" <murdoch.duncan at gmail.com>
+To: "Ivan Krylov" <krylov.r00t at gmail.com>, "Maxim Nazarov" <maxim.nazarov at openanalytics.eu>
+Cc: "r-package-devel" <r-package-devel at r-project.org>
+Sent: Tuesday, 24 January, 2023 20:55:21
+Subject: Re: [R-pkg-devel] strange errors (non-ascii symbols) on win-builder R-devel
+
+On 24/01/2023 1:12 p.m., Ivan Krylov wrote:
+> On Tue, 24 Jan 2023 17:33:10 +0000
+> Maxim Nazarov <maxim.nazarov at openanalytics.eu> wrote:
+> 
+>> this seems to come from the C code
+> 
+> I'm 99% sure this comes from the following changes to the package:
+> 
+> --- minpack.lm_1.2-2/src/fcn_message.c  2020-03-23 10:54:03.000000000 +0300
+> +++ minpack.lm_1.2-3/src/fcn_message.c  2023-01-17 09:30:05.000000000 +0300
+> @@ -3,24 +3,24 @@
+>   char *fcn_message(char *msg, int info, int n, int nit)
+>   {
+>       if      (info == 1)
+> -        sprintf(msg, "Relative error in the sum of squares is at most `ftol'.");
+> +        Rprintf(msg, "Relative error in the sum of squares is at most `ftol'.");
+>       else if (info == 2)
+> 
+> (And so on for other values of `info`.)
+> 
+> sprintf() takes a string pointer to write into as its first argument.
+> Rprintf(), on the other hand, prints straight to the R console; its
+> first argument is the format string. Given a valid pointer to an
+> uninitialised string instead of the format string, Rprintf prints stack
+> garbage to the console, ignoring the following arguments. My guess is
+> that the maintainers either intended to remove the msg argument
+> altogether or needed to use snprintf() and pass the buffer size to
+> fcn_message().
+> 
+
+Package maintainers recently got a message telling us not to use 
+sprintf() any more.  I guess the minpack.lm maintainer either didn't 
+read the whole message carefully enough and used Rprintf as a substitute 
+instead of snprintf(), or intended to use snprintf(), but typed 
+Rprintf() out of habit.
+
+Duncan Murdoch
+
+
