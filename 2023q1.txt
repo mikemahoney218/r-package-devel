@@ -5994,3 +5994,154 @@ Rprintf() out of habit.
 Duncan Murdoch
 
 
+From ur|@@ohn @end|ng |rom gm@||@com  Fri Jan 27 10:34:19 2023
+From: ur|@@ohn @end|ng |rom gm@||@com (Uri Simonsohn)
+Date: Fri, 27 Jan 2023 09:34:19 +0000
+Subject: [R-pkg-devel] 
+ If you had to choose one binary to preserve for a pkg, which would it be?
+In-Reply-To: <C37B7C06-5DF2-46C2-8906-B0F84A2FE8AE@R-project.org>
+References: <em688ae61e-9014-4e28-9c9b-7af67631a44a@6e5c1f4b.com>
+ <C37B7C06-5DF2-46C2-8906-B0F84A2FE8AE@R-project.org>
+Message-ID: <em262bb59c-da12-47b7-a34e-aa4d36964aba@8bdd459e.com>
+
+Hi list,
+
+I received a few emails, some off list, and replied privately to all.  
+Based on the feedback, I decided to modify the approach to replacing 
+MRAN.
+To those interested, the updated plan follows:
+
+1) Mac and Windows binaries from MRAN will be saved in a new archive, 
+which will be called "GRAN" (G is for groundhog).  GRAN will also 
+continue collecting new binaries from CRAN and archiving them for the 
+foreseeable future.
+
+2) In general, a given package, version, OS file will be saved once in 
+the archive, using the 1st file posted to CRAN for that 
+package-version-os (but looking at CRAN at least 10 days after a major R 
+release, to ensure it was built with the released R version). There are 
+two exceptions to this single binary rule (see (3) and (4))
+
+3) The top 2% of packages on CRAN, with the most reverse dependencies, 
+will be saved every 1st of the month even if it is the same package 
+version. This mitigates the consequences of a given already built  
+binary becoming incompatible with other packages (for example the binary 
+for MASS is saved again, every 1st of the month, even if the version has 
+not changed)
+
+4) When a Mac binary is rebuilt, since they are are seldom rebuilt, it 
+will be assumed that something happened, and that package version binary 
+will be saved again for all OS. For example, if on 2021/05/03 MASS was 
+rebuilt for Mac, the version for Windows and arm mac will also be saved 
+again. Just in case. This is essentially piggybacking on Simon Urbanek's 
+decisions to rebuild binaries, it assumes they are often diagnostic of 
+needing a new build.
+
+5) The package groundhog will automatically select the relevant binary 
+to install, based on this architecture. Users will continue to simply 
+need to run:
+groundhog.library(pkg, date)
+
+6) Once everything is rolled out and running smoothly, i will explore 
+adding ubuntu binaries to GRAN
+
+This should generate a fairly robust, if necessarily imperfect , archive 
+of binaries, with a manageable GB footprint (ballpark <3TB  for all 
+packages since 2014), and maximal ease-of-use.
+
+The selective copying of MRAN-->GRAN is  taking place now, the version 
+of groundhog that benefits from it should be released around May, 
+several weeks before Microsoft erases MRAN.
+
+Thanks for your feedback so far, very happy to receive further 
+suggestions or thoughts off list.
+
+Best,
+
+Uri
+
+
+------ Original Message ------
+From "Simon Urbanek" <simon.urbanek at r-project.org>
+To "Uri Simonsohn" <urisohn at gmail.com>
+Cc R-package-devel at r-project.org
+Date 1/24/2023 10:01:13 PM
+Subject Re: [R-pkg-devel] If you had to choose one binary to preserve 
+for a pkg, which would it be?
+
+>Uri,
+>
+>I can speak only for macOS package binaries and they have been rarely re-built. The only time when a re-build is necessary is when a dependency is updated and breaks its backward-compatibility (sadly, yes, that happens). It is relatively rare, but recently Matrix was one example with reasonably big fall-out. Those things are likely to happen more often in the future, but if you are mainly interested in an archive then you should be able to simply go by modification dates for the macOS binaries. However, I would add a black-out period after a major R release, because what happens is that I do a full re-build of all packages after a major R release (up til then the packages are build against the beta/RC) and that can take up to a few days, so I wouldn't keep packages built before that first set is done which can be few days after the release.
+>
+>Cheers,
+>Simon
+>
+>
+>>  On Jan 23, 2023, at 10:36 AM, Uri Simonsohn <uri.sohn at gmail.com> wrote:
+>>
+>>  This is not a perfect list for this question, but possibly a good list.
+>>
+>>  I maintain 'groundhog', a package that seeks to simplify reproducibility
+>>  of R code based on R packages.
+>>  It has so far relied on MRAN  for binaries of older/archived versions of
+>>  packages, but MRAN is shutting down.
+>>  Posit (R Studio) also has archived binaries, but they are less
+>>  transparent about it,  they do not have Mac binaries, and I am a little
+>>  uncomfortable relying on a 3rd party again, specially because their
+>>  archive is more difficult to navigate and this is part of a for-profit
+>>  venture so access is far from guaranteed. So...
+>>
+>>  I will create an independent archive of all binaries for packages for
+>>  Windows and Mac machines.
+>>
+>>  Instead of having daily backups like MRAN does/did, i will keep just one
+>>  binary per combination of package, version, R version, operating system.
+>>  So a single 'rio' 0.5.0 binary for Windows for R-4.2.x, for example
+>>  (MRAN keeps a daily copy of such file instead, possibly with 100+
+>>  identical or nearly identical copies).
+>>
+>>  I need to decide whether to keep the first binary that was uploaded to
+>>  CRAN, the last one, or one in the middle, etc.
+>>  In  concept binaries should work regardless of which file is chosen, but
+>>  there is a reason, i guess they are rebuilt so often so it may make a
+>>  difference in the margin which of the many builts available in MRAN is
+>>  chosen to be preserved. I think it has to do with changes in underlying
+>>  packages used to build them, but am not sure.
+>>  This decision will also guide future archiving, which of the many
+>>  versions of to be uploaded to CRAN binaries are preserved.
+>>
+>>  So, if you have experience or knowledge on this, which of the many
+>>  previously created binaries for a given package version would you choose
+>>  to archive long-term?
+>>  Groundhog will always attempt to install from source if a binary fails,
+>>  so a certain error rate is tolerable.
+>>
+>>  Uri
+>>
+>>  ----------------------------------
+>>
+>>  Uri Simonsohn (urisohn.com)
+>>
+>>  Professor of Behavioral Science, ESADE, Barcelona
+>>
+>>  Senior Fellow, Wharton School, University of Pennsylvania
+>>
+>>  Blog at:  DataColada.org <www.DataColada.org>
+>>
+>>  Easy data sharing: ResearchBox.org
+>>
+>>  Twitter: @uri_sohn
+>>
+>>
+>>
+>>
+>>  	[[alternative HTML version deleted]]
+>>
+>>  ______________________________________________
+>>R-package-devel at r-project.org mailing list
+>>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>
+	[[alternative HTML version deleted]]
+
+
