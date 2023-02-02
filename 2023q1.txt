@@ -6469,3 +6469,176 @@ Avi
 [3] https://cran.r-project.org/doc/manuals/r-devel/R-exts.html#Using-F9x-code
 
 
+From m|keb|@z@n|n @end|ng |rom gm@||@com  Tue Jan 31 16:02:04 2023
+From: m|keb|@z@n|n @end|ng |rom gm@||@com (Mike Blazanin)
+Date: Tue, 31 Jan 2023 10:02:04 -0500
+Subject: [R-pkg-devel] Help with CRAN-only Windows-only package build error:
+ System.Rd not found
+Message-ID: <CAEbuDvJuzUn7JKdWeH6u8MtvETcMi4m3tvmZXtvQ3bSB8xGHpA@mail.gmail.com>
+
+Hi all, trying to troubleshoot my way through my first CRAN package
+submission. I've addressed all the other issues so far (much thanks to Uwe
+from CRAN for that).
+
+In the second-to-last version I submitted via devtools::release(), it
+raised 1 WARNING on both Windows and Debian:
+* checking sizes of PDF files under 'inst/doc' ... WARNING
+  'gs+qpdf' made some significant size reductions:
+     compacted 'noise.pdf' from 1.4Mb to 1.1Mb
+
+To address this, I re-released to CRAN with vignette compaction active:
+devtools::release(args = "--compact-vignettes=gs+qpdf")
+
+However, this now raises 1 new NOTE (only on Windows) and 1 ERROR. The NOTE
+is:
+* checking CRAN incoming feasibility ... [7s] NOTE
+Reading Rd files failed with
+  cannot open the connection
+Problems when formatting CITATION entries:
+  cannot open file 'D:/RCompile/recent/R/share/Rd/macros/system.Rd': No
+such file or directory
+
+Which later produces the ERROR:
+* checking whether package 'gcplyr' can be installed ... ERROR
+Installation failed.
+See 'd:/RCompile/CRANincoming/R-devel/gcplyr.Rcheck/00install.out' for
+details.
+
+If I check 00install.out, here's what I see:
+* installing *source* package 'gcplyr' ...
+** using staged installation
+Warning in as.POSIXlt.POSIXct(x, tz) : unknown timezone 'Europe/Berlin'
+Warning in as.POSIXlt.POSIXct(x, tz) : unknown timezone 'GMT'
+Warning in as.POSIXlt.POSIXct(x, tz) :
+  unknown timezone 'America/New_York'
+Warning in as.POSIXlt.POSIXct(x, tz) : unknown timezone 'GMT'
+Warning in as.POSIXlt.POSIXct(x, tz) :
+  unknown timezone 'America/New_York'
+** R
+** data
+*** moving datasets to lazyload DB
+** inst
+** byte-compile and prepare package for lazy loading
+Error in if (file.size(codeFile) == file.size(loaderFile)) warning("package
+seems to be using lazy loading already") else { :
+  missing value where TRUE/FALSE needed
+Calls: <Anonymous>
+Execution halted
+ERROR: lazy loading failed for package 'gcplyr'
+* removing 'd:/RCompile/CRANincoming/R-devel/lib/gcplyr'
+* restoring previous 'd:/RCompile/CRANincoming/R-devel/lib/gcplyr'
+
+There were no changes to the code between two submissions, and when I
+googled around to try to figure out what might be causing this error, I
+couldn't find anything that would explain why a submission that was
+successful other than a single too-large vignette pdf now raises an error
+when the pdf's are compacted before submission.
+
+The full package source code is available at
+https://github.com/mikeblazanin/gcplyr.
+
+Let me know if you have any ideas what could be causing this or what to
+look into! This isn't an issue I've been able to reproduce on my local
+machine nor on the rhub checker so it's a bit difficult for me to debug and
+I don't want to take up any more of the CRAN volunteers' time
+
+Thanks!
+Mike Blazanin
+
+	[[alternative HTML version deleted]]
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Tue Jan 31 17:57:20 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Tue, 31 Jan 2023 17:57:20 +0100
+Subject: [R-pkg-devel] 
+ Help with CRAN-only Windows-only package build error:
+ System.Rd not found
+In-Reply-To: <CAEbuDvJuzUn7JKdWeH6u8MtvETcMi4m3tvmZXtvQ3bSB8xGHpA@mail.gmail.com>
+References: <CAEbuDvJuzUn7JKdWeH6u8MtvETcMi4m3tvmZXtvQ3bSB8xGHpA@mail.gmail.com>
+Message-ID: <a6c6934a-c982-9079-9593-85a4634cb3ae@statistik.tu-dortmund.de>
+
+This was a temporary hicc up on the Windows machine, all check should 
+have been triggered again.
+
+Best,
+Uwe Ligges
+
+
+On 31.01.2023 16:02, Mike Blazanin wrote:
+> Hi all, trying to troubleshoot my way through my first CRAN package
+> submission. I've addressed all the other issues so far (much thanks to Uwe
+> from CRAN for that).
+> 
+> In the second-to-last version I submitted via devtools::release(), it
+> raised 1 WARNING on both Windows and Debian:
+> * checking sizes of PDF files under 'inst/doc' ... WARNING
+>    'gs+qpdf' made some significant size reductions:
+>       compacted 'noise.pdf' from 1.4Mb to 1.1Mb
+> 
+> To address this, I re-released to CRAN with vignette compaction active:
+> devtools::release(args = "--compact-vignettes=gs+qpdf")
+> 
+> However, this now raises 1 new NOTE (only on Windows) and 1 ERROR. The NOTE
+> is:
+> * checking CRAN incoming feasibility ... [7s] NOTE
+> Reading Rd files failed with
+>    cannot open the connection
+> Problems when formatting CITATION entries:
+>    cannot open file 'D:/RCompile/recent/R/share/Rd/macros/system.Rd': No
+> such file or directory
+> 
+> Which later produces the ERROR:
+> * checking whether package 'gcplyr' can be installed ... ERROR
+> Installation failed.
+> See 'd:/RCompile/CRANincoming/R-devel/gcplyr.Rcheck/00install.out' for
+> details.
+> 
+> If I check 00install.out, here's what I see:
+> * installing *source* package 'gcplyr' ...
+> ** using staged installation
+> Warning in as.POSIXlt.POSIXct(x, tz) : unknown timezone 'Europe/Berlin'
+> Warning in as.POSIXlt.POSIXct(x, tz) : unknown timezone 'GMT'
+> Warning in as.POSIXlt.POSIXct(x, tz) :
+>    unknown timezone 'America/New_York'
+> Warning in as.POSIXlt.POSIXct(x, tz) : unknown timezone 'GMT'
+> Warning in as.POSIXlt.POSIXct(x, tz) :
+>    unknown timezone 'America/New_York'
+> ** R
+> ** data
+> *** moving datasets to lazyload DB
+> ** inst
+> ** byte-compile and prepare package for lazy loading
+> Error in if (file.size(codeFile) == file.size(loaderFile)) warning("package
+> seems to be using lazy loading already") else { :
+>    missing value where TRUE/FALSE needed
+> Calls: <Anonymous>
+> Execution halted
+> ERROR: lazy loading failed for package 'gcplyr'
+> * removing 'd:/RCompile/CRANincoming/R-devel/lib/gcplyr'
+> * restoring previous 'd:/RCompile/CRANincoming/R-devel/lib/gcplyr'
+> 
+> There were no changes to the code between two submissions, and when I
+> googled around to try to figure out what might be causing this error, I
+> couldn't find anything that would explain why a submission that was
+> successful other than a single too-large vignette pdf now raises an error
+> when the pdf's are compacted before submission.
+> 
+> The full package source code is available at
+> https://github.com/mikeblazanin/gcplyr.
+> 
+> Let me know if you have any ideas what could be causing this or what to
+> look into! This isn't an issue I've been able to reproduce on my local
+> machine nor on the rhub checker so it's a bit difficult for me to debug and
+> I don't want to take up any more of the CRAN volunteers' time
+> 
+> Thanks!
+> Mike Blazanin
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
