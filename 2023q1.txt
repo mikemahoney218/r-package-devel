@@ -6642,3 +6642,71 @@ On 31.01.2023 16:02, Mike Blazanin wrote:
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Feb  2 22:53:34 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 2 Feb 2023 16:53:34 -0500
+Subject: [R-pkg-devel] Best current way to hook into the event loop?
+Message-ID: <3e315cd1-d4fb-8bff-f801-7fad9eddbac5@gmail.com>
+
+I'm updating low level stuff in the rgl package.  I'm exploring using 
+the GLFW library to handle low level stuff instead of trying to do that 
+myself.
+
+Currently rgl has fairly ugly code to link into the R event loop.  (It 
+needs to do this so that it hears about mouse movement, etc.)  I'm 
+hoping that someone else has written better code than I could to do 
+this.  Is there a currently recommended way to hook into the loop?
+
+The kinds of things I need are getting events fairly frequently (e.g. 
+0.03 second delay if things aren't too busy) for code that doesn't 
+involve R at all.
+
+I will also occasionally want to call back into R; I don't really mind 
+if there's a bigger delay to wait for that to be safe.
+
+I've seen the "later" package:  it looks as though it might do what I 
+need, but the protection for R code seems to be all or nothing, i.e. if 
+I want to evaluate an R expression nothing else can be running, or if I 
+want action while R code is running, I can't involve R at all.
+
+Duncan Murdoch
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Fri Feb  3 01:24:53 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Fri, 3 Feb 2023 13:24:53 +1300
+Subject: [R-pkg-devel] Best current way to hook into the event loop?
+In-Reply-To: <3e315cd1-d4fb-8bff-f801-7fad9eddbac5@gmail.com>
+References: <3e315cd1-d4fb-8bff-f801-7fad9eddbac5@gmail.com>
+Message-ID: <EA3B6EA4-36D7-4980-8332-53F0B0FB712F@R-project.org>
+
+Duncan,
+
+I don't know if it is best, but you can have a look at "background"[1] which is I believe what "later" was inspired by. It is a very minimal example so should give you ideas on how to do that in your package - it runs the R code on the main thread so it should be as close to safe as one can get with asynchronous calls, just beware of reentrance. In your case I suspect that you may already have an X11 fd that you can use in the unix handler - not sure what signaling you need on Windows, though.
+
+Cheers,
+Simon
+
+[1] - https://github.com/s-u/background
+
+
+> On Feb 3, 2023, at 10:53 AM, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+> 
+> I'm updating low level stuff in the rgl package.  I'm exploring using the GLFW library to handle low level stuff instead of trying to do that myself.
+> 
+> Currently rgl has fairly ugly code to link into the R event loop.  (It needs to do this so that it hears about mouse movement, etc.)  I'm hoping that someone else has written better code than I could to do this.  Is there a currently recommended way to hook into the loop?
+> 
+> The kinds of things I need are getting events fairly frequently (e.g. 0.03 second delay if things aren't too busy) for code that doesn't involve R at all.
+> 
+> I will also occasionally want to call back into R; I don't really mind if there's a bigger delay to wait for that to be safe.
+> 
+> I've seen the "later" package:  it looks as though it might do what I need, but the protection for R code seems to be all or nothing, i.e. if I want to evaluate an R expression nothing else can be running, or if I want action while R code is running, I can't involve R at all.
+> 
+> Duncan Murdoch
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
