@@ -6710,3 +6710,662 @@ Simon
 > 
 
 
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Feb  3 11:40:20 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 3 Feb 2023 05:40:20 -0500
+Subject: [R-pkg-devel] Best current way to hook into the event loop?
+In-Reply-To: <EA3B6EA4-36D7-4980-8332-53F0B0FB712F@R-project.org>
+References: <3e315cd1-d4fb-8bff-f801-7fad9eddbac5@gmail.com>
+ <EA3B6EA4-36D7-4980-8332-53F0B0FB712F@R-project.org>
+Message-ID: <c4e37b44-c98e-3e4a-bbb4-794c86db8d4d@gmail.com>
+
+On 02/02/2023 7:24 p.m., Simon Urbanek wrote:
+> Duncan,
+> 
+> I don't know if it is best, but you can have a look at "background"[1] which is I believe what "later" was inspired by. It is a very minimal example so should give you ideas on how to do that in your package - it runs the R code on the main thread so it should be as close to safe as one can get with asynchronous calls, just beware of reentrance. In your case I suspect that you may already have an X11 fd that you can use in the unix handler - not sure what signaling you need on Windows, though.
+
+Thanks.  Yours appears to have the advantage of being able to run R code 
+in the middle of a function call if that function calls R_ProcessEvents, 
+as Sys.sleep() does.  I wonder why "later" didn't support that?
+
+What I was hoping for would be something like R_PolledEvents, but it 
+should work on all systems, not just Unix-alikes.  My goal is to 
+simplify rgl.  Part of this means I'd like to minimize the system 
+dependence, since I no longer have easy access to a Windows machine for 
+testing.
+
+Duncan
+
+> 
+> Cheers,
+> Simon
+> 
+> [1] - https://github.com/s-u/background
+> 
+> 
+>> On Feb 3, 2023, at 10:53 AM, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>>
+>> I'm updating low level stuff in the rgl package.  I'm exploring using the GLFW library to handle low level stuff instead of trying to do that myself.
+>>
+>> Currently rgl has fairly ugly code to link into the R event loop.  (It needs to do this so that it hears about mouse movement, etc.)  I'm hoping that someone else has written better code than I could to do this.  Is there a currently recommended way to hook into the loop?
+>>
+>> The kinds of things I need are getting events fairly frequently (e.g. 0.03 second delay if things aren't too busy) for code that doesn't involve R at all.
+>>
+>> I will also occasionally want to call back into R; I don't really mind if there's a bigger delay to wait for that to be safe.
+>>
+>> I've seen the "later" package:  it looks as though it might do what I need, but the protection for R code seems to be all or nothing, i.e. if I want to evaluate an R expression nothing else can be running, or if I want action while R code is running, I can't involve R at all.
+>>
+>> Duncan Murdoch
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>
+
+
+From br@d|eyjeck @end|ng |rom gm@||@com  Fri Feb  3 17:28:23 2023
+From: br@d|eyjeck @end|ng |rom gm@||@com (Brad Eck)
+Date: Fri, 3 Feb 2023 16:28:23 +0000
+Subject: [R-pkg-devel] reproducing cran warnings
+Message-ID: <CALECgPYrOi1dcS_LfyuW5A+DQqjmC5SxepVof0Q64oWbFdt_Lw@mail.gmail.com>
+
+Dear List -
+
+What?s the latest best practice on trying to reproduce warnings raised
+on CRAN checks?
+
+I updated my epanet2toolkit package earlier this week.
+R CMD check ?as-cran was clean on RHUB and Winbuilder and my local
+machines.  But on CRAN a few variations are causing warnings.
+
+For example R-devel-debian-gcc is ok on rhub
+https://builder.r-hub.io/status/epanet2toolkit_0.6.1.tar.gz-58c1ce1e316317307679f58450a5e17a
+
+But
+not on CRAN:
+https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-debian-gcc/epanet2toolkit-00check.html
+
+Thanks in advance for any suggestions.
+
+Brad
+
+	[[alternative HTML version deleted]]
+
+
+From jpno|@n @end|ng |rom @mer|c@n@edu  Fri Feb  3 18:00:00 2023
+From: jpno|@n @end|ng |rom @mer|c@n@edu (John P. Nolan)
+Date: Fri, 3 Feb 2023 17:00:00 +0000
+Subject: [R-pkg-devel] splitting an R package into two
+Message-ID: <BL0PR06MB4371458D1DC48087B8F6E780C6D79@BL0PR06MB4371.namprd06.prod.outlook.com>
+
+Dear R-package-devel,
+
+I am updating package mvmesh that is on CRAN.  I would like to split that package into two parts, mvmesh (multivariate meshes/grids) and mvhist (multivariate histograms). Does CRAN have a policy/practice on this?   I did  a search, but found nothing on this.
+
+I would do this in two steps:
+
+  1.  Extract some of the functions in the current package into a new package.   Submit that package as mvhist and wait for approval.
+  2.  Remove the extracted functions from the current package, and submit it with a new version number.
+There is a short term problem that some functions would exist in two places during the time period it takes to do step 2.  After that, users who want to use the functions in mvhist will have install both packages.
+
+I don't want to add work for the CRAN team, so please let me know if this is forbidden or there is a better way.
+
+Thanks,  John
+............................................................................................
+John P. Nolan
+Math/Stat Dept., American University
+106J Myers Hall, 4400 Massachusetts Ave, NW, Washington, DC 20016-8050
+Phone: 202-885-3140   E-mail:  jpnolan at american.edu
+Web:   https://edspace.american.edu/jpnolan/
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Feb  3 18:07:05 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 3 Feb 2023 12:07:05 -0500
+Subject: [R-pkg-devel] splitting an R package into two
+In-Reply-To: <BL0PR06MB4371458D1DC48087B8F6E780C6D79@BL0PR06MB4371.namprd06.prod.outlook.com>
+References: <BL0PR06MB4371458D1DC48087B8F6E780C6D79@BL0PR06MB4371.namprd06.prod.outlook.com>
+Message-ID: <5db9511d-d98d-a3d2-b292-1546fa984cf0@gmail.com>
+
+On 03/02/2023 12:00 p.m., John P. Nolan wrote:
+> Dear R-package-devel,
+> 
+> I am updating package mvmesh that is on CRAN.  I would like to split that package into two parts, mvmesh (multivariate meshes/grids) and mvhist (multivariate histograms). Does CRAN have a policy/practice on this?   I did  a search, but found nothing on this.
+> 
+> I would do this in two steps:
+> 
+>    1.  Extract some of the functions in the current package into a new package.   Submit that package as mvhist and wait for approval.
+>    2.  Remove the extracted functions from the current package, and submit it with a new version number.
+> There is a short term problem that some functions would exist in two places during the time period it takes to do step 2.  After that, users who want to use the functions in mvhist will have install both packages.
+> 
+> I don't want to add work for the CRAN team, so please let me know if this is forbidden or there is a better way.
+
+I think your plan is good, though it is missing one step that should 
+happen between 1 and 2:
+
+Contact maintainers of all packages that use mvmesh and tell them what 
+changes they need to make.  According to the CRAN page for mvmesh, 
+that's just two packages, both of which you maintain:  gensphere, 
+SphericalCubature, but you may know of others (e.g. on Bioconductor or 
+elsewhere) who should be informed.
+
+If those are the only two, then the step should be to send any necessary 
+updates to them before proceeding to step 2.  When you do get to step 2, 
+mention what steps you took to inform mvmesh users.
+
+Duncan Murdoch
+
+
+From w||||@mwdun|@p @end|ng |rom gm@||@com  Fri Feb  3 18:18:42 2023
+From: w||||@mwdun|@p @end|ng |rom gm@||@com (Bill Dunlap)
+Date: Fri, 3 Feb 2023 09:18:42 -0800
+Subject: [R-pkg-devel] reproducing cran warnings
+In-Reply-To: <CALECgPYrOi1dcS_LfyuW5A+DQqjmC5SxepVof0Q64oWbFdt_Lw@mail.gmail.com>
+References: <CALECgPYrOi1dcS_LfyuW5A+DQqjmC5SxepVof0Q64oWbFdt_Lw@mail.gmail.com>
+Message-ID: <CAHqSRuQW1vcy-4kbAZR87dN4QHtNDZp02sRBLFv8hsLXpWeOmw@mail.gmail.com>
+
+checking whether package ?epanet2toolkit? can be installed ... WARNING
+Found the following significant warnings:
+  report.c:1466:37: warning: argument to ?sizeof? in ?snprintf? call is the
+same expression as the destination; did you mean to provide an explicit
+length? [-Wsizeof-pointer-memaccess]
+  report.c:1466:61: warning: ?__builtin___snprintf_chk? output may be
+truncated before the last format character [-Wformat-truncation=]
+  rules.c:1364:40: warning: argument to ?sizeof? in ?snprintf? call is the
+same expression as the destination; did you mean to provide an explicit
+length? [-Wsizeof-pointer-memaccess]
+  rules.c:1371:43: warning: argument to ?sizeof? in ?snprintf? call is the
+same expression as the destination; did you mean to provide an explicit
+length? [-Wsizeof-pointer-memaccess]
+  rules.c:1371:58: warning: ?%02d? directive output may be truncated
+writing between 2 and 11 bytes into a region of size between 0 and 6
+[-Wformat-truncation=]
+See
+https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-debian-gcc/epanet2toolkit-00install.html
+for details.
+
+
+You will get these warnings if you do things like
+    char *string = (char*)malloc(length);
+    snprintf(string, sizeof(string), "format ...");
+sizeof(string) here is 8 (on a 64 bit machine), no matter what length is.
+
+Change this to either
+   char string[64] // 64 had better be big enough
+   snprintf(string, sizeof(string), "format ..");
+or
+   char *string = (char*)malloc(length);
+   snprintf(string, length, "format ...");
+
+-Bill
+
+
+On Fri, Feb 3, 2023 at 8:28 AM Brad Eck <bradleyjeck at gmail.com> wrote:
+
+> Dear List -
+>
+> What?s the latest best practice on trying to reproduce warnings raised
+> on CRAN checks?
+>
+> I updated my epanet2toolkit package earlier this week.
+> R CMD check ?as-cran was clean on RHUB and Winbuilder and my local
+> machines.  But on CRAN a few variations are causing warnings.
+>
+> For example R-devel-debian-gcc is ok on rhub
+>
+> https://builder.r-hub.io/status/epanet2toolkit_0.6.1.tar.gz-58c1ce1e316317307679f58450a5e17a
+>
+> But
+> not on CRAN:
+>
+> https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-debian-gcc/epanet2toolkit-00check.html
+>
+> Thanks in advance for any suggestions.
+>
+> Brad
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @vr@h@m@@d|er @end|ng |rom gm@||@com  Fri Feb  3 19:08:48 2023
+From: @vr@h@m@@d|er @end|ng |rom gm@||@com (Avraham Adler)
+Date: Fri, 3 Feb 2023 18:08:48 +0000
+Subject: [R-pkg-devel] 
+ Proper way to express Fortran 2008 dependence for R package
+In-Reply-To: <CAL6gwnL+7q5wKkittHkO4GEq=ri5thUBEEjjY_q=C9nwOrnEeQ@mail.gmail.com>
+References: <CAL6gwnL+7q5wKkittHkO4GEq=ri5thUBEEjjY_q=C9nwOrnEeQ@mail.gmail.com>
+Message-ID: <CAL6gwn+eNC3zbTKARDKoBVc5uFAC3R25VNZzPN+8PLxWDc1DEQ@mail.gmail.com>
+
+For closure, I was advised by Professor Ripley to both pass
+"-std=f008" in Makevars and add "SystemRequirements: A version of
+gfortran supporting Fortran 2008" to the DESCRIPTION. CRAN accepted
+the package with those two changes. I also note that the R Daily News
+of 2023-02-03 [1] has the following entry under "R-devel": ?check?'s
+?checking compilation flags in Makevars? has been relaxed to accept
+the use of flags such as ?-std=f2008? in ?PKG_FFLAGS?. Hopefully, this
+means future packages will have an easier time relying on more modern
+features, albeit they are 5 or 15 years old by now :).
+
+Thank you,
+
+Avi
+
+[1]: https://developer.r-project.org/blosxom.cgi/R-devel/NEWS/2023/02/02#n2023-02-02
+
+On Mon, Jan 30, 2023 at 12:12 AM Avraham Adler <avraham.adler at gmail.com> wrote:
+>
+> I would like to convert some of my hand-rolled Fortran code to Fortran
+> intrinsics which entered the language in Fortran 2008, which should be
+> extremely widely supported at this time. Specifically, I would like to
+> use the log_gamma function and ieee_arithmetic functions and values.
+> If it helps, the current package is at [1] and devel branch with new
+> code is at [2].
+>
+> If I understand it correctly, WRE allows for dependence on Fortran
+> 2008 by explicitly passing -std=f2008 in PKG_FFLAGS (WRE section 1.2.3
+> Using F9x code [3]). However, checking a package as-cran with that
+> addition delivers a warning (further confirmed by win-builder and
+> rhub).
+>
+> My question is is it appropriate to submit a package with that warning
+> and note it in the submission or is there a better way to express
+> reliance on Fortran 2008. The implication from WRE 1.2.4 is that
+> passing standards in Makevars is preferable to stating them in
+> DESCRIPTION, at least as regards C++.
+>
+> What somewhat complicates matters is that if I build my package
+> (Rtools43 on Windows 10) without passing "-std=f2008" it still builds
+> properly and passes all the tests because Rtools43 is based on GCC12.2
+> which supports Fortran 2008 intrinsics. So I can probably submit it
+> without the flag, but someone with a very old Fortran installation may
+> suffer.
+>
+> I understand being told I should just address CRAN directly, but I
+> thought I would try the collected institutional memory here first.
+>
+> Thank you,
+>
+> Avi
+>
+> [1] https://github.com/aadler/Delaporte
+> [2] https://github.com/aadler/Delaporte/tree/devel
+> [3] https://cran.r-project.org/doc/manuals/r-devel/R-exts.html#Using-F9x-code
+
+
+From |embry @end|ng |rom ecocc@@com  Sat Feb  4 00:46:24 2023
+From: |embry @end|ng |rom ecocc@@com (EcoC2S - Irucka Embry)
+Date: Fri, 03 Feb 2023 17:46:24 -0600
+Subject: [R-pkg-devel] CRAN Packages over 5 MB & Time Length for Manual
+ Inspection
+In-Reply-To: <8ec6b8bf-7e85-21e6-bb43-dbeab3bba30d@gmail.com>
+References: <dc713e6d764976c5f370cfb05ba38e92@ecoccs.com>
+ <1fba4982cf0839bd7443542b325dc6eb@ecoccs.com>
+ <0d964412c3dd5d1c7730e30e010d0348@ecoccs.com>
+ <8ec6b8bf-7e85-21e6-bb43-dbeab3bba30d@gmail.com>
+Message-ID: <8d798859c89743748becc79fcccf0bd8@ecoccs.com>
+
+Ben, thank you for your response.
+
+The text2sdg package was added on 24 January 2023.
+
+I had created a drat repository called USA.state.boundaries.data to 
+store the full set of maps (1 of which is needed for my iemisc package) 
+and I had only a subset of the maps in the USA.state.boundaries package 
+which appears on CRAN.
+
+In order to submit the revised iemisc package to CRAN, I had to add the 
+map data set from USA.state.boundaries.data which iemisc requires for 
+key functions to the USA.state.boundaries package. I first tried to 
+submit the revised USA.state.boundaries package with the map that iemisc 
+requires to CRAN back in December 2022. I exchanged some e-mails with 
+Uwe prior to the holiday break.
+
+Irucka
+
+
+
+
+On 29-01-2023 14:55, Ben Bolker wrote:
+> Out of curiosity, what was the recently added package?
+> 
+>   It looks like the previous version of your package from about a year
+> ago is only a 1.2MB tarball.  Also out of curiosity, what caused the
+> increase?
+> 
+>   cheers
+>    Ben Bolker
+> 
+> On 2023-01-29 1:53 p.m., EcoC2S - Irucka Embry wrote:
+>> Greetings!
+>> 
+>> I submitted my USA.state.boundaries package on 6 January 2023 and Uwe 
+>> responded back letting me know that it was over the 5 MB CRAN 
+>> threshold. I responded back to Uwe letting him know that as of that 
+>> date there were 52 CRAN packages over 5 MB. As of today (29 January 
+>> 2023), there are actually 53 CRAN packages over 5 MB.
+>> 
+>> As I heard no response back from Uwe, I re-submitted my 
+>> USA.state.boundaries package on 12 January and 21 January. As of 
+>> today, I have not heard any response back from Uwe or any other CRAN 
+>> team volunteer.
+>> 
+>> There are 2 questions:
+>> 
+>> 1) How long should it take to receive a response back from a CRAN team 
+>> volunteer after a manual inspection of a CRAN package?
+>> 
+>> 2) Why has my package been denied acceptance to CRAN while a new 
+>> package over 5 MB has been allowed to be hosted on CRAN recently?
+>> 
+>> Thank you in advance.
+>> 
+>> Irucka Embry
+>> 
+>> 
+> 
+> --
+> Dr. Benjamin Bolker
+> Professor, Mathematics & Statistics and Biology, McMaster University
+> Director, School of Computational Science and Engineering
+> (Acting) Graduate chair, Mathematics & Statistics
+>> E-mail is sent at my convenience; I don't expect replies outside of 
+>> working hours.
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+--
+No fear, Only Love! / ?No temas, solamente amor!
+-Irucka Ajani Embry, 15 March 2020
+
+Family Partners:
+http://www.sustainlex.org/
+https://www.schoolingsolutions.com/
+
+---------------------------------------------------------------------------------------------------------------
+
+The business collaboration between EConsulting (tm)
+[https://www.econsultingllc.org/] and EcoC^2S, is Getting Back to 
+Nature.
+
+Getting Back to Nature LocalHarvest --
+https://www.localharvest.org/getting-back-to-nature-M73453
+Getting Back to Nature -- https://www.gettingback2nature.farm/
+
+-- Irucka and his twin brother, Obiora, are featured in the Middle
+Tennessee Local Table Magazine Annual issue. The article discusses their
+family farm history and the current work that they are doing under 
+Getting
+Back to Nature. The full magazine can be found here [the article begins 
+on
+page 18 of the PDF document]:
+
+https://media.gettingback2nature.farm/pdf/LocalTable_ANNUAL_2020_lo_res.pdf
+
+-- Obiora and Irucka were interviewed separately in early 2020 for the
+Natural Resources Defense Council's (NRDC) "Regenerative Agriculture: 
+Farm
+Policy for the 21st Century: Policy Recommendations to Advance 
+Regenerative
+Agriculture" report written By Arohi Sharma, Lara Bryant, and Ellen Lee.
+The PDF report is available below:
+
+https://www.nrdc.org/sites/default/files/regenerative-agriculture-farm-policy-21st-century-report.pdf
+
+EcoC2S -- https://www.ecoccs.com/
+Principal, Irucka Embry, EIT
+
+Services:
+Growing Food
+Healthy Living Mentor
+Data Analysis with R
+R Training
+Chemistry and Mathematics Tutoring
+Free/Libre and Open Source Software (FLOSS) Consultation
+
+
+From |embry @end|ng |rom ecocc@@com  Sat Feb  4 01:00:22 2023
+From: |embry @end|ng |rom ecocc@@com (EcoC2S - Irucka Embry)
+Date: Fri, 03 Feb 2023 18:00:22 -0600
+Subject: [R-pkg-devel] CRAN Packages over 5 MB & Time Length for Manual
+ Inspection
+In-Reply-To: <CAD7xazvvDRT0jODNx5FK3fa=WuSb9cC0iyUz7G_AQKAEZUwroA@mail.gmail.com>
+References: <dc713e6d764976c5f370cfb05ba38e92@ecoccs.com>
+ <1fba4982cf0839bd7443542b325dc6eb@ecoccs.com>
+ <0d964412c3dd5d1c7730e30e010d0348@ecoccs.com>
+ <CAD7xazvvDRT0jODNx5FK3fa=WuSb9cC0iyUz7G_AQKAEZUwroA@mail.gmail.com>
+Message-ID: <4d2c89ba3adc910d3e8a8480cd1d7806@ecoccs.com>
+
+Hey Rich, thank you for your response.
+
+In my case, I explained the reasoning to justify the 
+USA.state.boundaries package being over 5 MB and why it is needed by 
+iemisc, including providing previous e-mail discussions between Uwe and 
+myself, on the various re-submittals of the USA.state.boundaries 
+package.
+
+Part of the reason why I wrote the e-mail to this list serve is that I 
+have seen Uwe respond back to e-mail threads in this R-pkg-devel list, 
+but I have not received any response from him nor any other CRAN 
+volunteer since 6 January (almost a month as of today, 3 February 2023).
+
+I responded back to Uwe on 6 January 2023.
+
+In terms of Uwe and others being volunteers, I understand that 
+completely. I myself volunteer on a variety of projects and I do a 
+variety of projects for pay as well & I have done that for a couple of 
+decades now.
+
+I believe that a response should be made in less than a month's time.
+
+Irucka
+
+
+
+On 29-01-2023 16:41, Richard Shefferson wrote:
+> My understanding is that packages over 5MB are only allowed under
+> exceptional circumstances. You would need to include a note in your
+> submission explaining why it is over 5 MB. If it is not accepted, then
+> the reason provided is not sufficient. I believe that the CRAN
+> guidelines actually state this, and there may even be Stack Exchange
+> cases related to this, as well.
+> 
+> Not sure about how long to wait for a response, but since the CRAN
+> team is made up of volunteers who have plenty of other things on their
+> plates, I always interpret a lack of response as meaning that I missed
+> something obvious.
+> 
+> Rich Shefferson
+> 
+> On Mon, Jan 30, 2023 at 3:54 EcoC2S - Irucka Embry <iembry at ecoccs.com>
+> wrote:
+> 
+>> Greetings!
+>> 
+>> I submitted my USA.state.boundaries package on 6 January 2023 and
+>> Uwe
+>> responded back letting me know that it was over the 5 MB CRAN
+>> threshold.
+>> I responded back to Uwe letting him know that as of that date there
+>> were
+>> 52 CRAN packages over 5 MB. As of today (29 January 2023), there are
+>> 
+>> actually 53 CRAN packages over 5 MB.
+>> 
+>> As I heard no response back from Uwe, I re-submitted my
+>> USA.state.boundaries package on 12 January and 21 January. As of
+>> today,
+>> I have not heard any response back from Uwe or any other CRAN team
+>> volunteer.
+>> 
+>> There are 2 questions:
+>> 
+>> 1) How long should it take to receive a response back from a CRAN
+>> team
+>> volunteer after a manual inspection of a CRAN package?
+>> 
+>> 2) Why has my package been denied acceptance to CRAN while a new
+>> package
+>> over 5 MB has been allowed to be hosted on CRAN recently?
+>> 
+>> Thank you in advance.
+>> 
+>> Irucka Embry
+>> 
+>> --
+>> --
+>> No fear, Only Love! / ?No temas, solamente amor!
+>> -Irucka Ajani Embry, 15 March 2020
+>> 
+>> Family Partners:
+>> http://www.sustainlex.org/
+>> https://www.schoolingsolutions.com/
+>> 
+>> 
+> ---------------------------------------------------------------------------------------------------------------
+>> 
+>> The business collaboration between EConsulting (tm)
+>> [https://www.econsultingllc.org/] and EcoC^2S, is Getting Back to
+>> Nature.
+>> 
+>> Getting Back to Nature LocalHarvest --
+>> https://www.localharvest.org/getting-back-to-nature-M73453
+>> Getting Back to Nature -- https://www.gettingback2nature.farm/
+>> 
+>> -- Irucka and his twin brother, Obiora, are featured in the Middle
+>> Tennessee Local Table Magazine Annual issue. The article discusses
+>> their
+>> family farm history and the current work that they are doing under
+>> Getting
+>> Back to Nature. The full magazine can be found here [the article
+>> begins
+>> on
+>> page 18 of the PDF document]:
+>> 
+>> 
+> https://media.gettingback2nature.farm/pdf/LocalTable_ANNUAL_2020_lo_res.pdf
+>> 
+>> -- Obiora and Irucka were interviewed separately in early 2020 for
+>> the
+>> Natural Resources Defense Council's (NRDC) "Regenerative
+>> Agriculture:
+>> Farm
+>> Policy for the 21st Century: Policy Recommendations to Advance
+>> Regenerative
+>> Agriculture" report written By Arohi Sharma, Lara Bryant, and Ellen
+>> Lee.
+>> The PDF report is available below:
+>> 
+>> 
+> https://www.nrdc.org/sites/default/files/regenerative-agriculture-farm-policy-21st-century-report.pdf
+>> 
+>> EcoC2S -- https://www.ecoccs.com/
+>> Principal, Irucka Embry, EIT
+>> 
+>> Services:
+>> Growing Food
+>> Healthy Living Mentor
+>> Data Analysis with R
+>> R Training
+>> Chemistry and Mathematics Tutoring
+>> Free/Libre and Open Source Software (FLOSS) Consultation
+>> 
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>  --
+> 
+> -------------------------------------------------------
+> 
+> Dr. Richard P. Shefferson
+> Associate Professor
+> Organization for Programs on Environmental Sciences
+> Graduate School of Arts and Sciences
+> University of Tokyo
+> 3-8-1 Komaba
+> Meguro-ku, Tokyo 153-8902, Japan
+> 
+> ????????????????
+> ????????????????????
+> 153-8902 ???????? 3-8-1 (?6??209A???
+> 
+> E-mail:cdorm at g.ecc.u-tokyo.ac.jp
+> Tel: +81-3-5465-7235
+> Fax: +81-3-5465-7236
+> 
+> Web: www.sheffersonlab.com [1]
+> 
+> Book on the Evolution of Senescence in the Tree of Life
+> http://tinyurl.com/SenescenceBook
+> 
+> 
+> 
+> Links:
+> ------
+> [1] http://www.sheffersonlab.com/
+
+-- 
+--
+No fear, Only Love! / ?No temas, solamente amor!
+-Irucka Ajani Embry, 15 March 2020
+
+Family Partners:
+http://www.sustainlex.org/
+https://www.schoolingsolutions.com/
+
+---------------------------------------------------------------------------------------------------------------
+
+The business collaboration between EConsulting (tm)
+[https://www.econsultingllc.org/] and EcoC^2S, is Getting Back to 
+Nature.
+
+Getting Back to Nature LocalHarvest --
+https://www.localharvest.org/getting-back-to-nature-M73453
+Getting Back to Nature -- https://www.gettingback2nature.farm/
+
+-- Irucka and his twin brother, Obiora, are featured in the Middle
+Tennessee Local Table Magazine Annual issue. The article discusses their
+family farm history and the current work that they are doing under 
+Getting
+Back to Nature. The full magazine can be found here [the article begins 
+on
+page 18 of the PDF document]:
+
+https://media.gettingback2nature.farm/pdf/LocalTable_ANNUAL_2020_lo_res.pdf
+
+-- Obiora and Irucka were interviewed separately in early 2020 for the
+Natural Resources Defense Council's (NRDC) "Regenerative Agriculture: 
+Farm
+Policy for the 21st Century: Policy Recommendations to Advance 
+Regenerative
+Agriculture" report written By Arohi Sharma, Lara Bryant, and Ellen Lee.
+The PDF report is available below:
+
+https://www.nrdc.org/sites/default/files/regenerative-agriculture-farm-policy-21st-century-report.pdf
+
+EcoC2S -- https://www.ecoccs.com/
+Principal, Irucka Embry, EIT
+
+Services:
+Growing Food
+Healthy Living Mentor
+Data Analysis with R
+R Training
+Chemistry and Mathematics Tutoring
+Free/Libre and Open Source Software (FLOSS) Consultation
+
+
