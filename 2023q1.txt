@@ -7398,3 +7398,696 @@ Best regards,
 Ivan
 
 
+From w@r@||e|@berger @end|ng |rom un|@tr@@|r  Mon Feb  6 16:00:38 2023
+From: w@r@||e|@berger @end|ng |rom un|@tr@@|r (RAFFELSBERGER Wolfgang (IGBMC))
+Date: Mon, 6 Feb 2023 16:00:38 +0100 (CET)
+Subject: [R-pkg-devel] splitting an R package into two
+In-Reply-To: <5db9511d-d98d-a3d2-b292-1546fa984cf0@gmail.com>
+References: <BL0PR06MB4371458D1DC48087B8F6E780C6D79@BL0PR06MB4371.namprd06.prod.outlook.com>
+ <5db9511d-d98d-a3d2-b292-1546fa984cf0@gmail.com>
+Message-ID: <1061463386.7807230.1675695638568.JavaMail.zimbra@unistra.fr>
+
+As complement to Duncan's nice answer I also suggest to use the function .Deprecated() for an additional transition time.
+(see eg https://stackoverflow.com/questions/44622054/mark-a-function-as-deprecated-in-customised-r-package)
+
+Baseline, if other people/packages use your package, alert them (via a message/warning due to .Deprecated()) and give them time to adopt...
+
+Wolfgang Raffelsberger
+
+
+----- Mail original -----
+De: "Duncan Murdoch" <murdoch.duncan at gmail.com>
+?: "John P. Nolan" <jpnolan at american.edu>, "r-package-devel" <r-package-devel at r-project.org>
+Envoy?: Vendredi 3 F?vrier 2023 18:07:05
+Objet: Re: [R-pkg-devel] splitting an R package into two
+
+On 03/02/2023 12:00 p.m., John P. Nolan wrote:
+> Dear R-package-devel,
+> 
+> I am updating package mvmesh that is on CRAN.  I would like to split that package into two parts, mvmesh (multivariate meshes/grids) and mvhist (multivariate histograms). Does CRAN have a policy/practice on this?   I did  a search, but found nothing on this.
+> 
+> I would do this in two steps:
+> 
+>    1.  Extract some of the functions in the current package into a new package.   Submit that package as mvhist and wait for approval.
+>    2.  Remove the extracted functions from the current package, and submit it with a new version number.
+> There is a short term problem that some functions would exist in two places during the time period it takes to do step 2.  After that, users who want to use the functions in mvhist will have install both packages.
+> 
+> I don't want to add work for the CRAN team, so please let me know if this is forbidden or there is a better way.
+
+I think your plan is good, though it is missing one step that should 
+happen between 1 and 2:
+
+Contact maintainers of all packages that use mvmesh and tell them what 
+changes they need to make.  According to the CRAN page for mvmesh, 
+that's just two packages, both of which you maintain:  gensphere, 
+SphericalCubature, but you may know of others (e.g. on Bioconductor or 
+elsewhere) who should be informed.
+
+If those are the only two, then the step should be to send any necessary 
+updates to them before proceeding to step 2.  When you do get to step 2, 
+mention what steps you took to inform mvmesh users.
+
+Duncan Murdoch
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From w|n@tonch@ng1 @end|ng |rom gm@||@com  Mon Feb  6 21:46:16 2023
+From: w|n@tonch@ng1 @end|ng |rom gm@||@com (Winston Chang)
+Date: Mon, 6 Feb 2023 14:46:16 -0600
+Subject: [R-pkg-devel] How to update "SystemRequirements: C++11"?
+Message-ID: <CAFOpNVFTGcrsURZC9TOv=KSceKr_WFPsMV0TJoCZKrppkkSFdw@mail.gmail.com>
+
+I recently submitted a package to CRAN with "SystemRequirements: C++11".
+This raises the following NOTE on R-devel, and I was asked to fix and
+resubmit:
+
+* checking C++ specification ... NOTE
+  Specified C++11: please update to current default of C++17
+
+If I understand correctly, I have two options, neither of which will work:
+1. Remove "SystemRequirements: C++11" entirely. The problem with this is
+that on systems with older versions of R (3.6 and below, I believe), it may
+try to compile the package with an older C++ standard, which will fail.
+2. Update it to "SystemRequirements: C++17". The problem here is that on
+systems that don't have a C++17 compiler, the package won't build -- even
+though the package only actually requires a C++11 compiler.
+
+How should I deal with this?
+
+-Winston
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon Feb  6 22:01:40 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 6 Feb 2023 16:01:40 -0500
+Subject: [R-pkg-devel] How to update "SystemRequirements: C++11"?
+In-Reply-To: <CAFOpNVFTGcrsURZC9TOv=KSceKr_WFPsMV0TJoCZKrppkkSFdw@mail.gmail.com>
+References: <CAFOpNVFTGcrsURZC9TOv=KSceKr_WFPsMV0TJoCZKrppkkSFdw@mail.gmail.com>
+Message-ID: <a1d3353c-7a9f-c2bf-c29c-7dda17a66c84@gmail.com>
+
+On 06/02/2023 3:46 p.m., Winston Chang wrote:
+> I recently submitted a package to CRAN with "SystemRequirements: C++11".
+> This raises the following NOTE on R-devel, and I was asked to fix and
+> resubmit:
+> 
+> * checking C++ specification ... NOTE
+>    Specified C++11: please update to current default of C++17
+> 
+> If I understand correctly, I have two options, neither of which will work:
+> 1. Remove "SystemRequirements: C++11" entirely. The problem with this is
+> that on systems with older versions of R (3.6 and below, I believe), it may
+> try to compile the package with an older C++ standard, which will fail.
+> 2. Update it to "SystemRequirements: C++17". The problem here is that on
+> systems that don't have a C++17 compiler, the package won't build -- even
+> though the package only actually requires a C++11 compiler.
+> 
+> How should I deal with this?
+
+Are you allowed to say "C++11 or C++17"?
+
+Duncan Murdoch
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon Feb  6 22:45:57 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 6 Feb 2023 16:45:57 -0500
+Subject: [R-pkg-devel] How to update "SystemRequirements: C++11"?
+In-Reply-To: <a1d3353c-7a9f-c2bf-c29c-7dda17a66c84@gmail.com>
+References: <CAFOpNVFTGcrsURZC9TOv=KSceKr_WFPsMV0TJoCZKrppkkSFdw@mail.gmail.com>
+ <a1d3353c-7a9f-c2bf-c29c-7dda17a66c84@gmail.com>
+Message-ID: <94e2e2bb-85b4-f831-b3ed-b66cdd469e81@gmail.com>
+
+On 06/02/2023 4:01 p.m., Duncan Murdoch wrote:
+> On 06/02/2023 3:46 p.m., Winston Chang wrote:
+>> I recently submitted a package to CRAN with "SystemRequirements: C++11".
+>> This raises the following NOTE on R-devel, and I was asked to fix and
+>> resubmit:
+>>
+>> * checking C++ specification ... NOTE
+>>     Specified C++11: please update to current default of C++17
+>>
+>> If I understand correctly, I have two options, neither of which will work:
+>> 1. Remove "SystemRequirements: C++11" entirely. The problem with this is
+>> that on systems with older versions of R (3.6 and below, I believe), it may
+>> try to compile the package with an older C++ standard, which will fail.
+>> 2. Update it to "SystemRequirements: C++17". The problem here is that on
+>> systems that don't have a C++17 compiler, the package won't build -- even
+>> though the package only actually requires a C++11 compiler.
+>>
+>> How should I deal with this?
+> 
+> Are you allowed to say "C++11 or C++17"?
+
+Actually I can partially answer this:  the test is not based on 
+SystemRequirements, but on the log of the build, which now contains 
+lines like this:
+
+   using C compiler: ?Apple clang version 12.0.0 (clang-1200.0.32.28)?
+   using C++ compiler: ?Apple clang version 12.0.0 (clang-1200.0.32.28)?
+   using C++11
+   using SDK: ?MacOSX11.1.sdk?
+
+I get "using C++11" because of this line in Makevars:
+
+   CXX_STD = CXX11
+
+So I guess the answer is to change your Makevars to make that line 
+conditional on running under an old version of R.  If you figure out how 
+to do that, could you post the recipe here?
+
+Duncan Murdoch
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Mon Feb  6 23:10:49 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 7 Feb 2023 01:10:49 +0300
+Subject: [R-pkg-devel] How to update "SystemRequirements: C++11"?
+In-Reply-To: <CAFOpNVFTGcrsURZC9TOv=KSceKr_WFPsMV0TJoCZKrppkkSFdw@mail.gmail.com>
+References: <CAFOpNVFTGcrsURZC9TOv=KSceKr_WFPsMV0TJoCZKrppkkSFdw@mail.gmail.com>
+Message-ID: <20230207011049.5756a9be@parabola>
+
+? Mon, 6 Feb 2023 14:46:16 -0600
+Winston Chang <winstonchang1 at gmail.com> ?????:
+
+> 1. Remove "SystemRequirements: C++11" entirely. The problem with this
+> is that on systems with older versions of R (3.6 and below, I
+> believe), it may try to compile the package with an older C++
+> standard, which will fail.
+> 2. Update it to "SystemRequirements: C++17". The problem here is
+> that on systems that don't have a C++17 compiler, the package won't
+> build -- even though the package only actually requires a C++11
+> compiler.
+
+One way to resolve that conundrum could be to add a configure script
+that detects a C++17/C++14/C++11 compiler known to R and sets that in
+Makevars. I haven't published an update on CRAN yet, but R CMD check
+seems satisfied with this under multiple versions of R between 3.3 and
+R-devel:
+https://github.com/aitap/Ropj/commit/e1ed8122d6d9a380a4f7e1505478dd07f4dd83a4
+
+-- 
+Best regards,
+Ivan
+
+
+From @vr@h@m@@d|er @end|ng |rom gm@||@com  Mon Feb  6 23:22:12 2023
+From: @vr@h@m@@d|er @end|ng |rom gm@||@com (Avraham Adler)
+Date: Mon, 6 Feb 2023 22:22:12 +0000
+Subject: [R-pkg-devel] How to update "SystemRequirements: C++11"?
+In-Reply-To: <94e2e2bb-85b4-f831-b3ed-b66cdd469e81@gmail.com>
+References: <CAFOpNVFTGcrsURZC9TOv=KSceKr_WFPsMV0TJoCZKrppkkSFdw@mail.gmail.com>
+ <a1d3353c-7a9f-c2bf-c29c-7dda17a66c84@gmail.com>
+ <94e2e2bb-85b4-f831-b3ed-b66cdd469e81@gmail.com>
+Message-ID: <CAL6gwn+ggnKWybzeaqO5KhdT7iq-0iDgzeOBa+sDLDp8j+qaQw@mail.gmail.com>
+
+On Mon, Feb 6, 2023 at 9:46 PM Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>
+> On 06/02/2023 4:01 p.m., Duncan Murdoch wrote:
+> > On 06/02/2023 3:46 p.m., Winston Chang wrote:
+> >> I recently submitted a package to CRAN with "SystemRequirements: C++11".
+> >> This raises the following NOTE on R-devel, and I was asked to fix and
+> >> resubmit:
+> >>
+> >> * checking C++ specification ... NOTE
+> >>     Specified C++11: please update to current default of C++17
+> >>
+> >> If I understand correctly, I have two options, neither of which will work:
+> >> 1. Remove "SystemRequirements: C++11" entirely. The problem with this is
+> >> that on systems with older versions of R (3.6 and below, I believe), it may
+> >> try to compile the package with an older C++ standard, which will fail.
+> >> 2. Update it to "SystemRequirements: C++17". The problem here is that on
+> >> systems that don't have a C++17 compiler, the package won't build -- even
+> >> though the package only actually requires a C++11 compiler.
+> >>
+> >> How should I deal with this?
+> >
+> > Are you allowed to say "C++11 or C++17"?
+>
+> Actually I can partially answer this:  the test is not based on
+> SystemRequirements, but on the log of the build, which now contains
+> lines like this:
+>
+>    using C compiler: ?Apple clang version 12.0.0 (clang-1200.0.32.28)?
+>    using C++ compiler: ?Apple clang version 12.0.0 (clang-1200.0.32.28)?
+>    using C++11
+>    using SDK: ?MacOSX11.1.sdk?
+>
+> I get "using C++11" because of this line in Makevars:
+>
+>    CXX_STD = CXX11
+>
+> So I guess the answer is to change your Makevars to make that line
+> conditional on running under an old version of R.  If you figure out how
+> to do that, could you post the recipe here?
+
+I believe this is closely related to this email [1]. Dirk and I and
+Aymeric have been going through the same issue with nloptr as well.
+Our current opinion is to leave it out, as it would restrict more
+users to demand C++17, which is unneeded, than to have users with over
+a decade old compiler which does not have C++11. Dirk and Aymeric,
+please chime in if I have misstated. Regardless, according to
+Professor Ripley, if you require specific features, you should mark
+them in _both_ Makevars and SystemRequirements, which is implied in
+the "r-devel" version of WRE which adds the words "also" in section
+1.2.4.
+
+Thanks,
+
+Avi
+
+[1] https://stat.ethz.ch/pipermail/r-package-devel/2023q1/008865.html
+
+>
+> Duncan Murdoch
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From |uc@r @end|ng |rom |edor@project@org  Mon Feb  6 23:58:20 2023
+From: |uc@r @end|ng |rom |edor@project@org (=?UTF-8?Q?I=C3=B1aki_Ucar?=)
+Date: Mon, 6 Feb 2023 23:58:20 +0100
+Subject: [R-pkg-devel] How to update "SystemRequirements: C++11"?
+In-Reply-To: <CAL6gwn+ggnKWybzeaqO5KhdT7iq-0iDgzeOBa+sDLDp8j+qaQw@mail.gmail.com>
+References: <CAFOpNVFTGcrsURZC9TOv=KSceKr_WFPsMV0TJoCZKrppkkSFdw@mail.gmail.com>
+ <a1d3353c-7a9f-c2bf-c29c-7dda17a66c84@gmail.com>
+ <94e2e2bb-85b4-f831-b3ed-b66cdd469e81@gmail.com>
+ <CAL6gwn+ggnKWybzeaqO5KhdT7iq-0iDgzeOBa+sDLDp8j+qaQw@mail.gmail.com>
+Message-ID: <CALEXWq0NGchgJZL7VQ6KLyrA-fkrhP00pjyywnRWUCNqmA-0ow@mail.gmail.com>
+
+On Mon, 6 Feb 2023 at 23:27, Avraham Adler <avraham.adler at gmail.com> wrote:
+>
+> On Mon, Feb 6, 2023 at 9:46 PM Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+> >
+> > On 06/02/2023 4:01 p.m., Duncan Murdoch wrote:
+> > > On 06/02/2023 3:46 p.m., Winston Chang wrote:
+> > >> I recently submitted a package to CRAN with "SystemRequirements: C++11".
+> > >> This raises the following NOTE on R-devel, and I was asked to fix and
+> > >> resubmit:
+> > >>
+> > >> * checking C++ specification ... NOTE
+> > >>     Specified C++11: please update to current default of C++17
+> > >>
+> > >> If I understand correctly, I have two options, neither of which will work:
+> > >> 1. Remove "SystemRequirements: C++11" entirely. The problem with this is
+> > >> that on systems with older versions of R (3.6 and below, I believe), it may
+> > >> try to compile the package with an older C++ standard, which will fail.
+> > >> 2. Update it to "SystemRequirements: C++17". The problem here is that on
+> > >> systems that don't have a C++17 compiler, the package won't build -- even
+> > >> though the package only actually requires a C++11 compiler.
+> > >>
+> > >> How should I deal with this?
+> > >
+> > > Are you allowed to say "C++11 or C++17"?
+> >
+> > Actually I can partially answer this:  the test is not based on
+> > SystemRequirements, but on the log of the build, which now contains
+> > lines like this:
+> >
+> >    using C compiler: ?Apple clang version 12.0.0 (clang-1200.0.32.28)?
+> >    using C++ compiler: ?Apple clang version 12.0.0 (clang-1200.0.32.28)?
+> >    using C++11
+> >    using SDK: ?MacOSX11.1.sdk?
+> >
+> > I get "using C++11" because of this line in Makevars:
+> >
+> >    CXX_STD = CXX11
+> >
+> > So I guess the answer is to change your Makevars to make that line
+> > conditional on running under an old version of R.  If you figure out how
+> > to do that, could you post the recipe here?
+>
+> I believe this is closely related to this email [1]. Dirk and I and
+> Aymeric have been going through the same issue with nloptr as well.
+> Our current opinion is to leave it out, as it would restrict more
+> users to demand C++17, which is unneeded, than to have users with over
+> a decade old compiler which does not have C++11. Dirk and Aymeric,
+> please chime in if I have misstated. Regardless, according to
+> Professor Ripley, if you require specific features, you should mark
+> them in _both_ Makevars and SystemRequirements, which is implied in
+> the "r-devel" version of WRE which adds the words "also" in section
+> 1.2.4.
+
+Could you please point to the specific passage? According to [1],
+section 1.2.4, declaring the C++ standard in SystemRequirements is
+only mandatory for C++17 or later.
+
+[1] https://cran.r-project.org/doc/manuals/r-devel/R-exts.html#Using-C_002b_002b-code
+
+-- 
+I?aki ?car
+
+
+From @vr@h@m@@d|er @end|ng |rom gm@||@com  Tue Feb  7 00:09:39 2023
+From: @vr@h@m@@d|er @end|ng |rom gm@||@com (Avraham Adler)
+Date: Mon, 6 Feb 2023 23:09:39 +0000
+Subject: [R-pkg-devel] How to update "SystemRequirements: C++11"?
+In-Reply-To: <CALEXWq0NGchgJZL7VQ6KLyrA-fkrhP00pjyywnRWUCNqmA-0ow@mail.gmail.com>
+References: <CAFOpNVFTGcrsURZC9TOv=KSceKr_WFPsMV0TJoCZKrppkkSFdw@mail.gmail.com>
+ <a1d3353c-7a9f-c2bf-c29c-7dda17a66c84@gmail.com>
+ <94e2e2bb-85b4-f831-b3ed-b66cdd469e81@gmail.com>
+ <CAL6gwn+ggnKWybzeaqO5KhdT7iq-0iDgzeOBa+sDLDp8j+qaQw@mail.gmail.com>
+ <CALEXWq0NGchgJZL7VQ6KLyrA-fkrhP00pjyywnRWUCNqmA-0ow@mail.gmail.com>
+Message-ID: <CAL6gwnJXmh1qjOWAtknJVZB+1MMGgdchYFgy5XptfweCyXENDA@mail.gmail.com>
+
+"If a package does have a src/Makevars[.win] file then also setting
+the make variable ?CXX_STD? there is recommended,"
+
+Avi
+
+On Mon, Feb 6, 2023 at 10:58 PM I?aki Ucar <iucar at fedoraproject.org> wrote:
+>
+> On Mon, 6 Feb 2023 at 23:27, Avraham Adler <avraham.adler at gmail.com> wrote:
+> >
+> > On Mon, Feb 6, 2023 at 9:46 PM Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+> > >
+> > > On 06/02/2023 4:01 p.m., Duncan Murdoch wrote:
+> > > > On 06/02/2023 3:46 p.m., Winston Chang wrote:
+> > > >> I recently submitted a package to CRAN with "SystemRequirements: C++11".
+> > > >> This raises the following NOTE on R-devel, and I was asked to fix and
+> > > >> resubmit:
+> > > >>
+> > > >> * checking C++ specification ... NOTE
+> > > >>     Specified C++11: please update to current default of C++17
+> > > >>
+> > > >> If I understand correctly, I have two options, neither of which will work:
+> > > >> 1. Remove "SystemRequirements: C++11" entirely. The problem with this is
+> > > >> that on systems with older versions of R (3.6 and below, I believe), it may
+> > > >> try to compile the package with an older C++ standard, which will fail.
+> > > >> 2. Update it to "SystemRequirements: C++17". The problem here is that on
+> > > >> systems that don't have a C++17 compiler, the package won't build -- even
+> > > >> though the package only actually requires a C++11 compiler.
+> > > >>
+> > > >> How should I deal with this?
+> > > >
+> > > > Are you allowed to say "C++11 or C++17"?
+> > >
+> > > Actually I can partially answer this:  the test is not based on
+> > > SystemRequirements, but on the log of the build, which now contains
+> > > lines like this:
+> > >
+> > >    using C compiler: ?Apple clang version 12.0.0 (clang-1200.0.32.28)?
+> > >    using C++ compiler: ?Apple clang version 12.0.0 (clang-1200.0.32.28)?
+> > >    using C++11
+> > >    using SDK: ?MacOSX11.1.sdk?
+> > >
+> > > I get "using C++11" because of this line in Makevars:
+> > >
+> > >    CXX_STD = CXX11
+> > >
+> > > So I guess the answer is to change your Makevars to make that line
+> > > conditional on running under an old version of R.  If you figure out how
+> > > to do that, could you post the recipe here?
+> >
+> > I believe this is closely related to this email [1]. Dirk and I and
+> > Aymeric have been going through the same issue with nloptr as well.
+> > Our current opinion is to leave it out, as it would restrict more
+> > users to demand C++17, which is unneeded, than to have users with over
+> > a decade old compiler which does not have C++11. Dirk and Aymeric,
+> > please chime in if I have misstated. Regardless, according to
+> > Professor Ripley, if you require specific features, you should mark
+> > them in _both_ Makevars and SystemRequirements, which is implied in
+> > the "r-devel" version of WRE which adds the words "also" in section
+> > 1.2.4.
+>
+> Could you please point to the specific passage? According to [1],
+> section 1.2.4, declaring the C++ standard in SystemRequirements is
+> only mandatory for C++17 or later.
+>
+> [1] https://cran.r-project.org/doc/manuals/r-devel/R-exts.html#Using-C_002b_002b-code
+>
+> --
+> I?aki ?car
+
+
+From |uc@r @end|ng |rom |edor@project@org  Tue Feb  7 01:10:05 2023
+From: |uc@r @end|ng |rom |edor@project@org (=?UTF-8?Q?I=C3=B1aki_Ucar?=)
+Date: Tue, 7 Feb 2023 01:10:05 +0100
+Subject: [R-pkg-devel] How to update "SystemRequirements: C++11"?
+In-Reply-To: <CAL6gwnJXmh1qjOWAtknJVZB+1MMGgdchYFgy5XptfweCyXENDA@mail.gmail.com>
+References: <CAFOpNVFTGcrsURZC9TOv=KSceKr_WFPsMV0TJoCZKrppkkSFdw@mail.gmail.com>
+ <a1d3353c-7a9f-c2bf-c29c-7dda17a66c84@gmail.com>
+ <94e2e2bb-85b4-f831-b3ed-b66cdd469e81@gmail.com>
+ <CAL6gwn+ggnKWybzeaqO5KhdT7iq-0iDgzeOBa+sDLDp8j+qaQw@mail.gmail.com>
+ <CALEXWq0NGchgJZL7VQ6KLyrA-fkrhP00pjyywnRWUCNqmA-0ow@mail.gmail.com>
+ <CAL6gwnJXmh1qjOWAtknJVZB+1MMGgdchYFgy5XptfweCyXENDA@mail.gmail.com>
+Message-ID: <CALEXWq2gX4gmZAvyjF6etw-Ymg4nDmESz6cm3TkSWvWyT5_0ZQ@mail.gmail.com>
+
+On Tue, 7 Feb 2023 at 00:09, Avraham Adler <avraham.adler at gmail.com> wrote:
+>
+> "If a package does have a src/Makevars[.win] file then also setting
+> the make variable ?CXX_STD? there is recommended,"
+
+That doesn't refer to the SystemRequirements field.
+
+I?aki
+
+>
+> Avi
+>
+> On Mon, Feb 6, 2023 at 10:58 PM I?aki Ucar <iucar at fedoraproject.org> wrote:
+> >
+> > On Mon, 6 Feb 2023 at 23:27, Avraham Adler <avraham.adler at gmail.com> wrote:
+> > >
+> > > On Mon, Feb 6, 2023 at 9:46 PM Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+> > > >
+> > > > On 06/02/2023 4:01 p.m., Duncan Murdoch wrote:
+> > > > > On 06/02/2023 3:46 p.m., Winston Chang wrote:
+> > > > >> I recently submitted a package to CRAN with "SystemRequirements: C++11".
+> > > > >> This raises the following NOTE on R-devel, and I was asked to fix and
+> > > > >> resubmit:
+> > > > >>
+> > > > >> * checking C++ specification ... NOTE
+> > > > >>     Specified C++11: please update to current default of C++17
+> > > > >>
+> > > > >> If I understand correctly, I have two options, neither of which will work:
+> > > > >> 1. Remove "SystemRequirements: C++11" entirely. The problem with this is
+> > > > >> that on systems with older versions of R (3.6 and below, I believe), it may
+> > > > >> try to compile the package with an older C++ standard, which will fail.
+> > > > >> 2. Update it to "SystemRequirements: C++17". The problem here is that on
+> > > > >> systems that don't have a C++17 compiler, the package won't build -- even
+> > > > >> though the package only actually requires a C++11 compiler.
+> > > > >>
+> > > > >> How should I deal with this?
+> > > > >
+> > > > > Are you allowed to say "C++11 or C++17"?
+> > > >
+> > > > Actually I can partially answer this:  the test is not based on
+> > > > SystemRequirements, but on the log of the build, which now contains
+> > > > lines like this:
+> > > >
+> > > >    using C compiler: ?Apple clang version 12.0.0 (clang-1200.0.32.28)?
+> > > >    using C++ compiler: ?Apple clang version 12.0.0 (clang-1200.0.32.28)?
+> > > >    using C++11
+> > > >    using SDK: ?MacOSX11.1.sdk?
+> > > >
+> > > > I get "using C++11" because of this line in Makevars:
+> > > >
+> > > >    CXX_STD = CXX11
+> > > >
+> > > > So I guess the answer is to change your Makevars to make that line
+> > > > conditional on running under an old version of R.  If you figure out how
+> > > > to do that, could you post the recipe here?
+> > >
+> > > I believe this is closely related to this email [1]. Dirk and I and
+> > > Aymeric have been going through the same issue with nloptr as well.
+> > > Our current opinion is to leave it out, as it would restrict more
+> > > users to demand C++17, which is unneeded, than to have users with over
+> > > a decade old compiler which does not have C++11. Dirk and Aymeric,
+> > > please chime in if I have misstated. Regardless, according to
+> > > Professor Ripley, if you require specific features, you should mark
+> > > them in _both_ Makevars and SystemRequirements, which is implied in
+> > > the "r-devel" version of WRE which adds the words "also" in section
+> > > 1.2.4.
+> >
+> > Could you please point to the specific passage? According to [1],
+> > section 1.2.4, declaring the C++ standard in SystemRequirements is
+> > only mandatory for C++17 or later.
+> >
+> > [1] https://cran.r-project.org/doc/manuals/r-devel/R-exts.html#Using-C_002b_002b-code
+> >
+> > --
+> > I?aki ?car
+
+
+
+-- 
+I?aki ?car
+
+
+From @vr@h@m@@d|er @end|ng |rom gm@||@com  Tue Feb  7 01:21:56 2023
+From: @vr@h@m@@d|er @end|ng |rom gm@||@com (Avraham Adler)
+Date: Tue, 7 Feb 2023 00:21:56 +0000
+Subject: [R-pkg-devel] How to update "SystemRequirements: C++11"?
+In-Reply-To: <CALEXWq2gX4gmZAvyjF6etw-Ymg4nDmESz6cm3TkSWvWyT5_0ZQ@mail.gmail.com>
+References: <CAFOpNVFTGcrsURZC9TOv=KSceKr_WFPsMV0TJoCZKrppkkSFdw@mail.gmail.com>
+ <a1d3353c-7a9f-c2bf-c29c-7dda17a66c84@gmail.com>
+ <94e2e2bb-85b4-f831-b3ed-b66cdd469e81@gmail.com>
+ <CAL6gwn+ggnKWybzeaqO5KhdT7iq-0iDgzeOBa+sDLDp8j+qaQw@mail.gmail.com>
+ <CALEXWq0NGchgJZL7VQ6KLyrA-fkrhP00pjyywnRWUCNqmA-0ow@mail.gmail.com>
+ <CAL6gwnJXmh1qjOWAtknJVZB+1MMGgdchYFgy5XptfweCyXENDA@mail.gmail.com>
+ <CALEXWq2gX4gmZAvyjF6etw-Ymg4nDmESz6cm3TkSWvWyT5_0ZQ@mail.gmail.com>
+Message-ID: <CAL6gwnJxM5LyYs84-sJo5H+pAr3nXHb43BcYOwh+JgL=9DcmfA@mail.gmail.com>
+
+On Tue, Feb 7, 2023 at 12:10 AM I?aki Ucar <iucar at fedoraproject.org> wrote:
+>
+> On Tue, 7 Feb 2023 at 00:09, Avraham Adler <avraham.adler at gmail.com> wrote:
+> >
+> > "If a package does have a src/Makevars[.win] file then also setting
+> > the make variable ?CXX_STD? there is recommended,"
+>
+> That doesn't refer to the SystemRequirements field.
+>
+> I?aki
+>
+
+No, but the prior sentence does. The complete excerpt is:
+
+  ::Packages without a src/Makevars or src/Makefile file may specify a
+C++ standard for code in the src directory by including something like
+?C++14? in the ?SystemRequirements? field of the DESCRIPTION file,
+e.g.
+  ::::SystemRequirements: C++14
+ ::If a package does have a src/Makevars[.win] file then also setting
+the make variable ?CXX_STD? there is recommended, as it allows R CMD
+SHLIB to work correctly in the package?s src directory.
+
+So one is supposed to add the requirement to DESCRIPTION via
+SystemRequitements. If there is a Makevars, one should ALSO set the
+variable in there.
+
+If you wish, I can forward you personal communication with Professor
+Ripley from last week where he makes this clear as well.
+
+Thanks,
+
+Avi
+
+
+> >
+> > Avi
+> >
+> > On Mon, Feb 6, 2023 at 10:58 PM I?aki Ucar <iucar at fedoraproject.org> wrote:
+> > >
+> > > On Mon, 6 Feb 2023 at 23:27, Avraham Adler <avraham.adler at gmail.com> wrote:
+> > > >
+> > > > On Mon, Feb 6, 2023 at 9:46 PM Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+> > > > >
+> > > > > On 06/02/2023 4:01 p.m., Duncan Murdoch wrote:
+> > > > > > On 06/02/2023 3:46 p.m., Winston Chang wrote:
+> > > > > >> I recently submitted a package to CRAN with "SystemRequirements: C++11".
+> > > > > >> This raises the following NOTE on R-devel, and I was asked to fix and
+> > > > > >> resubmit:
+> > > > > >>
+> > > > > >> * checking C++ specification ... NOTE
+> > > > > >>     Specified C++11: please update to current default of C++17
+> > > > > >>
+> > > > > >> If I understand correctly, I have two options, neither of which will work:
+> > > > > >> 1. Remove "SystemRequirements: C++11" entirely. The problem with this is
+> > > > > >> that on systems with older versions of R (3.6 and below, I believe), it may
+> > > > > >> try to compile the package with an older C++ standard, which will fail.
+> > > > > >> 2. Update it to "SystemRequirements: C++17". The problem here is that on
+> > > > > >> systems that don't have a C++17 compiler, the package won't build -- even
+> > > > > >> though the package only actually requires a C++11 compiler.
+> > > > > >>
+> > > > > >> How should I deal with this?
+> > > > > >
+> > > > > > Are you allowed to say "C++11 or C++17"?
+> > > > >
+> > > > > Actually I can partially answer this:  the test is not based on
+> > > > > SystemRequirements, but on the log of the build, which now contains
+> > > > > lines like this:
+> > > > >
+> > > > >    using C compiler: ?Apple clang version 12.0.0 (clang-1200.0.32.28)?
+> > > > >    using C++ compiler: ?Apple clang version 12.0.0 (clang-1200.0.32.28)?
+> > > > >    using C++11
+> > > > >    using SDK: ?MacOSX11.1.sdk?
+> > > > >
+> > > > > I get "using C++11" because of this line in Makevars:
+> > > > >
+> > > > >    CXX_STD = CXX11
+> > > > >
+> > > > > So I guess the answer is to change your Makevars to make that line
+> > > > > conditional on running under an old version of R.  If you figure out how
+> > > > > to do that, could you post the recipe here?
+> > > >
+> > > > I believe this is closely related to this email [1]. Dirk and I and
+> > > > Aymeric have been going through the same issue with nloptr as well.
+> > > > Our current opinion is to leave it out, as it would restrict more
+> > > > users to demand C++17, which is unneeded, than to have users with over
+> > > > a decade old compiler which does not have C++11. Dirk and Aymeric,
+> > > > please chime in if I have misstated. Regardless, according to
+> > > > Professor Ripley, if you require specific features, you should mark
+> > > > them in _both_ Makevars and SystemRequirements, which is implied in
+> > > > the "r-devel" version of WRE which adds the words "also" in section
+> > > > 1.2.4.
+> > >
+> > > Could you please point to the specific passage? According to [1],
+> > > section 1.2.4, declaring the C++ standard in SystemRequirements is
+> > > only mandatory for C++17 or later.
+> > >
+> > > [1] https://cran.r-project.org/doc/manuals/r-devel/R-exts.html#Using-C_002b_002b-code
+> > >
+> > > --
+> > > I?aki ?car
+>
+>
+>
+> --
+> I?aki ?car
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Feb  7 01:44:27 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 6 Feb 2023 19:44:27 -0500
+Subject: [R-pkg-devel] How to update "SystemRequirements: C++11"?
+In-Reply-To: <CAFOpNVFTGcrsURZC9TOv=KSceKr_WFPsMV0TJoCZKrppkkSFdw@mail.gmail.com>
+References: <CAFOpNVFTGcrsURZC9TOv=KSceKr_WFPsMV0TJoCZKrppkkSFdw@mail.gmail.com>
+Message-ID: <49242657-333b-2523-f26b-a9c7e408082e@gmail.com>
+
+On 06/02/2023 3:46 p.m., Winston Chang wrote:
+> I recently submitted a package to CRAN with "SystemRequirements: C++11".
+> This raises the following NOTE on R-devel, and I was asked to fix and
+> resubmit:
+> 
+> * checking C++ specification ... NOTE
+>    Specified C++11: please update to current default of C++17
+> 
+> If I understand correctly, I have two options, neither of which will work:
+> 1. Remove "SystemRequirements: C++11" entirely. The problem with this is
+> that on systems with older versions of R (3.6 and below, I believe), it may
+> try to compile the package with an older C++ standard, which will fail.
+> 2. Update it to "SystemRequirements: C++17". The problem here is that on
+> systems that don't have a C++17 compiler, the package won't build -- even
+> though the package only actually requires a C++11 compiler.
+> 
+> How should I deal with this?
+
+After reading the discussion here and the manuals, I think this is how 
+to do it.  I'm assuming your code is compatible with both C++11 and 
+C++17, but not some earlier standards.
+
+1.  In SystemRequirements, state that it needs C++11 or higher.  That 
+field is supposed to be human readable (though I think there are scripts 
+that try to read it; maybe they will suggest a particular wording to use).
+
+2.  Have a configure script (e.g. like the one Ivan posted) that 
+specifies CXX_STD=CXX11 in Makevars if the R version is less than 4.0.0, 
+and gives no specification otherwise (because from 4.0.0 onwards, if C++ 
+is available, it will be C++11 or higher).
+
+I think it wouldn't hurt to look through the available versions and pick 
+from them, but I don't think it's supposed to be necessary.
+
+If it eventually turns out that your code is not compatible with some 
+later standard, I'm sure CRAN will let you know.
+
+Duncan Murdoch
+
+
