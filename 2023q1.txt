@@ -8091,3 +8091,369 @@ later standard, I'm sure CRAN will let you know.
 Duncan Murdoch
 
 
+From w|n@tonch@ng1 @end|ng |rom gm@||@com  Tue Feb  7 05:55:29 2023
+From: w|n@tonch@ng1 @end|ng |rom gm@||@com (Winston Chang)
+Date: Mon, 6 Feb 2023 22:55:29 -0600
+Subject: [R-pkg-devel] How to update "SystemRequirements: C++11"?
+In-Reply-To: <49242657-333b-2523-f26b-a9c7e408082e@gmail.com>
+References: <CAFOpNVFTGcrsURZC9TOv=KSceKr_WFPsMV0TJoCZKrppkkSFdw@mail.gmail.com>
+ <49242657-333b-2523-f26b-a9c7e408082e@gmail.com>
+Message-ID: <CAFOpNVEvPJgTbPhe6N63zpE_m9B=twzZ=t7EwcYWRn7Exz8R7w@mail.gmail.com>
+
+On Mon, Feb 6, 2023 at 6:44 PM Duncan Murdoch <murdoch.duncan at gmail.com>
+wrote:
+
+> On 06/02/2023 3:46 p.m., Winston Chang wrote:
+> > I recently submitted a package to CRAN with "SystemRequirements: C++11".
+> > This raises the following NOTE on R-devel, and I was asked to fix and
+> > resubmit:
+> >
+> > * checking C++ specification ... NOTE
+> >    Specified C++11: please update to current default of C++17
+> >
+> > If I understand correctly, I have two options, neither of which will
+> work:
+> > 1. Remove "SystemRequirements: C++11" entirely. The problem with this is
+> > that on systems with older versions of R (3.6 and below, I believe), it
+> may
+> > try to compile the package with an older C++ standard, which will fail.
+> > 2. Update it to "SystemRequirements: C++17". The problem here is that on
+> > systems that don't have a C++17 compiler, the package won't build -- even
+> > though the package only actually requires a C++11 compiler.
+> >
+> > How should I deal with this?
+>
+> After reading the discussion here and the manuals, I think this is how
+> to do it.  I'm assuming your code is compatible with both C++11 and
+> C++17, but not some earlier standards.
+>
+> 1.  In SystemRequirements, state that it needs C++11 or higher.  That
+> field is supposed to be human readable (though I think there are scripts
+> that try to read it; maybe they will suggest a particular wording to use).
+>
+> 2.  Have a configure script (e.g. like the one Ivan posted) that
+> specifies CXX_STD=CXX11 in Makevars if the R version is less than 4.0.0,
+> and gives no specification otherwise (because from 4.0.0 onwards, if C++
+> is available, it will be C++11 or higher).
+>
+> I think it wouldn't hurt to look through the available versions and pick
+> from them, but I don't think it's supposed to be necessary.
+>
+> If it eventually turns out that your code is not compatible with some
+> later standard, I'm sure CRAN will let you know.
+
+
+Now that I think about it some more, I think I can do the following:
+
+1. In the DESCRIPTION file, remove "SystemRequirements: C++11". I believe
+this field is used only for R CMD check, not for actually installing
+packages. CRAN only runs R CMD check on r-oldrel, r-release, and r-devel,
+and all of those versions (4.1, 4.2, and 4.3) have C++11. For older
+versions of R, the package might not pass R CMD check, but it will still
+install (provided there's a C++11 compiler).
+
+2. In my case, I think I can skip the configure script. This is because I
+also have GNU Make as a requirement, and it allows you to conditionally set
+the CXX_STD variable only when R < 4.0, by putting this in the Makevars
+file:
+
+R_VERSION=$(shell $(R_HOME)/bin/Rscript --vanilla -e 'if (getRversion()<4)
+cat("lt4") else cat("ge4")')
+ifeq ($(R_VERSION), lt4)
+CXX_STD=CXX11
+endif
+
+
+-Winston
+
+	[[alternative HTML version deleted]]
+
+
+From vdor|e @end|ng |rom gm@||@com  Tue Feb  7 00:42:57 2023
+From: vdor|e @end|ng |rom gm@||@com (Vincent Dorie)
+Date: Mon, 6 Feb 2023 18:42:57 -0500
+Subject: [R-pkg-devel] How to update "SystemRequirements: C++11"?
+In-Reply-To: <CAL6gwnJXmh1qjOWAtknJVZB+1MMGgdchYFgy5XptfweCyXENDA@mail.gmail.com>
+References: <CAFOpNVFTGcrsURZC9TOv=KSceKr_WFPsMV0TJoCZKrppkkSFdw@mail.gmail.com>
+ <a1d3353c-7a9f-c2bf-c29c-7dda17a66c84@gmail.com>
+ <94e2e2bb-85b4-f831-b3ed-b66cdd469e81@gmail.com>
+ <CAL6gwn+ggnKWybzeaqO5KhdT7iq-0iDgzeOBa+sDLDp8j+qaQw@mail.gmail.com>
+ <CALEXWq0NGchgJZL7VQ6KLyrA-fkrhP00pjyywnRWUCNqmA-0ow@mail.gmail.com>
+ <CAL6gwnJXmh1qjOWAtknJVZB+1MMGgdchYFgy5XptfweCyXENDA@mail.gmail.com>
+Message-ID: <CA+++UwT77+4Q3ZMCy0LsZdXYixfL-99Q9+qJMOhA=PXsEwjKEg@mail.gmail.com>
+
+This might be helpful. Using autoconf and ax_cxx_compile_stdcxx (
+https://www.gnu.org/software/autoconf-archive/ax_cxx_compile_stdcxx.html)
+in package_root/tools/m4:
+
+configure.ac
+------------
+AC_PREREQ(2.64)
+AC_INIT(yourpackagename, 1.0, your at email.com)
+AC_CONFIG_SRCDIR([src/main.cpp])
+AC_CONFIG_AUX_DIR([tools/build-aux])
+AC_CONFIG_FILES([src/Makevars])
+
+m4_include([tools/m4/ax_cxx_compile_stdcxx.m4])
+
+AX_CXX_COMPILE_STDCXX([11], [], [mandatory])
+AX_CXX_COMPILE_STDCXX([14], [], [optional])
+AX_CXX_COMPILE_STDCXX([17], [], [optional])
+
+MAX_SUPPORTED_CXX_VERSION=CXX11
+if test -z "$HAVECXX14"; then
+  MAX_SUPPORTED_CXX_VERSION=CXX14
+  if test -z "$HAVECXX17"; then
+    MAX_SUPPORTED_CXX_VERSION=CXX17
+  fi
+fi
+
+AC_SUBST(MAX_SUPPORTED_CXX_VERSION)
+
+AC_OUTPUT
+
+Makevars.in
+-----------
+CXX_STD = @MAX_SUPPORTED_CXX_VERSION@
+# usual make stuff
+
+DESCRIPTION
+-----------
+# usual description stuff
+SystemRequirements: C++11
+# add authors of compiler macro to authors field
+
+
+On Mon, Feb 6, 2023 at 6:10 PM Avraham Adler <avraham.adler at gmail.com>
+wrote:
+
+> "If a package does have a src/Makevars[.win] file then also setting
+> the make variable ?CXX_STD? there is recommended,"
+>
+> Avi
+>
+> On Mon, Feb 6, 2023 at 10:58 PM I?aki Ucar <iucar at fedoraproject.org>
+> wrote:
+> >
+> > On Mon, 6 Feb 2023 at 23:27, Avraham Adler <avraham.adler at gmail.com>
+> wrote:
+> > >
+> > > On Mon, Feb 6, 2023 at 9:46 PM Duncan Murdoch <
+> murdoch.duncan at gmail.com> wrote:
+> > > >
+> > > > On 06/02/2023 4:01 p.m., Duncan Murdoch wrote:
+> > > > > On 06/02/2023 3:46 p.m., Winston Chang wrote:
+> > > > >> I recently submitted a package to CRAN with "SystemRequirements:
+> C++11".
+> > > > >> This raises the following NOTE on R-devel, and I was asked to fix
+> and
+> > > > >> resubmit:
+> > > > >>
+> > > > >> * checking C++ specification ... NOTE
+> > > > >>     Specified C++11: please update to current default of C++17
+> > > > >>
+> > > > >> If I understand correctly, I have two options, neither of which
+> will work:
+> > > > >> 1. Remove "SystemRequirements: C++11" entirely. The problem with
+> this is
+> > > > >> that on systems with older versions of R (3.6 and below, I
+> believe), it may
+> > > > >> try to compile the package with an older C++ standard, which will
+> fail.
+> > > > >> 2. Update it to "SystemRequirements: C++17". The problem here is
+> that on
+> > > > >> systems that don't have a C++17 compiler, the package won't build
+> -- even
+> > > > >> though the package only actually requires a C++11 compiler.
+> > > > >>
+> > > > >> How should I deal with this?
+> > > > >
+> > > > > Are you allowed to say "C++11 or C++17"?
+> > > >
+> > > > Actually I can partially answer this:  the test is not based on
+> > > > SystemRequirements, but on the log of the build, which now contains
+> > > > lines like this:
+> > > >
+> > > >    using C compiler: ?Apple clang version 12.0.0
+> (clang-1200.0.32.28)?
+> > > >    using C++ compiler: ?Apple clang version 12.0.0
+> (clang-1200.0.32.28)?
+> > > >    using C++11
+> > > >    using SDK: ?MacOSX11.1.sdk?
+> > > >
+> > > > I get "using C++11" because of this line in Makevars:
+> > > >
+> > > >    CXX_STD = CXX11
+> > > >
+> > > > So I guess the answer is to change your Makevars to make that line
+> > > > conditional on running under an old version of R.  If you figure out
+> how
+> > > > to do that, could you post the recipe here?
+> > >
+> > > I believe this is closely related to this email [1]. Dirk and I and
+> > > Aymeric have been going through the same issue with nloptr as well.
+> > > Our current opinion is to leave it out, as it would restrict more
+> > > users to demand C++17, which is unneeded, than to have users with over
+> > > a decade old compiler which does not have C++11. Dirk and Aymeric,
+> > > please chime in if I have misstated. Regardless, according to
+> > > Professor Ripley, if you require specific features, you should mark
+> > > them in _both_ Makevars and SystemRequirements, which is implied in
+> > > the "r-devel" version of WRE which adds the words "also" in section
+> > > 1.2.4.
+> >
+> > Could you please point to the specific passage? According to [1],
+> > section 1.2.4, declaring the C++ standard in SystemRequirements is
+> > only mandatory for C++17 or later.
+> >
+> > [1]
+> https://cran.r-project.org/doc/manuals/r-devel/R-exts.html#Using-C_002b_002b-code
+> >
+> > --
+> > I?aki ?car
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From |uc@r @end|ng |rom |edor@project@org  Tue Feb  7 10:54:03 2023
+From: |uc@r @end|ng |rom |edor@project@org (=?UTF-8?Q?I=C3=B1aki_Ucar?=)
+Date: Tue, 7 Feb 2023 10:54:03 +0100
+Subject: [R-pkg-devel] How to update "SystemRequirements: C++11"?
+In-Reply-To: <CAL6gwnJxM5LyYs84-sJo5H+pAr3nXHb43BcYOwh+JgL=9DcmfA@mail.gmail.com>
+References: <CAFOpNVFTGcrsURZC9TOv=KSceKr_WFPsMV0TJoCZKrppkkSFdw@mail.gmail.com>
+ <a1d3353c-7a9f-c2bf-c29c-7dda17a66c84@gmail.com>
+ <94e2e2bb-85b4-f831-b3ed-b66cdd469e81@gmail.com>
+ <CAL6gwn+ggnKWybzeaqO5KhdT7iq-0iDgzeOBa+sDLDp8j+qaQw@mail.gmail.com>
+ <CALEXWq0NGchgJZL7VQ6KLyrA-fkrhP00pjyywnRWUCNqmA-0ow@mail.gmail.com>
+ <CAL6gwnJXmh1qjOWAtknJVZB+1MMGgdchYFgy5XptfweCyXENDA@mail.gmail.com>
+ <CALEXWq2gX4gmZAvyjF6etw-Ymg4nDmESz6cm3TkSWvWyT5_0ZQ@mail.gmail.com>
+ <CAL6gwnJxM5LyYs84-sJo5H+pAr3nXHb43BcYOwh+JgL=9DcmfA@mail.gmail.com>
+Message-ID: <CALEXWq33TdEb8eL1HaNeY_h-7mDM8TrTemQHcTikeDrG-viaCw@mail.gmail.com>
+
+On Tue, 7 Feb 2023 at 01:50, Avraham Adler <avraham.adler at gmail.com> wrote:
+>
+> On Tue, Feb 7, 2023 at 12:10 AM I?aki Ucar <iucar at fedoraproject.org> wrote:
+> >
+> > On Tue, 7 Feb 2023 at 00:09, Avraham Adler <avraham.adler at gmail.com> wrote:
+> > >
+> > > "If a package does have a src/Makevars[.win] file then also setting
+> > > the make variable ?CXX_STD? there is recommended,"
+> >
+> > That doesn't refer to the SystemRequirements field.
+> >
+> > I?aki
+> >
+>
+> No, but the prior sentence does. The complete excerpt is:
+>
+>   ::Packages without a src/Makevars or src/Makefile file may specify a
+> C++ standard for code in the src directory by including something like
+> ?C++14? in the ?SystemRequirements? field of the DESCRIPTION file,
+> e.g.
+>   ::::SystemRequirements: C++14
+>  ::If a package does have a src/Makevars[.win] file then also setting
+> the make variable ?CXX_STD? there is recommended, as it allows R CMD
+> SHLIB to work correctly in the package?s src directory.
+>
+> So one is supposed to add the requirement to DESCRIPTION via
+> SystemRequitements. If there is a Makevars, one should ALSO set the
+> variable in there.
+>
+> If you wish, I can forward you personal communication with Professor
+> Ripley from last week where he makes this clear as well.
+
+No need. But with all due respect, in such a case, I do not agree with
+Prof. Ripley. By no means I'm a native English speaker, but I'm quite
+accustomed to the "MAY, SHOULD, MUST" language that is common in
+software guidelines. And there is a clear "may" in the first sentence,
+implying that you may, or may not, add this to SystemRequirements.
+Therefore, with the current wording, adding the standard to
+SystemRequirements is only mandatory in the case in which your minimum
+supported version is above the default (which makes sense to me, BTW).
+
+If this was meant to be always mandatory, I would suggest to the
+authors of WRE to modify that section.
+
+-- 
+I?aki ?car
+
+
+From Qu|r|n_St|er @end|ng |rom gmx@de  Tue Feb  7 17:08:25 2023
+From: Qu|r|n_St|er @end|ng |rom gmx@de (Quirin Stier)
+Date: Tue, 7 Feb 2023 17:08:25 +0100
+Subject: [R-pkg-devel] R OpenCL on an AMD GPU
+Message-ID: <cc5f12ed-0df3-9c27-842c-7ebc2dd5b5a9@gmx.de>
+
+Hi,
+
+I am trying to set up the CRAN package "OpenCL" to run on a Windows 10
+machine with an AMD GPU (Radeon 7900 XTX).
+
+I installed the AMD drivers (which carry the OpenCL.dll) and the
+installation of OpenCL in R didnt work. So I also downloaded the AMD SDK
+to set up the environment variables OCL64LIB, OCL32LIB and OCLINC. The
+installation worked, but the built package was broke (OpenCL kernels
+didnt execute due to a multiplicity of errors - the OpenCL set up must
+have been wrong).
+
+The installation of OpenCL was done with install.packages("OpenCL",
+INSTALL_opts = "--no-test-load") trying it with and without the
+install_opts option.
+
+Does anyone have a clue?
+
+Best regards,
+
+Quirin
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Tue Feb  7 19:46:54 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Wed, 8 Feb 2023 07:46:54 +1300
+Subject: [R-pkg-devel] R OpenCL on an AMD GPU
+In-Reply-To: <cc5f12ed-0df3-9c27-842c-7ebc2dd5b5a9@gmx.de>
+References: <cc5f12ed-0df3-9c27-842c-7ebc2dd5b5a9@gmx.de>
+Message-ID: <5E41C644-96EF-408B-8B42-952629B64B09@R-project.org>
+
+Quirin,
+
+this is a contributed package question, so you should either use the GitHub issues (https://github.com/s-u/OpenCL/issues) for the package or contact the maintainer (me). But before you do so, you have to provide a lot more details including exact code you used and the full output of the errors you saw. Finally, on Windows, make sure you refer to the instructions posted here to pre-load your run-time DLL: https://github.com/s-u/OpenCL/issues/6#issuecomment-899114747
+
+Cheers,
+Simon
+
+
+> On Feb 8, 2023, at 5:08 AM, Quirin Stier <Quirin_Stier at gmx.de> wrote:
+> 
+> Hi,
+> 
+> I am trying to set up the CRAN package "OpenCL" to run on a Windows 10
+> machine with an AMD GPU (Radeon 7900 XTX).
+> 
+> I installed the AMD drivers (which carry the OpenCL.dll) and the
+> installation of OpenCL in R didnt work. So I also downloaded the AMD SDK
+> to set up the environment variables OCL64LIB, OCL32LIB and OCLINC. The
+> installation worked, but the built package was broke (OpenCL kernels
+> didnt execute due to a multiplicity of errors - the OpenCL set up must
+> have been wrong).
+> 
+> The installation of OpenCL was done with install.packages("OpenCL",
+> INSTALL_opts = "--no-test-load") trying it with and without the
+> install_opts option.
+> 
+> Does anyone have a clue?
+> 
+> Best regards,
+> 
+> Quirin
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
