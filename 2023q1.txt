@@ -8457,3 +8457,268 @@ Simon
 > 
 
 
+From |gor|@|tu| @end|ng |rom gm@||@com  Wed Feb  8 15:32:36 2023
+From: |gor|@|tu| @end|ng |rom gm@||@com (Igor L)
+Date: Wed, 8 Feb 2023 11:32:36 -0300
+Subject: [R-pkg-devel] Problem with package containing spatial data
+Message-ID: <CAHGVjrktvXFs=RA+sMTQiKTq=4v91wtt8tAAU2Y8ALWOJ=R4xA@mail.gmail.com>
+
+Hello all,
+
+I'm developing a package that contains spatial data about public safety in
+Rio de Janeiro.
+
+The problem is that when I use the usethis::use_data function which
+transforms the shapefile data into a file with the .rda extension, I cannot
+use the geometry attribute to create a map.
+
+E.g.:
+
+# Raw-data script:
+
+spatial_aisp <- sf::st_read('data-raw/shp_aisp/lm_aisp_2019.shp')
+
+plot(spatial_aisp) # works
+
+# Same data from .rda file after use usethis::use_data(spatial_aisp,
+overwrite = TRUE)
+
+x <- ispdata::spatial_aisp
+
+plot(x) # do not work
+
+Error message:
+Error in data.matrix(x) :
+  'list' object cannot be coerced to type 'double'
+
+
+This is happening with all spatial data in the package. I'm using lazydata:
+true and have already disabled file compression options, but the problem
+persists.
+
+Any ideas?
+
+Scripts can be accessed at https://github.com/igorlaltuf/ispdata
+
+Thanks!
+-- 
+*Igor Laltuf Marques*
+Economist (UFF)
+Master in Urban and Regional Planning (IPPUR-UFRJ)
+Researcher at ETTERN and CiDMob Laboratories
+https://igorlaltuf.github.io/
+
+	[[alternative HTML version deleted]]
+
+
+From w|n@tonch@ng1 @end|ng |rom gm@||@com  Wed Feb  8 15:35:08 2023
+From: w|n@tonch@ng1 @end|ng |rom gm@||@com (Winston Chang)
+Date: Wed, 8 Feb 2023 08:35:08 -0600
+Subject: [R-pkg-devel] How to update "SystemRequirements: C++11"?
+In-Reply-To: <CAFOpNVEvPJgTbPhe6N63zpE_m9B=twzZ=t7EwcYWRn7Exz8R7w@mail.gmail.com>
+References: <CAFOpNVFTGcrsURZC9TOv=KSceKr_WFPsMV0TJoCZKrppkkSFdw@mail.gmail.com>
+ <49242657-333b-2523-f26b-a9c7e408082e@gmail.com>
+ <CAFOpNVEvPJgTbPhe6N63zpE_m9B=twzZ=t7EwcYWRn7Exz8R7w@mail.gmail.com>
+Message-ID: <CAFOpNVEjnrVZ=dGc01zPTK=MkTS6oNDCVc1Af4aYKdHPCjx-vQ@mail.gmail.com>
+
+>
+> Now that I think about it some more, I think I can do the following:
+>
+> 1. In the DESCRIPTION file, remove "SystemRequirements: C++11". I believe
+> this field is used only for R CMD check, not for actually installing
+> packages. CRAN only runs R CMD check on r-oldrel, r-release, and r-devel,
+> and all of those versions (4.1, 4.2, and 4.3) have C++11. For older
+> versions of R, the package might not pass R CMD check, but it will still
+> install (provided there's a C++11 compiler).
+>
+> 2. In my case, I think I can skip the configure script. This is because I
+> also have GNU Make as a requirement, and it allows you to conditionally set
+> the CXX_STD variable only when R < 4.0, by putting this in the Makevars
+> file:
+>
+> R_VERSION=$(shell $(R_HOME)/bin/Rscript --vanilla -e 'if (getRversion()<4)
+> cat("lt4") else cat("ge4")')
+> ifeq ($(R_VERSION), lt4)
+> CXX_STD=CXX11
+> endif
+>
+>
+I found that this strategy doesn't work. It turns out that R detects the
+C++ version by simply grepping for CXX_STD in  the Makevars file, so even
+with my fancy ifeq() statement, it still thinks that the package uses C++11.
+
+So now my plan is to simply remove "CXX_STD" from Makevars and
+"SystemRequirements: C++11" from DESCRIPTION. My understanding is that this
+will cause the package to no longer build on R 3.5, but as of R 3.6.2,
+C++11 became the default, so it should build on that version of R or higher.
+
+-Winston
+
+	[[alternative HTML version deleted]]
+
+
+From |embry @end|ng |rom ecocc@@com  Wed Feb  8 20:03:23 2023
+From: |embry @end|ng |rom ecocc@@com (EcoC2S - Irucka Embry)
+Date: Wed, 08 Feb 2023 13:03:23 -0600
+Subject: [R-pkg-devel] CRAN Package Submission Policy
+In-Reply-To: <0d964412c3dd5d1c7730e30e010d0348@ecoccs.com>
+References: <dc713e6d764976c5f370cfb05ba38e92@ecoccs.com>
+ <1fba4982cf0839bd7443542b325dc6eb@ecoccs.com>
+ <0d964412c3dd5d1c7730e30e010d0348@ecoccs.com>
+Message-ID: <5017c9b9f2222982e6031a5d3d83ea5b@ecoccs.com>
+
+Hi, I want to share the following information due to some of the 
+feedback that I received with regards to the extreme lag on getting a 
+response to my USA.state.boundaries package submissions.
+
+The following text is taken verbatim from 
+https://cran.r-project.org/web/packages/policies.html:
+
+Submission
+
+...
+
+In more detail:
+
+...
+
+Once uploaded, no further submissions of that package should be made 
+whilst the uploaded version is pending processing (which may take a few 
+days) and you have not received a reply from a CRAN maintainer.
+
+
+
+
+There is no question here, I just want to share information that will 
+hopefully be useful to all of the R developers.
+
+Thank you.
+
+Irucka Embry
+
+
+
+-- 
+--
+No fear, Only Love! / ?No temas, solamente amor!
+-Irucka Ajani Embry, 15 March 2020
+
+Family Partners:
+http://www.sustainlex.org/
+https://www.schoolingsolutions.com/
+
+---------------------------------------------------------------------------------------------------------------
+
+The business collaboration between EConsulting (tm)
+[https://www.econsultingllc.org/] and EcoC^2S, is Getting Back to 
+Nature.
+
+Getting Back to Nature LocalHarvest --
+https://www.localharvest.org/getting-back-to-nature-M73453
+Getting Back to Nature -- https://www.gettingback2nature.farm/
+
+-- Irucka and his twin brother, Obiora, are featured in the Middle
+Tennessee Local Table Magazine Annual issue. The article discusses their
+family farm history and the current work that they are doing under 
+Getting
+Back to Nature. The full magazine can be found here [the article begins 
+on
+page 18 of the PDF document]:
+
+https://media.gettingback2nature.farm/pdf/LocalTable_ANNUAL_2020_lo_res.pdf
+
+-- Obiora and Irucka were interviewed separately in early 2020 for the
+Natural Resources Defense Council's (NRDC) "Regenerative Agriculture: 
+Farm
+Policy for the 21st Century: Policy Recommendations to Advance 
+Regenerative
+Agriculture" report written By Arohi Sharma, Lara Bryant, and Ellen Lee.
+The PDF report is available below:
+
+https://www.nrdc.org/sites/default/files/regenerative-agriculture-farm-policy-21st-century-report.pdf
+
+EcoC2S -- https://www.ecoccs.com/
+Principal, Irucka Embry, EIT
+
+Services:
+Growing Food
+Healthy Living Mentor
+Data Analysis with R
+R Training
+Chemistry and Mathematics Tutoring
+Free/Libre and Open Source Software (FLOSS) Consultation
+
+
+From @d@mh@p@rk@ @end|ng |rom gm@||@com  Thu Feb  9 00:46:50 2023
+From: @d@mh@p@rk@ @end|ng |rom gm@||@com (Adam H. Sparks)
+Date: Thu, 9 Feb 2023 07:46:50 +0800
+Subject: [R-pkg-devel] Problem with package containing spatial data
+In-Reply-To: <CAHGVjrktvXFs=RA+sMTQiKTq=4v91wtt8tAAU2Y8ALWOJ=R4xA@mail.gmail.com>
+References: <CAHGVjrktvXFs=RA+sMTQiKTq=4v91wtt8tAAU2Y8ALWOJ=R4xA@mail.gmail.com>
+Message-ID: <72C586E4-2D6F-4CE0-B256-5A47F9AC26C4@gmail.com>
+
+Hi Igor,
+I?ve a couple packages that have spatial data in them that I maintain. I?ve opted to package up the data as a geopackage file and import it as an {sf} object. Edzer Pebesma suggests this to circumvent changes in the {sf} package from affecting native {sf} objects that are distributed as part of a package. Maybe this is an option for you?
+
+In https://github.com/adamhsparks/extractOz, see /inst/extdata for the geopackage file and https://github.com/adamhsparks/extractOz/blob/main/R/data.R for handling the data importing and making available in the R session on package load.
+
+Best,
+Adam
+
+> On 8 Feb 2023, at 10:32 pm, Igor L <igorlaltuf at gmail.com> wrote:
+> 
+> Hello all,
+> 
+> I'm developing a package that contains spatial data about public safety in
+> Rio de Janeiro.
+> 
+> The problem is that when I use the usethis::use_data function which
+> transforms the shapefile data into a file with the .rda extension, I cannot
+> use the geometry attribute to create a map.
+> 
+> E.g.:
+> 
+> # Raw-data script:
+> 
+> spatial_aisp <- sf::st_read('data-raw/shp_aisp/lm_aisp_2019.shp')
+> 
+> plot(spatial_aisp) # works
+> 
+> # Same data from .rda file after use usethis::use_data(spatial_aisp,
+> overwrite = TRUE)
+> 
+> x <- ispdata::spatial_aisp
+> 
+> plot(x) # do not work
+> 
+> Error message:
+> Error in data.matrix(x) :
+>  'list' object cannot be coerced to type 'double'
+> 
+> 
+> This is happening with all spatial data in the package. I'm using lazydata:
+> true and have already disabled file compression options, but the problem
+> persists.
+> 
+> Any ideas?
+> 
+> Scripts can be accessed at https://github.com/igorlaltuf/ispdata
+> 
+> Thanks!
+> -- 
+> *Igor Laltuf Marques*
+> Economist (UFF)
+> Master in Urban and Regional Planning (IPPUR-UFRJ)
+> Researcher at ETTERN and CiDMob Laboratories
+> https://igorlaltuf.github.io/
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+	[[alternative HTML version deleted]]
+
+
