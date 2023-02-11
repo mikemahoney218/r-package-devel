@@ -8722,3 +8722,495 @@ Adam
 	[[alternative HTML version deleted]]
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Feb  9 09:56:24 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 9 Feb 2023 11:56:24 +0300
+Subject: [R-pkg-devel] Problem with package containing spatial data
+In-Reply-To: <CAHGVjrktvXFs=RA+sMTQiKTq=4v91wtt8tAAU2Y8ALWOJ=R4xA@mail.gmail.com>
+References: <CAHGVjrktvXFs=RA+sMTQiKTq=4v91wtt8tAAU2Y8ALWOJ=R4xA@mail.gmail.com>
+Message-ID: <20230209115624.71f594cd@arachnoid>
+
+? Wed, 8 Feb 2023 11:32:36 -0300
+Igor L <igorlaltuf at gmail.com> ?????:
+
+> spatial_aisp <- sf::st_read('data-raw/shp_aisp/lm_aisp_2019.shp')
+> 
+> plot(spatial_aisp) # works
+> 
+> # Same data from .rda file after use usethis::use_data(spatial_aisp,
+> overwrite = TRUE)
+> 
+> x <- ispdata::spatial_aisp
+> 
+> plot(x) # do not work
+
+Does this break in a new R session, but start working when you load the
+sf namespace? I think that your package needs to depend on sf in order
+for this to work. Specifying it in Imports may be enough to make the
+plot.sf S3 method available to the user.
+
+You may encounter other problems if you go this way, like R CMD check
+complaining that you don't use the package you're importing. Loading
+the data from a file on demand would also load the sf namespace and
+thus solve the problem.
+
+-- 
+Best regards,
+Ivan
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Feb  9 11:11:10 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 9 Feb 2023 05:11:10 -0500
+Subject: [R-pkg-devel] Problem with package containing spatial data
+In-Reply-To: <20230209115624.71f594cd@arachnoid>
+References: <CAHGVjrktvXFs=RA+sMTQiKTq=4v91wtt8tAAU2Y8ALWOJ=R4xA@mail.gmail.com>
+ <20230209115624.71f594cd@arachnoid>
+Message-ID: <26a37def-b1ab-0e75-d71a-2de2607b76e1@gmail.com>
+
+On 09/02/2023 3:56 a.m., Ivan Krylov wrote:
+> ? Wed, 8 Feb 2023 11:32:36 -0300
+> Igor L <igorlaltuf at gmail.com> ?????:
+> 
+>> spatial_aisp <- sf::st_read('data-raw/shp_aisp/lm_aisp_2019.shp')
+>>
+>> plot(spatial_aisp) # works
+>>
+>> # Same data from .rda file after use usethis::use_data(spatial_aisp,
+>> overwrite = TRUE)
+>>
+>> x <- ispdata::spatial_aisp
+>>
+>> plot(x) # do not work
+> 
+> Does this break in a new R session, but start working when you load the
+> sf namespace? I think that your package needs to depend on sf in order
+> for this to work. Specifying it in Imports may be enough to make the
+> plot.sf S3 method available to the user.
+
+Specifying a package in the Imports field of DESCRIPTION guarantees that 
+it will be available to load, but doesn't load it.  Importing something 
+from it via the NAMESPACE triggers a load, as does executing code like 
+pkg::fn, or explicitly calling loadNamespace("pkg"), or loading a 
+package that does one of these things.
+
+
+> You may encounter other problems if you go this way, like R CMD check
+> complaining that you don't use the package you're importing. Loading
+> the data from a file on demand would also load the sf namespace and
+> thus solve the problem.
+
+Workarounds for the check complaints are discussed here, among other 
+places:  https://stackoverflow.com/a/75384338/2554330 .
+
+Duncan Murdoch
+
+
+From @|ex@ndre@court|o| @end|ng |rom gm@||@com  Thu Feb  9 18:41:40 2023
+From: @|ex@ndre@court|o| @end|ng |rom gm@||@com (Alexandre Courtiol)
+Date: Thu, 9 Feb 2023 18:41:40 +0100
+Subject: [R-pkg-devel] Problem with package containing spatial data
+In-Reply-To: <26a37def-b1ab-0e75-d71a-2de2607b76e1@gmail.com>
+References: <CAHGVjrktvXFs=RA+sMTQiKTq=4v91wtt8tAAU2Y8ALWOJ=R4xA@mail.gmail.com>
+ <20230209115624.71f594cd@arachnoid>
+ <26a37def-b1ab-0e75-d71a-2de2607b76e1@gmail.com>
+Message-ID: <CAERMt4dWH4MXTH1ge7j+LaKos2P0WyUdTqViptVdadGOwattgg@mail.gmail.com>
+
+Hi Igor,
+
+I had the same issue using terra rather than sf a couple of weeks ago.
+
+I thought of solving the issue as follow:
+
+
+   1.
+
+   store the shapefiles under extdata.
+   2.
+
+   create a function that loads the files:
+
+.build_internal_files <- function() {
+  ## This function should not be called by the user.
+  ## It performs the lazy loading of the data since terra cannot
+handle rda files
+  assign("CountryBorders",
+terra::vect(system.file("extdata/CountryBorders.shp", package =
+"IsoriX")), envir = as.environment("package:IsoriX"))
+  assign("OceanMask", terra::vect(system.file("extdata/OceanMask.shp",
+package = "IsoriX")), envir = as.environment("package:IsoriX"))
+}
+
+
+   1. call that function automatically upon attach using .onAttach():
+
+.onAttach <- function(libname, pkgname) {
+    .build_internal_files() ## lazy loading of the internal data
+}
+
+It seems to work...
+
+Note that .onAttach() is a standard way of defining a function that is
+recognised by R and ran when the package is attached.
+
+++
+
+Alex
+
+On Thu, 9 Feb 2023 at 11:11, Duncan Murdoch <murdoch.duncan at gmail.com>
+wrote:
+
+> On 09/02/2023 3:56 a.m., Ivan Krylov wrote:
+> > ? Wed, 8 Feb 2023 11:32:36 -0300
+> > Igor L <igorlaltuf at gmail.com> ?????:
+> >
+> >> spatial_aisp <- sf::st_read('data-raw/shp_aisp/lm_aisp_2019.shp')
+> >>
+> >> plot(spatial_aisp) # works
+> >>
+> >> # Same data from .rda file after use usethis::use_data(spatial_aisp,
+> >> overwrite = TRUE)
+> >>
+> >> x <- ispdata::spatial_aisp
+> >>
+> >> plot(x) # do not work
+> >
+> > Does this break in a new R session, but start working when you load the
+> > sf namespace? I think that your package needs to depend on sf in order
+> > for this to work. Specifying it in Imports may be enough to make the
+> > plot.sf S3 method available to the user.
+>
+> Specifying a package in the Imports field of DESCRIPTION guarantees that
+> it will be available to load, but doesn't load it.  Importing something
+> from it via the NAMESPACE triggers a load, as does executing code like
+> pkg::fn, or explicitly calling loadNamespace("pkg"), or loading a
+> package that does one of these things.
+>
+>
+> > You may encounter other problems if you go this way, like R CMD check
+> > complaining that you don't use the package you're importing. Loading
+> > the data from a file on demand would also load the sf namespace and
+> > thus solve the problem.
+>
+> Workarounds for the check complaints are discussed here, among other
+> places:  https://stackoverflow.com/a/75384338/2554330 .
+>
+> Duncan Murdoch
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+-- 
+Alexandre Courtiol, www.datazoogang.de
+
+	[[alternative HTML version deleted]]
+
+
+From m|keb|@z@n|n @end|ng |rom gm@||@com  Thu Feb  9 16:27:04 2023
+From: m|keb|@z@n|n @end|ng |rom gm@||@com (Mike Blazanin)
+Date: Thu, 9 Feb 2023 10:27:04 -0500
+Subject: [R-pkg-devel] CRAN Vignette pdfs garbled in Firefox pdf viewer
+Message-ID: <CAEbuDvKgn6YQM9LZRozRP_hzU0RXZEjVoPY4VVJu58xaMZrmvA@mail.gmail.com>
+
+Hi all, my package gcplyr has several vignettes which, from CRAN, appear
+garbled when opened with Firefox's pdf viewer (
+https://cran.r-project.org/web/packages/gcplyr/index.html). Specifically,
+instead of regular characters, there are numerous black-outlined white
+boxes with text inside like "EO 88" or "EO 55". This doesn't occur with the
+pdf vignettes on Github (https://github.com/mikeblazanin/gcplyr/). This
+also doesn't occur when CRAN pdfs are opened with Chrome's pdf viewer or
+Microsoft Edge's pdf viewer, nor when files are downloaded from CRAN and
+opened with a local pdf viewer.
+
+The issue was documented here:
+https://github.com/mikeblazanin/gcplyr/issues/112
+
+Anyone have any suggestions for what could be causing this?
+
+Thanks!
+Mike Blazanin
+
+	[[alternative HTML version deleted]]
+
+
+From |gor|@|tu| @end|ng |rom gm@||@com  Thu Feb  9 20:04:21 2023
+From: |gor|@|tu| @end|ng |rom gm@||@com (Igor L)
+Date: Thu, 9 Feb 2023 16:04:21 -0300
+Subject: [R-pkg-devel] Problem with package containing spatial data
+In-Reply-To: <CAERMt4dWH4MXTH1ge7j+LaKos2P0WyUdTqViptVdadGOwattgg@mail.gmail.com>
+References: <CAHGVjrktvXFs=RA+sMTQiKTq=4v91wtt8tAAU2Y8ALWOJ=R4xA@mail.gmail.com>
+ <20230209115624.71f594cd@arachnoid>
+ <26a37def-b1ab-0e75-d71a-2de2607b76e1@gmail.com>
+ <CAERMt4dWH4MXTH1ge7j+LaKos2P0WyUdTqViptVdadGOwattgg@mail.gmail.com>
+Message-ID: <CAHGVjrkq5XoMc41tPFoy-1WjhfFFTpU3ib9vNNOT5FZ24uGEig@mail.gmail.com>
+
+Thank you all for your help.
+
+Adam, I followed your suggestion, but I still can't figure out why the data
+is only available locally when I run the devtools::load_all() function.
+
+When I install the package from GitHub, the data does not appear (even
+using the data() function).
+
+Extdata: https://github.com/igorlaltuf/ispdata/tree/main/inst/extdata
+Import: https://github.com/igorlaltuf/ispdata/blob/main/R/spatial_cisp.R
+
+And is there any way to reduce the size of files in gpkg format? The
+package increased from 5 to 10 megabytes. I tried to make it smaller with
+the function sf::st_write("inst/extdata/spatial_aisp.gpkg", compress =
+"deflate", append = F), but the size remained the same.
+
+Thanks again for all the help.
+
+Em qui., 9 de fev. de 2023 ?s 14:41, Alexandre Courtiol <
+alexandre.courtiol at gmail.com> escreveu:
+
+> Hi Igor,
+>
+> I had the same issue using terra rather than sf a couple of weeks ago.
+>
+> I thought of solving the issue as follow:
+>
+>
+>    1.
+>
+>    store the shapefiles under extdata.
+>    2.
+>
+>    create a function that loads the files:
+>
+> .build_internal_files <- function() {
+>   ## This function should not be called by the user.
+>   ## It performs the lazy loading of the data since terra cannot handle rda files
+>   assign("CountryBorders", terra::vect(system.file("extdata/CountryBorders.shp", package = "IsoriX")), envir = as.environment("package:IsoriX"))
+>   assign("OceanMask", terra::vect(system.file("extdata/OceanMask.shp", package = "IsoriX")), envir = as.environment("package:IsoriX"))
+> }
+>
+>
+>    1. call that function automatically upon attach using .onAttach():
+>
+> .onAttach <- function(libname, pkgname) {
+>     .build_internal_files() ## lazy loading of the internal data
+> }
+>
+> It seems to work...
+>
+> Note that .onAttach() is a standard way of defining a function that is
+> recognised by R and ran when the package is attached.
+>
+> ++
+>
+> Alex
+>
+> On Thu, 9 Feb 2023 at 11:11, Duncan Murdoch <murdoch.duncan at gmail.com>
+> wrote:
+>
+>> On 09/02/2023 3:56 a.m., Ivan Krylov wrote:
+>> > ? Wed, 8 Feb 2023 11:32:36 -0300
+>> > Igor L <igorlaltuf at gmail.com> ?????:
+>> >
+>> >> spatial_aisp <- sf::st_read('data-raw/shp_aisp/lm_aisp_2019.shp')
+>> >>
+>> >> plot(spatial_aisp) # works
+>> >>
+>> >> # Same data from .rda file after use usethis::use_data(spatial_aisp,
+>> >> overwrite = TRUE)
+>> >>
+>> >> x <- ispdata::spatial_aisp
+>> >>
+>> >> plot(x) # do not work
+>> >
+>> > Does this break in a new R session, but start working when you load the
+>> > sf namespace? I think that your package needs to depend on sf in order
+>> > for this to work. Specifying it in Imports may be enough to make the
+>> > plot.sf S3 method available to the user.
+>>
+>> Specifying a package in the Imports field of DESCRIPTION guarantees that
+>> it will be available to load, but doesn't load it.  Importing something
+>> from it via the NAMESPACE triggers a load, as does executing code like
+>> pkg::fn, or explicitly calling loadNamespace("pkg"), or loading a
+>> package that does one of these things.
+>>
+>>
+>> > You may encounter other problems if you go this way, like R CMD check
+>> > complaining that you don't use the package you're importing. Loading
+>> > the data from a file on demand would also load the sf namespace and
+>> > thus solve the problem.
+>>
+>> Workarounds for the check complaints are discussed here, among other
+>> places:  https://stackoverflow.com/a/75384338/2554330 .
+>>
+>> Duncan Murdoch
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>
+>
+> --
+> Alexandre Courtiol, www.datazoogang.de
+>
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Feb  9 21:18:02 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 9 Feb 2023 15:18:02 -0500
+Subject: [R-pkg-devel] CRAN Vignette pdfs garbled in Firefox pdf viewer
+In-Reply-To: <CAEbuDvKgn6YQM9LZRozRP_hzU0RXZEjVoPY4VVJu58xaMZrmvA@mail.gmail.com>
+References: <CAEbuDvKgn6YQM9LZRozRP_hzU0RXZEjVoPY4VVJu58xaMZrmvA@mail.gmail.com>
+Message-ID: <a2625536-5efe-dfd5-c2c5-8d63ce3b1783@gmail.com>
+
+On 09/02/2023 10:27 a.m., Mike Blazanin wrote:
+> Hi all, my package gcplyr has several vignettes which, from CRAN, appear
+> garbled when opened with Firefox's pdf viewer (
+> https://cran.r-project.org/web/packages/gcplyr/index.html). Specifically,
+> instead of regular characters, there are numerous black-outlined white
+> boxes with text inside like "EO 88" or "EO 55". This doesn't occur with the
+> pdf vignettes on Github (https://github.com/mikeblazanin/gcplyr/). This
+> also doesn't occur when CRAN pdfs are opened with Chrome's pdf viewer or
+> Microsoft Edge's pdf viewer, nor when files are downloaded from CRAN and
+> opened with a local pdf viewer.
+
+I don't see a problem in Firefox 109.0.1 on a Mac.  Maybe the "0.1" is a 
+bug fix?  Or maybe I looked in the wrong place.  Could you be very 
+specific, i.e. URL, page, line.
+
+
+Duncan Murdoch
+
+
+> 
+> The issue was documented here:
+> https://github.com/mikeblazanin/gcplyr/issues/112
+> 
+> Anyone have any suggestions for what could be causing this?
+> 
+> Thanks!
+> Mike Blazanin
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Feb  9 21:21:11 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 9 Feb 2023 15:21:11 -0500
+Subject: [R-pkg-devel] Problem with package containing spatial data
+In-Reply-To: <CAERMt4dWH4MXTH1ge7j+LaKos2P0WyUdTqViptVdadGOwattgg@mail.gmail.com>
+References: <CAHGVjrktvXFs=RA+sMTQiKTq=4v91wtt8tAAU2Y8ALWOJ=R4xA@mail.gmail.com>
+ <20230209115624.71f594cd@arachnoid>
+ <26a37def-b1ab-0e75-d71a-2de2607b76e1@gmail.com>
+ <CAERMt4dWH4MXTH1ge7j+LaKos2P0WyUdTqViptVdadGOwattgg@mail.gmail.com>
+Message-ID: <f681abff-7084-8f60-688d-02f2e83b2622@gmail.com>
+
+On 09/02/2023 12:41 p.m., Alexandre Courtiol wrote:
+> Hi Igor,
+> 
+> I had the same issue using terra rather than sf a couple of weeks ago.
+> 
+> I thought of solving the issue as follow:
+> 
+>  1.
+> 
+>     store the shapefiles under extdata.
+> 
+>  2.
+> 
+>     create a function that loads the files:
+> 
+> .build_internal_files  <-  function() {
+>    ## This function should not be called by the user.
+>    ## It performs the lazy loading of the data since terra cannot handle 
+> rda files
+>    assign("CountryBorders",terra::vect(system.file("extdata/CountryBorders.shp",package  =  "IsoriX")),envir  =  as.environment("package:IsoriX"))
+>    assign("OceanMask",terra::vect(system.file("extdata/OceanMask.shp",package  =  "IsoriX")),envir  =  as.environment("package:IsoriX"))
+> }
+> 
+>  3. call that function automatically upon attach using |.onAttach()|:
+> 
+> .onAttach  <-  function(libname,pkgname) {
+>      .build_internal_files()## lazy loading of the internal data
+> }
+> 
+> It seems to work...
+> 
+> Note that .onAttach() is a standard way of defining a function that is 
+> recognised by R and ran when the package is attached.
+
+Would these files ever be used when your package is not attached, e.g. 
+through a function imported by a different package?  If so, you should 
+use .onLoad(), not .onAttach().
+
+Duncan Murdoch
+
+> 
+> ++
+> 
+> Alex
+> 
+> 
+> On Thu, 9 Feb 2023 at 11:11, Duncan Murdoch <murdoch.duncan at gmail.com 
+> <mailto:murdoch.duncan at gmail.com>> wrote:
+> 
+>     On 09/02/2023 3:56 a.m., Ivan Krylov wrote:
+>      > ? Wed, 8 Feb 2023 11:32:36 -0300
+>      > Igor L <igorlaltuf at gmail.com <mailto:igorlaltuf at gmail.com>> ?????:
+>      >
+>      >> spatial_aisp <- sf::st_read('data-raw/shp_aisp/lm_aisp_2019.shp')
+>      >>
+>      >> plot(spatial_aisp) # works
+>      >>
+>      >> # Same data from .rda file after use usethis::use_data(spatial_aisp,
+>      >> overwrite = TRUE)
+>      >>
+>      >> x <- ispdata::spatial_aisp
+>      >>
+>      >> plot(x) # do not work
+>      >
+>      > Does this break in a new R session, but start working when you
+>     load the
+>      > sf namespace? I think that your package needs to depend on sf in
+>     order
+>      > for this to work. Specifying it in Imports may be enough to make the
+>      > plot.sf S3 method available to the user.
+> 
+>     Specifying a package in the Imports field of DESCRIPTION guarantees
+>     that
+>     it will be available to load, but doesn't load it.? Importing something
+>     from it via the NAMESPACE triggers a load, as does executing code like
+>     pkg::fn, or explicitly calling loadNamespace("pkg"), or loading a
+>     package that does one of these things.
+> 
+> 
+>      > You may encounter other problems if you go this way, like R CMD check
+>      > complaining that you don't use the package you're importing. Loading
+>      > the data from a file on demand would also load the sf namespace and
+>      > thus solve the problem.
+> 
+>     Workarounds for the check complaints are discussed here, among other
+>     places: https://stackoverflow.com/a/75384338/2554330
+>     <https://stackoverflow.com/a/75384338/2554330> .
+> 
+>     Duncan Murdoch
+> 
+>     ______________________________________________
+>     R-package-devel at r-project.org <mailto:R-package-devel at r-project.org>
+>     mailing list
+>     https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>     <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+> 
+> 
+> 
+> -- 
+> Alexandre Courtiol, www.datazoogang.de <http://www.datazoogang.de>
+
+
