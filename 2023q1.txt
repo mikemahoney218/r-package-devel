@@ -9977,3 +9977,342 @@ Size: 10880 bytes
 Desc: not available
 URL: <https://stat.ethz.ch/pipermail/r-package-devel/attachments/20230211/9d715e79/attachment.png>
 
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Sun Feb 12 15:04:23 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Sun, 12 Feb 2023 15:04:23 +0100
+Subject: [R-pkg-devel] Unable to load Windows NETIO.SYS and WINSPOOL.DRV
+ DLLs
+In-Reply-To: <20230211181118.18be1599@Tarkus>
+References: <eb7d1d333a2797d098418d092f19bd4f3542ce51.camel@ed.ac.uk>
+ <20230211181118.18be1599@Tarkus>
+Message-ID: <4e60d22c-9609-624e-b5cf-f445f58ded9c@statistik.tu-dortmund.de>
+
+Note that Gtk2 is end of life, Gtk4 was released 3 years ago already.
+There are reasons why neither the former RGtk2 maintainer nor the CRAN 
+team decided to maintain RGtk2 further on.
+
+Best,
+Uwe Ligges
+
+
+
+On 11.02.2023 16:11, Ivan Krylov wrote:
+> On Sat, 11 Feb 2023 11:19:42 +0000
+> David Sterratt <David.C.Sterratt at ed.ac.uk> wrote:
+> 
+>> WinDbg output reveals errors loading "NETIO.SYS" and "WINSPOOL.DRV"
+>> when running "library(RGtk2)":
+>>
+>>     0c64:0640 @ 44312812 - LdrpProcessWork - ERROR: Unable to load DLL:
+>> "NETIO.SYS", Parent Module: "C:\Users\David
+>> Sterratt\AppData\Local\R\win-library\4.3\RGtk2\libs\x64\RGtk2.dll",
+>> Status: 0xc0000135
+>>     ...
+>>     0c64:1e5c @ 44312812 - LdrpProcessWork - ERROR: Unable to load DLL:
+>> "WINSPOOL.DRV", Parent Module: "C:\Users\David
+>> Sterratt\AppData\Local\R\win-library\4.3\RGtk2\libs\x64\RGtk2.dll",
+>> Status: 0xc0000135
+> 
+> The failure to load WINSPOOL.DRV is perplexing (it should normally be
+> possible to load as it's a system DLL that applications are supposed to
+> link against in order to be able to print), but NETIO.SYS should
+> probably be absent from the import list. At least it seems to be linked
+> against some kernel-related stuff that shouldn't be reachable from
+> userspace applications.
+> 
+> By removing -lnetio from PKG_LIBS, I was able to load the package and
+> run some example code from the JSS article, but then Rgui.exe crashed
+> on exit. I'm running R-4.2.2 and Rtools43 on a Windows 7 machine, which
+> could also be a source of the difference.
+> 
+> Does the Dependency Walker <https://dependencywalker.com/> provide you
+> any useful information about the package DLL besides what you already
+> know? (Some warnings deep in the dependency tree are to be expected.
+> R.DLL is not on the PATH so won't be automatically found, but other
+> dependencies should exist.)
+> 
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From D@v|d@C@Sterr@tt @end|ng |rom ed@@c@uk  Sun Feb 12 17:23:08 2023
+From: D@v|d@C@Sterr@tt @end|ng |rom ed@@c@uk (David Sterratt)
+Date: Sun, 12 Feb 2023 16:23:08 +0000
+Subject: [R-pkg-devel] Unable to load Windows NETIO.SYS and WINSPOOL.DRV
+ DLLs
+In-Reply-To: <4e60d22c-9609-624e-b5cf-f445f58ded9c@statistik.tu-dortmund.de>
+References: <eb7d1d333a2797d098418d092f19bd4f3542ce51.camel@ed.ac.uk>
+ <20230211181118.18be1599@Tarkus>
+ <4e60d22c-9609-624e-b5cf-f445f58ded9c@statistik.tu-dortmund.de>
+Message-ID: <453783b8fe8322e762746d96241da8ec0135618d.camel@ed.ac.uk>
+
+On Sun, 2023-02-12 at 15:04 +0100, Uwe Ligges wrote:
+> Note that Gtk2 is end of life, Gtk4 was released 3 years ago already.
+> There are reasons why neither the former RGtk2 maintainer nor the
+> CRAN team decided to maintain RGtk2 further on.
+
+Thank you. I know that Gtk2 is end-of-life, but I was thinking that the
+inclusion of the Gtk2 library in RTools4.3 meant that it was still seen
+as usable. I have an R package that is built around the gWidgets2RGtk2
+interface  - it had some features that the Tcl/Tk interface didn't
+have.
+
+Anyway, *supposing* that someone wanted to investigate updating RGtk2
+to RGtk4 and upload the updated package to CRAN, what would be the
+possible approaches (if any) to include the RGtk4 libraries, so that
+the package could be compiled on the CRAN build servers? Either (1)
+include the Gtk4 source code (and any necessary dependencies) in the R
+package; or (2) have RGtk4 dev libraries installed on build servers
+(I'm assuming that they are not currently installed).
+
+Best wishes,
+
+David
+
+--
+David Sterratt, Lecturer https://www.ed.ac.uk/profile/sterratt
+Institute for Adaptive and Neural Computation     tel: +44 131 651 1739
+School of Informatics, University of Edinburgh
+Appleton Tower, 11 Crichton Street, Edinburgh EH8 9LE, Scotland
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+BOOK: Principles of Computational Modelling in Neuroscience
+Sterratt, Graham, Gillies & Willshaw (CUP, 2011).
+http://www.compneuroprinciples.org
+
+
+
+The University of Edinburgh is a charitable body, registered in Scotland, with registration number SC005336. Is e buidheann carthannais a th? ann an Oilthigh Dh?n ?ideann, cl?raichte an Alba, ?ireamh cl?raidh SC005336.
+
+From D@v|d@C@Sterr@tt @end|ng |rom ed@@c@uk  Sun Feb 12 17:37:41 2023
+From: D@v|d@C@Sterr@tt @end|ng |rom ed@@c@uk (David Sterratt)
+Date: Sun, 12 Feb 2023 16:37:41 +0000
+Subject: [R-pkg-devel] Unable to load Windows NETIO.SYS and WINSPOOL.DRV
+ DLLs
+In-Reply-To: <20230211181118.18be1599@Tarkus>
+References: <eb7d1d333a2797d098418d092f19bd4f3542ce51.camel@ed.ac.uk>
+ <20230211181118.18be1599@Tarkus>
+Message-ID: <3a55d6a809ca09b8f8ab4ed8d908a94290f2ca7d.camel@ed.ac.uk>
+
+On Sat, 2023-02-11 at 18:11 +0300, Ivan Krylov wrote:
+> On Sat, 11 Feb 2023 11:19:42 +0000
+> David Sterratt <David.C.Sterratt at ed.ac.uk> wrote:
+>
+> > WinDbg output reveals errors loading "NETIO.SYS" and "WINSPOOL.DRV"
+> > when running "library(RGtk2)":
+> >
+> >    0c64:0640 @ 44312812 - LdrpProcessWork - ERROR: Unable to load
+> > DLL:
+> > "NETIO.SYS", Parent Module: "C:\Users\David
+> > Sterratt\AppData\Local\R\win-library\4.3\RGtk2\libs\x64\RGtk2.dll",
+> > Status: 0xc0000135
+> >    ...
+> >    0c64:1e5c @ 44312812 - LdrpProcessWork - ERROR: Unable to load
+> > DLL:
+> > "WINSPOOL.DRV", Parent Module: "C:\Users\David
+> > Sterratt\AppData\Local\R\win-library\4.3\RGtk2\libs\x64\RGtk2.dll",
+> > Status: 0xc0000135
+>
+> The failure to load WINSPOOL.DRV is perplexing (it should normally be
+> possible to load as it's a system DLL that applications are supposed
+> to
+> link against in order to be able to print), but NETIO.SYS should
+> probably be absent from the import list. At least it seems to be
+> linked
+> against some kernel-related stuff that shouldn't be reachable from
+> userspace applications.
+>
+> By removing -lnetio from PKG_LIBS, I was able to load the package and
+> run some example code from the JSS article, but then Rgui.exe crashed
+> on exit. I'm running R-4.2.2 and Rtools43 on a Windows 7 machine,
+> which
+> could also be a source of the difference.
+
+Thank you for looking at this. I tried removing -lnetio, but package
+didn't install at all on Windows 10.
+
+> Does the Dependency Walker <https://dependencywalker.com/> provide
+> you
+> any useful information about the package DLL besides what you already
+> know? (Some warnings deep in the dependency tree are to be expected.
+> R.DLL is not on the PATH so won't be automatically found, but other
+> dependencies should exist.)
+
+I looked at the Dependency Walker, but it was giving me many messages
+about missing DLLs with names like:
+
+  API-MS-WIN-CORE-STRING-L2-1-0.DLL  Error opening file. The system
+cannot find the file specified (2).
+
+These libraries seem to be part of the UCRT system. However, when
+looked at the DLL of a package that *did* load in Dependency Walker, I
+got the same messages, so I think the path to the UCRT files may be
+missing.
+
+Dependency Walker did seem to find:
+
+  c:\windows\system32\WINSPOOL.DRV
+
+For NETIO.SYS it gave the " Error opening file. The system cannot find
+the file specified (2)." There was also this table in the output.
+
+     [ ? ] NETIO.SYS
+
+          Import  Ordinal  Hint          Function                Entry
+Point
+          ------  -------  ------------  ----------------------  ------
+-----
+          [CE ]       N/A    4 (0x0004)  CancelMibChangeNotify2  Not
+Bound
+          [CE ]       N/A   79 (0x004F)  GetIpForwardTable2      Not
+Bound
+          [CE ]       N/A  364 (0x016C)  NotifyRouteChange2      Not
+Bound
+          [CE ]       N/A  529 (0x0211)  if_nametoindex          Not
+Bound
+
+If you're really interested, I can send you the output, but from what
+Uwe says, I'm wondering if this is a lost cause!
+
+Best wishes,
+
+David.
+
+
+--
+David Sterratt, Lecturer https://www.ed.ac.uk/profile/sterratt
+Institute for Adaptive and Neural Computation     tel: +44 131 651 1739
+School of Informatics, University of Edinburgh
+Appleton Tower, 11 Crichton Street, Edinburgh EH8 9LE, Scotland
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+BOOK: Principles of Computational Modelling in Neuroscience
+Sterratt, Graham, Gillies & Willshaw (CUP, 2011).
+http://www.compneuroprinciples.org
+
+
+
+The University of Edinburgh is a charitable body, registered in Scotland, with registration number SC005336. Is e buidheann carthannais a th? ann an Oilthigh Dh?n ?ideann, cl?raichte an Alba, ?ireamh cl?raidh SC005336.
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Sun Feb 12 23:12:24 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Sun, 12 Feb 2023 23:12:24 +0100
+Subject: [R-pkg-devel] Unable to load Windows NETIO.SYS and WINSPOOL.DRV
+ DLLs
+In-Reply-To: <3a55d6a809ca09b8f8ab4ed8d908a94290f2ca7d.camel@ed.ac.uk>
+References: <eb7d1d333a2797d098418d092f19bd4f3542ce51.camel@ed.ac.uk>
+ <20230211181118.18be1599@Tarkus>
+ <3a55d6a809ca09b8f8ab4ed8d908a94290f2ca7d.camel@ed.ac.uk>
+Message-ID: <4d477334-5ef5-5bfc-b85d-8f08d5961718@statistik.tu-dortmund.de>
+
+If you need some details, perhaps simply ask Michael Lawrence.
+He certainly knows better than most readers what the issues are, or at 
+least were when RGtk2 got archived.
+
+Best,
+Uwe Ligges
+
+On 12.02.2023 17:37, David Sterratt wrote:
+> On Sat, 2023-02-11 at 18:11 +0300, Ivan Krylov wrote:
+>> On Sat, 11 Feb 2023 11:19:42 +0000
+>> David Sterratt <David.C.Sterratt at ed.ac.uk> wrote:
+>>
+>>> WinDbg output reveals errors loading "NETIO.SYS" and "WINSPOOL.DRV"
+>>> when running "library(RGtk2)":
+>>>
+>>>     0c64:0640 @ 44312812 - LdrpProcessWork - ERROR: Unable to load
+>>> DLL:
+>>> "NETIO.SYS", Parent Module: "C:\Users\David
+>>> Sterratt\AppData\Local\R\win-library\4.3\RGtk2\libs\x64\RGtk2.dll",
+>>> Status: 0xc0000135
+>>>     ...
+>>>     0c64:1e5c @ 44312812 - LdrpProcessWork - ERROR: Unable to load
+>>> DLL:
+>>> "WINSPOOL.DRV", Parent Module: "C:\Users\David
+>>> Sterratt\AppData\Local\R\win-library\4.3\RGtk2\libs\x64\RGtk2.dll",
+>>> Status: 0xc0000135
+>>
+>> The failure to load WINSPOOL.DRV is perplexing (it should normally be
+>> possible to load as it's a system DLL that applications are supposed
+>> to
+>> link against in order to be able to print), but NETIO.SYS should
+>> probably be absent from the import list. At least it seems to be
+>> linked
+>> against some kernel-related stuff that shouldn't be reachable from
+>> userspace applications.
+>>
+>> By removing -lnetio from PKG_LIBS, I was able to load the package and
+>> run some example code from the JSS article, but then Rgui.exe crashed
+>> on exit. I'm running R-4.2.2 and Rtools43 on a Windows 7 machine,
+>> which
+>> could also be a source of the difference.
+> 
+> Thank you for looking at this. I tried removing -lnetio, but package
+> didn't install at all on Windows 10.
+> 
+>> Does the Dependency Walker <https://dependencywalker.com/> provide
+>> you
+>> any useful information about the package DLL besides what you already
+>> know? (Some warnings deep in the dependency tree are to be expected.
+>> R.DLL is not on the PATH so won't be automatically found, but other
+>> dependencies should exist.)
+> 
+> I looked at the Dependency Walker, but it was giving me many messages
+> about missing DLLs with names like:
+> 
+>    API-MS-WIN-CORE-STRING-L2-1-0.DLL  Error opening file. The system
+> cannot find the file specified (2).
+> 
+> These libraries seem to be part of the UCRT system. However, when
+> looked at the DLL of a package that *did* load in Dependency Walker, I
+> got the same messages, so I think the path to the UCRT files may be
+> missing.
+> 
+> Dependency Walker did seem to find:
+> 
+>    c:\windows\system32\WINSPOOL.DRV
+> 
+> For NETIO.SYS it gave the " Error opening file. The system cannot find
+> the file specified (2)." There was also this table in the output.
+> 
+>       [ ? ] NETIO.SYS
+> 
+>            Import  Ordinal  Hint          Function                Entry
+> Point
+>            ------  -------  ------------  ----------------------  ------
+> -----
+>            [CE ]       N/A    4 (0x0004)  CancelMibChangeNotify2  Not
+> Bound
+>            [CE ]       N/A   79 (0x004F)  GetIpForwardTable2      Not
+> Bound
+>            [CE ]       N/A  364 (0x016C)  NotifyRouteChange2      Not
+> Bound
+>            [CE ]       N/A  529 (0x0211)  if_nametoindex          Not
+> Bound
+> 
+> If you're really interested, I can send you the output, but from what
+> Uwe says, I'm wondering if this is a lost cause!
+> 
+> Best wishes,
+> 
+> David.
+> 
+> 
+> --
+> David Sterratt, Lecturer https://www.ed.ac.uk/profile/sterratt
+> Institute for Adaptive and Neural Computation     tel: +44 131 651 1739
+> School of Informatics, University of Edinburgh
+> Appleton Tower, 11 Crichton Street, Edinburgh EH8 9LE, Scotland
+> * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+> BOOK: Principles of Computational Modelling in Neuroscience
+> Sterratt, Graham, Gillies & Willshaw (CUP, 2011).
+> http://www.compneuroprinciples.org
+> 
+> 
+> 
+> The University of Edinburgh is a charitable body, registered in Scotland, with registration number SC005336. Is e buidheann carthannais a th? ann an Oilthigh Dh?n ?ideann, cl?raichte an Alba, ?ireamh cl?raidh SC005336.
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
