@@ -10316,3 +10316,142 @@ On 12.02.2023 17:37, David Sterratt wrote:
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Mon Feb 13 19:08:38 2023
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Mon, 13 Feb 2023 19:08:38 +0100
+Subject: [R-pkg-devel] Unable to load Windows NETIO.SYS and WINSPOOL.DRV
+ DLLs
+In-Reply-To: <3a55d6a809ca09b8f8ab4ed8d908a94290f2ca7d.camel@ed.ac.uk>
+References: <eb7d1d333a2797d098418d092f19bd4f3542ce51.camel@ed.ac.uk>
+ <20230211181118.18be1599@Tarkus>
+ <3a55d6a809ca09b8f8ab4ed8d908a94290f2ca7d.camel@ed.ac.uk>
+Message-ID: <583889be-a48d-8ef1-44f2-77a41211282b@gmail.com>
+
+
+On 2/12/23 17:37, David Sterratt wrote:
+> On Sat, 2023-02-11 at 18:11 +0300, Ivan Krylov wrote:
+>> On Sat, 11 Feb 2023 11:19:42 +0000
+>> David Sterratt <David.C.Sterratt at ed.ac.uk> wrote:
+>>
+>>> WinDbg output reveals errors loading "NETIO.SYS" and "WINSPOOL.DRV"
+>>> when running "library(RGtk2)":
+>>>
+>>>     0c64:0640 @ 44312812 - LdrpProcessWork - ERROR: Unable to load
+>>> DLL:
+>>> "NETIO.SYS", Parent Module: "C:\Users\David
+>>> Sterratt\AppData\Local\R\win-library\4.3\RGtk2\libs\x64\RGtk2.dll",
+>>> Status: 0xc0000135
+>>>     ...
+>>>     0c64:1e5c @ 44312812 - LdrpProcessWork - ERROR: Unable to load
+>>> DLL:
+>>> "WINSPOOL.DRV", Parent Module: "C:\Users\David
+>>> Sterratt\AppData\Local\R\win-library\4.3\RGtk2\libs\x64\RGtk2.dll",
+>>> Status: 0xc0000135
+>> The failure to load WINSPOOL.DRV is perplexing (it should normally be
+>> possible to load as it's a system DLL that applications are supposed
+>> to
+>> link against in order to be able to print), but NETIO.SYS should
+>> probably be absent from the import list. At least it seems to be
+>> linked
+>> against some kernel-related stuff that shouldn't be reachable from
+>> userspace applications.
+>>
+>> By removing -lnetio from PKG_LIBS, I was able to load the package and
+>> run some example code from the JSS article, but then Rgui.exe crashed
+>> on exit. I'm running R-4.2.2 and Rtools43 on a Windows 7 machine,
+>> which
+>> could also be a source of the difference.
+> Thank you for looking at this. I tried removing -lnetio, but package
+> didn't install at all on Windows 10.
+
+For reference, there is an old patch for RGtk2 package that I had 
+created when working on Rtools42, though I am not very optimistic it 
+will help in this case:
+
+https://svn.r-project.org/R-dev-web/trunk/WindowsBuilds/winutf8/ucrt3/r_packages/old_patches/CRAN/RGtk2.diff
+
+I've added gtk2 libraries to Rtools42 as they were needed by a CRAN 
+package (RGtk2) at that time and available in MXE. Now MXE has gtk3, but 
+not gtk4.
+
+If there is a need for gtk4 in a CRAN package, the best way forward 
+would be to contribute gtk4 build configuration to MXE, ideally also 
+after testing it builds as part of Rtools43 (which is a subset of MXE 
+but with some updates not yet upstream). We could then replace gtk2 by 
+gtk4 in Rtools. CRAN servers will then get gtk4 simply via updating Rtools.
+
+This is only what would be needed for Windows. For macOS, gtk4 would 
+have to be added to the recipes. For Linux, the package should work with 
+gtk4 distributions available in main distributions.
+
+If you wanted to use gtk from a package, perhaps it would be easier to 
+try directly, not via the archived RGtk2 package.
+
+Best
+Tomas
+>
+>> Does the Dependency Walker <https://dependencywalker.com/> provide
+>> you
+>> any useful information about the package DLL besides what you already
+>> know? (Some warnings deep in the dependency tree are to be expected.
+>> R.DLL is not on the PATH so won't be automatically found, but other
+>> dependencies should exist.)
+> I looked at the Dependency Walker, but it was giving me many messages
+> about missing DLLs with names like:
+>
+>    API-MS-WIN-CORE-STRING-L2-1-0.DLL  Error opening file. The system
+> cannot find the file specified (2).
+>
+> These libraries seem to be part of the UCRT system. However, when
+> looked at the DLL of a package that *did* load in Dependency Walker, I
+> got the same messages, so I think the path to the UCRT files may be
+> missing.
+>
+> Dependency Walker did seem to find:
+>
+>    c:\windows\system32\WINSPOOL.DRV
+>
+> For NETIO.SYS it gave the " Error opening file. The system cannot find
+> the file specified (2)." There was also this table in the output.
+>
+>       [ ? ] NETIO.SYS
+>
+>            Import  Ordinal  Hint          Function                Entry
+> Point
+>            ------  -------  ------------  ----------------------  ------
+> -----
+>            [CE ]       N/A    4 (0x0004)  CancelMibChangeNotify2  Not
+> Bound
+>            [CE ]       N/A   79 (0x004F)  GetIpForwardTable2      Not
+> Bound
+>            [CE ]       N/A  364 (0x016C)  NotifyRouteChange2      Not
+> Bound
+>            [CE ]       N/A  529 (0x0211)  if_nametoindex          Not
+> Bound
+>
+> If you're really interested, I can send you the output, but from what
+> Uwe says, I'm wondering if this is a lost cause!
+>
+> Best wishes,
+>
+> David.
+>
+>
+> --
+> David Sterratt, Lecturer https://www.ed.ac.uk/profile/sterratt
+> Institute for Adaptive and Neural Computation     tel: +44 131 651 1739
+> School of Informatics, University of Edinburgh
+> Appleton Tower, 11 Crichton Street, Edinburgh EH8 9LE, Scotland
+> * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+> BOOK: Principles of Computational Modelling in Neuroscience
+> Sterratt, Graham, Gillies & Willshaw (CUP, 2011).
+> http://www.compneuroprinciples.org
+>
+>
+>
+> The University of Edinburgh is a charitable body, registered in Scotland, with registration number SC005336. Is e buidheann carthannais a th? ann an Oilthigh Dh?n ?ideann, cl?raichte an Alba, ?ireamh cl?raidh SC005336.
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
