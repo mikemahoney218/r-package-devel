@@ -10455,3 +10455,129 @@ Tomas
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From D@v|d@C@Sterr@tt @end|ng |rom ed@@c@uk  Tue Feb 14 13:26:35 2023
+From: D@v|d@C@Sterr@tt @end|ng |rom ed@@c@uk (David Sterratt)
+Date: Tue, 14 Feb 2023 12:26:35 +0000
+Subject: [R-pkg-devel] Unable to load Windows NETIO.SYS and WINSPOOL.DRV
+ DLLs
+In-Reply-To: <583889be-a48d-8ef1-44f2-77a41211282b@gmail.com>
+References: <eb7d1d333a2797d098418d092f19bd4f3542ce51.camel@ed.ac.uk>
+ <20230211181118.18be1599@Tarkus>
+ <3a55d6a809ca09b8f8ab4ed8d908a94290f2ca7d.camel@ed.ac.uk>
+ <583889be-a48d-8ef1-44f2-77a41211282b@gmail.com>
+Message-ID: <f7204d7a1b30452eb095fb029799210fe03047e0.camel@ed.ac.uk>
+
+On Mon, 2023-02-13 at 19:08 +0100, Tomas Kalibera wrote:
+> For reference, there is an old patch for RGtk2 package that I had
+> created when working on Rtools42, though I am not very optimistic it
+> will help in this case:
+>
+> https://svn.r-project.org/R-dev-web/trunk/WindowsBuilds/winutf8/ucrt3/r_packages/old_patches/CRAN/RGtk2.diff
+
+Many thanks. I've not tried this patch yet, but it looks like it's not
+made the development version of RGtk2, which is what I had been working
+with. I will try out the archived RGtk2_2.20.36.3.tar.gz
+
+> I've added gtk2 libraries to Rtools42 as they were needed by a CRAN
+> package (RGtk2) at that time and available in MXE. Now MXE has gtk3,
+> but
+> not gtk4.
+>
+> If there is a need for gtk4 in a CRAN package, the best way forward
+> would be to contribute gtk4 build configuration to MXE, ideally also
+> after testing it builds as part of Rtools43 (which is a subset of MXE
+> but with some updates not yet upstream). We could then replace gtk2
+> by
+> gtk4 in Rtools. CRAN servers will then get gtk4 simply via updating
+> Rtools.
+>
+> This is only what would be needed for Windows. For macOS, gtk4 would
+> have to be added to the recipes. For Linux, the package should work
+> with
+> gtk4 distributions available in main distributions.
+
+This is helpful to know, as it suggests that if RGtk2 could be updated
+to work with Gtk4, installed into MXE, and if the Mac recipies could be
+updated, the changes RTools might be accepted, and then RGtk2 (perhaps
+renamed RGtk4) might be uploadable to CRAN.
+
+From this message, and Uwe's it's clear that the long-term future of
+RGtk2 depends on an update to Gtk4, and I've asked the maintainer about
+what the prospects of that might be:
+https://github.com/lawremi/RGtk2/issues/12
+
+Best wishes,
+
+David
+The University of Edinburgh is a charitable body, registered in Scotland, with registration number SC005336. Is e buidheann carthannais a th? ann an Oilthigh Dh?n ?ideann, cl?raichte an Alba, ?ireamh cl?raidh SC005336.
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Tue Feb 14 16:08:53 2023
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Tue, 14 Feb 2023 16:08:53 +0100
+Subject: [R-pkg-devel] Unable to load Windows NETIO.SYS and WINSPOOL.DRV
+ DLLs
+In-Reply-To: <f7204d7a1b30452eb095fb029799210fe03047e0.camel@ed.ac.uk>
+References: <eb7d1d333a2797d098418d092f19bd4f3542ce51.camel@ed.ac.uk>
+ <20230211181118.18be1599@Tarkus>
+ <3a55d6a809ca09b8f8ab4ed8d908a94290f2ca7d.camel@ed.ac.uk>
+ <583889be-a48d-8ef1-44f2-77a41211282b@gmail.com>
+ <f7204d7a1b30452eb095fb029799210fe03047e0.camel@ed.ac.uk>
+Message-ID: <b0c46d28-9f19-4de9-0ad9-57be18ef8a7d@gmail.com>
+
+On 2/14/23 13:26, David Sterratt wrote:
+> On Mon, 2023-02-13 at 19:08 +0100, Tomas Kalibera wrote:
+>> For reference, there is an old patch for RGtk2 package that I had
+>> created when working on Rtools42, though I am not very optimistic it
+>> will help in this case:
+>>
+>> https://svn.r-project.org/R-dev-web/trunk/WindowsBuilds/winutf8/ucrt3/r_packages/old_patches/CRAN/RGtk2.diff
+> Many thanks. I've not tried this patch yet, but it looks like it's not
+> made the development version of RGtk2, which is what I had been working
+> with. I will try out the archived RGtk2_2.20.36.3.tar.gz
+
+Yes, it was for the CRAN version (when it was still on CRAN). It is very 
+likely you would have to manually update the list of libraries to link 
+in this complicated case, after what you get from the script. As it was 
+well illustrated also by Ivan's findings.
+
+>> I've added gtk2 libraries to Rtools42 as they were needed by a CRAN
+>> package (RGtk2) at that time and available in MXE. Now MXE has gtk3,
+>> but
+>> not gtk4.
+>>
+>> If there is a need for gtk4 in a CRAN package, the best way forward
+>> would be to contribute gtk4 build configuration to MXE, ideally also
+>> after testing it builds as part of Rtools43 (which is a subset of MXE
+>> but with some updates not yet upstream). We could then replace gtk2
+>> by
+>> gtk4 in Rtools. CRAN servers will then get gtk4 simply via updating
+>> Rtools.
+>>
+>> This is only what would be needed for Windows. For macOS, gtk4 would
+>> have to be added to the recipes. For Linux, the package should work
+>> with
+>> gtk4 distributions available in main distributions.
+> This is helpful to know, as it suggests that if RGtk2 could be updated
+> to work with Gtk4, installed into MXE, and if the Mac recipies could be
+> updated, the changes RTools might be accepted, and then RGtk2 (perhaps
+> renamed RGtk4) might be uploadable to CRAN.
+>
+>  From this message, and Uwe's it's clear that the long-term future of
+> RGtk2 depends on an update to Gtk4, and I've asked the maintainer about
+> what the prospects of that might be:
+> https://github.com/lawremi/RGtk2/issues/12
+
+In principle it is easy to add any open-source software with a 
+compatible license, but someone has to volunteer to do the work of 
+adding it to and maintaining it in the software distributions used, and 
+of persuading the maintainers of those distributions to accept it.
+
+Tomas
+
+>
+> Best wishes,
+>
+> David
+> The University of Edinburgh is a charitable body, registered in Scotland, with registration number SC005336. Is e buidheann carthannais a th? ann an Oilthigh Dh?n ?ideann, cl?raichte an Alba, ?ireamh cl?raidh SC005336.
+
+
