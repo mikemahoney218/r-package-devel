@@ -12770,3 +12770,346 @@ Andy Teucher
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From biii m@iii@g oii de@@ey@ws  Sun Feb 26 20:36:22 2023
+From: biii m@iii@g oii de@@ey@ws (biii m@iii@g oii de@@ey@ws)
+Date: Sun, 26 Feb 2023 14:36:22 -0500
+Subject: [R-pkg-devel] Sanitize Input Code for a Shiny App
+Message-ID: <013901d94a19$9b8569f0$d2903dd0$@denney.ws>
+
+Hello,
+
+ 
+
+I'm working to develop a Shiny app where I'd like to have an advanced
+capability to accept user input and run the code.  For the code received,
+I'd like to be able to prevent R from doing things other than working within
+the R session.  For example, I want to prevent `system("rm -rf /*")`.
+
+ 
+
+One method to achieve this is to run the R session within a Docker container
+and perform the security around the container.  The user could do some
+things within the container, but they would be limited.
+
+ 
+
+What I'd like to be able to do is to sanitize the inputs to ensure that it
+won't to things including installing packages, running system commands,
+reading and writing to the filesystem, and accessing the network.  I'd like
+to allow the user to do almost anything they want within R, so making a list
+of acceptable commands is not accomplishing the goal.  I could try to do
+something like:
+
+ 
+
+*	have acceptable packages loaded, only,
+*	don't allow loading additional packages,
+*	deny a set of known-bad commands (e.g. system, system2, etc.)
+*	deny any attempt to run from additional packages (exclude calls with
+a double-colon or triple-colon)
+
+ 
+
+The method I just described seems like it would not work well because it
+assumes that the known-bad commands is comprehensive and that I'm being
+creative enough in ways that users could try to break things.
+
+ 
+
+Is there a good way to sanitize arbitrary code from users to prevent
+malicious behavior?
+
+
+Thanks,
+
+ 
+
+Bill
+
+
+	[[alternative HTML version deleted]]
+
+
+From m@tth|@@-gond@n @end|ng |rom gmx@de  Sun Feb 26 21:16:48 2023
+From: m@tth|@@-gond@n @end|ng |rom gmx@de (Matthias Gondan)
+Date: Sun, 26 Feb 2023 21:16:48 +0100
+Subject: [R-pkg-devel] Sanitize Input Code for a Shiny App
+In-Reply-To: <013901d94a19$9b8569f0$d2903dd0$@denney.ws>
+References: <013901d94a19$9b8569f0$d2903dd0$@denney.ws>
+Message-ID: <1Mj8mb-1otRnJ0KU1-00fDuD@mail.gmx.net>
+
+Hi Bill,
+
+just for the records, the response could also be interesting for learnr developers
+
+https://github.com/rstudio/learnr
+
+Best wishes,
+
+Matthias
+
+
+Von: bill at denney.ws
+Gesendet: Sonntag, 26. Februar 2023 20:36
+An: r-package-devel at r-project.org
+Betreff: [R-pkg-devel] Sanitize Input Code for a Shiny App
+
+Hello,
+
+ 
+
+I'm working to develop a Shiny app where I'd like to have an advanced
+capability to accept user input and run the code.  For the code received,
+I'd like to be able to prevent R from doing things other than working within
+the R session.  For example, I want to prevent `system("rm -rf /*")`.
+
+ 
+
+One method to achieve this is to run the R session within a Docker container
+and perform the security around the container.  The user could do some
+things within the container, but they would be limited.
+
+ 
+
+What I'd like to be able to do is to sanitize the inputs to ensure that it
+won't to things including installing packages, running system commands,
+reading and writing to the filesystem, and accessing the network.  I'd like
+to allow the user to do almost anything they want within R, so making a list
+of acceptable commands is not accomplishing the goal.  I could try to do
+something like:
+
+ 
+
+*	have acceptable packages loaded, only,
+*	don't allow loading additional packages,
+*	deny a set of known-bad commands (e.g. system, system2, etc.)
+*	deny any attempt to run from additional packages (exclude calls with
+a double-colon or triple-colon)
+
+ 
+
+The method I just described seems like it would not work well because it
+assumes that the known-bad commands is comprehensive and that I'm being
+creative enough in ways that users could try to break things.
+
+ 
+
+Is there a good way to sanitize arbitrary code from users to prevent
+malicious behavior?
+
+
+Thanks,
+
+ 
+
+Bill
+
+
+	[[alternative HTML version deleted]]
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sun Feb 26 22:42:35 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Mon, 27 Feb 2023 00:42:35 +0300
+Subject: [R-pkg-devel] Sanitize Input Code for a Shiny App
+In-Reply-To: <013901d94a19$9b8569f0$d2903dd0$@denney.ws>
+References: <013901d94a19$9b8569f0$d2903dd0$@denney.ws>
+Message-ID: <20230227004235.6225df01@Tarkus>
+
+On Sun, 26 Feb 2023 14:36:22 -0500
+<bill at denney.ws> wrote:
+
+> What I'd like to be able to do is to sanitize the inputs to ensure
+> that it won't to things including installing packages, running system
+> commands, reading and writing to the filesystem, and accessing the
+> network.  I'd like to allow the user to do almost anything they want
+> within R, so making a list of acceptable commands is not
+> accomplishing the goal.  
+
+How untrusted will the user be?
+
+You will most likely have to forbid Rcpp and any similar packages (and
+likely anything that depends on them), because running arbitrary C++
+will definitely include system commands, filesystem I/O and sockets.
+
+To think of it, you will also have to forbid dyn.load(): otherwise it's
+relatively easy to compile a ELF shared object that would load on any
+64-bit Linux and provide an entry point that performs a system call of
+the user's choice.
+
+While the base R packages set R_forceSymbols(dll, TRUE) on their
+.C/.Call/.Fortran/.External routines, making them unavailable to a bare
+.Call("symbol_name", whatever_arguments, ...), some of the packages
+deemed acceptable might provide C symbols without disabling the dynamic
+lookup, and those C symbols may be convinced to run user-supplied code
+either by mistake of the programmer (user supplies data, programmer
+misses a buffer overrun or a use-after-free, suddenly data gets
+executed as code; normally not considered a security issue because "the
+user is already on the inner side of the airtight hatchway and could
+have run system()") or even by design (the C programmer relied on the
+R code to provide safety features). CRAN checks with Valgrind and
+address-/undefined behaviour sanitizers help a lot against this kind of
+C bugs, but they aren't 100% effective. Either way, top-level .C and
+friends must be forbidden too. (Forbidding them anywhere in the call
+chain will break almost all of R, even lm() and read.table().)
+
+A CRAN package deemed acceptable may still have system() shell
+injections in it and other ways to convince it to run user code.
+
+The triple-colon protection can probably be bypassed in lots of clever
+ways, starting with a perfectly normal R function `get()` combined with
+a package function that has the private symbols visible to it. Similar
+techniques may bypass the top-level .C/dyn.load()/system() restrictions.
+
+Will the user be allowed to upload data? I think that R's serialization
+engine is not designed to handle untrusted data. It has known stack
+overflows [*], so a dedicated attacker is likely to be able to find a
+code execution pathway from unserialize().
+
+R code is also data, so a "forbidden" function or call could be
+smuggled as data, parsed/deserialized and then evaluated. There are
+standard classes in at least one of the base packages that use a lot of
+closures, so a print() call on a doctored object can already be running
+user-supplied code. You may forbid parse(), but some well-meaning code
+inside R or a CRAN package may be convinced to run as.formula() on a
+string, which may be enough for an attacker.
+
+Some simple restrictions may be implemented by recursively walking the
+return value of parse(user_input), but that ignores the possibility of
+attacks on the parser itself. More significant restrictions may require
+you to patch R and somehow determine at the point of an unsafe
+(socket() / dlopen() / system() / ...) call whether it's
+user-controlled or required for R to function normally (or both?).
+
+I think it's a better idea to put the user-controlled process in a
+virtual machine or a container or use a sandbox such as firejail or
+bubblewrap. Make R run as an unprivileged user (this matters much less
+once inside a sandbox, but let's not help the attacker skip privilege
+escalation exploits before they try sandbox breakout exploits). Put
+some firewall rules into place. Some attackers will doubtlessly try to
+run a cryptocurrency miner without destroying the system/sending
+spam/breaching your data, so make sure to limit CPU time, the size of
+the temporary storage you're giving to the process and the amount of
+RAM it can allocate.
+
+In a game of walls and ladders, nothing will give you perfect
+protection from attackers breaking out of such a sandbox (have I
+mentioned the Spectre-class attack on the branch predictor in most
+modern CPUs that makes it (very very hard but) possible to read from
+address space not belonging to your process? The rowhammer attack on
+non-ECC DRAM that (probabilistically) overwrites memory that is not
+yours?), but in this case, the operating system is in a much better
+position to restrict the user than R itself. Some languages (like Lua)
+have such a tiny standard library that putting them in a sandbox is a
+simple exercise, though both parser and bytecode execution
+vulnerabilities (which might lead to code execution) still surface from
+time to time. (SQLite went through a lot of fuzz-testing before its
+authors could say that both its SQL parser and its database file parser
+were safe against attacker-supplied input.) R (and the packages you
+might want to run) just weren't designed with the idea of being a
+security boundary on the user input side.
+
+The JavaScript engines running in our browsers (well, the 2.5 browser
+engines that are left) try to provide both the sandbox and the
+performance to go with it, at the cost of a never-ending stream of
+client-side vulnerabilities that have to be frequently patched. The
+Python project now has Pyodide <https://pyodide.org/en/stable/>, an
+interpreter that runs in the client's browser instead of your server,
+which shifts the costs and the liabilities of user-supplied code on the
+user. Maybe it's time to try to compile R for the browser?
+
+-- 
+Best regards,
+Ivan
+
+[*] https://bugs.r-project.org/show_bug.cgi?id=16034
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Sun Feb 26 22:57:10 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Mon, 27 Feb 2023 10:57:10 +1300
+Subject: [R-pkg-devel] Sanitize Input Code for a Shiny App
+In-Reply-To: <013901d94a19$9b8569f0$d2903dd0$@denney.ws>
+References: <013901d94a19$9b8569f0$d2903dd0$@denney.ws>
+Message-ID: <D65C46C3-A4B7-4358-A8EC-CD5DBA3B7028@R-project.org>
+
+Bill,
+
+the short answer is you can't limit anything at R level. Any attempts to create a list of "bad" commands are trivial to circumvent since you can compute on the language in R, so you can construct and call functions with trivial operations. Similarly, since R allows the loading of binary code the same applies for arbitrary code. So if you give users access to R, you should assume that is equivalent to allowing arbitrary code execution. Therefore all you can do is limit the resources and reach - as you pointed out using a container is a good idea so each session is only limited to a single container that goes away when the session ends. Similarly you can restrict main parts of R and the system to be read-only in the container.
+
+In practice, that's why real analytic systems are about provenance rather than prevention. For example, in RCloud all code is first committed to a git repository outside of the container before it can be executed, so malicious users can do whatever they want, but they cannot hide the malicious code they used as the container cannot manipulate the history.
+
+As for package installation - again, it's impossible to prevent it in general unless you make everything read-only which also prevents the users from doing meaningful work. So the real question what do you want to allow the user to do - why would you need to allow literal R code evaluation? The other alternative is to simply limit the interaction not allowing the user to submit arbitrary code, only tweak parameters or use GUI to select particular choices. Obviously, that is a lot easier to secure.
+
+Cheers,
+Simon
+
+
+> On 27/02/2023, at 8:36 AM, bill at denney.ws wrote:
+> 
+> Hello,
+> 
+> 
+> 
+> I'm working to develop a Shiny app where I'd like to have an advanced
+> capability to accept user input and run the code.  For the code received,
+> I'd like to be able to prevent R from doing things other than working within
+> the R session.  For example, I want to prevent `system("rm -rf /*")`.
+> 
+> 
+> 
+> One method to achieve this is to run the R session within a Docker container
+> and perform the security around the container.  The user could do some
+> things within the container, but they would be limited.
+> 
+> 
+> 
+> What I'd like to be able to do is to sanitize the inputs to ensure that it
+> won't to things including installing packages, running system commands,
+> reading and writing to the filesystem, and accessing the network.  I'd like
+> to allow the user to do almost anything they want within R, so making a list
+> of acceptable commands is not accomplishing the goal.  I could try to do
+> something like:
+> 
+> 
+> 
+> *	have acceptable packages loaded, only,
+> *	don't allow loading additional packages,
+> *	deny a set of known-bad commands (e.g. system, system2, etc.)
+> *	deny any attempt to run from additional packages (exclude calls with
+> a double-colon or triple-colon)
+> 
+> 
+> 
+> The method I just described seems like it would not work well because it
+> assumes that the known-bad commands is comprehensive and that I'm being
+> creative enough in ways that users could try to break things.
+> 
+> 
+> 
+> Is there a good way to sanitize arbitrary code from users to prevent
+> malicious behavior?
+> 
+> 
+> Thanks,
+> 
+> 
+> 
+> Bill
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
