@@ -13428,3 +13428,236 @@ Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Tue Feb 28 09:34:43 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Tue, 28 Feb 2023 09:34:43 +0100
+Subject: [R-pkg-devel] 
+ CRAN-pretest install error on r-devel-windows-x86_64
+In-Reply-To: <CB3AB810-31DA-48BE-A600-027D4113010F@gs.ncku.edu.tw>
+References: <CB3AB810-31DA-48BE-A600-027D4113010F@gs.ncku.edu.tw>
+Message-ID: <2c2955dd-18f1-b87f-6255-a14ef9536f79@statistik.tu-dortmund.de>
+
+Can you try again?
+
+Best,
+Uwe Ligges
+
+
+On 23.02.2023 08:20, ??? AALA WILSON JR S98107020 wrote:
+> Hi everyone,
+> 
+> I am trying to submit a new package in CRAN. The results from devtools::check() returned with no errors, warnings, nor notes. Upon submitting the package tarball, i received the following error on the r-devel-windows-x86_64 version:
+> 
+> Flavor: r-devel-windows-x86_64
+> Check: whether package can be installed, Result: ERROR
+>   Installation failed.
+>   See 'd:/RCompile/CRANincoming/R-devel/qPCRhelper.Rcheck/00install.out' for details.
+> 
+> Following the install log:
+> 
+> * installing *source* package 'qPCRhelper' ...
+> ** using staged installation
+> Warning in as.POSIXlt.POSIXct(x, tz) : unknown timezone 'Europe/Berlin'
+> Warning in as.POSIXlt.POSIXct(x, tz) : unknown timezone 'GMT'
+> Warning in as.POSIXlt.POSIXct(x, tz) :
+>    unknown timezone 'America/New_York'
+> Warning in as.POSIXlt.POSIXct(x, tz) : unknown timezone 'GMT'
+> Warning in as.POSIXlt.POSIXct(x, tz) :
+>    unknown timezone 'America/New_York'
+> ** R
+> ** inst
+> ** byte-compile and prepare package for lazy loading
+> Error in if (file.size(codeFile) == file.size(loaderFile)) warning("package seems to be using lazy loading already") else { :
+>    missing value where TRUE/FALSE needed
+> Calls: <Anonymous>
+> Execution halted
+> ERROR: lazy loading failed for package 'qPCRhelper'
+> * removing 'd:/RCompile/CRANincoming/R-devel/lib/qPCRhelper'
+> * restoring previous 'd:/RCompile/CRANincoming/R-devel/lib/qPCRhelper?
+> 
+> I have submitted this package quite a few times prior and this did not show up.
+> 
+> This is the entire result from the CRAN-pretest:
+> Flavor: r-devel-windows-x86_64
+> Check: CRAN incoming feasibility, Result: NOTE
+>   Maintainer: 'Wilson Jr. Aala <s98107020 at gs.ncku.edu.tw <mailto:s98107020 at gs.ncku.edu.tw>>'
+> 
+>   New submission
+> 
+>   Possibly misspelled words in DESCRIPTION:
+>     Livak (11:5)
+>     Schmittgen (11:13)
+>     polymerase (7:95)
+>     qPCR (3:8, 8:21)
+> 
+>   Reading Rd files failed with
+>     cannot open the connection
+> 
+> Flavor: r-devel-windows-x86_64
+> Check: whether package can be installed, Result: ERROR
+>   Installation failed.
+>   See 'd:/RCompile/CRANincoming/R-devel/qPCRhelper.Rcheck/00install.out' for details.
+> 
+> Flavor: r-devel-linux-x86_64-debian-gcc
+> Check: CRAN incoming feasibility, Result: NOTE
+>   Maintainer: 'Wilson Jr. Aala <s98107020 at gs.ncku.edu.tw <mailto:s98107020 at gs.ncku.edu.tw>>'
+> 
+>   New submission
+> 
+>   Possibly misspelled words in DESCRIPTION:
+>     Livak (11:5)
+>     Schmittgen (11:13)
+>     polymerase (7:95)
+>     qPCR (3:8, 8:21)
+> 
+> How can i resolve this issue?
+> 
+> Respectfully,
+> 
+> Wilson F. Aala, Jr.
+> Ph.D. Student
+> Institute of Clinical Medicine
+> National Cheng Kung University
+> ????????????????
+> ## Google Scholar <https://scholar.google.com.ph/citations?user=m0Ks560AAAAJ&hl=en>
+> ## Publons <https://publons.com/researcher/1910770/wilson-jr-florendo-aala/>
+> ## ORCID <https://orcid.org/0000-0003-4557-1109>
+>   <https://orcid.org/0000-0003-4557-1109>
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From b||| @end|ng |rom denney@w@  Wed Mar  1 01:52:53 2023
+From: b||| @end|ng |rom denney@w@ (Bill Denney)
+Date: Tue, 28 Feb 2023 19:52:53 -0500
+Subject: [R-pkg-devel] Sanitize Input Code for a Shiny App
+In-Reply-To: <D65C46C3-A4B7-4358-A8EC-CD5DBA3B7028@R-project.org>
+References: <013901d94a19$9b8569f0$d2903dd0$@denney.ws>
+ <D65C46C3-A4B7-4358-A8EC-CD5DBA3B7028@R-project.org>
+Message-ID: <CADxuEGqNjs0ha4c=X8m2RW_uL5edAOgh4tQfgYACf+vR+EA8NQ@mail.gmail.com>
+
+Hi Simon and Ivan,
+
+Thanks for confirming my suspicions.  The most common case for our code
+would be generally trusted users within an organization.  So, the main
+threat is lower.  But, there may be scenarios that also allow use outside
+organizations.
+
+I think that in the end, we will likely do some minimal sanitization of the
+input, but then we will also ensure that we do anything in a container with
+limits applied from the outside, too.
+
+Thanks,
+
+Bill
+
+On Sun, Feb 26, 2023, 4:57 PM Simon Urbanek <simon.urbanek at r-project.org>
+wrote:
+
+> Bill,
+>
+> the short answer is you can't limit anything at R level. Any attempts to
+> create a list of "bad" commands are trivial to circumvent since you can
+> compute on the language in R, so you can construct and call functions with
+> trivial operations. Similarly, since R allows the loading of binary code
+> the same applies for arbitrary code. So if you give users access to R, you
+> should assume that is equivalent to allowing arbitrary code execution.
+> Therefore all you can do is limit the resources and reach - as you pointed
+> out using a container is a good idea so each session is only limited to a
+> single container that goes away when the session ends. Similarly you can
+> restrict main parts of R and the system to be read-only in the container.
+>
+> In practice, that's why real analytic systems are about provenance rather
+> than prevention. For example, in RCloud all code is first committed to a
+> git repository outside of the container before it can be executed, so
+> malicious users can do whatever they want, but they cannot hide the
+> malicious code they used as the container cannot manipulate the history.
+>
+> As for package installation - again, it's impossible to prevent it in
+> general unless you make everything read-only which also prevents the users
+> from doing meaningful work. So the real question what do you want to allow
+> the user to do - why would you need to allow literal R code evaluation? The
+> other alternative is to simply limit the interaction not allowing the user
+> to submit arbitrary code, only tweak parameters or use GUI to select
+> particular choices. Obviously, that is a lot easier to secure.
+>
+> Cheers,
+> Simon
+>
+>
+> > On 27/02/2023, at 8:36 AM, bill at denney.ws wrote:
+> >
+> > Hello,
+> >
+> >
+> >
+> > I'm working to develop a Shiny app where I'd like to have an advanced
+> > capability to accept user input and run the code.  For the code received,
+> > I'd like to be able to prevent R from doing things other than working
+> within
+> > the R session.  For example, I want to prevent `system("rm -rf /*")`.
+> >
+> >
+> >
+> > One method to achieve this is to run the R session within a Docker
+> container
+> > and perform the security around the container.  The user could do some
+> > things within the container, but they would be limited.
+> >
+> >
+> >
+> > What I'd like to be able to do is to sanitize the inputs to ensure that
+> it
+> > won't to things including installing packages, running system commands,
+> > reading and writing to the filesystem, and accessing the network.  I'd
+> like
+> > to allow the user to do almost anything they want within R, so making a
+> list
+> > of acceptable commands is not accomplishing the goal.  I could try to do
+> > something like:
+> >
+> >
+> >
+> > *     have acceptable packages loaded, only,
+> > *     don't allow loading additional packages,
+> > *     deny a set of known-bad commands (e.g. system, system2, etc.)
+> > *     deny any attempt to run from additional packages (exclude calls
+> with
+> > a double-colon or triple-colon)
+> >
+> >
+> >
+> > The method I just described seems like it would not work well because it
+> > assumes that the known-bad commands is comprehensive and that I'm being
+> > creative enough in ways that users could try to break things.
+> >
+> >
+> >
+> > Is there a good way to sanitize arbitrary code from users to prevent
+> > malicious behavior?
+> >
+> >
+> > Thanks,
+> >
+> >
+> >
+> > Bill
+> >
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
