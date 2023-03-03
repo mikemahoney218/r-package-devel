@@ -13661,3 +13661,280 @@ wrote:
 	[[alternative HTML version deleted]]
 
 
+From m@tth|@@-gond@n @end|ng |rom gmx@de  Wed Mar  1 07:35:22 2023
+From: m@tth|@@-gond@n @end|ng |rom gmx@de (Matthias Gondan)
+Date: Wed, 1 Mar 2023 07:35:22 +0100
+Subject: [R-pkg-devel] Sanitize Input Code for a Shiny App
+In-Reply-To: <CADxuEGqNjs0ha4c=X8m2RW_uL5edAOgh4tQfgYACf+vR+EA8NQ@mail.gmail.com>
+References: <013901d94a19$9b8569f0$d2903dd0$@denney.ws>
+ <D65C46C3-A4B7-4358-A8EC-CD5DBA3B7028@R-project.org>
+ <CADxuEGqNjs0ha4c=X8m2RW_uL5edAOgh4tQfgYACf+vR+EA8NQ@mail.gmail.com>
+Message-ID: <5EBA5FCF-ACB6-4041-84B9-86C8826C8348@gmx.de>
+
+For the record, here's the documentation of the Prolog sandbox,
+
+https://www.swi-prolog.org/pldoc/doc/_SWI_/library/sandbox.pl
+
+You get an idea of the implementation by clicking at the ":-" icons. It does not seem too complicated, but I might be too optimistic. It would be very nice to have such a thing in R, and I would be willing to help if someone takes the lead.
+
+Best regards,
+
+Matthias
+
+> Am 01.03.2023 um 01:52 schrieb Bill Denney <bill at denney.ws>:
+> 
+> Hi Simon and Ivan,
+> 
+> Thanks for confirming my suspicions.  The most common case for our code
+> would be generally trusted users within an organization.  So, the main
+> threat is lower.  But, there may be scenarios that also allow use outside
+> organizations.
+> 
+> I think that in the end, we will likely do some minimal sanitization of the
+> input, but then we will also ensure that we do anything in a container with
+> limits applied from the outside, too.
+> 
+> Thanks,
+> 
+> Bill
+> 
+> On Sun, Feb 26, 2023, 4:57 PM Simon Urbanek <simon.urbanek at r-project.org>
+> wrote:
+> 
+>> Bill,
+>> 
+>> the short answer is you can't limit anything at R level. Any attempts to
+>> create a list of "bad" commands are trivial to circumvent since you can
+>> compute on the language in R, so you can construct and call functions with
+>> trivial operations. Similarly, since R allows the loading of binary code
+>> the same applies for arbitrary code. So if you give users access to R, you
+>> should assume that is equivalent to allowing arbitrary code execution.
+>> Therefore all you can do is limit the resources and reach - as you pointed
+>> out using a container is a good idea so each session is only limited to a
+>> single container that goes away when the session ends. Similarly you can
+>> restrict main parts of R and the system to be read-only in the container.
+>> 
+>> In practice, that's why real analytic systems are about provenance rather
+>> than prevention. For example, in RCloud all code is first committed to a
+>> git repository outside of the container before it can be executed, so
+>> malicious users can do whatever they want, but they cannot hide the
+>> malicious code they used as the container cannot manipulate the history.
+>> 
+>> As for package installation - again, it's impossible to prevent it in
+>> general unless you make everything read-only which also prevents the users
+>> from doing meaningful work. So the real question what do you want to allow
+
+	[[alternative HTML version deleted]]
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Wed Mar  1 09:01:26 2023
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Wed, 1 Mar 2023 09:01:26 +0100
+Subject: [R-pkg-devel] Sanitize Input Code for a Shiny App
+In-Reply-To: <5EBA5FCF-ACB6-4041-84B9-86C8826C8348@gmx.de>
+References: <013901d94a19$9b8569f0$d2903dd0$@denney.ws>
+ <D65C46C3-A4B7-4358-A8EC-CD5DBA3B7028@R-project.org>
+ <CADxuEGqNjs0ha4c=X8m2RW_uL5edAOgh4tQfgYACf+vR+EA8NQ@mail.gmail.com>
+ <5EBA5FCF-ACB6-4041-84B9-86C8826C8348@gmx.de>
+Message-ID: <f5e8aeb1-a9ad-fdc6-d7fd-10141ba2aabf@gmail.com>
+
+
+On 3/1/23 07:35, Matthias Gondan wrote:
+> For the record, here's the documentation of the Prolog sandbox,
+>
+> https://www.swi-prolog.org/pldoc/doc/_SWI_/library/sandbox.pl
+>
+> You get an idea of the implementation by clicking at the ":-" icons. It does not seem too complicated, but I might be too optimistic. It would be very nice to have such a thing in R, and I would be willing to help if someone takes the lead.
+
+ From my (very quick) look at the page, my understanding is that it is 
+analyzing Prolog code to decide whether it is safe to execute or not. If 
+my reading is correct, please let me reiterate that this would not be a 
+good strategy for R. As Simon already wrote, R is a very dynamic 
+language allowing to change almost anything at runtime. It is not 
+possible to correctly and effectively reason about what an R program 
+could do. Trying to do this would be a waste of effort which might only 
+provide false sense of security. R cannot be made safe for such uses 
+this way. While enough as a show stopper, it is more than that, R 
+doesn't have a specification, any such tools would have to be written 
+against a specific R release. Also, in practice one would probably also 
+want to use some extension packages, which may again do anything (in 
+native code).
+
+With R, I would only think of ensuring security at the machine level, as 
+discussed already - via virtual machines, containers (with care, not all 
+are sandboxes), etc. That would be much safer, much less work, and could 
+re-use existing technologies.
+
+Tomas
+
+
+>
+> Best regards,
+>
+> Matthias
+>
+>> Am 01.03.2023 um 01:52 schrieb Bill Denney <bill at denney.ws>:
+>>
+>> Hi Simon and Ivan,
+>>
+>> Thanks for confirming my suspicions.  The most common case for our code
+>> would be generally trusted users within an organization.  So, the main
+>> threat is lower.  But, there may be scenarios that also allow use outside
+>> organizations.
+>>
+>> I think that in the end, we will likely do some minimal sanitization of the
+>> input, but then we will also ensure that we do anything in a container with
+>> limits applied from the outside, too.
+>>
+>> Thanks,
+>>
+>> Bill
+>>
+>> On Sun, Feb 26, 2023, 4:57 PM Simon Urbanek <simon.urbanek at r-project.org>
+>> wrote:
+>>
+>>> Bill,
+>>>
+>>> the short answer is you can't limit anything at R level. Any attempts to
+>>> create a list of "bad" commands are trivial to circumvent since you can
+>>> compute on the language in R, so you can construct and call functions with
+>>> trivial operations. Similarly, since R allows the loading of binary code
+>>> the same applies for arbitrary code. So if you give users access to R, you
+>>> should assume that is equivalent to allowing arbitrary code execution.
+>>> Therefore all you can do is limit the resources and reach - as you pointed
+>>> out using a container is a good idea so each session is only limited to a
+>>> single container that goes away when the session ends. Similarly you can
+>>> restrict main parts of R and the system to be read-only in the container.
+>>>
+>>> In practice, that's why real analytic systems are about provenance rather
+>>> than prevention. For example, in RCloud all code is first committed to a
+>>> git repository outside of the container before it can be executed, so
+>>> malicious users can do whatever they want, but they cannot hide the
+>>> malicious code they used as the container cannot manipulate the history.
+>>>
+>>> As for package installation - again, it's impossible to prevent it in
+>>> general unless you make everything read-only which also prevents the users
+>>> from doing meaningful work. So the real question what do you want to allow
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From m@tth|@@-gond@n @end|ng |rom gmx@de  Wed Mar  1 09:14:49 2023
+From: m@tth|@@-gond@n @end|ng |rom gmx@de (Matthias Gondan)
+Date: Wed, 1 Mar 2023 09:14:49 +0100
+Subject: [R-pkg-devel] Sanitize Input Code for a Shiny App
+In-Reply-To: <f5e8aeb1-a9ad-fdc6-d7fd-10141ba2aabf@gmail.com>
+References: <013901d94a19$9b8569f0$d2903dd0$@denney.ws>
+ <D65C46C3-A4B7-4358-A8EC-CD5DBA3B7028@R-project.org>
+ <CADxuEGqNjs0ha4c=X8m2RW_uL5edAOgh4tQfgYACf+vR+EA8NQ@mail.gmail.com>
+ <5EBA5FCF-ACB6-4041-84B9-86C8826C8348@gmx.de>
+ <f5e8aeb1-a9ad-fdc6-d7fd-10141ba2aabf@gmail.com>
+Message-ID: <1MCbIn-1pNh5X21D9-009e3q@mail.gmx.net>
+
+Dear Tomas,
+
+thank you, I understand. The thing I was wondering about, and sorry for being persistent: Prolog is basically the same, it is similarly dynamic, and anything can be changed at runtime (well, unsure if I can redefine pi in Prolog ?), and still they run a ?swish? server (swish.swi-prolog.org), based on a list of allowed predicates considered to be safe. Of course, this generalization may a bit superficial, and something similar for R would probably boil down to a rather restricted set of functions (e.g., quite limited support for ?apply? and friends, no packages).
+
+I?ll think about it and I?ll come back if I happen to put together a proof of concept.
+
+Best wishes,
+
+Matthias
+
+
+Von: Tomas Kalibera
+Gesendet: Mittwoch, 1. M?rz 2023 09:01
+An: Matthias Gondan; Bill Denney
+Cc: R Package Devel
+Betreff: Re: [R-pkg-devel] Sanitize Input Code for a Shiny App
+
+
+On 3/1/23 07:35, Matthias Gondan wrote:
+> For the record, here's the documentation of the Prolog sandbox,
+>
+> https://www.swi-prolog.org/pldoc/doc/_SWI_/library/sandbox.pl
+>
+> You get an idea of the implementation by clicking at the ":-" icons. It does not seem too complicated, but I might be too optimistic. It would be very nice to have such a thing in R, and I would be willing to help if someone takes the lead.
+
+ From my (very quick) look at the page, my understanding is that it is 
+analyzing Prolog code to decide whether it is safe to execute or not. If 
+my reading is correct, please let me reiterate that this would not be a 
+good strategy for R. As Simon already wrote, R is a very dynamic 
+language allowing to change almost anything at runtime. It is not 
+possible to correctly and effectively reason about what an R program 
+could do. Trying to do this would be a waste of effort which might only 
+provide false sense of security. R cannot be made safe for such uses 
+this way. While enough as a show stopper, it is more than that, R 
+doesn't have a specification, any such tools would have to be written 
+against a specific R release. Also, in practice one would probably also 
+want to use some extension packages, which may again do anything (in 
+native code).
+
+With R, I would only think of ensuring security at the machine level, as 
+discussed already - via virtual machines, containers (with care, not all 
+are sandboxes), etc. That would be much safer, much less work, and could 
+re-use existing technologies.
+
+Tomas
+
+
+>
+> Best regards,
+>
+> Matthias
+>
+>> Am 01.03.2023 um 01:52 schrieb Bill Denney <bill at denney.ws>:
+>>
+>> Hi Simon and Ivan,
+>>
+>> Thanks for confirming my suspicions.  The most common case for our code
+>> would be generally trusted users within an organization.  So, the main
+>> threat is lower.  But, there may be scenarios that also allow use outside
+>> organizations.
+>>
+>> I think that in the end, we will likely do some minimal sanitization of the
+>> input, but then we will also ensure that we do anything in a container with
+>> limits applied from the outside, too.
+>>
+>> Thanks,
+>>
+>> Bill
+>>
+>> On Sun, Feb 26, 2023, 4:57 PM Simon Urbanek <simon.urbanek at r-project.org>
+>> wrote:
+>>
+>>> Bill,
+>>>
+>>> the short answer is you can't limit anything at R level. Any attempts to
+>>> create a list of "bad" commands are trivial to circumvent since you can
+>>> compute on the language in R, so you can construct and call functions with
+>>> trivial operations. Similarly, since R allows the loading of binary code
+>>> the same applies for arbitrary code. So if you give users access to R, you
+>>> should assume that is equivalent to allowing arbitrary code execution.
+>>> Therefore all you can do is limit the resources and reach - as you pointed
+>>> out using a container is a good idea so each session is only limited to a
+>>> single container that goes away when the session ends. Similarly you can
+>>> restrict main parts of R and the system to be read-only in the container.
+>>>
+>>> In practice, that's why real analytic systems are about provenance rather
+>>> than prevention. For example, in RCloud all code is first committed to a
+>>> git repository outside of the container before it can be executed, so
+>>> malicious users can do whatever they want, but they cannot hide the
+>>> malicious code they used as the container cannot manipulate the history.
+>>>
+>>> As for package installation - again, it's impossible to prevent it in
+>>> general unless you make everything read-only which also prevents the users
+>>> from doing meaningful work. So the real question what do you want to allow
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+	[[alternative HTML version deleted]]
+
+
