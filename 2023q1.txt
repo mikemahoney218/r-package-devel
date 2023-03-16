@@ -14398,3 +14398,303 @@ Uwe Ligges
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From chr|@@br|en @end|ng |rom @de|@|de@edu@@u  Tue Mar 14 14:52:13 2023
+From: chr|@@br|en @end|ng |rom @de|@|de@edu@@u (Chris Brien)
+Date: Tue, 14 Mar 2023 13:52:13 +0000
+Subject: [R-pkg-devel] Checking timings of packages
+Message-ID: <ME4P282MB128776D52896F8A6EE3EA3E6A0BE9@ME4P282MB1287.AUSP282.PROD.OUTLOOK.COM>
+
+Dear list members.
+
+I have run into a problem with examples from my package growthPheno (https://github.com/briencj/growthPheno) that take more than 10 s to execute on two flavours under r-devel. The following is the details.log:
+
+Flavor: r-devel-linux-x86_64-debian-gcc, r-devel-windows-x86_64
+Check: CRAN incoming feasibility, Result: Note_to_CRAN_maintainers
+  Maintainer: 'Chris Brien mailto:chris.brien at adelaide.edu.au'
+
+Flavor: r-devel-windows-x86_64
+Check: examples, Result: NOTE
+  Examples with CPU (user + system) or elapsed time > 10s
+                               user system elapsed
+  probeSmooths 13.56     0.15     13.73
+  traitSmooth     13.03     0.10     13.13
+
+When I run the examples on laptop and a desktop running Windows 10 under r-devel with all packages updated, the elapsed times were 4.26 and 4.45, respectively i.e. much less than on the CRAN platforms. These timings were achieved using the following function call from RStudio (2022.12.0 Build 353):
+
+> devtools::check("growthPheno", manual=FALSE, check_dir="D:/Analyses/R",
++                 args="--as-cran", env_vars = c(NOT_CRAN = "false"))
+
+I have also submitted the package to rhub using the following command:
+
+ rhub::check_for_cran(path = "growthPheno_2.1.18.tar.gz",
+               env_vars = c(`_R_CHECK_FORCE_SUGGESTS_` = "false",
+               `_R_CHECK_CRAN_INCOMING_USE_ASPELL_` = "false"),
+               email = "chris.brien at adelaide.edu.au") with the following results for timing:
+
+The timing results were:
+
+   Examples with CPU (user + system) or elapsed time > 5s
+                                  user system elapsed
+    probeSmooths   6.50     0.09       6.64
+   traitSmooth         6.02     0.03      6.04
+
+While these are higher than the timings on my machines, they are half those reported on in the details.log resulting from my CRAN submission.
+
+In order to be able to pass the CRAN tests, I have reduced the examples so that the timings on my laptop are (sessionInfo is below):
+
+                              user system elapsed
+probeSmooths    2.32    0.06    2.45
+traitSmooth     3.47    0.09    3.73
+
+and, using rhub::check_for_CRAN, the timings > 5 s are:
+
+                            user system elapsed
+probeSmooths 5.16      0.07     6.42
+
+The difficulty I am having is that I cannot be sure that the timings for r-devel-linux-x86_64-debian-gcc and r-devel-windows-x86_64 will be under 10 s, as seems to be required, if I were to resubmit the package to CRAN with the reduced examples.
+
+I would be grateful to anyone who can suggest how I might go about determining the CRAN timings without submitting the package to CRAN.
+
+Cheers,
+
+ Chris
+
+Chris Brien
+Adjunct Associate Professor in Statistics, UniSA STEM| web page
+Senior Biostatistician, Australian Plant Phenomics Facility | researcher profile
+
+---------------
+> sessionInfo()
+R Under development (unstable) (2023-03-13 r83977 ucrt)
+Platform: x86_64-w64-mingw32/x64 (64-bit)
+Running under: Windows 10 x64 (build 19044)
+
+Matrix products: default
+
+
+locale:
+[1] LC_COLLATE=English_Australia.utf8  LC_CTYPE=English_Australia.utf8
+[3] LC_MONETARY=English_Australia.utf8 LC_NUMERIC=C
+[5] LC_TIME=English_Australia.utf8
+
+time zone: Australia/Adelaide
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base
+
+loaded via a namespace (and not attached):
+ [1] tidyselect_1.2.0   viridisLite_0.4.1  dplyr_1.1.0        viridis_0.6.2      fields_14.1
+ [6] fastmap_1.1.1      xopen_1.0.0        promises_1.2.0.1   digest_0.6.31      rpart_4.1.19
+[11] dotCall64_1.0-2    mime_0.12          lifecycle_1.0.3    cluster_2.1.4      ellipsis_0.3.2
+[16] processx_3.8.0     magrittr_2.0.3     compiler_4.3.0     rlang_1.0.6        Hmisc_5.0-1
+[21] tools_4.3.0        utf8_1.2.3         yaml_2.3.7         data.table_1.14.8  knitr_1.42
+[26] prettyunits_1.1.1  htmlwidgets_1.6.1  curl_5.0.0         pkgbuild_1.4.0     dae_3.2.15
+[31] plyr_1.8.8         RColorBrewer_1.1-3 JOPS_0.1.15        pkgload_1.3.2      miniUI_0.1.1.1
+[36] foreign_0.8-84     withr_2.5.0        purrr_1.0.1        desc_1.4.2         nnet_7.3-18
+[41] grid_4.3.0         fansi_1.0.4        urlchecker_1.0.1   profvis_0.3.7      xtable_1.8-4
+[46] colorspace_2.1-0   ggplot2_3.4.1      scales_1.2.1       MASS_7.3-58.3      cli_3.6.0
+[51] rmarkdown_2.20     crayon_1.5.2       generics_0.1.3     remotes_2.4.2      rstudioapi_0.14
+[56] sessioninfo_1.2.2  cachem_1.0.7       SemiPar_1.0-4.2    stringr_1.5.0      maps_3.4.1
+[61] base64enc_0.1-3    vctrs_0.5.2        devtools_2.4.5     callr_3.7.3        rcmdcheck_1.4.0
+[66] Formula_1.2-5      htmlTable_2.4.1    testthat_3.1.7     SpATS_1.0-18       glue_1.6.2
+[71] spam_2.9-1         ps_1.7.2           stringi_1.7.12     gtable_0.3.1       later_1.3.0
+[76] munsell_0.5.0      tibble_3.2.0       pillar_1.8.1       htmltools_0.5.4    brio_1.1.3
+[81] R6_2.5.1           rprojroot_2.0.3    evaluate_0.20      shiny_1.7.4        lattice_0.20-45
+[86] backports_1.4.1    memoise_2.0.1      httpuv_1.6.9       Rcpp_1.0.10        gridExtra_2.3
+[91] nlme_3.1-162       checkmate_2.1.0    xfun_0.37          fs_1.6.1           usethis_2.1.6
+[96] pkgconfig_2.0.3
+
+
+From bbo|ker @end|ng |rom gm@||@com  Tue Mar 14 15:42:33 2023
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Tue, 14 Mar 2023 10:42:33 -0400
+Subject: [R-pkg-devel] Checking timings of packages
+In-Reply-To: <ME4P282MB128776D52896F8A6EE3EA3E6A0BE9@ME4P282MB1287.AUSP282.PROD.OUTLOOK.COM>
+References: <ME4P282MB128776D52896F8A6EE3EA3E6A0BE9@ME4P282MB1287.AUSP282.PROD.OUTLOOK.COM>
+Message-ID: <6e7af0b6-d6aa-ae8f-9179-15b05a9e3011@gmail.com>
+
+   I would try running them on https://win-builder.r-project.org/ . If 
+the Windows timings are OK on that platform I think you can make a good 
+case to CRAN that you've done your best ...
+
+On 2023-03-14 9:52 a.m., Chris Brien wrote:
+> Dear list members.
+> 
+> I have run into a problem with examples from my package growthPheno (https://github.com/briencj/growthPheno) that take more than 10 s to execute on two flavours under r-devel. The following is the details.log:
+> 
+> Flavor: r-devel-linux-x86_64-debian-gcc, r-devel-windows-x86_64
+> Check: CRAN incoming feasibility, Result: Note_to_CRAN_maintainers
+>    Maintainer: 'Chris Brien mailto:chris.brien at adelaide.edu.au'
+> 
+> Flavor: r-devel-windows-x86_64
+> Check: examples, Result: NOTE
+>    Examples with CPU (user + system) or elapsed time > 10s
+>                                 user system elapsed
+>    probeSmooths 13.56     0.15     13.73
+>    traitSmooth     13.03     0.10     13.13
+> 
+> When I run the examples on laptop and a desktop running Windows 10 under r-devel with all packages updated, the elapsed times were 4.26 and 4.45, respectively i.e. much less than on the CRAN platforms. These timings were achieved using the following function call from RStudio (2022.12.0 Build 353):
+> 
+>> devtools::check("growthPheno", manual=FALSE, check_dir="D:/Analyses/R",
+> +                 args="--as-cran", env_vars = c(NOT_CRAN = "false"))
+> 
+> I have also submitted the package to rhub using the following command:
+> 
+>   rhub::check_for_cran(path = "growthPheno_2.1.18.tar.gz",
+>                 env_vars = c(`_R_CHECK_FORCE_SUGGESTS_` = "false",
+>                 `_R_CHECK_CRAN_INCOMING_USE_ASPELL_` = "false"),
+>                 email = "chris.brien at adelaide.edu.au") with the following results for timing:
+> 
+> The timing results were:
+> 
+>     Examples with CPU (user + system) or elapsed time > 5s
+>                                    user system elapsed
+>      probeSmooths   6.50     0.09       6.64
+>     traitSmooth         6.02     0.03      6.04
+> 
+> While these are higher than the timings on my machines, they are half those reported on in the details.log resulting from my CRAN submission.
+> 
+> In order to be able to pass the CRAN tests, I have reduced the examples so that the timings on my laptop are (sessionInfo is below):
+> 
+>                                user system elapsed
+> probeSmooths    2.32    0.06    2.45
+> traitSmooth     3.47    0.09    3.73
+> 
+> and, using rhub::check_for_CRAN, the timings > 5 s are:
+> 
+>                              user system elapsed
+> probeSmooths 5.16      0.07     6.42
+> 
+> The difficulty I am having is that I cannot be sure that the timings for r-devel-linux-x86_64-debian-gcc and r-devel-windows-x86_64 will be under 10 s, as seems to be required, if I were to resubmit the package to CRAN with the reduced examples.
+> 
+> I would be grateful to anyone who can suggest how I might go about determining the CRAN timings without submitting the package to CRAN.
+> 
+> Cheers,
+> 
+>   Chris
+> 
+> Chris Brien
+> Adjunct Associate Professor in Statistics, UniSA STEM| web page
+> Senior Biostatistician, Australian Plant Phenomics Facility | researcher profile
+> 
+> ---------------
+>> sessionInfo()
+> R Under development (unstable) (2023-03-13 r83977 ucrt)
+> Platform: x86_64-w64-mingw32/x64 (64-bit)
+> Running under: Windows 10 x64 (build 19044)
+> 
+> Matrix products: default
+> 
+> 
+> locale:
+> [1] LC_COLLATE=English_Australia.utf8  LC_CTYPE=English_Australia.utf8
+> [3] LC_MONETARY=English_Australia.utf8 LC_NUMERIC=C
+> [5] LC_TIME=English_Australia.utf8
+> 
+> time zone: Australia/Adelaide
+> tzcode source: internal
+> 
+> attached base packages:
+> [1] stats     graphics  grDevices utils     datasets  methods   base
+> 
+> loaded via a namespace (and not attached):
+>   [1] tidyselect_1.2.0   viridisLite_0.4.1  dplyr_1.1.0        viridis_0.6.2      fields_14.1
+>   [6] fastmap_1.1.1      xopen_1.0.0        promises_1.2.0.1   digest_0.6.31      rpart_4.1.19
+> [11] dotCall64_1.0-2    mime_0.12          lifecycle_1.0.3    cluster_2.1.4      ellipsis_0.3.2
+> [16] processx_3.8.0     magrittr_2.0.3     compiler_4.3.0     rlang_1.0.6        Hmisc_5.0-1
+> [21] tools_4.3.0        utf8_1.2.3         yaml_2.3.7         data.table_1.14.8  knitr_1.42
+> [26] prettyunits_1.1.1  htmlwidgets_1.6.1  curl_5.0.0         pkgbuild_1.4.0     dae_3.2.15
+> [31] plyr_1.8.8         RColorBrewer_1.1-3 JOPS_0.1.15        pkgload_1.3.2      miniUI_0.1.1.1
+> [36] foreign_0.8-84     withr_2.5.0        purrr_1.0.1        desc_1.4.2         nnet_7.3-18
+> [41] grid_4.3.0         fansi_1.0.4        urlchecker_1.0.1   profvis_0.3.7      xtable_1.8-4
+> [46] colorspace_2.1-0   ggplot2_3.4.1      scales_1.2.1       MASS_7.3-58.3      cli_3.6.0
+> [51] rmarkdown_2.20     crayon_1.5.2       generics_0.1.3     remotes_2.4.2      rstudioapi_0.14
+> [56] sessioninfo_1.2.2  cachem_1.0.7       SemiPar_1.0-4.2    stringr_1.5.0      maps_3.4.1
+> [61] base64enc_0.1-3    vctrs_0.5.2        devtools_2.4.5     callr_3.7.3        rcmdcheck_1.4.0
+> [66] Formula_1.2-5      htmlTable_2.4.1    testthat_3.1.7     SpATS_1.0-18       glue_1.6.2
+> [71] spam_2.9-1         ps_1.7.2           stringi_1.7.12     gtable_0.3.1       later_1.3.0
+> [76] munsell_0.5.0      tibble_3.2.0       pillar_1.8.1       htmltools_0.5.4    brio_1.1.3
+> [81] R6_2.5.1           rprojroot_2.0.3    evaluate_0.20      shiny_1.7.4        lattice_0.20-45
+> [86] backports_1.4.1    memoise_2.0.1      httpuv_1.6.9       Rcpp_1.0.10        gridExtra_2.3
+> [91] nlme_3.1-162       checkmate_2.1.0    xfun_0.37          fs_1.6.1           usethis_2.1.6
+> [96] pkgconfig_2.0.3
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+(Acting) Graduate chair, Mathematics & Statistics
+ > E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Mar 14 15:43:16 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 14 Mar 2023 17:43:16 +0300
+Subject: [R-pkg-devel] Checking timings of packages
+In-Reply-To: <ME4P282MB128776D52896F8A6EE3EA3E6A0BE9@ME4P282MB1287.AUSP282.PROD.OUTLOOK.COM>
+References: <ME4P282MB128776D52896F8A6EE3EA3E6A0BE9@ME4P282MB1287.AUSP282.PROD.OUTLOOK.COM>
+Message-ID: <20230314174316.6b435912@arachnoid>
+
+? Tue, 14 Mar 2023 13:52:13 +0000
+Chris Brien <chris.brien at adelaide.edu.au> ?????:
+
+> The difficulty I am having is that I cannot be sure that the timings
+> for r-devel-linux-x86_64-debian-gcc and r-devel-windows-x86_64 will
+> be under 10 s, as seems to be required, if I were to resubmit the
+> package to CRAN with the reduced examples.
+> 
+> I would be grateful to anyone who can suggest how I might go about
+> determining the CRAN timings without submitting the package to CRAN.
+
+I think that win-builder R-devel <https://win-builder.r-project.org/> is
+the same machine as the CRAN r-devel-windows-x86_64 machine (at the very
+least, the CPU description of win-builder matches that from
+<https://cran.r-project.org/web/checks/check_flavors.html#r-devel-windows-x86_64>).
+
+-- 
+Best regards,
+Ivan
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Tue Mar 14 16:11:42 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Tue, 14 Mar 2023 16:11:42 +0100
+Subject: [R-pkg-devel] Checking timings of packages
+In-Reply-To: <20230314174316.6b435912@arachnoid>
+References: <ME4P282MB128776D52896F8A6EE3EA3E6A0BE9@ME4P282MB1287.AUSP282.PROD.OUTLOOK.COM>
+ <20230314174316.6b435912@arachnoid>
+Message-ID: <f530b0fb-78d9-e384-1787-bdef840fd9b3@statistik.tu-dortmund.de>
+
+
+
+On 14.03.2023 15:43, Ivan Krylov wrote:
+> ? Tue, 14 Mar 2023 13:52:13 +0000
+> Chris Brien <chris.brien at adelaide.edu.au> ?????:
+> 
+>> The difficulty I am having is that I cannot be sure that the timings
+>> for r-devel-linux-x86_64-debian-gcc and r-devel-windows-x86_64 will
+>> be under 10 s, as seems to be required, if I were to resubmit the
+>> package to CRAN with the reduced examples.
+>>
+>> I would be grateful to anyone who can suggest how I might go about
+>> determining the CRAN timings without submitting the package to CRAN.
+> 
+> I think that win-builder R-devel <https://win-builder.r-project.org/> is
+> the same machine as the CRAN r-devel-windows-x86_64 machine (at the very
+
+Yes.
+
+Best,
+Uwe Ligges
+
+> least, the CPU description of win-builder matches that from
+> <https://cran.r-project.org/web/checks/check_flavors.html#r-devel-windows-x86_64>).
+>
+
+
