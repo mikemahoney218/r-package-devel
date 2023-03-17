@@ -14698,3 +14698,78 @@ Uwe Ligges
 >
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Mar 15 11:06:36 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 15 Mar 2023 13:06:36 +0300
+Subject: [R-pkg-devel] CRAN submission - Specified C++11
+In-Reply-To: <CABBvn+eTbMr975rsikkY2ozwhvnr54nru7ASLk_Z_3cn-sWmZg@mail.gmail.com>
+References: <CABBvn+eO5H=YQv7Amb-3Wggiitp4mkZEB-W4GzhCi6T0wN6RGw@mail.gmail.com>
+ <20230227124454.0e7b5018@arachnoid>
+ <CABBvn+eTbMr975rsikkY2ozwhvnr54nru7ASLk_Z_3cn-sWmZg@mail.gmail.com>
+Message-ID: <20230315130636.057d6dfd@arachnoid>
+
+[I am taking the liberty of Cc-ing the list again because this kind of
+advice could be useful for other people too.]
+
+Dear Riccardo Di Francesco,
+
+? Wed, 15 Mar 2023 08:41:01 +0100
+Riccardo Di Francesco <difrancesco.riccardo96 at gmail.com> ?????:
+
+>> Please ensure that your functions do not write by default or in
+>> yourexamples/vignettes/tests in the user's home filespace (including
+>> the package directory and getwd()). This is not allowed by CRAN
+>> policies.Please omit any default path in writing functions. In
+>> yourexamples/vignettes/tests you can write to tempdir().
+
+> I guess this comes from the configure.R script that writes a Makevars
+> file that specifies the appropriate C++ version.
+> Did you experience something like this?
+
+The package review is both a defining feature of CRAN and its
+rate-limiting step. With the number of CRAN packages rising almost
+exponentially and the burden of responsibility only increasing (various
+kinds of supply-chain attacks becoming a frequent occurrence over at
+the more popular NPM and PyPI repositories), there is increasingly more
+reason for CRAN reviewers to fail safe and reject some false positives.
+
+All that is a long way to say that sometimes CRAN reviewers make
+mistakes. Does the rejection e-mail tell you whether you can appeal? I
+think it says something like "please reply-all and explain", but make
+sure to check yourself (i.e. the rules on whether you should
+reply-to-all or reply-to-sender may have changed). I have argued my way
+out of a rejection once, but only because there was an easy way to show
+the mistake on the reviewer's part.
+
+Were there any NOTEs about files being left after the R CMD check
+run (or any other NOTEs or WARNINGs)? Does the rejection e-mail tell you
+where is the offending write function?
+
+Looking at your package, I see the calls to cat(..., file = ...) and
+writeLines(file = ...). You may need to demonstrate in your reply that
+they all live under tools/* and are only called during the package
+configuration. Any other places where you may be writing to files from
+R code? I also see a cat() call in a summary() method; it's probably not
+the reason for rejection.
+
+There's also the use of std::ofstream in the C++ code under src/*. Is
+the writeOutput() function used anywhere? You could try to demonstrate
+that there are no calls to this function, hence there is no way C++
+code could write files where it's not welcome to do so.
+
+If there's no way to appeal the rejection, that's more problematic
+because the rules say you now have to submit a version of the package
+that is different in both the version number and the content. In that
+case, (assuming there's really no way for the package to write files in
+user directories) hide the writeOutput() function behind an #ifdef or
+even remove it if possible (put it on a separate branch if you use it
+for other purposes elsewhere) and put the rest of the explanation about
+the code under tools/* in the submission comment.
+
+Good luck!
+
+-- 
+Best regards,
+Ivan
+
+
