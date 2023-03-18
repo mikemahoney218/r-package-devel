@@ -14773,3 +14773,841 @@ Best regards,
 Ivan
 
 
+From Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de  Thu Mar 16 12:09:16 2023
+From: Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de (Ruff, Sergej)
+Date: Thu, 16 Mar 2023 11:09:16 +0000
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+Message-ID: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+
+I am currently building a package which uses the "limma"-package as a dependency.
+
+I want to submit my package to CRAN.
+
+Do I need to declare Bioconductor-dependencies such as Limma differently in the Description-File of my Package?
+
+The Check-Function in R shows no Notes, Warnings or Errors, but I am not sure if that means that limma will install when installing my package from CRAN.
+
+Currently I am declaring limma like this:
+
+Suggests:
+
+    limma
+
+
+
+Can CRAN identify that limma is a Bioconductor-Package and will it Limma install, when installing my package from CRAN?
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Mar 16 15:42:39 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 16 Mar 2023 17:42:39 +0300
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+Message-ID: <20230316174239.65a5b025@arachnoid>
+
+? Thu, 16 Mar 2023 11:09:16 +0000
+"Ruff, Sergej" <Sergej.Ruff at tiho-hannover.de> ?????:
+
+> The Check-Function in R shows no Notes, Warnings or Errors, but I am
+> not sure if that means that limma will install when installing my
+> package from CRAN.
+
+> Currently I am declaring limma like this:
+> 
+> Suggests:
+> 
+>     limma
+
+install.packages() doesn't install suggested packages by default: the
+`dependencies` argument defaults to NA, which means c("Depends",
+"Imports", "LinkingTo"), which doesn't include 'Suggests'.
+
+What if you pass dependencies = TRUE? Given the fact that Bioconductor
+is absent from getOption('repos') by default, the package will still
+not be installed. BiocManager::install() is the supported way to
+install packages from Bioconductor:
+https://cran.r-project.org/package=BiocManager/vignettes/BiocManager.html#installing-bioconductor-cran-or-github-packages
+
+I think that BiocManager::install('YOUR_PACKAGE', dependencies = TRUE)
+will install both your package and limma. It's a bit hard to verify
+because your package should live in a repository, but if you'd like to
+be sure, spin up a drat <https://CRAN.R-project.org/package=drat> repo
+on a local server and add it to options(repos = ...) before trying to
+install your package.
+
+> Do I need to declare Bioconductor-dependencies such as Limma
+> differently in the Description-File of my Package?
+ 
+No, this is the right way to declare Bioconductor dependencies for CRAN
+packages.
+
+> Can CRAN identify that limma is a Bioconductor-Package and will it
+> Limma install, when installing my package from CRAN?
+
+The CRAN website will detect the Bioconductor dependency and highlight
+it with a different colour, making it a link to the Bioconductor
+website. See, e.g., the BiocManager package and its reverse
+dependencies: https://CRAN.R-project.org/package=BiocManager
+
+-- 
+Best regards,
+Ivan
+
+
+From no@h@gre||er @end|ng |rom gm@||@com  Thu Mar 16 16:29:33 2023
+From: no@h@gre||er @end|ng |rom gm@||@com (Noah Greifer)
+Date: Thu, 16 Mar 2023 11:29:33 -0400
+Subject: [R-pkg-devel] Should 'methods' be in Imports?
+Message-ID: <CAPhhD8noYxDO3S5uF1jjKJWVJ5vQvM+FNSRTvebAShf7Kj+T0A@mail.gmail.com>
+
+Hello developers,
+
+I am wondering if base packages whose functions are used in my package need
+to be present in Imports in my DESCRIPTION. For example, if I use the
+function abline(), which exists in the *graphics* package, do I need to
+include *graphics* in Imports? Note I am not asking about whether I need to
+import all or any function from the *graphics* package, that is, assume I
+am using graphics::abline(), etc. I am solely asking about the DESCRIPTION
+file, not the Namespace.
+
+I ask because there seems to be some ambiguity about this. I received a
+pull request from someone adding *methods* to my Imports after noticing I
+didn't declare it when using a function from *methods* (accessed in my
+package using ::). Looking on StackOverflow, there seems to be confusion
+about this. The most relevant question I could find was this one
+<https://stackoverflow.com/q/39439006/6348551>. The question was marked as
+a duplicate despite the linked duplicate being separate from it (i.e.,
+asking about the Namespace, not the DESCRIPTION). Similarly, the answer to
+the question does not address the question, again referring to the
+Namespace and making an irrelevant distinction between Depends and Imports.
+Some of the comments reference a CRAN policy, and yet that policy does not
+seem to be implemented since many packages (including all of mine) omit the
+base packages from the DESCRIPTION.
+
+So, is it optional to include these packages in the DESCRIPTION? I see some
+packages do so and some don't. Is including these packages filling the
+DESCRIPTION with unnecessary dependencies that are automatically satisfied,
+or is it being helpfully explicit about the packages your package relies
+on? Thanks.
+
+Noah
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Mar 16 16:56:53 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 16 Mar 2023 11:56:53 -0400
+Subject: [R-pkg-devel] Should 'methods' be in Imports?
+In-Reply-To: <CAPhhD8noYxDO3S5uF1jjKJWVJ5vQvM+FNSRTvebAShf7Kj+T0A@mail.gmail.com>
+References: <CAPhhD8noYxDO3S5uF1jjKJWVJ5vQvM+FNSRTvebAShf7Kj+T0A@mail.gmail.com>
+Message-ID: <2deefb84-86a1-4c86-e739-dee5f2cf6e73@gmail.com>
+
+I think the Writing R Extensions manual is pretty clear about this: 
+yes, you should include "methods" in Imports or Depends if you are 
+calling methods::<fn>.
+
+You say "some packages do so and some don't".  Which ones don't?  It's 
+helpful to be specific in your examples.
+
+Duncan Murdoch
+
+On 16/03/2023 11:29 a.m., Noah Greifer wrote:
+> Hello developers,
+> 
+> I am wondering if base packages whose functions are used in my package need
+> to be present in Imports in my DESCRIPTION. For example, if I use the
+> function abline(), which exists in the *graphics* package, do I need to
+> include *graphics* in Imports? Note I am not asking about whether I need to
+> import all or any function from the *graphics* package, that is, assume I
+> am using graphics::abline(), etc. I am solely asking about the DESCRIPTION
+> file, not the Namespace.
+> 
+> I ask because there seems to be some ambiguity about this. I received a
+> pull request from someone adding *methods* to my Imports after noticing I
+> didn't declare it when using a function from *methods* (accessed in my
+> package using ::). Looking on StackOverflow, there seems to be confusion
+> about this. The most relevant question I could find was this one
+> <https://stackoverflow.com/q/39439006/6348551>. The question was marked as
+> a duplicate despite the linked duplicate being separate from it (i.e.,
+> asking about the Namespace, not the DESCRIPTION). Similarly, the answer to
+> the question does not address the question, again referring to the
+> Namespace and making an irrelevant distinction between Depends and Imports.
+> Some of the comments reference a CRAN policy, and yet that policy does not
+> seem to be implemented since many packages (including all of mine) omit the
+> base packages from the DESCRIPTION.
+> 
+> So, is it optional to include these packages in the DESCRIPTION? I see some
+> packages do so and some don't. Is including these packages filling the
+> DESCRIPTION with unnecessary dependencies that are automatically satisfied,
+> or is it being helpfully explicit about the packages your package relies
+> on? Thanks.
+> 
+> Noah
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From t|@goo||voto @end|ng |rom gm@||@com  Thu Mar 16 17:36:47 2023
+From: t|@goo||voto @end|ng |rom gm@||@com (Tiago Olivoto)
+Date: Thu, 16 Mar 2023 13:36:47 -0300
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+Message-ID: <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+
+Hi,
+My package pliman depends on EBImage which is in Bioconductor. I have
+created a function check_ebi() <
+https://github.com/TiagoOlivoto/pliman/blob/e6efc4b6a2396600939e308c235aeb9ab47af375/R/utilities.R#L534>
+that is called in .onAttach() <
+https://github.com/TiagoOlivoto/pliman/blob/master/R/zzz.R#L36>  and checks
+if EBImage is installed. If not, the function asks the user to install it.
+Both EBImage and BiocManager are listed as suggests <
+https://github.com/TiagoOlivoto/pliman/blob/master/DESCRIPTION#L22>
+
+I believe that this could be a possible solution
+Best regards,
+Olivoto
+
+
+Em qui., 16 de mar. de 2023 ?s 11:18, Ruff, Sergej <
+Sergej.Ruff at tiho-hannover.de> escreveu:
+
+> I am currently building a package which uses the "limma"-package as a
+> dependency.
+>
+> I want to submit my package to CRAN.
+>
+> Do I need to declare Bioconductor-dependencies such as Limma differently
+> in the Description-File of my Package?
+>
+> The Check-Function in R shows no Notes, Warnings or Errors, but I am not
+> sure if that means that limma will install when installing my package from
+> CRAN.
+>
+> Currently I am declaring limma like this:
+>
+> Suggests:
+>
+>     limma
+>
+>
+>
+> Can CRAN identify that limma is a Bioconductor-Package and will it Limma
+> install, when installing my package from CRAN?
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de  Thu Mar 16 18:01:55 2023
+From: Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de (Ruff, Sergej)
+Date: Thu, 16 Mar 2023 17:01:55 +0000
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>,
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+Message-ID: <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+
+thank you.
+
+
+I see you added biocView: below your suggested Dependencies. Is it necessary for CRAN to identify Bioconductor Dependencies and if so, should I add it below or above the suggested packages? Do I also need BiocManager among my Suggests?
+
+
+Last question: How does CRAN work with Bioconductor Dependencies? Will CRAN accept limma as a dependency or will my submission be rejected?
+
+
+Best regards,
+
+Sergej
+
+________________________________
+Von: Tiago Olivoto <tiagoolivoto at gmail.com>
+Gesendet: Donnerstag, 16. M?rz 2023 17:36:47
+An: Ruff, Sergej
+Cc: r-package-devel at r-project.org
+Betreff: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+
+Hi,
+My package pliman depends on EBImage which is in Bioconductor. I have created a function check_ebi() <https://github.com/TiagoOlivoto/pliman/blob/e6efc4b6a2396600939e308c235aeb9ab47af375/R/utilities.R#L534> that is called in .onAttach() <https://github.com/TiagoOlivoto/pliman/blob/master/R/zzz.R#L36>  and checks if EBImage is installed. If not, the function asks the user to install it. Both EBImage and BiocManager are listed as suggests <https://github.com/TiagoOlivoto/pliman/blob/master/DESCRIPTION#L22>
+
+I believe that this could be a possible solution
+Best regards,
+Olivoto
+
+
+Em qui., 16 de mar. de 2023 ?s 11:18, Ruff, Sergej <Sergej.Ruff at tiho-hannover.de<mailto:Sergej.Ruff at tiho-hannover.de>> escreveu:
+I am currently building a package which uses the "limma"-package as a dependency.
+
+I want to submit my package to CRAN.
+
+Do I need to declare Bioconductor-dependencies such as Limma differently in the Description-File of my Package?
+
+The Check-Function in R shows no Notes, Warnings or Errors, but I am not sure if that means that limma will install when installing my package from CRAN.
+
+Currently I am declaring limma like this:
+
+Suggests:
+
+    limma
+
+
+
+Can CRAN identify that limma is a Bioconductor-Package and will it Limma install, when installing my package from CRAN?
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-package-devel at r-project.org<mailto:R-package-devel at r-project.org> mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Mar 16 18:15:10 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 16 Mar 2023 13:15:10 -0400
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+Message-ID: <d890b658-dddc-0a54-06c4-0469c2e49868@gmail.com>
+
+On 16/03/2023 12:36 p.m., Tiago Olivoto wrote:
+> Hi,
+> My package pliman depends on EBImage which is in Bioconductor. I have
+> created a function check_ebi() <
+> https://github.com/TiagoOlivoto/pliman/blob/e6efc4b6a2396600939e308c235aeb9ab47af375/R/utilities.R#L534>
+> that is called in .onAttach() <
+> https://github.com/TiagoOlivoto/pliman/blob/master/R/zzz.R#L36>  and checks
+> if EBImage is installed. If not, the function asks the user to install it.
+
+If some other package loads but doesn't attach pliman, and is missing 
+EBImage, does it fail gracefully?  That's also important.  I'd test what 
+happens if a user runs pliman::object_edge( ... ) .  (That function 
+isn't in the CRAN version, just the Github version, so I haven't tried 
+this.)
+
+Duncan Murdoch
+
+
+> Both EBImage and BiocManager are listed as suggests <
+> https://github.com/TiagoOlivoto/pliman/blob/master/DESCRIPTION#L22>
+> 
+> I believe that this could be a possible solution
+> Best regards,
+> Olivoto
+> 
+> 
+> Em qui., 16 de mar. de 2023 ?s 11:18, Ruff, Sergej <
+> Sergej.Ruff at tiho-hannover.de> escreveu:
+> 
+>> I am currently building a package which uses the "limma"-package as a
+>> dependency.
+>>
+>> I want to submit my package to CRAN.
+>>
+>> Do I need to declare Bioconductor-dependencies such as Limma differently
+>> in the Description-File of my Package?
+>>
+>> The Check-Function in R shows no Notes, Warnings or Errors, but I am not
+>> sure if that means that limma will install when installing my package from
+>> CRAN.
+>>
+>> Currently I am declaring limma like this:
+>>
+>> Suggests:
+>>
+>>      limma
+>>
+>>
+>>
+>> Can CRAN identify that limma is a Bioconductor-Package and will it Limma
+>> install, when installing my package from CRAN?
+>>
+>>          [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From t|@goo||voto @end|ng |rom gm@||@com  Thu Mar 16 18:51:30 2023
+From: t|@goo||voto @end|ng |rom gm@||@com (Tiago Olivoto)
+Date: Thu, 16 Mar 2023 14:51:30 -0300
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+Message-ID: <CAMyz+tXsXksZvi8p14BrF_egD0tZa8zGFD_D90SvnzXrhq56+w@mail.gmail.com>
+
+Hi Sergej,
+
+I sincerely don't know if the position of biocView really matters (I'll try
+it when preparing for the new CRAN release of pliman). I believe that
+biocView will not allow you to put limma in the imports field and
+automatically install it from Bioconductor, as you can see here in this
+discussion <
+https://stackoverflow.com/questions/54411495/bioconductor-packages-not-installing-with-biocviews-specification-in-description
+>
+
+In my case, I had no errors when submitting pliman to CRAN using EBImage as
+suggests (I haven't yet tried to use biocView: and EBImage in the Imports
+section).
+
+Best regards,
+Olivoto
+
+Em qui., 16 de mar. de 2023 ?s 14:01, Ruff, Sergej <
+Sergej.Ruff at tiho-hannover.de> escreveu:
+
+> thank you.
+>
+>
+> I see you added biocView: below your suggested Dependencies. Is it
+> necessary for CRAN to identify Bioconductor Dependencies and if so, should
+> I add it below or above the suggested packages? Do I also need BiocManager
+> among my Suggests?
+>
+>
+> Last question: How does CRAN work with Bioconductor Dependencies? Will
+> CRAN accept limma as a dependency or will my submission be rejected?
+>
+>
+> Best regards,
+>
+> Sergej
+> ------------------------------
+> *Von:* Tiago Olivoto <tiagoolivoto at gmail.com>
+> *Gesendet:* Donnerstag, 16. M?rz 2023 17:36:47
+> *An:* Ruff, Sergej
+> *Cc:* r-package-devel at r-project.org
+> *Betreff:* Re: [R-pkg-devel] How to declare Bioconductor Dependencies in
+> the Description File of my R Package
+>
+> Hi,
+> My package pliman depends on EBImage which is in Bioconductor. I have
+> created a function check_ebi() <
+> https://github.com/TiagoOlivoto/pliman/blob/e6efc4b6a2396600939e308c235aeb9ab47af375/R/utilities.R#L534>
+> that is called in .onAttach() <
+> https://github.com/TiagoOlivoto/pliman/blob/master/R/zzz.R#L36>  and
+> checks if EBImage is installed. If not, the function asks the user to
+> install it. Both EBImage and BiocManager are listed as suggests <
+> https://github.com/TiagoOlivoto/pliman/blob/master/DESCRIPTION#L22>
+>
+> I believe that this could be a possible solution
+> Best regards,
+> Olivoto
+>
+>
+> Em qui., 16 de mar. de 2023 ?s 11:18, Ruff, Sergej <
+> Sergej.Ruff at tiho-hannover.de> escreveu:
+>
+>> I am currently building a package which uses the "limma"-package as a
+>> dependency.
+>>
+>> I want to submit my package to CRAN.
+>>
+>> Do I need to declare Bioconductor-dependencies such as Limma differently
+>> in the Description-File of my Package?
+>>
+>> The Check-Function in R shows no Notes, Warnings or Errors, but I am not
+>> sure if that means that limma will install when installing my package from
+>> CRAN.
+>>
+>> Currently I am declaring limma like this:
+>>
+>> Suggests:
+>>
+>>     limma
+>>
+>>
+>>
+>> Can CRAN identify that limma is a Bioconductor-Package and will it Limma
+>> install, when installing my package from CRAN?
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From t|@goo||voto @end|ng |rom gm@||@com  Thu Mar 16 18:55:20 2023
+From: t|@goo||voto @end|ng |rom gm@||@com (Tiago Olivoto)
+Date: Thu, 16 Mar 2023 14:55:20 -0300
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <d890b658-dddc-0a54-06c4-0469c2e49868@gmail.com>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <d890b658-dddc-0a54-06c4-0469c2e49868@gmail.com>
+Message-ID: <CAMyz+tXX6ADt-qyPmrTu31dyr4ZOJtm39rT+HiX4c3qJCM3DiQ@mail.gmail.com>
+
+Thanks Duncan,
+I'm in the way of a new CRAN submission and I will make sure to call
+check_ebi() in the body of each function. This should ensure that the check
+for EBImage will be called even with pliman::object_edge( ... ), for
+example.
+
+Best regards,
+Olivoto
+
+Em qui., 16 de mar. de 2023 ?s 14:15, Duncan Murdoch <
+murdoch.duncan at gmail.com> escreveu:
+
+> On 16/03/2023 12:36 p.m., Tiago Olivoto wrote:
+> > Hi,
+> > My package pliman depends on EBImage which is in Bioconductor. I have
+> > created a function check_ebi() <
+> >
+> https://github.com/TiagoOlivoto/pliman/blob/e6efc4b6a2396600939e308c235aeb9ab47af375/R/utilities.R#L534
+> >
+> > that is called in .onAttach() <
+> > https://github.com/TiagoOlivoto/pliman/blob/master/R/zzz.R#L36>  and
+> checks
+> > if EBImage is installed. If not, the function asks the user to install
+> it.
+>
+> If some other package loads but doesn't attach pliman, and is missing
+> EBImage, does it fail gracefully?  That's also important.  I'd test what
+> happens if a user runs pliman::object_edge( ... ) .  (That function
+> isn't in the CRAN version, just the Github version, so I haven't tried
+> this.)
+>
+> Duncan Murdoch
+>
+>
+> > Both EBImage and BiocManager are listed as suggests <
+> > https://github.com/TiagoOlivoto/pliman/blob/master/DESCRIPTION#L22>
+> >
+> > I believe that this could be a possible solution
+> > Best regards,
+> > Olivoto
+> >
+> >
+> > Em qui., 16 de mar. de 2023 ?s 11:18, Ruff, Sergej <
+> > Sergej.Ruff at tiho-hannover.de> escreveu:
+> >
+> >> I am currently building a package which uses the "limma"-package as a
+> >> dependency.
+> >>
+> >> I want to submit my package to CRAN.
+> >>
+> >> Do I need to declare Bioconductor-dependencies such as Limma differently
+> >> in the Description-File of my Package?
+> >>
+> >> The Check-Function in R shows no Notes, Warnings or Errors, but I am not
+> >> sure if that means that limma will install when installing my package
+> from
+> >> CRAN.
+> >>
+> >> Currently I am declaring limma like this:
+> >>
+> >> Suggests:
+> >>
+> >>      limma
+> >>
+> >>
+> >>
+> >> Can CRAN identify that limma is a Bioconductor-Package and will it Limma
+> >> install, when installing my package from CRAN?
+> >>
+> >>          [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-package-devel at r-project.org mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >>
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Mar 16 19:14:48 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 16 Mar 2023 21:14:48 +0300
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+Message-ID: <20230316211448.0dee9f35@Tarkus>
+
+On Thu, 16 Mar 2023 17:01:55 +0000
+"Ruff, Sergej" <Sergej.Ruff at tiho-hannover.de> wrote:
+
+> Last question: How does CRAN work with Bioconductor Dependencies?
+> Will CRAN accept limma as a dependency or will my submission be
+> rejected?
+
+It's not explicitly spelled out in the CRAN policy
+<https://cran.r-project.org/web/packages/policies.html>, but
+Bioconductor and CRAN are the "mainstream repositories" for the
+purposes of the following rule:
+
+>> Packages on which a CRAN package depends should be available from a
+>> mainstream repository
+
+(Even non-mainstream repositories are allowed for optional dependencies
+if you follow a few additional rules.)
+
+Here's an example of a CRAN package with a strong dependency on a
+Bioconductor package: <https://CRAN.R-project.org/package=RTIGER>. You
+can see the extra instructions for installing the Bioconductor
+dependencies in its README.
+
+-- 
+Best regards,
+Ivan
+
+
+From no@h@gre||er @end|ng |rom gm@||@com  Thu Mar 16 19:21:11 2023
+From: no@h@gre||er @end|ng |rom gm@||@com (Noah Greifer)
+Date: Thu, 16 Mar 2023 14:21:11 -0400
+Subject: [R-pkg-devel] Should 'methods' be in Imports?
+In-Reply-To: <2deefb84-86a1-4c86-e739-dee5f2cf6e73@gmail.com>
+References: <CAPhhD8noYxDO3S5uF1jjKJWVJ5vQvM+FNSRTvebAShf7Kj+T0A@mail.gmail.com>
+ <2deefb84-86a1-4c86-e739-dee5f2cf6e73@gmail.com>
+Message-ID: <CAPhhD8nsKFLjQ20imwpyzXYmac2ccc3wibQ_idM+ADMMnWg36A@mail.gmail.com>
+
+Thank you for your input. *broom*, *mlogit*, *twang*, and *Hmisc*
+are examples of major packages that import functions from *stats*, *utils*,
+*graphics*, or other base packages but don't include them in the
+DESCRIPTION. All of my packages (*cobalt*, *WeightIt*, *MatchIt*) do too,
+and I have never had a message from CRAN about it. (None of these are
+specifically about *methods*, but as a base package I assume it should work
+the same as these others.)
+
+Noah
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Mar 16 19:43:04 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 16 Mar 2023 14:43:04 -0400
+Subject: [R-pkg-devel] Should 'methods' be in Imports?
+In-Reply-To: <CAPhhD8nsKFLjQ20imwpyzXYmac2ccc3wibQ_idM+ADMMnWg36A@mail.gmail.com>
+References: <CAPhhD8noYxDO3S5uF1jjKJWVJ5vQvM+FNSRTvebAShf7Kj+T0A@mail.gmail.com>
+ <2deefb84-86a1-4c86-e739-dee5f2cf6e73@gmail.com>
+ <CAPhhD8nsKFLjQ20imwpyzXYmac2ccc3wibQ_idM+ADMMnWg36A@mail.gmail.com>
+Message-ID: <9eca45af-5c33-2e2e-f7ab-3aa1c3326883@gmail.com>
+
+On 16/03/2023 2:21 p.m., Noah Greifer wrote:
+> 
+> Thank you for your input. /broom/, /mlogit/, /twang/, and /Hmisc/ 
+> are?examples of major packages that import?functions from /stats/, 
+> /utils/, /graphics/, or other base packages but don't include them in 
+> the DESCRIPTION. All of my packages (/cobalt/, /WeightIt/, /MatchIt/) do 
+> too, and I have never had a message from CRAN about it. (None of these 
+> are specifically?about /methods/, but as a base package I assume it 
+> should work the same as these others.)
+> 
+
+broom doesn't mention stats in DESCRIPTION, but does import from it in 
+the NAMESPACE. (I haven't checked the rest of your list.)  I'm a little 
+surprised by that, but it's understandable:  the NAMESPACE does declare 
+that stats is needed.  WRE says this about Imports:
+
+"Namespaces accessed by the ?::? and ?:::? operators must be listed 
+here, or in ?Suggests? or ?Enhances? (see below). Ideally this field 
+will include all the standard packages that are used, and it is 
+important to include S4-using packages."
+
+So the use of Imports for "standard packages" that are used in NAMESPACE 
+appears to be optional but recommended.
+
+However, my understanding was that you were talking about using things 
+like graphics::abline without importing any graphics functions via the 
+NAMESPACE; in that case, the manual is very explicit that you would need 
+to put graphics in Imports.  That doesn't mean "R CMD check" will 
+complain if you don't, but it does mean that it might start doing so if 
+it doesn't already.
+
+Do you know of any examples of packages that use things like 
+graphics::abline without mentioning graphics in either the NAMESPACE or 
+DESCRIPTION file?
+
+Duncan Murdoch
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Mar 16 20:01:48 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 16 Mar 2023 22:01:48 +0300
+Subject: [R-pkg-devel] Should 'methods' be in Imports?
+In-Reply-To: <CAPhhD8noYxDO3S5uF1jjKJWVJ5vQvM+FNSRTvebAShf7Kj+T0A@mail.gmail.com>
+References: <CAPhhD8noYxDO3S5uF1jjKJWVJ5vQvM+FNSRTvebAShf7Kj+T0A@mail.gmail.com>
+Message-ID: <20230316220148.19eddbbf@Tarkus>
+
+On Thu, 16 Mar 2023 11:29:33 -0400
+Noah Greifer <noah.greifer at gmail.com> wrote:
+
+> Is including these packages filling the DESCRIPTION with unnecessary
+> dependencies that are automatically satisfied, or is it being
+> helpfully explicit about the packages your package relies on?
+
+Here's a comment from the part of R CMD check that checks for NAMESPACE
+dependencies unstated in DESCRIPTION:
+
+>> Not clear whether we want to require *all* namespace package
+>> dependencies listed in DESCRIPTION, or e.g. just the ones on
+>> non-base packages.  Do the latter for time being ...
+>> Actually we need to know at least about S4-using packages,
+>> since we need to reinstall if those change.
+
+So the answer is maybe. Personally, I opt for listing even the base
+packages explicitly, but it's a choice. Duncan's quote from WRE hints
+that this may be enforced in the future.
+
+I do find it a bit strange that not listing methods as a dependency in
+DESCRIPTION doesn't lead to complaints from R CMD check, because it
+does seem that the code excludes methods (and stats4) from the list of
+packages that are currently okay not to declare in DESCRIPTION.
+
+-- 
+Best regards,
+Ivan
+
+
+From mtmorg@n@b|oc @end|ng |rom gm@||@com  Thu Mar 16 20:12:51 2023
+From: mtmorg@n@b|oc @end|ng |rom gm@||@com (Martin Morgan)
+Date: Thu, 16 Mar 2023 19:12:51 +0000
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <20230316211448.0dee9f35@Tarkus>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+ <20230316211448.0dee9f35@Tarkus>
+Message-ID: <BY5PR04MB662799A65F1CC8AE1A84C615F9BC9@BY5PR04MB6627.namprd04.prod.outlook.com>
+
+I would not follow the instructions in RTIGER?s README for installing Bioconductor packages.
+
+BiocManager::install(?RTIGER?) would install both CRAN and Bioconductor dependencies of RTIGER, and would be my preferred instruction in a README or INSTALL file. A complete instruction might be to install your package as if it were on Bioconductor ?
+
+If (!requireNamepace(?BiocManager?, quietly = TRUE))
+    install.packages(?BiocManager?)
+BiocManager::install(?<your package>?)
+
+It does not make sense to me to have instructions in .onAttach / .onLoad or in each function for the user to install a ?Suggests:? package, when actually the package is required for use and belongs in Imports: or perhaps Depends:.
+
+The instruction to use ?version = ?3.14?? of Bioconductor in the RTIGER document is not universally correct, since different Bioconductor versions are tied to specific R versions (see https://bioconductor.org/about/release-announcements/ ). On one version of R I am currently using, I get
+
+> BiocManager::install(version = "3.14")
+Error: Bioconductor version '3.14' requires R version '4.1'; use
+  `BiocManager::install(version = '3.17')` with R version 4.3; see
+  https://bioconductor.org/install
+
+The instruction to install a vector of Bioconductor packages is also unnecessary for Bioconductor packages in the Imports: or Depends: field of <your package>, or if one were to pass the argument `dependencies = TRUE` to either BiocManager::install() or install.packages() (to get the Suggests: packages of <your package> to be installed, as well as Depends:, Imports: and LinkingTo:).
+
+Briefly, installation requires R to know the correct repositories. The command
+
+BiocManager::repositories()
+
+Returns a vector of Bioconductor and CRAN repositories relevant to your version of R. If one is averse to using BiocManager::install(?RTIGER?), a reasonable alternative, though still requiring that the BiocManager package is installed, is
+
+install.packages(?RTIGER?, repos = BiocManager::repositories())
+
+Base R also provides a mechanism for specifying Bioconductor repositories, via `setRepositories()` called before install.packages(). However, this is not recommended because, as can be seen on the web page mentioned above, there are two versions of Bioconductor for each version of R ? one always gets the ?old? Bioconductor version, even when a newer version is available.
+
+From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Ivan Krylov <krylov.r00t at gmail.com>
+Date: Thursday, March 16, 2023 at 2:15 PM
+To: Ruff, Sergej <Sergej.Ruff at tiho-hannover.de>
+Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+On Thu, 16 Mar 2023 17:01:55 +0000
+"Ruff, Sergej" <Sergej.Ruff at tiho-hannover.de> wrote:
+
+> Last question: How does CRAN work with Bioconductor Dependencies?
+> Will CRAN accept limma as a dependency or will my submission be
+> rejected?
+
+It's not explicitly spelled out in the CRAN policy
+<https://cran.r-project.org/web/packages/policies.html>, but
+Bioconductor and CRAN are the "mainstream repositories" for the
+purposes of the following rule:
+
+>> Packages on which a CRAN package depends should be available from a
+>> mainstream repository
+
+(Even non-mainstream repositories are allowed for optional dependencies
+if you follow a few additional rules.)
+
+Here's an example of a CRAN package with a strong dependency on a
+Bioconductor package: <https://CRAN.R-project.org/package=RTIGER>. You
+can see the extra instructions for installing the Bioconductor
+dependencies in its README.
+
+--
+Best regards,
+Ivan
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+	[[alternative HTML version deleted]]
+
+
+From no@h@gre||er @end|ng |rom gm@||@com  Thu Mar 16 20:25:19 2023
+From: no@h@gre||er @end|ng |rom gm@||@com (Noah Greifer)
+Date: Thu, 16 Mar 2023 15:25:19 -0400
+Subject: [R-pkg-devel] Should 'methods' be in Imports?
+In-Reply-To: <20230316220148.19eddbbf@Tarkus>
+References: <CAPhhD8noYxDO3S5uF1jjKJWVJ5vQvM+FNSRTvebAShf7Kj+T0A@mail.gmail.com>
+ <20230316220148.19eddbbf@Tarkus>
+Message-ID: <CAPhhD8n6G2UWuvOeudWPSFkzngPgD_vHLJOBmKDE5OD2-wGdJQ@mail.gmail.com>
+
+Thank you both for your responses. Based on Ivan's dig into the comments,
+it seems there is ambiguity, even by the CRAN team. Still, it looks like it
+would be preferable to (and would not cause any harm to) include the base
+packages in DESCRIPTION if they are used at all in a package, whether by ::
+or imported from in the Namespace. I'll update my packages accordingly.
+
+Noah
+
+	[[alternative HTML version deleted]]
+
+
