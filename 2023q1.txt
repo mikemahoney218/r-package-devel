@@ -15611,3 +15611,2702 @@ Noah
 	[[alternative HTML version deleted]]
 
 
+From Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de  Fri Mar 17 11:06:18 2023
+From: Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de (Ruff, Sergej)
+Date: Fri, 17 Mar 2023 10:06:18 +0000
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <BY5PR04MB662799A65F1CC8AE1A84C615F9BC9@BY5PR04MB6627.namprd04.prod.outlook.com>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+ <20230316211448.0dee9f35@Tarkus>,
+ <BY5PR04MB662799A65F1CC8AE1A84C615F9BC9@BY5PR04MB6627.namprd04.prod.outlook.com>
+Message-ID: <ce33881470bb4743847e495abf35245d@tiho-hannover.de>
+
+I was wondering how CRAN will handle Limma when running the automatic check.
+
+
+I am worried that my package will be rejected if Limma won?t install from Bioconductor on a clean version of R. Leading to an Error and Note during the check.
+
+
+I am using Limma only for an example in my functions description, not inside my actual function.
+
+
+How would CRAN?s System handle that when checking my package for submission?
+
+
+with regards,
+
+
+Sergej
+
+________________________________
+Von: Martin Morgan <mtmorgan.bioc at gmail.com>
+Gesendet: Donnerstag, 16. M?rz 2023 20:12:51
+An: Ivan Krylov; Ruff, Sergej
+Cc: r-package-devel at r-project.org
+Betreff: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+
+I would not follow the instructions in RTIGER?s README for installing Bioconductor packages.
+
+BiocManager::install(?RTIGER?) would install both CRAN and Bioconductor dependencies of RTIGER, and would be my preferred instruction in a README or INSTALL file. A complete instruction might be to install your package as if it were on Bioconductor ?
+
+If (!requireNamepace(?BiocManager?, quietly = TRUE))
+    install.packages(?BiocManager?)
+BiocManager::install(?<your package>?)
+
+It does not make sense to me to have instructions in .onAttach / .onLoad or in each function for the user to install a ?Suggests:? package, when actually the package is required for use and belongs in Imports: or perhaps Depends:.
+
+The instruction to use ?version = ?3.14?? of Bioconductor in the RTIGER document is not universally correct, since different Bioconductor versions are tied to specific R versions (see https://bioconductor.org/about/release-announcements/ ). On one version of R I am currently using, I get
+
+> BiocManager::install(version = "3.14")
+Error: Bioconductor version '3.14' requires R version '4.1'; use
+  `BiocManager::install(version = '3.17')` with R version 4.3; see
+  https://bioconductor.org/install
+
+The instruction to install a vector of Bioconductor packages is also unnecessary for Bioconductor packages in the Imports: or Depends: field of <your package>, or if one were to pass the argument `dependencies = TRUE` to either BiocManager::install() or install.packages() (to get the Suggests: packages of <your package> to be installed, as well as Depends:, Imports: and LinkingTo:).
+
+Briefly, installation requires R to know the correct repositories. The command
+
+BiocManager::repositories()
+
+Returns a vector of Bioconductor and CRAN repositories relevant to your version of R. If one is averse to using BiocManager::install(?RTIGER?), a reasonable alternative, though still requiring that the BiocManager package is installed, is
+
+install.packages(?RTIGER?, repos = BiocManager::repositories())
+
+Base R also provides a mechanism for specifying Bioconductor repositories, via `setRepositories()` called before install.packages(). However, this is not recommended because, as can be seen on the web page mentioned above, there are two versions of Bioconductor for each version of R ? one always gets the ?old? Bioconductor version, even when a newer version is available.
+
+From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Ivan Krylov <krylov.r00t at gmail.com>
+Date: Thursday, March 16, 2023 at 2:15 PM
+To: Ruff, Sergej <Sergej.Ruff at tiho-hannover.de>
+Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+On Thu, 16 Mar 2023 17:01:55 +0000
+"Ruff, Sergej" <Sergej.Ruff at tiho-hannover.de> wrote:
+
+> Last question: How does CRAN work with Bioconductor Dependencies?
+> Will CRAN accept limma as a dependency or will my submission be
+> rejected?
+
+It's not explicitly spelled out in the CRAN policy
+<https://cran.r-project.org/web/packages/policies.html>, but
+Bioconductor and CRAN are the "mainstream repositories" for the
+purposes of the following rule:
+
+>> Packages on which a CRAN package depends should be available from a
+>> mainstream repository
+
+(Even non-mainstream repositories are allowed for optional dependencies
+if you follow a few additional rules.)
+
+Here's an example of a CRAN package with a strong dependency on a
+Bioconductor package: <https://CRAN.R-project.org/package=RTIGER>. You
+can see the extra instructions for installing the Bioconductor
+dependencies in its README.
+
+--
+Best regards,
+Ivan
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Mar 17 11:14:25 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 17 Mar 2023 06:14:25 -0400
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <ce33881470bb4743847e495abf35245d@tiho-hannover.de>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+ <20230316211448.0dee9f35@Tarkus>
+ <BY5PR04MB662799A65F1CC8AE1A84C615F9BC9@BY5PR04MB6627.namprd04.prod.outlook.com>
+ <ce33881470bb4743847e495abf35245d@tiho-hannover.de>
+Message-ID: <1d55266d-dd43-f8b4-e27a-564dbd838918@gmail.com>
+
+On 17/03/2023 6:06 a.m., Ruff, Sergej wrote:
+> I was wondering how CRAN will handle Limma when running the automatic check.
+> 
+> 
+> I am worried that my package will be rejected if Limma won?t install from Bioconductor on a clean version of R. Leading to an Error and Note during the check.
+> 
+> 
+> I am using Limma only for an example in my functions description, not inside my actual function.
+> 
+> 
+> How would CRAN?s System handle that when checking my package for submission?
+
+If you have it in the Suggests list you should have written your code to 
+work (i.e. not trigger an error) whether it is installed or not, so you 
+shouldn't worry about it.
+
+Duncan Murdoch
+
+> 
+> 
+> with regards,
+> 
+> 
+> Sergej
+> 
+> ________________________________
+> Von: Martin Morgan <mtmorgan.bioc at gmail.com>
+> Gesendet: Donnerstag, 16. M?rz 2023 20:12:51
+> An: Ivan Krylov; Ruff, Sergej
+> Cc: r-package-devel at r-project.org
+> Betreff: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+> 
+> I would not follow the instructions in RTIGER?s README for installing Bioconductor packages.
+> 
+> BiocManager::install(?RTIGER?) would install both CRAN and Bioconductor dependencies of RTIGER, and would be my preferred instruction in a README or INSTALL file. A complete instruction might be to install your package as if it were on Bioconductor ?
+> 
+> If (!requireNamepace(?BiocManager?, quietly = TRUE))
+>      install.packages(?BiocManager?)
+> BiocManager::install(?<your package>?)
+> 
+> It does not make sense to me to have instructions in .onAttach / .onLoad or in each function for the user to install a ?Suggests:? package, when actually the package is required for use and belongs in Imports: or perhaps Depends:.
+> 
+> The instruction to use ?version = ?3.14?? of Bioconductor in the RTIGER document is not universally correct, since different Bioconductor versions are tied to specific R versions (see https://bioconductor.org/about/release-announcements/ ). On one version of R I am currently using, I get
+> 
+>> BiocManager::install(version = "3.14")
+> Error: Bioconductor version '3.14' requires R version '4.1'; use
+>    `BiocManager::install(version = '3.17')` with R version 4.3; see
+>    https://bioconductor.org/install
+> 
+> The instruction to install a vector of Bioconductor packages is also unnecessary for Bioconductor packages in the Imports: or Depends: field of <your package>, or if one were to pass the argument `dependencies = TRUE` to either BiocManager::install() or install.packages() (to get the Suggests: packages of <your package> to be installed, as well as Depends:, Imports: and LinkingTo:).
+> 
+> Briefly, installation requires R to know the correct repositories. The command
+> 
+> BiocManager::repositories()
+> 
+> Returns a vector of Bioconductor and CRAN repositories relevant to your version of R. If one is averse to using BiocManager::install(?RTIGER?), a reasonable alternative, though still requiring that the BiocManager package is installed, is
+> 
+> install.packages(?RTIGER?, repos = BiocManager::repositories())
+> 
+> Base R also provides a mechanism for specifying Bioconductor repositories, via `setRepositories()` called before install.packages(). However, this is not recommended because, as can be seen on the web page mentioned above, there are two versions of Bioconductor for each version of R ? one always gets the ?old? Bioconductor version, even when a newer version is available.
+> 
+> From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Ivan Krylov <krylov.r00t at gmail.com>
+> Date: Thursday, March 16, 2023 at 2:15 PM
+> To: Ruff, Sergej <Sergej.Ruff at tiho-hannover.de>
+> Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+> Subject: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+> On Thu, 16 Mar 2023 17:01:55 +0000
+> "Ruff, Sergej" <Sergej.Ruff at tiho-hannover.de> wrote:
+> 
+>> Last question: How does CRAN work with Bioconductor Dependencies?
+>> Will CRAN accept limma as a dependency or will my submission be
+>> rejected?
+> 
+> It's not explicitly spelled out in the CRAN policy
+> <https://cran.r-project.org/web/packages/policies.html>, but
+> Bioconductor and CRAN are the "mainstream repositories" for the
+> purposes of the following rule:
+> 
+>>> Packages on which a CRAN package depends should be available from a
+>>> mainstream repository
+> 
+> (Even non-mainstream repositories are allowed for optional dependencies
+> if you follow a few additional rules.)
+> 
+> Here's an example of a CRAN package with a strong dependency on a
+> Bioconductor package: <https://CRAN.R-project.org/package=RTIGER>. You
+> can see the extra instructions for installing the Bioconductor
+> dependencies in its README.
+> 
+> --
+> Best regards,
+> Ivan
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de  Fri Mar 17 11:19:37 2023
+From: Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de (Ruff, Sergej)
+Date: Fri, 17 Mar 2023 10:19:37 +0000
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <1d55266d-dd43-f8b4-e27a-564dbd838918@gmail.com>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+ <20230316211448.0dee9f35@Tarkus>
+ <BY5PR04MB662799A65F1CC8AE1A84C615F9BC9@BY5PR04MB6627.namprd04.prod.outlook.com>
+ <ce33881470bb4743847e495abf35245d@tiho-hannover.de>,
+ <1d55266d-dd43-f8b4-e27a-564dbd838918@gmail.com>
+Message-ID: <423fc050c0554e9eaf1f2bca3582ad9e@tiho-hannover.de>
+
+In my example I have the following lines:
+
+
+### Differential expression analysis with limma
+group = gl(2, n)
+design = model.matrix(~ group)
+fit1 = limma::lmFit(X, design)
+fit = limma::eBayes(fit1)
+
+The R CMD Check returns no Errors or Notes if Limma is pre-installed. If limma is not pre-installed I get an error, reminding me that Limma is not available.
+
+
+Thats the source of my worries. Will the same error appear when CRAN checks the examples of my package? Or should I not be worried?
+
+
+With regards,
+
+
+Sergej
+
+________________________________
+Von: Duncan Murdoch <murdoch.duncan at gmail.com>
+Gesendet: Freitag, 17. M?rz 2023 11:14:25
+An: Ruff, Sergej; Martin Morgan; Ivan Krylov
+Cc: r-package-devel at r-project.org
+Betreff: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+
+On 17/03/2023 6:06 a.m., Ruff, Sergej wrote:
+> I was wondering how CRAN will handle Limma when running the automatic check.
+>
+>
+> I am worried that my package will be rejected if Limma won?t install from Bioconductor on a clean version of R. Leading to an Error and Note during the check.
+>
+>
+> I am using Limma only for an example in my functions description, not inside my actual function.
+>
+>
+> How would CRAN?s System handle that when checking my package for submission?
+
+If you have it in the Suggests list you should have written your code to
+work (i.e. not trigger an error) whether it is installed or not, so you
+shouldn't worry about it.
+
+Duncan Murdoch
+
+>
+>
+> with regards,
+>
+>
+> Sergej
+>
+> ________________________________
+> Von: Martin Morgan <mtmorgan.bioc at gmail.com>
+> Gesendet: Donnerstag, 16. M?rz 2023 20:12:51
+> An: Ivan Krylov; Ruff, Sergej
+> Cc: r-package-devel at r-project.org
+> Betreff: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+>
+> I would not follow the instructions in RTIGER?s README for installing Bioconductor packages.
+>
+> BiocManager::install(?RTIGER?) would install both CRAN and Bioconductor dependencies of RTIGER, and would be my preferred instruction in a README or INSTALL file. A complete instruction might be to install your package as if it were on Bioconductor ?
+>
+> If (!requireNamepace(?BiocManager?, quietly = TRUE))
+>      install.packages(?BiocManager?)
+> BiocManager::install(?<your package>?)
+>
+> It does not make sense to me to have instructions in .onAttach / .onLoad or in each function for the user to install a ?Suggests:? package, when actually the package is required for use and belongs in Imports: or perhaps Depends:.
+>
+> The instruction to use ?version = ?3.14?? of Bioconductor in the RTIGER document is not universally correct, since different Bioconductor versions are tied to specific R versions (see https://bioconductor.org/about/release-announcements/ ). On one version of R I am currently using, I get
+>
+>> BiocManager::install(version = "3.14")
+> Error: Bioconductor version '3.14' requires R version '4.1'; use
+>    `BiocManager::install(version = '3.17')` with R version 4.3; see
+>    https://bioconductor.org/install
+>
+> The instruction to install a vector of Bioconductor packages is also unnecessary for Bioconductor packages in the Imports: or Depends: field of <your package>, or if one were to pass the argument `dependencies = TRUE` to either BiocManager::install() or install.packages() (to get the Suggests: packages of <your package> to be installed, as well as Depends:, Imports: and LinkingTo:).
+>
+> Briefly, installation requires R to know the correct repositories. The command
+>
+> BiocManager::repositories()
+>
+> Returns a vector of Bioconductor and CRAN repositories relevant to your version of R. If one is averse to using BiocManager::install(?RTIGER?), a reasonable alternative, though still requiring that the BiocManager package is installed, is
+>
+> install.packages(?RTIGER?, repos = BiocManager::repositories())
+>
+> Base R also provides a mechanism for specifying Bioconductor repositories, via `setRepositories()` called before install.packages(). However, this is not recommended because, as can be seen on the web page mentioned above, there are two versions of Bioconductor for each version of R ? one always gets the ?old? Bioconductor version, even when a newer version is available.
+>
+> From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Ivan Krylov <krylov.r00t at gmail.com>
+> Date: Thursday, March 16, 2023 at 2:15 PM
+> To: Ruff, Sergej <Sergej.Ruff at tiho-hannover.de>
+> Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+> Subject: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+> On Thu, 16 Mar 2023 17:01:55 +0000
+> "Ruff, Sergej" <Sergej.Ruff at tiho-hannover.de> wrote:
+>
+>> Last question: How does CRAN work with Bioconductor Dependencies?
+>> Will CRAN accept limma as a dependency or will my submission be
+>> rejected?
+>
+> It's not explicitly spelled out in the CRAN policy
+> <https://cran.r-project.org/web/packages/policies.html>, but
+> Bioconductor and CRAN are the "mainstream repositories" for the
+> purposes of the following rule:
+>
+>>> Packages on which a CRAN package depends should be available from a
+>>> mainstream repository
+>
+> (Even non-mainstream repositories are allowed for optional dependencies
+> if you follow a few additional rules.)
+>
+> Here's an example of a CRAN package with a strong dependency on a
+> Bioconductor package: <https://CRAN.R-project.org/package=RTIGER>. You
+> can see the extra instructions for installing the Bioconductor
+> dependencies in its README.
+>
+> --
+> Best regards,
+> Ivan
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+>        [[alternative HTML version deleted]]
+>
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Mar 17 11:45:57 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 17 Mar 2023 13:45:57 +0300
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <423fc050c0554e9eaf1f2bca3582ad9e@tiho-hannover.de>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+ <20230316211448.0dee9f35@Tarkus>
+ <BY5PR04MB662799A65F1CC8AE1A84C615F9BC9@BY5PR04MB6627.namprd04.prod.outlook.com>
+ <ce33881470bb4743847e495abf35245d@tiho-hannover.de>
+ <1d55266d-dd43-f8b4-e27a-564dbd838918@gmail.com>
+ <423fc050c0554e9eaf1f2bca3582ad9e@tiho-hannover.de>
+Message-ID: <20230317134557.6882ea62@arachnoid>
+
+? Fri, 17 Mar 2023 10:19:37 +0000
+"Ruff, Sergej" <Sergej.Ruff at tiho-hannover.de> ?????:
+
+> Thats the source of my worries. Will the same error appear when CRAN
+> checks the examples of my package? Or should I not be worried?
+
+Yes, part of CRAN checks is running your package without the packages
+listed under Suggests:
+https://www.stats.ox.ac.uk/pub/bdr/noSuggests/README.txt [*]
+
+See WRE 1.1.3.1 for the official guidance on how to handle optional
+dependencies that might not be installed:
+https://cran.r-project.org/doc/manuals/R-exts.html#Suggested-packages
+
+In short, your code should check the return value of
+requireNamespace('limma', quietly = TRUE) before trying to run code
+from it. Your code can (and probably should) raise an error if asked to
+do something using limma when it's not available, but then in your
+tests/vignettes/examples you should check whether limma is available
+before trying to run that code.
+
+-- 
+Best regards,
+Ivan
+
+[*] See also:
+https://cran.r-project.org/web/checks/check_issue_kinds.html
+
+
+From Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de  Fri Mar 17 12:02:18 2023
+From: Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de (Ruff, Sergej)
+Date: Fri, 17 Mar 2023 11:02:18 +0000
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <20230317134557.6882ea62@arachnoid>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+ <20230316211448.0dee9f35@Tarkus>
+ <BY5PR04MB662799A65F1CC8AE1A84C615F9BC9@BY5PR04MB6627.namprd04.prod.outlook.com>
+ <ce33881470bb4743847e495abf35245d@tiho-hannover.de>
+ <1d55266d-dd43-f8b4-e27a-564dbd838918@gmail.com>
+ <423fc050c0554e9eaf1f2bca3582ad9e@tiho-hannover.de>,
+ <20230317134557.6882ea62@arachnoid>
+Message-ID: <3444bb8d52f346db9f5438a10541271e@tiho-hannover.de>
+
+Thanks.
+
+
+I would like to ask, if I need to add something to the DESCRIPTION-file when declaring Bioconductor dependencies for CRAn Submission.
+
+
+Right now I only listed limma under "suggests".
+
+
+I asked online and get conflicting answers. Some recommend adding biocViews: above suggests and some recommend adding
+
+Remotes: bioc::limma
+
+
+Others add Biocmanager to the suggests file in Addition to limma.
+
+
+Is that necessary? What should I add to my Description File to make sure that limma gets installed from Bioconductor when needed?
+
+
+
+________________________________
+Von: Ivan Krylov <krylov.r00t at gmail.com>
+Gesendet: Freitag, 17. M?rz 2023 11:45:57
+An: Ruff, Sergej
+Cc: r-package-devel at r-project.org
+Betreff: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+
+? Fri, 17 Mar 2023 10:19:37 +0000
+"Ruff, Sergej" <Sergej.Ruff at tiho-hannover.de> ?????:
+
+> Thats the source of my worries. Will the same error appear when CRAN
+> checks the examples of my package? Or should I not be worried?
+
+Yes, part of CRAN checks is running your package without the packages
+listed under Suggests:
+https://www.stats.ox.ac.uk/pub/bdr/noSuggests/README.txt [*]
+
+See WRE 1.1.3.1 for the official guidance on how to handle optional
+dependencies that might not be installed:
+https://cran.r-project.org/doc/manuals/R-exts.html#Suggested-packages
+
+In short, your code should check the return value of
+requireNamespace('limma', quietly = TRUE) before trying to run code
+from it. Your code can (and probably should) raise an error if asked to
+do something using limma when it's not available, but then in your
+tests/vignettes/examples you should check whether limma is available
+before trying to run that code.
+
+--
+Best regards,
+Ivan
+
+[*] See also:
+https://cran.r-project.org/web/checks/check_issue_kinds.html
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Mar 17 12:31:23 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 17 Mar 2023 14:31:23 +0300
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <3444bb8d52f346db9f5438a10541271e@tiho-hannover.de>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+ <20230316211448.0dee9f35@Tarkus>
+ <BY5PR04MB662799A65F1CC8AE1A84C615F9BC9@BY5PR04MB6627.namprd04.prod.outlook.com>
+ <ce33881470bb4743847e495abf35245d@tiho-hannover.de>
+ <1d55266d-dd43-f8b4-e27a-564dbd838918@gmail.com>
+ <423fc050c0554e9eaf1f2bca3582ad9e@tiho-hannover.de>
+ <20230317134557.6882ea62@arachnoid>
+ <3444bb8d52f346db9f5438a10541271e@tiho-hannover.de>
+Message-ID: <20230317143123.5c3c0816@arachnoid>
+
+? Fri, 17 Mar 2023 11:02:18 +0000
+"Ruff, Sergej" <Sergej.Ruff at tiho-hannover.de> ?????:
+
+> I would like to ask, if I need to add something to the
+> DESCRIPTION-file when declaring Bioconductor dependencies for CRAn
+> Submission.
+
+Strictly speaking, no. Once you list limma under Suggests, it's
+possible and proper to install your package using
+BiocManager::install('YOUR_PACKAGE', dependencies = TRUE) and have
+limma installed too, as Martin Morgan said above in the thread.
+
+> Some recommend adding biocViews:
+
+This field is required on Bioconductor, not CRAN:
+https://contributions.bioconductor.org/description.html?q=biocViews#description-biocviews
+
+> some recommend adding Remotes: bioc::limma
+
+Not a standard R/CRAN field, only used by the remotes package:
+https://remotes.r-lib.org/articles/dependencies.html
+
+> Others add Biocmanager to the suggests file
+
+I suppose it could help a user who doesn't initially know to use
+BiocManager in order to install your package, and could also be used to
+install limma on behalf of your users (with their permission!), but
+it's additional work, may be hard to get right (see the CRAN policy
+about installing packages and touching user files), and is not required
+at all.
+
+> What should I add to my Description File to make sure that limma gets
+> installed from Bioconductor when needed?
+
+See Martin Morgan's e-mail above in the thread. In short, tell your
+users to install your package using BiocManager::install(...,
+dependencies = TRUE) if they want limma to work. They are still free to
+install.packages() if they don't want limma or can set things up
+themselves.
+
+Move limma to Imports (better) or Depends (may be worse)
+if you want limma to be always available, at the cost of always
+requiring Bioconductor to be set up to have your package installed.
+There are other ways besides BiocManager::install(), but they all
+depend on the user having set up Bioconductor repos in their R session
+somehow, be it BiocManager::repositories() or setRepositories().
+
+-- 
+Best regards,
+Ivan
+
+
+From Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de  Fri Mar 17 13:09:01 2023
+From: Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de (Ruff, Sergej)
+Date: Fri, 17 Mar 2023 12:09:01 +0000
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <20230317143123.5c3c0816@arachnoid>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+ <20230316211448.0dee9f35@Tarkus>
+ <BY5PR04MB662799A65F1CC8AE1A84C615F9BC9@BY5PR04MB6627.namprd04.prod.outlook.com>
+ <ce33881470bb4743847e495abf35245d@tiho-hannover.de>
+ <1d55266d-dd43-f8b4-e27a-564dbd838918@gmail.com>
+ <423fc050c0554e9eaf1f2bca3582ad9e@tiho-hannover.de>
+ <20230317134557.6882ea62@arachnoid>
+ <3444bb8d52f346db9f5438a10541271e@tiho-hannover.de>,
+ <20230317143123.5c3c0816@arachnoid>
+Message-ID: <603f0069ec7247efb8a84be146063e77@tiho-hannover.de>
+
+Thanks,
+
+
+I thought about changing it to "Imports", but will it cause any issues when CRAN runs checks on my package and limma isn?t available on CRAN?
+
+
+
+________________________________
+Von: Ivan Krylov <krylov.r00t at gmail.com>
+Gesendet: Freitag, 17. M?rz 2023 12:31:23
+An: Ruff, Sergej
+Cc: r-package-devel at r-project.org
+Betreff: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+
+? Fri, 17 Mar 2023 11:02:18 +0000
+"Ruff, Sergej" <Sergej.Ruff at tiho-hannover.de> ?????:
+
+> I would like to ask, if I need to add something to the
+> DESCRIPTION-file when declaring Bioconductor dependencies for CRAn
+> Submission.
+
+Strictly speaking, no. Once you list limma under Suggests, it's
+possible and proper to install your package using
+BiocManager::install('YOUR_PACKAGE', dependencies = TRUE) and have
+limma installed too, as Martin Morgan said above in the thread.
+
+> Some recommend adding biocViews:
+
+This field is required on Bioconductor, not CRAN:
+https://contributions.bioconductor.org/description.html?q=biocViews#description-biocviews
+
+> some recommend adding Remotes: bioc::limma
+
+Not a standard R/CRAN field, only used by the remotes package:
+https://remotes.r-lib.org/articles/dependencies.html
+
+> Others add Biocmanager to the suggests file
+
+I suppose it could help a user who doesn't initially know to use
+BiocManager in order to install your package, and could also be used to
+install limma on behalf of your users (with their permission!), but
+it's additional work, may be hard to get right (see the CRAN policy
+about installing packages and touching user files), and is not required
+at all.
+
+> What should I add to my Description File to make sure that limma gets
+> installed from Bioconductor when needed?
+
+See Martin Morgan's e-mail above in the thread. In short, tell your
+users to install your package using BiocManager::install(...,
+dependencies = TRUE) if they want limma to work. They are still free to
+install.packages() if they don't want limma or can set things up
+themselves.
+
+Move limma to Imports (better) or Depends (may be worse)
+if you want limma to be always available, at the cost of always
+requiring Bioconductor to be set up to have your package installed.
+There are other ways besides BiocManager::install(), but they all
+depend on the user having set up Bioconductor repos in their R session
+somehow, be it BiocManager::repositories() or setRepositories().
+
+--
+Best regards,
+Ivan
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Mar 17 13:15:28 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 17 Mar 2023 08:15:28 -0400
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <423fc050c0554e9eaf1f2bca3582ad9e@tiho-hannover.de>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+ <20230316211448.0dee9f35@Tarkus>
+ <BY5PR04MB662799A65F1CC8AE1A84C615F9BC9@BY5PR04MB6627.namprd04.prod.outlook.com>
+ <ce33881470bb4743847e495abf35245d@tiho-hannover.de>
+ <1d55266d-dd43-f8b4-e27a-564dbd838918@gmail.com>
+ <423fc050c0554e9eaf1f2bca3582ad9e@tiho-hannover.de>
+Message-ID: <606f0f1a-1b8b-f32b-261a-8877672c80dc@gmail.com>
+
+On 17/03/2023 6:19 a.m., Ruff, Sergej wrote:
+> In my example I have the following lines:
+> 
+> 
+> ### Differential expression analysis with limma
+> group = gl(2, n)
+> design = model.matrix(~ group)
+> fit1 = limma::lmFit(X, design)
+> fit = limma::eBayes(fit1)
+> 
+> The R CMD Check returns no Errors or Notes if Limma is pre-installed. If 
+> limma is not pre-installed I get an error, reminding me that Limma is 
+> not available.
+
+That's a problem, and will cause your package to be rejected.  It should 
+not raise an error during the tests when a suggested package is missing. 
+Ivan gave you good advice on how to fix this.
+
+I'd recommend testing your package a few times on Winbuilder and fixing 
+things until you get clean results.  That won't guarantee acceptance on 
+CRAN; new packages get a manual inspection as well, and they'll often 
+find some problem that the automatic tests don't find, e.g. stylistic 
+issues in the Description field of the DESCRIPTION file.  Here's a note 
+I received recently when I submitted a new package (RmdConcord):
+
+----------------
+The Description field is intended to be a (one paragraph) description of
+what the package does and why it may be useful. Please add more details
+about the package functionality and implemented methods in your
+Description text.
+
+Please always write package names, software names and API (application
+programming interface) names in single quotes in title and description.
+e.g: --> 'R Markdown'
+Please note that package names are case sensitive.
+
+Please do not start the description with "This package", "Functions
+for", package name, title or similar.
+---------------
+
+
+Duncan Murdoch
+
+> 
+> 
+> Thats the source of my worries. Will the same error appear when CRAN 
+> checks the examples of my package? Or should I not be worried?
+> 
+> 
+> With regards,
+> 
+> 
+> Sergej
+> 
+> ------------------------------------------------------------------------
+> *Von:* Duncan Murdoch <murdoch.duncan at gmail.com>
+> *Gesendet:* Freitag, 17. M?rz 2023 11:14:25
+> *An:* Ruff, Sergej; Martin Morgan; Ivan Krylov
+> *Cc:* r-package-devel at r-project.org
+> *Betreff:* Re: [R-pkg-devel] How to declare Bioconductor Dependencies in 
+> the Description File of my R Package
+> On 17/03/2023 6:06 a.m., Ruff, Sergej wrote:
+>> I was wondering how CRAN will handle Limma when running the automatic check.
+>> 
+>> 
+>> I am worried that my package will be rejected if Limma won?t install from Bioconductor on a clean version of R. Leading to an Error and Note during the check.
+>> 
+>> 
+>> I am using Limma only for an example in my functions description, not inside my actual function.
+>> 
+>> 
+>> How would CRAN?s System handle that when checking my package for submission?
+> 
+> If you have it in the Suggests list you should have written your code to
+> work (i.e. not trigger an error) whether it is installed or not, so you
+> shouldn't worry about it.
+> 
+> Duncan Murdoch
+> 
+>> 
+>> 
+>> with regards,
+>> 
+>> 
+>> Sergej
+>> 
+>> ________________________________
+>> Von: Martin Morgan <mtmorgan.bioc at gmail.com>
+>> Gesendet: Donnerstag, 16. M?rz 2023 20:12:51
+>> An: Ivan Krylov; Ruff, Sergej
+>> Cc: r-package-devel at r-project.org
+>> Betreff: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+>> 
+>> I would not follow the instructions in RTIGER?s README for installing Bioconductor packages.
+>> 
+>> BiocManager::install(?RTIGER?) would install both CRAN and Bioconductor dependencies of RTIGER, and would be my preferred instruction in a README or INSTALL file. A complete instruction might be to install your package as if it were on Bioconductor ?
+>> 
+>> If (!requireNamepace(?BiocManager?, quietly = TRUE))
+>>????? install.packages(?BiocManager?)
+>> BiocManager::install(?<your package>?)
+>> 
+>> It does not make sense to me to have instructions in .onAttach / .onLoad or in each function for the user to install a ?Suggests:? package, when actually the package is required for use and belongs in Imports: or perhaps Depends:.
+>> 
+>> The instruction to use ?version = ?3.14?? of Bioconductor in the RTIGER document is not universally correct, since different Bioconductor versions are tied to specific R versions (see  https://bioconductor.org/about/release-announcements/ 
+> <https://bioconductor.org/about/release-announcements/> ). On one 
+> version of R I am currently using, I get
+>> 
+>>> BiocManager::install(version = "3.14")
+>> Error: Bioconductor version '3.14' requires R version '4.1'; use
+>>??? `BiocManager::install(version = '3.17')` with R version 4.3; see
+>>    https://bioconductor.org/install <https://bioconductor.org/install>
+>> 
+>> The instruction to install a vector of Bioconductor packages is also unnecessary for Bioconductor packages in the Imports: or Depends: field of <your package>, or if one were to pass the argument `dependencies = TRUE` to either BiocManager::install() or install.packages()  (to get the Suggests: packages of <your package> to be installed, as 
+> well as Depends:, Imports: and LinkingTo:).
+>> 
+>> Briefly, installation requires R to know the correct repositories. The command
+>> 
+>> BiocManager::repositories()
+>> 
+>> Returns a vector of Bioconductor and CRAN repositories relevant to your version of R. If one is averse to using BiocManager::install(?RTIGER?), a reasonable alternative, though still requiring that the BiocManager package is installed, is
+>> 
+>> install.packages(?RTIGER?, repos = BiocManager::repositories())
+>> 
+>> Base R also provides a mechanism for specifying Bioconductor repositories, via `setRepositories()` called before install.packages(). However, this is not recommended because, as can be seen on the web page mentioned above, there are two versions of Bioconductor  for each version of R ? one always gets the ?old? Bioconductor 
+> version, even when a newer version is available.
+>> 
+>> From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Ivan Krylov <krylov.r00t at gmail.com>
+>> Date: Thursday, March 16, 2023 at 2:15 PM
+>> To: Ruff, Sergej <Sergej.Ruff at tiho-hannover.de>
+>> Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+>> Subject: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+>> On Thu, 16 Mar 2023 17:01:55 +0000
+>> "Ruff, Sergej" <Sergej.Ruff at tiho-hannover.de> wrote:
+>> 
+>>> Last question: How does CRAN work with Bioconductor Dependencies?
+>>> Will CRAN accept limma as a dependency or will my submission be
+>>> rejected?
+>> 
+>> It's not explicitly spelled out in the CRAN policy
+>> <https://cran.r-project.org/web/packages/policies.html 
+> <https://cran.r-project.org/web/packages/policies.html>>, but
+>> Bioconductor and CRAN are the "mainstream repositories" for the
+>> purposes of the following rule:
+>> 
+>>>> Packages on which a CRAN package depends should be available from a
+>>>> mainstream repository
+>> 
+>> (Even non-mainstream repositories are allowed for optional dependencies
+>> if you follow a few additional rules.)
+>> 
+>> Here's an example of a CRAN package with a strong dependency on a
+>> Bioconductor package: <https://CRAN.R-project.org/package=RTIGER 
+> <https://CRAN.R-project.org/package=RTIGER>>. You
+>> can see the extra instructions for installing the Bioconductor
+>> dependencies in its README.
+>> 
+>> --
+>> Best regards,
+>> Ivan
+>> 
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel 
+> <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+>> 
+>>??????? [[alternative HTML version deleted]]
+>> 
+>> 
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel 
+> <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+>
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Fri Mar 17 13:16:00 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Fri, 17 Mar 2023 13:16:00 +0100
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <603f0069ec7247efb8a84be146063e77@tiho-hannover.de>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+ <20230316211448.0dee9f35@Tarkus>
+ <BY5PR04MB662799A65F1CC8AE1A84C615F9BC9@BY5PR04MB6627.namprd04.prod.outlook.com>
+ <ce33881470bb4743847e495abf35245d@tiho-hannover.de>
+ <1d55266d-dd43-f8b4-e27a-564dbd838918@gmail.com>
+ <423fc050c0554e9eaf1f2bca3582ad9e@tiho-hannover.de>
+ <20230317134557.6882ea62@arachnoid>
+ <3444bb8d52f346db9f5438a10541271e@tiho-hannover.de>
+ <20230317143123.5c3c0816@arachnoid>
+ <603f0069ec7247efb8a84be146063e77@tiho-hannover.de>
+Message-ID: <53a2d48a-ac71-1144-30eb-fec8dd902bec@statistik.tu-dortmund.de>
+
+
+
+On 17.03.2023 13:09, Ruff, Sergej wrote:
+> Thanks,
+> 
+> 
+> I thought about changing it to "Imports", but will it cause any issues when CRAN runs checks on my package and limma isn?t available on CRAN?
+
+No, BioC is a mainstream repository.
+
+Best,
+Uwe Ligges
+
+
+
+> 
+> 
+> ________________________________
+> Von: Ivan Krylov <krylov.r00t at gmail.com>
+> Gesendet: Freitag, 17. M?rz 2023 12:31:23
+> An: Ruff, Sergej
+> Cc: r-package-devel at r-project.org
+> Betreff: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+> 
+> ? Fri, 17 Mar 2023 11:02:18 +0000
+> "Ruff, Sergej" <Sergej.Ruff at tiho-hannover.de> ?????:
+> 
+>> I would like to ask, if I need to add something to the
+>> DESCRIPTION-file when declaring Bioconductor dependencies for CRAn
+>> Submission.
+> 
+> Strictly speaking, no. Once you list limma under Suggests, it's
+> possible and proper to install your package using
+> BiocManager::install('YOUR_PACKAGE', dependencies = TRUE) and have
+> limma installed too, as Martin Morgan said above in the thread.
+> 
+>> Some recommend adding biocViews:
+> 
+> This field is required on Bioconductor, not CRAN:
+> https://contributions.bioconductor.org/description.html?q=biocViews#description-biocviews
+> 
+>> some recommend adding Remotes: bioc::limma
+> 
+> Not a standard R/CRAN field, only used by the remotes package:
+> https://remotes.r-lib.org/articles/dependencies.html
+> 
+>> Others add Biocmanager to the suggests file
+> 
+> I suppose it could help a user who doesn't initially know to use
+> BiocManager in order to install your package, and could also be used to
+> install limma on behalf of your users (with their permission!), but
+> it's additional work, may be hard to get right (see the CRAN policy
+> about installing packages and touching user files), and is not required
+> at all.
+> 
+>> What should I add to my Description File to make sure that limma gets
+>> installed from Bioconductor when needed?
+> 
+> See Martin Morgan's e-mail above in the thread. In short, tell your
+> users to install your package using BiocManager::install(...,
+> dependencies = TRUE) if they want limma to work. They are still free to
+> install.packages() if they don't want limma or can set things up
+> themselves.
+> 
+> Move limma to Imports (better) or Depends (may be worse)
+> if you want limma to be always available, at the cost of always
+> requiring Bioconductor to be set up to have your package installed.
+> There are other ways besides BiocManager::install(), but they all
+> depend on the user having set up Bioconductor repos in their R session
+> somehow, be it BiocManager::repositories() or setRepositories().
+> 
+> --
+> Best regards,
+> Ivan
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de  Fri Mar 17 13:29:51 2023
+From: Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de (Ruff, Sergej)
+Date: Fri, 17 Mar 2023 12:29:51 +0000
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <606f0f1a-1b8b-f32b-261a-8877672c80dc@gmail.com>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+ <20230316211448.0dee9f35@Tarkus>
+ <BY5PR04MB662799A65F1CC8AE1A84C615F9BC9@BY5PR04MB6627.namprd04.prod.outlook.com>
+ <ce33881470bb4743847e495abf35245d@tiho-hannover.de>
+ <1d55266d-dd43-f8b4-e27a-564dbd838918@gmail.com>
+ <423fc050c0554e9eaf1f2bca3582ad9e@tiho-hannover.de>,
+ <606f0f1a-1b8b-f32b-261a-8877672c80dc@gmail.com>
+Message-ID: <03f5eac57bda4158afe6778f98b17874@tiho-hannover.de>
+
+Really.Whats a problem i have when all dependencies arent prei installed. I thought the problem would be solved once my package is available on CRAN.
+
+
+Here is a recent question I had regarding the same issue:
+
+
+I am currently working on a r-package. I would like to submit my r package to CRAN, but I have a question regarding dependency installations on CRAN.
+
+I have almost finished my package, added the required dependencies to the NAMESPACE and DESCRIPTION files as Imports, and get no errors or warnings
+
+when running the check in Rstudio. The package runs on the pc, where I?ve built the package, but when I install the package on a pc, where the dependencies
+
+are not preinstalled, I get the following error:
+
+ERROR:
+
+dependencies 'depth', 'geometry' are not available for package 'packagename'
+* removing 'C:/Users/156932/AppData/Local/Programs/R/R-4.2.1/library/packagename'
+Warning in install.packages : installation of package ?packagename? had non-zero exit status
+
+
+The problem is that a local installation of my package (via USB-stick for example) can?t install the dependencies from CRAN.
+
+The package works perfectly fine, if the dependencies are preinstalled.
+
+Now I don?t want to submit my package to CRAN if the end user gets the same error message when installing my package.
+
+Question: After I submit my package to CRAN, will CRAN install dependencies automatically (via "install.packages()"), resolving the issue I have right now?
+
+Or do I have to modify the R-package or the Description-file to make sure my Package can install dependencies?
+
+I provided the dependencies to the NAMESPACE-file as @ImportFrom via the devtools::document()-function. I added the dependencies to the DESCRIPTION-file via usethis::use_package("x",type="Imports"). The Description looks like this:
+
+License: GPL (>= 3)
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.2.3
+Imports:
+    depth,
+    geometry,
+    graphics,
+    grDevices,
+    MASS,
+    mvtnorm,
+    nlme,
+    rgl,
+    stats
+
+
+
+So I thought all dependencies would install automatically from CRAN? Is that not the case?
+
+
+________________________________
+Von: Duncan Murdoch <murdoch.duncan at gmail.com>
+Gesendet: Freitag, 17. M?rz 2023 13:15:28
+An: Ruff, Sergej; Martin Morgan; Ivan Krylov
+Cc: r-package-devel at r-project.org
+Betreff: Re: AW: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+
+On 17/03/2023 6:19 a.m., Ruff, Sergej wrote:
+> In my example I have the following lines:
+>
+>
+> ### Differential expression analysis with limma
+> group = gl(2, n)
+> design = model.matrix(~ group)
+> fit1 = limma::lmFit(X, design)
+> fit = limma::eBayes(fit1)
+>
+> The R CMD Check returns no Errors or Notes if Limma is pre-installed. If
+> limma is not pre-installed I get an error, reminding me that Limma is
+> not available.
+
+That's a problem, and will cause your package to be rejected.  It should
+not raise an error during the tests when a suggested package is missing.
+Ivan gave you good advice on how to fix this.
+
+I'd recommend testing your package a few times on Winbuilder and fixing
+things until you get clean results.  That won't guarantee acceptance on
+CRAN; new packages get a manual inspection as well, and they'll often
+find some problem that the automatic tests don't find, e.g. stylistic
+issues in the Description field of the DESCRIPTION file.  Here's a note
+I received recently when I submitted a new package (RmdConcord):
+
+----------------
+The Description field is intended to be a (one paragraph) description of
+what the package does and why it may be useful. Please add more details
+about the package functionality and implemented methods in your
+Description text.
+
+Please always write package names, software names and API (application
+programming interface) names in single quotes in title and description.
+e.g: --> 'R Markdown'
+Please note that package names are case sensitive.
+
+Please do not start the description with "This package", "Functions
+for", package name, title or similar.
+---------------
+
+
+Duncan Murdoch
+
+>
+>
+> Thats the source of my worries. Will the same error appear when CRAN
+> checks the examples of my package? Or should I not be worried?
+>
+>
+> With regards,
+>
+>
+> Sergej
+>
+> ------------------------------------------------------------------------
+> *Von:* Duncan Murdoch <murdoch.duncan at gmail.com>
+> *Gesendet:* Freitag, 17. M?rz 2023 11:14:25
+> *An:* Ruff, Sergej; Martin Morgan; Ivan Krylov
+> *Cc:* r-package-devel at r-project.org
+> *Betreff:* Re: [R-pkg-devel] How to declare Bioconductor Dependencies in
+> the Description File of my R Package
+> On 17/03/2023 6:06 a.m., Ruff, Sergej wrote:
+>> I was wondering how CRAN will handle Limma when running the automatic check.
+>>
+>>
+>> I am worried that my package will be rejected if Limma won?t install from Bioconductor on a clean version of R. Leading to an Error and Note during the check.
+>>
+>>
+>> I am using Limma only for an example in my functions description, not inside my actual function.
+>>
+>>
+>> How would CRAN?s System handle that when checking my package for submission?
+>
+> If you have it in the Suggests list you should have written your code to
+> work (i.e. not trigger an error) whether it is installed or not, so you
+> shouldn't worry about it.
+>
+> Duncan Murdoch
+>
+>>
+>>
+>> with regards,
+>>
+>>
+>> Sergej
+>>
+>> ________________________________
+>> Von: Martin Morgan <mtmorgan.bioc at gmail.com>
+>> Gesendet: Donnerstag, 16. M?rz 2023 20:12:51
+>> An: Ivan Krylov; Ruff, Sergej
+>> Cc: r-package-devel at r-project.org
+>> Betreff: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+>>
+>> I would not follow the instructions in RTIGER?s README for installing Bioconductor packages.
+>>
+>> BiocManager::install(?RTIGER?) would install both CRAN and Bioconductor dependencies of RTIGER, and would be my preferred instruction in a README or INSTALL file. A complete instruction might be to install your package as if it were on Bioconductor ?
+>>
+>> If (!requireNamepace(?BiocManager?, quietly = TRUE))
+>>      install.packages(?BiocManager?)
+>> BiocManager::install(?<your package>?)
+>>
+>> It does not make sense to me to have instructions in .onAttach / .onLoad or in each function for the user to install a ?Suggests:? package, when actually the package is required for use and belongs in Imports: or perhaps Depends:.
+>>
+>> The instruction to use ?version = ?3.14?? of Bioconductor in the RTIGER document is not universally correct, since different Bioconductor versions are tied to specific R versions (see  https://bioconductor.org/about/release-announcements/
+> <https://bioconductor.org/about/release-announcements/> ). On one
+> version of R I am currently using, I get
+>>
+>>> BiocManager::install(version = "3.14")
+>> Error: Bioconductor version '3.14' requires R version '4.1'; use
+>>    `BiocManager::install(version = '3.17')` with R version 4.3; see
+>>    https://bioconductor.org/install <https://bioconductor.org/install>
+>>
+>> The instruction to install a vector of Bioconductor packages is also unnecessary for Bioconductor packages in the Imports: or Depends: field of <your package>, or if one were to pass the argument `dependencies = TRUE` to either BiocManager::install() or install.packages()  (to get the Suggests: packages of <your package> to be installed, as
+> well as Depends:, Imports: and LinkingTo:).
+>>
+>> Briefly, installation requires R to know the correct repositories. The command
+>>
+>> BiocManager::repositories()
+>>
+>> Returns a vector of Bioconductor and CRAN repositories relevant to your version of R. If one is averse to using BiocManager::install(?RTIGER?), a reasonable alternative, though still requiring that the BiocManager package is installed, is
+>>
+>> install.packages(?RTIGER?, repos = BiocManager::repositories())
+>>
+>> Base R also provides a mechanism for specifying Bioconductor repositories, via `setRepositories()` called before install.packages(). However, this is not recommended because, as can be seen on the web page mentioned above, there are two versions of Bioconductor  for each version of R ? one always gets the ?old? Bioconductor
+> version, even when a newer version is available.
+>>
+>> From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Ivan Krylov <krylov.r00t at gmail.com>
+>> Date: Thursday, March 16, 2023 at 2:15 PM
+>> To: Ruff, Sergej <Sergej.Ruff at tiho-hannover.de>
+>> Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+>> Subject: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+>> On Thu, 16 Mar 2023 17:01:55 +0000
+>> "Ruff, Sergej" <Sergej.Ruff at tiho-hannover.de> wrote:
+>>
+>>> Last question: How does CRAN work with Bioconductor Dependencies?
+>>> Will CRAN accept limma as a dependency or will my submission be
+>>> rejected?
+>>
+>> It's not explicitly spelled out in the CRAN policy
+>> <https://cran.r-project.org/web/packages/policies.html
+> <https://cran.r-project.org/web/packages/policies.html>>, but
+>> Bioconductor and CRAN are the "mainstream repositories" for the
+>> purposes of the following rule:
+>>
+>>>> Packages on which a CRAN package depends should be available from a
+>>>> mainstream repository
+>>
+>> (Even non-mainstream repositories are allowed for optional dependencies
+>> if you follow a few additional rules.)
+>>
+>> Here's an example of a CRAN package with a strong dependency on a
+>> Bioconductor package: <https://CRAN.R-project.org/package=RTIGER
+> <https://CRAN.R-project.org/package=RTIGER>>. You
+>> can see the extra instructions for installing the Bioconductor
+>> dependencies in its README.
+>>
+>> --
+>> Best regards,
+>> Ivan
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+>>
+>>        [[alternative HTML version deleted]]
+>>
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+>
+
+
+	[[alternative HTML version deleted]]
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Fri Mar 17 13:45:44 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Fri, 17 Mar 2023 13:45:44 +0100
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <03f5eac57bda4158afe6778f98b17874@tiho-hannover.de>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+ <20230316211448.0dee9f35@Tarkus>
+ <BY5PR04MB662799A65F1CC8AE1A84C615F9BC9@BY5PR04MB6627.namprd04.prod.outlook.com>
+ <ce33881470bb4743847e495abf35245d@tiho-hannover.de>
+ <1d55266d-dd43-f8b4-e27a-564dbd838918@gmail.com>
+ <423fc050c0554e9eaf1f2bca3582ad9e@tiho-hannover.de>
+ <606f0f1a-1b8b-f32b-261a-8877672c80dc@gmail.com>
+ <03f5eac57bda4158afe6778f98b17874@tiho-hannover.de>
+Message-ID: <92d500ec-c570-7c1c-6018-10700ddd12b2@statistik.tu-dortmund.de>
+
+The user should set the CRAN+BioC via setRepositories() and then run 
+install.packages() will install all dependencies automatically.
+Of course, if you install from a local repository without the required 
+packages or from a USB drive, R cannot resolve dependencies.
+
+Best,
+Uwe Ligges
+
+
+
+On 17.03.2023 13:29, Ruff, Sergej wrote:
+> Really.Whats a problem i have when all dependencies arent prei installed. I thought the problem would be solved once my package is available on CRAN.
+> 
+> 
+> Here is a recent question I had regarding the same issue:
+> 
+> 
+> I am currently working on a r-package. I would like to submit my r package to CRAN, but I have a question regarding dependency installations on CRAN.
+> 
+> I have almost finished my package, added the required dependencies to the NAMESPACE and DESCRIPTION files as Imports, and get no errors or warnings
+> 
+> when running the check in Rstudio. The package runs on the pc, where I?ve built the package, but when I install the package on a pc, where the dependencies
+> 
+> are not preinstalled, I get the following error:
+> 
+> ERROR:
+> 
+> dependencies 'depth', 'geometry' are not available for package 'packagename'
+> * removing 'C:/Users/156932/AppData/Local/Programs/R/R-4.2.1/library/packagename'
+> Warning in install.packages : installation of package ?packagename? had non-zero exit status
+> 
+> 
+> The problem is that a local installation of my package (via USB-stick for example) can?t install the dependencies from CRAN.
+> 
+> The package works perfectly fine, if the dependencies are preinstalled.
+> 
+> Now I don?t want to submit my package to CRAN if the end user gets the same error message when installing my package.
+> 
+> Question: After I submit my package to CRAN, will CRAN install dependencies automatically (via "install.packages()"), resolving the issue I have right now?
+> 
+> Or do I have to modify the R-package or the Description-file to make sure my Package can install dependencies?
+> 
+> I provided the dependencies to the NAMESPACE-file as @ImportFrom via the devtools::document()-function. I added the dependencies to the DESCRIPTION-file via usethis::use_package("x",type="Imports"). The Description looks like this:
+> 
+> License: GPL (>= 3)
+> Encoding: UTF-8
+> LazyData: true
+> RoxygenNote: 7.2.3
+> Imports:
+>      depth,
+>      geometry,
+>      graphics,
+>      grDevices,
+>      MASS,
+>      mvtnorm,
+>      nlme,
+>      rgl,
+>      stats
+> 
+> 
+> 
+> So I thought all dependencies would install automatically from CRAN? Is that not the case?
+> 
+> 
+> ________________________________
+> Von: Duncan Murdoch <murdoch.duncan at gmail.com>
+> Gesendet: Freitag, 17. M?rz 2023 13:15:28
+> An: Ruff, Sergej; Martin Morgan; Ivan Krylov
+> Cc: r-package-devel at r-project.org
+> Betreff: Re: AW: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+> 
+> On 17/03/2023 6:19 a.m., Ruff, Sergej wrote:
+>> In my example I have the following lines:
+>>
+>>
+>> ### Differential expression analysis with limma
+>> group = gl(2, n)
+>> design = model.matrix(~ group)
+>> fit1 = limma::lmFit(X, design)
+>> fit = limma::eBayes(fit1)
+>>
+>> The R CMD Check returns no Errors or Notes if Limma is pre-installed. If
+>> limma is not pre-installed I get an error, reminding me that Limma is
+>> not available.
+> 
+> That's a problem, and will cause your package to be rejected.  It should
+> not raise an error during the tests when a suggested package is missing.
+> Ivan gave you good advice on how to fix this.
+> 
+> I'd recommend testing your package a few times on Winbuilder and fixing
+> things until you get clean results.  That won't guarantee acceptance on
+> CRAN; new packages get a manual inspection as well, and they'll often
+> find some problem that the automatic tests don't find, e.g. stylistic
+> issues in the Description field of the DESCRIPTION file.  Here's a note
+> I received recently when I submitted a new package (RmdConcord):
+> 
+> ----------------
+> The Description field is intended to be a (one paragraph) description of
+> what the package does and why it may be useful. Please add more details
+> about the package functionality and implemented methods in your
+> Description text.
+> 
+> Please always write package names, software names and API (application
+> programming interface) names in single quotes in title and description.
+> e.g: --> 'R Markdown'
+> Please note that package names are case sensitive.
+> 
+> Please do not start the description with "This package", "Functions
+> for", package name, title or similar.
+> ---------------
+> 
+> 
+> Duncan Murdoch
+> 
+>>
+>>
+>> Thats the source of my worries. Will the same error appear when CRAN
+>> checks the examples of my package? Or should I not be worried?
+>>
+>>
+>> With regards,
+>>
+>>
+>> Sergej
+>>
+>> ------------------------------------------------------------------------
+>> *Von:* Duncan Murdoch <murdoch.duncan at gmail.com>
+>> *Gesendet:* Freitag, 17. M?rz 2023 11:14:25
+>> *An:* Ruff, Sergej; Martin Morgan; Ivan Krylov
+>> *Cc:* r-package-devel at r-project.org
+>> *Betreff:* Re: [R-pkg-devel] How to declare Bioconductor Dependencies in
+>> the Description File of my R Package
+>> On 17/03/2023 6:06 a.m., Ruff, Sergej wrote:
+>>> I was wondering how CRAN will handle Limma when running the automatic check.
+>>>
+>>>
+>>> I am worried that my package will be rejected if Limma won?t install from Bioconductor on a clean version of R. Leading to an Error and Note during the check.
+>>>
+>>>
+>>> I am using Limma only for an example in my functions description, not inside my actual function.
+>>>
+>>>
+>>> How would CRAN?s System handle that when checking my package for submission?
+>>
+>> If you have it in the Suggests list you should have written your code to
+>> work (i.e. not trigger an error) whether it is installed or not, so you
+>> shouldn't worry about it.
+>>
+>> Duncan Murdoch
+>>
+>>>
+>>>
+>>> with regards,
+>>>
+>>>
+>>> Sergej
+>>>
+>>> ________________________________
+>>> Von: Martin Morgan <mtmorgan.bioc at gmail.com>
+>>> Gesendet: Donnerstag, 16. M?rz 2023 20:12:51
+>>> An: Ivan Krylov; Ruff, Sergej
+>>> Cc: r-package-devel at r-project.org
+>>> Betreff: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+>>>
+>>> I would not follow the instructions in RTIGER?s README for installing Bioconductor packages.
+>>>
+>>> BiocManager::install(?RTIGER?) would install both CRAN and Bioconductor dependencies of RTIGER, and would be my preferred instruction in a README or INSTALL file. A complete instruction might be to install your package as if it were on Bioconductor ?
+>>>
+>>> If (!requireNamepace(?BiocManager?, quietly = TRUE))
+>>>       install.packages(?BiocManager?)
+>>> BiocManager::install(?<your package>?)
+>>>
+>>> It does not make sense to me to have instructions in .onAttach / .onLoad or in each function for the user to install a ?Suggests:? package, when actually the package is required for use and belongs in Imports: or perhaps Depends:.
+>>>
+>>> The instruction to use ?version = ?3.14?? of Bioconductor in the RTIGER document is not universally correct, since different Bioconductor versions are tied to specific R versions (see  https://bioconductor.org/about/release-announcements/
+>> <https://bioconductor.org/about/release-announcements/> ). On one
+>> version of R I am currently using, I get
+>>>
+>>>> BiocManager::install(version = "3.14")
+>>> Error: Bioconductor version '3.14' requires R version '4.1'; use
+>>>     `BiocManager::install(version = '3.17')` with R version 4.3; see
+>>>     https://bioconductor.org/install <https://bioconductor.org/install>
+>>>
+>>> The instruction to install a vector of Bioconductor packages is also unnecessary for Bioconductor packages in the Imports: or Depends: field of <your package>, or if one were to pass the argument `dependencies = TRUE` to either BiocManager::install() or install.packages()  (to get the Suggests: packages of <your package> to be installed, as
+>> well as Depends:, Imports: and LinkingTo:).
+>>>
+>>> Briefly, installation requires R to know the correct repositories. The command
+>>>
+>>> BiocManager::repositories()
+>>>
+>>> Returns a vector of Bioconductor and CRAN repositories relevant to your version of R. If one is averse to using BiocManager::install(?RTIGER?), a reasonable alternative, though still requiring that the BiocManager package is installed, is
+>>>
+>>> install.packages(?RTIGER?, repos = BiocManager::repositories())
+>>>
+>>> Base R also provides a mechanism for specifying Bioconductor repositories, via `setRepositories()` called before install.packages(). However, this is not recommended because, as can be seen on the web page mentioned above, there are two versions of Bioconductor  for each version of R ? one always gets the ?old? Bioconductor
+>> version, even when a newer version is available.
+>>>
+>>> From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Ivan Krylov <krylov.r00t at gmail.com>
+>>> Date: Thursday, March 16, 2023 at 2:15 PM
+>>> To: Ruff, Sergej <Sergej.Ruff at tiho-hannover.de>
+>>> Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+>>> Subject: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+>>> On Thu, 16 Mar 2023 17:01:55 +0000
+>>> "Ruff, Sergej" <Sergej.Ruff at tiho-hannover.de> wrote:
+>>>
+>>>> Last question: How does CRAN work with Bioconductor Dependencies?
+>>>> Will CRAN accept limma as a dependency or will my submission be
+>>>> rejected?
+>>>
+>>> It's not explicitly spelled out in the CRAN policy
+>>> <https://cran.r-project.org/web/packages/policies.html
+>> <https://cran.r-project.org/web/packages/policies.html>>, but
+>>> Bioconductor and CRAN are the "mainstream repositories" for the
+>>> purposes of the following rule:
+>>>
+>>>>> Packages on which a CRAN package depends should be available from a
+>>>>> mainstream repository
+>>>
+>>> (Even non-mainstream repositories are allowed for optional dependencies
+>>> if you follow a few additional rules.)
+>>>
+>>> Here's an example of a CRAN package with a strong dependency on a
+>>> Bioconductor package: <https://CRAN.R-project.org/package=RTIGER
+>> <https://CRAN.R-project.org/package=RTIGER>>. You
+>>> can see the extra instructions for installing the Bioconductor
+>>> dependencies in its README.
+>>>
+>>> --
+>>> Best regards,
+>>> Ivan
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>> <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+>>>
+>>>         [[alternative HTML version deleted]]
+>>>
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>> <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+>>
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Mar 17 13:46:57 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 17 Mar 2023 15:46:57 +0300
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <03f5eac57bda4158afe6778f98b17874@tiho-hannover.de>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+ <20230316211448.0dee9f35@Tarkus>
+ <BY5PR04MB662799A65F1CC8AE1A84C615F9BC9@BY5PR04MB6627.namprd04.prod.outlook.com>
+ <ce33881470bb4743847e495abf35245d@tiho-hannover.de>
+ <1d55266d-dd43-f8b4-e27a-564dbd838918@gmail.com>
+ <423fc050c0554e9eaf1f2bca3582ad9e@tiho-hannover.de>
+ <606f0f1a-1b8b-f32b-261a-8877672c80dc@gmail.com>
+ <03f5eac57bda4158afe6778f98b17874@tiho-hannover.de>
+Message-ID: <20230317154657.6328686c@arachnoid>
+
+? Fri, 17 Mar 2023 12:29:51 +0000
+"Ruff, Sergej" <Sergej.Ruff at tiho-hannover.de> ?????:
+
+> The problem is that a local installation of my package (via USB-stick
+> for example) can?t install the dependencies from CRAN.
+> 
+> The package works perfectly fine, if the dependencies are
+> preinstalled.
+
+This is a similar, but different problem. It is indeed solved by having
+your package with its dependencies in a repository.
+
+> So I thought all dependencies would install automatically from CRAN?
+
+The user is allowed to install your package with dependencies = NA
+(which means not installing packages listed under Suggests). The
+Depends, Imports and LinkingTo will be installed, but not Suggests. The
+user will have to pass dependencies = TRUE in order to install the
+packages listed under Suggests.
+
+Your package is required to work (in particular, run the examples and
+vignettes and pass the tests without errors) without having the
+suggested packages installed:
+<https://cran.r-project.org/doc/manuals/R-exts.html#Suggested-packages>.
+You can check whether limma can be loaded and raise an error otherwise,
+but your tests, examples and vignettes shouldn't raise errors or
+otherwise crash. This is checked by CRAN here:
+https://www.stats.ox.ac.uk/pub/bdr/noSuggests/README.txt
+
+If your package can't be meaningfully used without limma, do list it as
+a strong dependency.
+
+-- 
+Best regards,
+Ivan
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Mar 17 13:48:21 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 17 Mar 2023 08:48:21 -0400
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <03f5eac57bda4158afe6778f98b17874@tiho-hannover.de>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+ <20230316211448.0dee9f35@Tarkus>
+ <BY5PR04MB662799A65F1CC8AE1A84C615F9BC9@BY5PR04MB6627.namprd04.prod.outlook.com>
+ <ce33881470bb4743847e495abf35245d@tiho-hannover.de>
+ <1d55266d-dd43-f8b4-e27a-564dbd838918@gmail.com>
+ <423fc050c0554e9eaf1f2bca3582ad9e@tiho-hannover.de>
+ <606f0f1a-1b8b-f32b-261a-8877672c80dc@gmail.com>
+ <03f5eac57bda4158afe6778f98b17874@tiho-hannover.de>
+Message-ID: <36261dc2-1d27-e295-48a2-7e222be34ed8@gmail.com>
+
+You keep repeating basically the same questions, and appear to be 
+ignoring the advice you've received.  That's partly understandable, 
+because some of it (what you find in places like StackOverflow) is 
+wrong, but I think you should trust what I said, and what Ivan, Martin 
+and Uwe said.  Uwe is an authority on CRAN, Martin is an authority on 
+BioConductor, and Ivan and I are experienced R users.
+
+Duncan Murdoch
+
+On 17/03/2023 8:29 a.m., Ruff, Sergej wrote:
+> Really.Whats a problem i have when all dependencies arent prei 
+> installed. I thought the problem would be solved once my package is 
+> available on CRAN.
+> 
+> 
+> Here is a recent question I had regarding the same issue:
+> 
+> 
+> I am currently working on a r-package. I would like to submit my r 
+> package to CRAN, but I have a question regarding dependency 
+> installations on CRAN.
+> 
+> I have almost finished my package, added the required dependencies to 
+> the NAMESPACE and DESCRIPTION files as Imports, and get no errors or 
+> warnings
+> 
+> when running the check in Rstudio. The package runs on the pc, where 
+> I?ve built the package, but when I install the package on a pc, where 
+> the dependencies
+> 
+> are not preinstalled, I get the following error:
+> 
+> ERROR:
+> 
+> |dependencies 'depth', 'geometry' are not available for package 
+> 'packagename' * removing 
+> 'C:/Users/156932/AppData/Local/Programs/R/R-4.2.1/library/packagename' 
+> Warning in install.packages : installation of package ?packagename? had 
+> non-zero exit status |
+> 
+> The problem is that a local installation of my package (via USB-stick 
+> for example) can?t install the dependencies from CRAN.
+> 
+> The package works perfectly fine, if the dependencies are preinstalled.
+> 
+> Now I don?t want to submit my package to CRAN if the end user gets the 
+> same error message when installing my package.
+> 
+> Question: After I submit my package to CRAN, will CRAN install 
+> dependencies automatically (via "install.packages()"), resolving the 
+> issue I have right now?
+> 
+> Or do I have to modify the R-package or the Description-file to make 
+> sure my Package can install dependencies?
+> 
+> I provided the dependencies to the NAMESPACE-file as @ImportFrom via the 
+> devtools::document()-function. I added the dependencies to the 
+> DESCRIPTION-file via |usethis::use_package("x",type="Imports")|. The 
+> Description looks like this:
+> 
+> |License: GPL (>= 3) Encoding: UTF-8 LazyData: true RoxygenNote: 7.2.3 
+> Imports: depth, geometry, graphics, grDevices, MASS, mvtnorm, nlme, rgl, 
+> stats|
+> 
+> 
+> 
+> So I thought all dependencies would install automatically from CRAN? Is 
+> that not the case?
+> 
+> 
+> ------------------------------------------------------------------------
+> *Von:* Duncan Murdoch <murdoch.duncan at gmail.com>
+> *Gesendet:* Freitag, 17. M?rz 2023 13:15:28
+> *An:* Ruff, Sergej; Martin Morgan; Ivan Krylov
+> *Cc:* r-package-devel at r-project.org
+> *Betreff:* Re: AW: [R-pkg-devel] How to declare Bioconductor 
+> Dependencies in the Description File of my R Package
+> On 17/03/2023 6:19 a.m., Ruff, Sergej wrote:
+>> In my example I have the following lines:
+>> 
+>> 
+>> ### Differential expression analysis with limma
+>> group = gl(2, n)
+>> design = model.matrix(~ group)
+>> fit1 = limma::lmFit(X, design)
+>> fit = limma::eBayes(fit1)
+>> 
+>> The R CMD Check returns no Errors or Notes if Limma is pre-installed. If 
+>> limma is not pre-installed I get an error, reminding me that Limma is 
+>> not available.
+> 
+> That's a problem, and will cause your package to be rejected.? It should
+> not raise an error during the tests when a suggested package is missing.
+> Ivan gave you good advice on how to fix this.
+> 
+> I'd recommend testing your package a few times on Winbuilder and fixing
+> things until you get clean results.? That won't guarantee acceptance on
+> CRAN; new packages get a manual inspection as well, and they'll often
+> find some problem that the automatic tests don't find, e.g. stylistic
+> issues in the Description field of the DESCRIPTION file.? Here's a note
+> I received recently when I submitted a new package (RmdConcord):
+> 
+> ----------------
+> The Description field is intended to be a (one paragraph) description of
+> what the package does and why it may be useful. Please add more details
+> about the package functionality and implemented methods in your
+> Description text.
+> 
+> Please always write package names, software names and API (application
+> programming interface) names in single quotes in title and description.
+> e.g: --> 'R Markdown'
+> Please note that package names are case sensitive.
+> 
+> Please do not start the description with "This package", "Functions
+> for", package name, title or similar.
+> ---------------
+> 
+> 
+> Duncan Murdoch
+> 
+>> 
+>> 
+>> Thats the source of my worries. Will the same error appear when CRAN 
+>> checks the examples of my package? Or should I not be worried?
+>> 
+>> 
+>> With regards,
+>> 
+>> 
+>> Sergej
+>> 
+>> ------------------------------------------------------------------------
+>> *Von:* Duncan Murdoch <murdoch.duncan at gmail.com>
+>> *Gesendet:* Freitag, 17. M?rz 2023 11:14:25
+>> *An:* Ruff, Sergej; Martin Morgan; Ivan Krylov
+>> *Cc:* r-package-devel at r-project.org
+>> *Betreff:* Re: [R-pkg-devel] How to declare Bioconductor Dependencies in 
+>> the Description File of my R Package
+>> On 17/03/2023 6:06 a.m., Ruff, Sergej wrote:
+>>> I was wondering how CRAN will handle Limma when running the automatic check.
+>>> 
+>>> 
+>>> I am worried that my package will be rejected if Limma won?t install from Bioconductor on a clean version of R. Leading to an Error and Note during the check.
+>>> 
+>>> 
+>>> I am using Limma only for an example in my functions description, not inside my actual function.
+>>> 
+>>> 
+>>> How would CRAN?s System handle that when checking my package for submission?
+>> 
+>> If you have it in the Suggests list you should have written your code to
+>> work (i.e. not trigger an error) whether it is installed or not, so you
+>> shouldn't worry about it.
+>> 
+>> Duncan Murdoch
+>> 
+>>> 
+>>> 
+>>> with regards,
+>>> 
+>>> 
+>>> Sergej
+>>> 
+>>> ________________________________
+>>> Von: Martin Morgan <mtmorgan.bioc at gmail.com>
+>>> Gesendet: Donnerstag, 16. M?rz 2023 20:12:51
+>>> An: Ivan Krylov; Ruff, Sergej
+>>> Cc: r-package-devel at r-project.org
+>>> Betreff: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+>>> 
+>>> I would not follow the instructions in RTIGER?s README for installing Bioconductor packages.
+>>> 
+>>> BiocManager::install(?RTIGER?) would install both CRAN and Bioconductor dependencies of RTIGER, and would be my preferred instruction in a README or INSTALL file. A complete instruction might be to install your package as if it were on Bioconductor ?
+>>> 
+>>> If (!requireNamepace(?BiocManager?, quietly = TRUE))
+>>>????? install.packages(?BiocManager?)
+>>> BiocManager::install(?<your package>?)
+>>> 
+>>> It does not make sense to me to have instructions in .onAttach / .onLoad or in each function for the user to install a ?Suggests:? package, when actually the package is required for use and belongs in Imports: or perhaps Depends:.
+>>> 
+>>> The instruction to use ?version = ?3.14?? of Bioconductor in the RTIGER document is not universally correct, since different Bioconductor versions are tied to specific R versions (see https://bioconductor.org/about/release-announcements/ 
+> <https://bioconductor.org/about/release-announcements/>
+>> <https://bioconductor.org/about/release-announcements/ 
+> <https://bioconductor.org/about/release-announcements/>> ). On one
+>> version of R I am currently using, I get
+>>> 
+>>>> BiocManager::install(version = "3.14")
+>>> Error: Bioconductor version '3.14' requires R version '4.1'; use
+>>>??? `BiocManager::install(version = '3.17')` with R version 4.3; see
+>>>    https://bioconductor.org/install <https://bioconductor.org/install> 
+> <https://bioconductor.org/install <https://bioconductor.org/install>>
+>>> 
+>>> The instruction to install a vector of Bioconductor packages is also unnecessary for Bioconductor packages in the Imports: or Depends: field of <your package>, or if one were to pass the argument `dependencies = TRUE` to either BiocManager::install() or  install.packages()? (to get the Suggests: packages of <your package> 
+> to be installed, as
+>> well as Depends:, Imports: and LinkingTo:).
+>>> 
+>>> Briefly, installation requires R to know the correct repositories. The command
+>>> 
+>>> BiocManager::repositories()
+>>> 
+>>> Returns a vector of Bioconductor and CRAN repositories relevant to your version of R. If one is averse to using BiocManager::install(?RTIGER?), a reasonable alternative, though still requiring that the BiocManager package is installed, is
+>>> 
+>>> install.packages(?RTIGER?, repos = BiocManager::repositories())
+>>> 
+>>> Base R also provides a mechanism for specifying Bioconductor repositories, via `setRepositories()` called before install.packages(). However, this is not recommended because, as can be seen on the web page mentioned above, there are two versions of Bioconductor for each version of R ? one always gets the ?old? Bioconductor
+>> version, even when a newer version is available.
+>>> 
+>>> From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Ivan Krylov <krylov.r00t at gmail.com>
+>>> Date: Thursday, March 16, 2023 at 2:15 PM
+>>> To: Ruff, Sergej <Sergej.Ruff at tiho-hannover.de>
+>>> Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+>>> Subject: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+>>> On Thu, 16 Mar 2023 17:01:55 +0000
+>>> "Ruff, Sergej" <Sergej.Ruff at tiho-hannover.de> wrote:
+>>> 
+>>>> Last question: How does CRAN work with Bioconductor Dependencies?
+>>>> Will CRAN accept limma as a dependency or will my submission be
+>>>> rejected?
+>>> 
+>>> It's not explicitly spelled out in the CRAN policy
+>>> <https://cran.r-project.org/web/packages/policies.html
+>> <https://cran.r-project.org/web/packages/policies.html 
+> <https://cran.r-project.org/web/packages/policies.html>>>, but
+>>> Bioconductor and CRAN are the "mainstream repositories" for the
+>>> purposes of the following rule:
+>>> 
+>>>>> Packages on which a CRAN package depends should be available from a
+>>>>> mainstream repository
+>>> 
+>>> (Even non-mainstream repositories are allowed for optional dependencies
+>>> if you follow a few additional rules.)
+>>> 
+>>> Here's an example of a CRAN package with a strong dependency on a
+>>> Bioconductor package: <https://CRAN.R-project.org/package=RTIGER
+>> <https://CRAN.R-project.org/package=RTIGER 
+> <https://CRAN.R-project.org/package=RTIGER>>>. You
+>>> can see the extra instructions for installing the Bioconductor
+>>> dependencies in its README.
+>>> 
+>>> --
+>>> Best regards,
+>>> Ivan
+>>> 
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel 
+> <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+>> <https://stat.ethz.ch/mailman/listinfo/r-package-devel 
+> <https://stat.ethz.ch/mailman/listinfo/r-package-devel>>
+>>> 
+>>>??????? [[alternative HTML version deleted]]
+>>> 
+>>> 
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel 
+> <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+>> <https://stat.ethz.ch/mailman/listinfo/r-package-devel 
+> <https://stat.ethz.ch/mailman/listinfo/r-package-devel>>
+>> 
+>
+
+
+From Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de  Fri Mar 17 13:53:04 2023
+From: Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de (Ruff, Sergej)
+Date: Fri, 17 Mar 2023 12:53:04 +0000
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <36261dc2-1d27-e295-48a2-7e222be34ed8@gmail.com>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+ <20230316211448.0dee9f35@Tarkus>
+ <BY5PR04MB662799A65F1CC8AE1A84C615F9BC9@BY5PR04MB6627.namprd04.prod.outlook.com>
+ <ce33881470bb4743847e495abf35245d@tiho-hannover.de>
+ <1d55266d-dd43-f8b4-e27a-564dbd838918@gmail.com>
+ <423fc050c0554e9eaf1f2bca3582ad9e@tiho-hannover.de>
+ <606f0f1a-1b8b-f32b-261a-8877672c80dc@gmail.com>
+ <03f5eac57bda4158afe6778f98b17874@tiho-hannover.de>,
+ <36261dc2-1d27-e295-48a2-7e222be34ed8@gmail.com>
+Message-ID: <68d341eba218496c8bfc1a36bc443a0b@tiho-hannover.de>
+
+I will implement the changes you recommended into my package. Thank you for your help.
+
+
+I wasn?t ignoring your advice, I am just confused because other sources like Stackoverflow gave me contradicting information and I wanted to be sure.
+
+
+I will write if I encounter other problems which fit that issue.
+
+Thank you for your help.
+
+
+Regards,
+
+Sergej
+
+
+
+________________________________
+Von: Duncan Murdoch <murdoch.duncan at gmail.com>
+Gesendet: Freitag, 17. M?rz 2023 13:48:21
+An: Ruff, Sergej; Martin Morgan; Ivan Krylov
+Cc: r-package-devel at r-project.org
+Betreff: Re: AW: AW: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+
+You keep repeating basically the same questions, and appear to be
+ignoring the advice you've received.  That's partly understandable,
+because some of it (what you find in places like StackOverflow) is
+wrong, but I think you should trust what I said, and what Ivan, Martin
+and Uwe said.  Uwe is an authority on CRAN, Martin is an authority on
+BioConductor, and Ivan and I are experienced R users.
+
+Duncan Murdoch
+
+On 17/03/2023 8:29 a.m., Ruff, Sergej wrote:
+> Really.Whats a problem i have when all dependencies arent prei
+> installed. I thought the problem would be solved once my package is
+> available on CRAN.
+>
+>
+> Here is a recent question I had regarding the same issue:
+>
+>
+> I am currently working on a r-package. I would like to submit my r
+> package to CRAN, but I have a question regarding dependency
+> installations on CRAN.
+>
+> I have almost finished my package, added the required dependencies to
+> the NAMESPACE and DESCRIPTION files as Imports, and get no errors or
+> warnings
+>
+> when running the check in Rstudio. The package runs on the pc, where
+> I?ve built the package, but when I install the package on a pc, where
+> the dependencies
+>
+> are not preinstalled, I get the following error:
+>
+> ERROR:
+>
+> |dependencies 'depth', 'geometry' are not available for package
+> 'packagename' * removing
+> 'C:/Users/156932/AppData/Local/Programs/R/R-4.2.1/library/packagename'
+> Warning in install.packages : installation of package ?packagename? had
+> non-zero exit status |
+>
+> The problem is that a local installation of my package (via USB-stick
+> for example) can?t install the dependencies from CRAN.
+>
+> The package works perfectly fine, if the dependencies are preinstalled.
+>
+> Now I don?t want to submit my package to CRAN if the end user gets the
+> same error message when installing my package.
+>
+> Question: After I submit my package to CRAN, will CRAN install
+> dependencies automatically (via "install.packages()"), resolving the
+> issue I have right now?
+>
+> Or do I have to modify the R-package or the Description-file to make
+> sure my Package can install dependencies?
+>
+> I provided the dependencies to the NAMESPACE-file as @ImportFrom via the
+> devtools::document()-function. I added the dependencies to the
+> DESCRIPTION-file via |usethis::use_package("x",type="Imports")|. The
+> Description looks like this:
+>
+> |License: GPL (>= 3) Encoding: UTF-8 LazyData: true RoxygenNote: 7.2.3
+> Imports: depth, geometry, graphics, grDevices, MASS, mvtnorm, nlme, rgl,
+> stats|
+>
+>
+>
+> So I thought all dependencies would install automatically from CRAN? Is
+> that not the case?
+>
+>
+> ------------------------------------------------------------------------
+> *Von:* Duncan Murdoch <murdoch.duncan at gmail.com>
+> *Gesendet:* Freitag, 17. M?rz 2023 13:15:28
+> *An:* Ruff, Sergej; Martin Morgan; Ivan Krylov
+> *Cc:* r-package-devel at r-project.org
+> *Betreff:* Re: AW: [R-pkg-devel] How to declare Bioconductor
+> Dependencies in the Description File of my R Package
+> On 17/03/2023 6:19 a.m., Ruff, Sergej wrote:
+>> In my example I have the following lines:
+>>
+>>
+>> ### Differential expression analysis with limma
+>> group = gl(2, n)
+>> design = model.matrix(~ group)
+>> fit1 = limma::lmFit(X, design)
+>> fit = limma::eBayes(fit1)
+>>
+>> The R CMD Check returns no Errors or Notes if Limma is pre-installed. If
+>> limma is not pre-installed I get an error, reminding me that Limma is
+>> not available.
+>
+> That's a problem, and will cause your package to be rejected.  It should
+> not raise an error during the tests when a suggested package is missing.
+> Ivan gave you good advice on how to fix this.
+>
+> I'd recommend testing your package a few times on Winbuilder and fixing
+> things until you get clean results.  That won't guarantee acceptance on
+> CRAN; new packages get a manual inspection as well, and they'll often
+> find some problem that the automatic tests don't find, e.g. stylistic
+> issues in the Description field of the DESCRIPTION file.  Here's a note
+> I received recently when I submitted a new package (RmdConcord):
+>
+> ----------------
+> The Description field is intended to be a (one paragraph) description of
+> what the package does and why it may be useful. Please add more details
+> about the package functionality and implemented methods in your
+> Description text.
+>
+> Please always write package names, software names and API (application
+> programming interface) names in single quotes in title and description.
+> e.g: --> 'R Markdown'
+> Please note that package names are case sensitive.
+>
+> Please do not start the description with "This package", "Functions
+> for", package name, title or similar.
+> ---------------
+>
+>
+> Duncan Murdoch
+>
+>>
+>>
+>> Thats the source of my worries. Will the same error appear when CRAN
+>> checks the examples of my package? Or should I not be worried?
+>>
+>>
+>> With regards,
+>>
+>>
+>> Sergej
+>>
+>> ------------------------------------------------------------------------
+>> *Von:* Duncan Murdoch <murdoch.duncan at gmail.com>
+>> *Gesendet:* Freitag, 17. M?rz 2023 11:14:25
+>> *An:* Ruff, Sergej; Martin Morgan; Ivan Krylov
+>> *Cc:* r-package-devel at r-project.org
+>> *Betreff:* Re: [R-pkg-devel] How to declare Bioconductor Dependencies in
+>> the Description File of my R Package
+>> On 17/03/2023 6:06 a.m., Ruff, Sergej wrote:
+>>> I was wondering how CRAN will handle Limma when running the automatic check.
+>>>
+>>>
+>>> I am worried that my package will be rejected if Limma won?t install from Bioconductor on a clean version of R. Leading to an Error and Note during the check.
+>>>
+>>>
+>>> I am using Limma only for an example in my functions description, not inside my actual function.
+>>>
+>>>
+>>> How would CRAN?s System handle that when checking my package for submission?
+>>
+>> If you have it in the Suggests list you should have written your code to
+>> work (i.e. not trigger an error) whether it is installed or not, so you
+>> shouldn't worry about it.
+>>
+>> Duncan Murdoch
+>>
+>>>
+>>>
+>>> with regards,
+>>>
+>>>
+>>> Sergej
+>>>
+>>> ________________________________
+>>> Von: Martin Morgan <mtmorgan.bioc at gmail.com>
+>>> Gesendet: Donnerstag, 16. M?rz 2023 20:12:51
+>>> An: Ivan Krylov; Ruff, Sergej
+>>> Cc: r-package-devel at r-project.org
+>>> Betreff: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+>>>
+>>> I would not follow the instructions in RTIGER?s README for installing Bioconductor packages.
+>>>
+>>> BiocManager::install(?RTIGER?) would install both CRAN and Bioconductor dependencies of RTIGER, and would be my preferred instruction in a README or INSTALL file. A complete instruction might be to install your package as if it were on Bioconductor ?
+>>>
+>>> If (!requireNamepace(?BiocManager?, quietly = TRUE))
+>>>      install.packages(?BiocManager?)
+>>> BiocManager::install(?<your package>?)
+>>>
+>>> It does not make sense to me to have instructions in .onAttach / .onLoad or in each function for the user to install a ?Suggests:? package, when actually the package is required for use and belongs in Imports: or perhaps Depends:.
+>>>
+>>> The instruction to use ?version = ?3.14?? of Bioconductor in the RTIGER document is not universally correct, since different Bioconductor versions are tied to specific R versions (see https://bioconductor.org/about/release-announcements/
+> <https://bioconductor.org/about/release-announcements/>
+>> <https://bioconductor.org/about/release-announcements/
+> <https://bioconductor.org/about/release-announcements/>> ). On one
+>> version of R I am currently using, I get
+>>>
+>>>> BiocManager::install(version = "3.14")
+>>> Error: Bioconductor version '3.14' requires R version '4.1'; use
+>>>    `BiocManager::install(version = '3.17')` with R version 4.3; see
+>>>    https://bioconductor.org/install <https://bioconductor.org/install>
+> <https://bioconductor.org/install <https://bioconductor.org/install>>
+>>>
+>>> The instruction to install a vector of Bioconductor packages is also unnecessary for Bioconductor packages in the Imports: or Depends: field of <your package>, or if one were to pass the argument `dependencies = TRUE` to either BiocManager::install() or  install.packages()  (to get the Suggests: packages of <your package>
+> to be installed, as
+>> well as Depends:, Imports: and LinkingTo:).
+>>>
+>>> Briefly, installation requires R to know the correct repositories. The command
+>>>
+>>> BiocManager::repositories()
+>>>
+>>> Returns a vector of Bioconductor and CRAN repositories relevant to your version of R. If one is averse to using BiocManager::install(?RTIGER?), a reasonable alternative, though still requiring that the BiocManager package is installed, is
+>>>
+>>> install.packages(?RTIGER?, repos = BiocManager::repositories())
+>>>
+>>> Base R also provides a mechanism for specifying Bioconductor repositories, via `setRepositories()` called before install.packages(). However, this is not recommended because, as can be seen on the web page mentioned above, there are two versions of Bioconductor for each version of R ? one always gets the ?old? Bioconductor
+>> version, even when a newer version is available.
+>>>
+>>> From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Ivan Krylov <krylov.r00t at gmail.com>
+>>> Date: Thursday, March 16, 2023 at 2:15 PM
+>>> To: Ruff, Sergej <Sergej.Ruff at tiho-hannover.de>
+>>> Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+>>> Subject: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+>>> On Thu, 16 Mar 2023 17:01:55 +0000
+>>> "Ruff, Sergej" <Sergej.Ruff at tiho-hannover.de> wrote:
+>>>
+>>>> Last question: How does CRAN work with Bioconductor Dependencies?
+>>>> Will CRAN accept limma as a dependency or will my submission be
+>>>> rejected?
+>>>
+>>> It's not explicitly spelled out in the CRAN policy
+>>> <https://cran.r-project.org/web/packages/policies.html
+>> <https://cran.r-project.org/web/packages/policies.html
+> <https://cran.r-project.org/web/packages/policies.html>>>, but
+>>> Bioconductor and CRAN are the "mainstream repositories" for the
+>>> purposes of the following rule:
+>>>
+>>>>> Packages on which a CRAN package depends should be available from a
+>>>>> mainstream repository
+>>>
+>>> (Even non-mainstream repositories are allowed for optional dependencies
+>>> if you follow a few additional rules.)
+>>>
+>>> Here's an example of a CRAN package with a strong dependency on a
+>>> Bioconductor package: <https://CRAN.R-project.org/package=RTIGER
+>> <https://CRAN.R-project.org/package=RTIGER
+> <https://CRAN.R-project.org/package=RTIGER>>>. You
+>>> can see the extra instructions for installing the Bioconductor
+>>> dependencies in its README.
+>>>
+>>> --
+>>> Best regards,
+>>> Ivan
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+>> <https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> <https://stat.ethz.ch/mailman/listinfo/r-package-devel>>
+>>>
+>>>        [[alternative HTML version deleted]]
+>>>
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+>> <https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> <https://stat.ethz.ch/mailman/listinfo/r-package-devel>>
+>>
+>
+
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Mar 17 20:25:42 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 17 Mar 2023 15:25:42 -0400
+Subject: [R-pkg-devel] Screen reader help request
+Message-ID: <745a3154-4cf1-36c1-6b44-c6ba7d146749@gmail.com>
+
+I received a request a few days ago to add alt text to the plots in the 
+HTML vignettes for the rgl package.
+
+That was easy to do, and I did it, but realized most of the graphics 
+that rgl produces are not in <img> format, they are WebGL canvases, and 
+those don't support the same method of adding alternate text.  Online 
+I've seen a variety of suggestions about how to do it for <canvas> 
+elements, and have implemented one of them.
+
+Could I ask someone who is familiar with one or more screen readers to 
+test whether the method that I used works?  A sample web page produced 
+with the new code is here:
+
+   https://dmurdoch.github.io/rgl/dev/articles/rgl.html
+
+The very first graphic is a plot of the iris data, and it should have 
+alt text reading "rglwidget in chunk unnamed-chunk-1".
+
+That was default text generated without user input, users could put 
+whatever they wanted there instead.
+
+Some related questions:
+
+  - Could you suggest better default text to use?
+
+  - Could you suggest good custom text for this particular graphic?
+
+  - The text is inserted when some Javascript has run to initialize the 
+page, so if the Javascript fails, there'll be no alt text.  Is that a 
+reasonable limitation?
+
+Duncan Murdoch
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Fri Mar 17 22:05:00 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Sat, 18 Mar 2023 10:05:00 +1300
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <03f5eac57bda4158afe6778f98b17874@tiho-hannover.de>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+ <20230316211448.0dee9f35@Tarkus>
+ <BY5PR04MB662799A65F1CC8AE1A84C615F9BC9@BY5PR04MB6627.namprd04.prod.outlook.com>
+ <ce33881470bb4743847e495abf35245d@tiho-hannover.de>
+ <1d55266d-dd43-f8b4-e27a-564dbd838918@gmail.com>
+ <423fc050c0554e9eaf1f2bca3582ad9e@tiho-hannover.de>
+ <606f0f1a-1b8b-f32b-261a-8877672c80dc@gmail.com>
+ <03f5eac57bda4158afe6778f98b17874@tiho-hannover.de>
+Message-ID: <F866225D-5763-4FD3-9DF4-D0CDB463869C@R-project.org>
+
+Packages can only be installed from the repositories listed and only CRAN is the default so only CRAN package are guaranteed to work. I'd like to add that the issue below is exactly why, personally, I would not recommend using Bioconductor package as strong dependency (imports/depends), because that makes the package unusable for most users, as it cannot be installed (without extra steps they don't know about) since the dependency doesn't exist on CRAN.
+
+If your users are already Bioconductor users by the virtue of the package application then they already know so it's fine, but then you are probably better off to have your package on Bioconductor as part of the ecosystem which is much more streamlined and coordinated.
+
+If it is only suggested (weak dependency) for some optional functionality, then your package will work even if the dependency is not installed so all is well. And if the optional Bioconductor functionality is used you can direct the user to instructions explaining that Bioconductor is required for that - but the package has to do that, it is not anything automatic in R.
+
+Cheers,
+Simon
+
+
+> On Mar 18, 2023, at 1:29 AM, Ruff, Sergej <Sergej.Ruff at tiho-hannover.de> wrote:
+> 
+> Really.Whats a problem i have when all dependencies arent prei installed. I thought the problem would be solved once my package is available on CRAN.
+> 
+> 
+> Here is a recent question I had regarding the same issue:
+> 
+> 
+> I am currently working on a r-package. I would like to submit my r package to CRAN, but I have a question regarding dependency installations on CRAN.
+> 
+> I have almost finished my package, added the required dependencies to the NAMESPACE and DESCRIPTION files as Imports, and get no errors or warnings
+> 
+> when running the check in Rstudio. The package runs on the pc, where I?ve built the package, but when I install the package on a pc, where the dependencies
+> 
+> are not preinstalled, I get the following error:
+> 
+> ERROR:
+> 
+> dependencies 'depth', 'geometry' are not available for package 'packagename'
+> * removing 'C:/Users/156932/AppData/Local/Programs/R/R-4.2.1/library/packagename'
+> Warning in install.packages : installation of package ?packagename? had non-zero exit status
+> 
+> 
+> The problem is that a local installation of my package (via USB-stick for example) can?t install the dependencies from CRAN.
+> 
+> The package works perfectly fine, if the dependencies are preinstalled.
+> 
+> Now I don?t want to submit my package to CRAN if the end user gets the same error message when installing my package.
+> 
+> Question: After I submit my package to CRAN, will CRAN install dependencies automatically (via "install.packages()"), resolving the issue I have right now?
+> 
+> Or do I have to modify the R-package or the Description-file to make sure my Package can install dependencies?
+> 
+> I provided the dependencies to the NAMESPACE-file as @ImportFrom via the devtools::document()-function. I added the dependencies to the DESCRIPTION-file via usethis::use_package("x",type="Imports"). The Description looks like this:
+> 
+> License: GPL (>= 3)
+> Encoding: UTF-8
+> LazyData: true
+> RoxygenNote: 7.2.3
+> Imports:
+>    depth,
+>    geometry,
+>    graphics,
+>    grDevices,
+>    MASS,
+>    mvtnorm,
+>    nlme,
+>    rgl,
+>    stats
+> 
+> 
+> 
+> So I thought all dependencies would install automatically from CRAN? Is that not the case?
+> 
+
+
+From A@J@God|rey @end|ng |rom m@@@ey@@c@nz  Fri Mar 17 22:18:25 2023
+From: A@J@God|rey @end|ng |rom m@@@ey@@c@nz (Jonathan Godfrey)
+Date: Fri, 17 Mar 2023 21:18:25 +0000
+Subject: [R-pkg-devel] Screen reader help request
+In-Reply-To: <745a3154-4cf1-36c1-6b44-c6ba7d146749@gmail.com>
+References: <745a3154-4cf1-36c1-6b44-c6ba7d146749@gmail.com>
+Message-ID: <MEAPR01MB38297A22F7F2F8AC12768D5893BD9@MEAPR01MB3829.ausprd01.prod.outlook.com>
+
+Hello Duncan,
+
+I guess a few people might expect me to contribute to your request. First I'll assure you that two graphics do have an alt tag which my screen reader is telling me about, so in a sense that is success. I did not check with multiple screen readers or different browsers because I would only find fault if I used inferior software; I expect success with JAWS or NVDA to represent the other and likewise for browsers. These two successes are the lattice and base graphics relating to the volcano data. Others are not showing to my screen reader (JAWS) and browser (Chrome) on my OS (Windows). I note that these are inserted using <img> though.
+
+What should appear in an alt tag is an area of much debate though, and the attitude towards their creation differs widely. I believe that the context is the primary driver for what should be communicated. In your context, where you are obviously writing about the package (in general) and comparison of lattice v base graphics (where I do see the alt tags), it is the main text that should be communicating with your audience. You know what you are writing and why. If you do not write about the differences then you leave it up to chance that your (mostly visually-dependent) audience sees the differences that matter to you and your efforts as an author/developer. Complementing that information intended for the whole audience with a sensible alt tag on the graphics for the blind part of your audience, would be fundamentally different to what you might need to offer for the same graphics in another context, say an analysis feeding into a business report for example. In your context, the blind person needs to know that the graphic does appear, and that the graphic has a unique (enough) label to make it obvious which graphic appeared where. We do not need a full description of every last detail of each graphic, although in other contexts, that is exactly what we need.
+
+Generating alt tag text automatically (no human interaction) is going to deliver on the technical aspects, without the analytic outcomes, although our recent efforts with the BrailleR package are trying to offer more and more factual information that could help with the analysis of the data. Our main aim is to assure the blind producer of a graphic that it does actually exist and what (roughly) it shows; it would not be great text for an alt tag in most circumstances. I've done some limited testing with AI solutions but haven't yet been overwhelmed by positive experiences.
+
+Anyone using an R markdown workflow can add alt text using the fig.alt option in the header of their chunks. Without that, the fig.cap option is used, and if neither is used, the screen reader user is victim to their personal settings. (We choose whether to be told about unlabelled graphics which used to be helpful for ignoring advertising.) I don't put unique alt tags in all of my work because I just need to convey that the graphic is there, but I do make sure there is a default bit of text that saves blind users with the wrong settings from their decisions. 
+
+
+An author wishing to support blind consumers of their efforts, could spend lots of time working out what to write, and never get it perfectly correct because the desires of those consumers are not homogeneous. I advise people to use an alt tag, but to make sure it does not duplicate what is already said in the main text of their document. Authors already do this when thinking about the right caption for their figures, but it is easy to see how varied that can be. At least the target audience of captions is well known to the author given the author is part of that population; in contrast, most authors are not blind and may over or under-estimate the needs of the blind readers of their work. Before doing everything an individual requests, please make sure that what is being sought is in keeping with what you are hoping to communicate.
+
+I despair at the retrospective creation of alt tags, especially if applied to living documents. Creation of alt tags is simple for anyone using regular markdown based insertion of their graphics because the ![]() construct embraces them in the []. Authors using a LaTeX workflow must load an additional package and add an optional argument to their \includegraphics{} commands. MS Word users can label their graphics anytime but of late there is an increased use of an automated alt tag creation for them (and messages in Outlook too for that matter). I am loathed to fully describe the LaTeX pipeline unless the author is also committed to producing their output in HTML as I have utter contempt for the pdf (or post script) that is the default for most authors using any TeX workflows.
+
+Post hoc editing of html is perhaps the worst possible action I observe. This process has separated the creator of the content from the creator of the access for blind people, and is heavily reliant on the skill set of the accessibility "expert". Such editing is common in university settings where the Disability Support Service is responsible for the accessibility. If I was an undergraduate today, I'd be camping outside the doors of my teaching staff to get the alt tags inserted. I spent plenty of time back then, sitting in corridors waiting my turn, but so many of the access challenges of the dead-tree era are thankfully behind us.
+
+
+I'm curious though that a blind person is going to benefit much from your package given so much of what I read relies on using a mouse, or having the ability to imagine the 3d data projected into an inherently 2d page/screen/image. In turn, that inaccessibility might heavily influence my effort to provide comprehensive alt tags.
+
+I'd be more than happy to continue this conversation, and to do so on list because I think there are so many opportunities on offer today for people to embrace; many of which will not create piles of extra work.
+
+Jonathan
+
+
+
+-----Original Message-----
+From: R-package-devel <r-package-devel-bounces at r-project.org> On Behalf Of Duncan Murdoch
+Sent: Saturday, 18 March 2023 8:26 am
+To: r-package-devel at r-project.org
+Subject: [R-pkg-devel] Screen reader help request
+
+I received a request a few days ago to add alt text to the plots in the HTML vignettes for the rgl package.
+
+That was easy to do, and I did it, but realized most of the graphics that rgl produces are not in <img> format, they are WebGL canvases, and those don't support the same method of adding alternate text.  Online I've seen a variety of suggestions about how to do it for <canvas> elements, and have implemented one of them.
+
+Could I ask someone who is familiar with one or more screen readers to test whether the method that I used works?  A sample web page produced with the new code is here:
+
+   https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fdmurdoch.github.io%2Frgl%2Fdev%2Farticles%2Frgl.html&data=05%7C01%7Ca.j.godfrey%40massey.ac.nz%7Ccd3d6ce4f3e1439e61da08db271d7564%7C388728e1bbd0437898dcf8682e644300%7C1%7C0%7C638146779729138276%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=V0dX8tOrAEZQIVizo%2FBrdB3zEXJRfIXUqqVvPiEMcHY%3D&reserved=0
+
+The very first graphic is a plot of the iris data, and it should have alt text reading "rglwidget in chunk unnamed-chunk-1".
+
+That was default text generated without user input, users could put whatever they wanted there instead.
+
+Some related questions:
+
+  - Could you suggest better default text to use?
+
+  - Could you suggest good custom text for this particular graphic?
+
+  - The text is inserted when some Javascript has run to initialize the page, so if the Javascript fails, there'll be no alt text.  Is that a reasonable limitation?
+
+Duncan Murdoch
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-package-devel&data=05%7C01%7Ca.j.godfrey%40massey.ac.nz%7Ccd3d6ce4f3e1439e61da08db271d7564%7C388728e1bbd0437898dcf8682e644300%7C1%7C0%7C638146779729138276%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=8veaIHKoCRAfYGC%2BIAdBFVJ7JgHmtGjveuHI6fSTASs%3D&reserved=0
+
+
+From Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de  Fri Mar 17 22:29:06 2023
+From: Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de (Ruff, Sergej)
+Date: Fri, 17 Mar 2023 21:29:06 +0000
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <F866225D-5763-4FD3-9DF4-D0CDB463869C@R-project.org>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+ <20230316211448.0dee9f35@Tarkus>
+ <BY5PR04MB662799A65F1CC8AE1A84C615F9BC9@BY5PR04MB6627.namprd04.prod.outlook.com>
+ <ce33881470bb4743847e495abf35245d@tiho-hannover.de>
+ <1d55266d-dd43-f8b4-e27a-564dbd838918@gmail.com>
+ <423fc050c0554e9eaf1f2bca3582ad9e@tiho-hannover.de>
+ <606f0f1a-1b8b-f32b-261a-8877672c80dc@gmail.com>
+ <03f5eac57bda4158afe6778f98b17874@tiho-hannover.de>,
+ <F866225D-5763-4FD3-9DF4-D0CDB463869C@R-project.org>
+Message-ID: <cc32cb58cb3b40aeaadbd771c46b8591@tiho-hannover.de>
+
+thank,
+
+
+I was wondering if my idea regarding the implementation is correct.
+
+
+I took the idea from Tiago Olivoto and wrote an additional function that checks if limma is installed.
+
+
+Here is a mockup based on Tiago?s package:
+
+
+check_limma<- function(){
+  if(!requireNamespace("limma", quietly = TRUE)) {
+    if(interactive() == TRUE){
+      inst <-
+        switch(menu(c("Yes", "No"), title = "Package {limma} required but not installed.\nDo you want to install it now?"),
+               "yes", "no")
+      if(inst == "yes"){
+        if(!requireNamespace("BiocManager", quietly = TRUE)) {
+          install.packages("BiocManager", quiet = TRUE)
+        }
+        BiocManager::install("limma",
+                             update = FALSE,
+                             ask = FALSE,
+                             quiet = TRUE)
+      } else{
+        message("To run this example}, first install {limma} following the directions at 'https://bioconductor.org/packages/limma'")
+      }
+    }
+  }
+}
+
+I would add the check in my example before limma functions are used.
+
+
+### Differential expression analysis with limma
+
+check_limma()
+group = gl(2, n)
+design = model.matrix(~ group)
+fit1 = limma::lmFit(X, design)
+fit = limma::eBayes(fit1)
+
+I tried running the R CMD Check but I keep getting 1 error and note.
+Is the implementation incorrect?
+
+regards, Sergej
+
+
+________________________________
+Von: Simon Urbanek <simon.urbanek at R-project.org>
+Gesendet: Freitag, 17. M?rz 2023 22:05:00
+An: Ruff, Sergej
+Cc: Duncan Murdoch; Martin Morgan; Ivan Krylov; r-package-devel at r-project.org
+Betreff: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+
+Packages can only be installed from the repositories listed and only CRAN is the default so only CRAN package are guaranteed to work. I'd like to add that the issue below is exactly why, personally, I would not recommend using Bioconductor package as strong dependency (imports/depends), because that makes the package unusable for most users, as it cannot be installed (without extra steps they don't know about) since the dependency doesn't exist on CRAN.
+
+If your users are already Bioconductor users by the virtue of the package application then they already know so it's fine, but then you are probably better off to have your package on Bioconductor as part of the ecosystem which is much more streamlined and coordinated.
+
+If it is only suggested (weak dependency) for some optional functionality, then your package will work even if the dependency is not installed so all is well. And if the optional Bioconductor functionality is used you can direct the user to instructions explaining that Bioconductor is required for that - but the package has to do that, it is not anything automatic in R.
+
+Cheers,
+Simon
+
+
+> On Mar 18, 2023, at 1:29 AM, Ruff, Sergej <Sergej.Ruff at tiho-hannover.de> wrote:
+>
+> Really.Whats a problem i have when all dependencies arent prei installed. I thought the problem would be solved once my package is available on CRAN.
+>
+>
+> Here is a recent question I had regarding the same issue:
+>
+>
+> I am currently working on a r-package. I would like to submit my r package to CRAN, but I have a question regarding dependency installations on CRAN.
+>
+> I have almost finished my package, added the required dependencies to the NAMESPACE and DESCRIPTION files as Imports, and get no errors or warnings
+>
+> when running the check in Rstudio. The package runs on the pc, where I?ve built the package, but when I install the package on a pc, where the dependencies
+>
+> are not preinstalled, I get the following error:
+>
+> ERROR:
+>
+> dependencies 'depth', 'geometry' are not available for package 'packagename'
+> * removing 'C:/Users/156932/AppData/Local/Programs/R/R-4.2.1/library/packagename'
+> Warning in install.packages : installation of package ?packagename? had non-zero exit status
+>
+>
+> The problem is that a local installation of my package (via USB-stick for example) can?t install the dependencies from CRAN.
+>
+> The package works perfectly fine, if the dependencies are preinstalled.
+>
+> Now I don?t want to submit my package to CRAN if the end user gets the same error message when installing my package.
+>
+> Question: After I submit my package to CRAN, will CRAN install dependencies automatically (via "install.packages()"), resolving the issue I have right now?
+>
+> Or do I have to modify the R-package or the Description-file to make sure my Package can install dependencies?
+>
+> I provided the dependencies to the NAMESPACE-file as @ImportFrom via the devtools::document()-function. I added the dependencies to the DESCRIPTION-file via usethis::use_package("x",type="Imports"). The Description looks like this:
+>
+> License: GPL (>= 3)
+> Encoding: UTF-8
+> LazyData: true
+> RoxygenNote: 7.2.3
+> Imports:
+>    depth,
+>    geometry,
+>    graphics,
+>    grDevices,
+>    MASS,
+>    mvtnorm,
+>    nlme,
+>    rgl,
+>    stats
+>
+>
+>
+> So I thought all dependencies would install automatically from CRAN? Is that not the case?
+>
+
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Mar 18 00:20:08 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 17 Mar 2023 19:20:08 -0400
+Subject: [R-pkg-devel] Screen reader help request
+In-Reply-To: <MEAPR01MB38297A22F7F2F8AC12768D5893BD9@MEAPR01MB3829.ausprd01.prod.outlook.com>
+References: <745a3154-4cf1-36c1-6b44-c6ba7d146749@gmail.com>
+ <MEAPR01MB38297A22F7F2F8AC12768D5893BD9@MEAPR01MB3829.ausprd01.prod.outlook.com>
+Message-ID: <9eb2e213-c915-c99e-3c4d-f0ff3424f4c6@gmail.com>
+
+Thanks very much for your response.
+
+The two images where the tags showed up are regular figures, using 
+lattice and base graphics.  There are also a lot of rgl figures, which 
+have HTML code like this in the source .html file:
+
+   <div id="rgl61108" style="width:480px;height:296.662546353523px;" 
+class="rglWebGL html-widget "></div>
+
+(Looks like I should think about rounding the height value!)
+
+All the interesting stuff (including the alt tags) is added within the 
+div by Javascript that runs after the page is loaded.  The fact that it 
+didn't show up in your reader indicates to me that either it needs to be 
+there before the Javascript runs, or that I put the text in the wrong 
+place.  I'll try a few variations on the code and hopefully find 
+something that works.
+
+Your comments about the content of the tags was also very helpful.  I am 
+imagining that there are at least two groups of readers who might make 
+use of them:
+
+   - readers who would skip over the graphics completely, but who would 
+be helped by knowing what they missed.
+
+   - readers who can get information from the graphics but only with an 
+effort, so they would want to know where to apply that effort.
+
+For the document I posted, there might not be very many people in either 
+group, but I'm hoping to make the package useful to others, who would be 
+writing documents with different audiences.
+
+Duncan Murdoch
+
+On 17/03/2023 5:18 p.m., Jonathan Godfrey wrote:
+> Hello Duncan,
+> 
+> I guess a few people might expect me to contribute to your request. First I'll assure you that two graphics do have an alt tag which my screen reader is telling me about, so in a sense that is success. I did not check with multiple screen readers or different browsers because I would only find fault if I used inferior software; I expect success with JAWS or NVDA to represent the other and likewise for browsers. These two successes are the lattice and base graphics relating to the volcano data. Others are not showing to my screen reader (JAWS) and browser (Chrome) on my OS (Windows). I note that these are inserted using <img> though.
+> 
+> What should appear in an alt tag is an area of much debate though, and the attitude towards their creation differs widely. I believe that the context is the primary driver for what should be communicated. In your context, where you are obviously writing about the package (in general) and comparison of lattice v base graphics (where I do see the alt tags), it is the main text that should be communicating with your audience. You know what you are writing and why. If you do not write about the differences then you leave it up to chance that your (mostly visually-dependent) audience sees the differences that matter to you and your efforts as an author/developer. Complementing that information intended for the whole audience with a sensible alt tag on the graphics for the blind part of your audience, would be fundamentally different to what you might need to offer for the same graphics in another context, say an analysis feeding into a business report for example. In your context, the blind person needs to know that the graphic does appear, and that the graphic has a unique (enough) label to make it obvious which graphic appeared where. We do not need a full description of every last detail of each graphic, although in other contexts, that is exactly what we need.
+> 
+> Generating alt tag text automatically (no human interaction) is going to deliver on the technical aspects, without the analytic outcomes, although our recent efforts with the BrailleR package are trying to offer more and more factual information that could help with the analysis of the data. Our main aim is to assure the blind producer of a graphic that it does actually exist and what (roughly) it shows; it would not be great text for an alt tag in most circumstances. I've done some limited testing with AI solutions but haven't yet been overwhelmed by positive experiences.
+> 
+> Anyone using an R markdown workflow can add alt text using the fig.alt option in the header of their chunks. Without that, the fig.cap option is used, and if neither is used, the screen reader user is victim to their personal settings. (We choose whether to be told about unlabelled graphics which used to be helpful for ignoring advertising.) I don't put unique alt tags in all of my work because I just need to convey that the graphic is there, but I do make sure there is a default bit of text that saves blind users with the wrong settings from their decisions.
+> 
+> 
+> An author wishing to support blind consumers of their efforts, could spend lots of time working out what to write, and never get it perfectly correct because the desires of those consumers are not homogeneous. I advise people to use an alt tag, but to make sure it does not duplicate what is already said in the main text of their document. Authors already do this when thinking about the right caption for their figures, but it is easy to see how varied that can be. At least the target audience of captions is well known to the author given the author is part of that population; in contrast, most authors are not blind and may over or under-estimate the needs of the blind readers of their work. Before doing everything an individual requests, please make sure that what is being sought is in keeping with what you are hoping to communicate.
+> 
+> I despair at the retrospective creation of alt tags, especially if applied to living documents. Creation of alt tags is simple for anyone using regular markdown based insertion of their graphics because the ![]() construct embraces them in the []. Authors using a LaTeX workflow must load an additional package and add an optional argument to their \includegraphics{} commands. MS Word users can label their graphics anytime but of late there is an increased use of an automated alt tag creation for them (and messages in Outlook too for that matter). I am loathed to fully describe the LaTeX pipeline unless the author is also committed to producing their output in HTML as I have utter contempt for the pdf (or post script) that is the default for most authors using any TeX workflows.
+> 
+> Post hoc editing of html is perhaps the worst possible action I observe. This process has separated the creator of the content from the creator of the access for blind people, and is heavily reliant on the skill set of the accessibility "expert". Such editing is common in university settings where the Disability Support Service is responsible for the accessibility. If I was an undergraduate today, I'd be camping outside the doors of my teaching staff to get the alt tags inserted. I spent plenty of time back then, sitting in corridors waiting my turn, but so many of the access challenges of the dead-tree era are thankfully behind us.
+> 
+> 
+> I'm curious though that a blind person is going to benefit much from your package given so much of what I read relies on using a mouse, or having the ability to imagine the 3d data projected into an inherently 2d page/screen/image. In turn, that inaccessibility might heavily influence my effort to provide comprehensive alt tags.
+> 
+> I'd be more than happy to continue this conversation, and to do so on list because I think there are so many opportunities on offer today for people to embrace; many of which will not create piles of extra work.
+> 
+> Jonathan
+> 
+> 
+> 
+> -----Original Message-----
+> From: R-package-devel <r-package-devel-bounces at r-project.org> On Behalf Of Duncan Murdoch
+> Sent: Saturday, 18 March 2023 8:26 am
+> To: r-package-devel at r-project.org
+> Subject: [R-pkg-devel] Screen reader help request
+> 
+> I received a request a few days ago to add alt text to the plots in the HTML vignettes for the rgl package.
+> 
+> That was easy to do, and I did it, but realized most of the graphics that rgl produces are not in <img> format, they are WebGL canvases, and those don't support the same method of adding alternate text.  Online I've seen a variety of suggestions about how to do it for <canvas> elements, and have implemented one of them.
+> 
+> Could I ask someone who is familiar with one or more screen readers to test whether the method that I used works?  A sample web page produced with the new code is here:
+> 
+>     https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fdmurdoch.github.io%2Frgl%2Fdev%2Farticles%2Frgl.html&data=05%7C01%7Ca.j.godfrey%40massey.ac.nz%7Ccd3d6ce4f3e1439e61da08db271d7564%7C388728e1bbd0437898dcf8682e644300%7C1%7C0%7C638146779729138276%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=V0dX8tOrAEZQIVizo%2FBrdB3zEXJRfIXUqqVvPiEMcHY%3D&reserved=0
+> 
+> The very first graphic is a plot of the iris data, and it should have alt text reading "rglwidget in chunk unnamed-chunk-1".
+> 
+> That was default text generated without user input, users could put whatever they wanted there instead.
+> 
+> Some related questions:
+> 
+>    - Could you suggest better default text to use?
+> 
+>    - Could you suggest good custom text for this particular graphic?
+> 
+>    - The text is inserted when some Javascript has run to initialize the page, so if the Javascript fails, there'll be no alt text.  Is that a reasonable limitation?
+> 
+> Duncan Murdoch
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-package-devel&data=05%7C01%7Ca.j.godfrey%40massey.ac.nz%7Ccd3d6ce4f3e1439e61da08db271d7564%7C388728e1bbd0437898dcf8682e644300%7C1%7C0%7C638146779729138276%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=8veaIHKoCRAfYGC%2BIAdBFVJ7JgHmtGjveuHI6fSTASs%3D&reserved=0
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From A@J@God|rey @end|ng |rom m@@@ey@@c@nz  Sat Mar 18 00:59:11 2023
+From: A@J@God|rey @end|ng |rom m@@@ey@@c@nz (Jonathan Godfrey)
+Date: Fri, 17 Mar 2023 23:59:11 +0000
+Subject: [R-pkg-devel] Screen reader help request
+In-Reply-To: <9eb2e213-c915-c99e-3c4d-f0ff3424f4c6@gmail.com>
+References: <745a3154-4cf1-36c1-6b44-c6ba7d146749@gmail.com>
+ <MEAPR01MB38297A22F7F2F8AC12768D5893BD9@MEAPR01MB3829.ausprd01.prod.outlook.com>
+ <9eb2e213-c915-c99e-3c4d-f0ff3424f4c6@gmail.com>
+Message-ID: <MEAPR01MB3829E1EB5164584342271A5193BD9@MEAPR01MB3829.ausprd01.prod.outlook.com>
+
+Hello again Duncan,
+
+I could see the two successes were <img> ... </img> creations and that the others weren't.
+
+I worry though that in searching for a solution, you need to end up with something that is as simple for authors as what little effort is needed for fig.alt; having looked at the HTML, I'd rather know what is happening at the Rmd file stage and how anything created there gets passed on.
+
+IMO:  Your reflections on the content of the tags is bang on target. In a perfect world, this is where authors' efforts should be, not on the technical "how do I get that done" aspects.
+
+I suspect that fixing the toolkit is necessary. A demonstration that a problem can be solved is often a first step in creating access. Furthermore, this is not a problem unique to your single document. Other authors will want to use the same tools which you are demonstrating.
+
+Alt tags are a perfect demonstration of access that does not impinge on everyone who doesn't need that feature. Use of fig.cap (initially) and latterly fig.alt to provide the access was done at the toolkit level, and it cannot get any easier for authors. That maximises the chances that authors do then turn to the content of the tags.
+
+I'm happy to assist on projects that lead to positive improvements under the hood that ultimately create access without authors having to become experts in providing access.
+
+We might take the testing off list, but keep the discussion of access on list.
+
+Jonathan
+
+
+-----Original Message-----
+From: Duncan Murdoch <murdoch.duncan at gmail.com> 
+Sent: Saturday, 18 March 2023 12:20 pm
+To: Jonathan Godfrey <A.J.Godfrey at massey.ac.nz>; R Package Development <R-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Screen reader help request
+
+Thanks very much for your response.
+
+The two images where the tags showed up are regular figures, using lattice and base graphics.  There are also a lot of rgl figures, which have HTML code like this in the source .html file:
+
+   <div id="rgl61108" style="width:480px;height:296.662546353523px;" 
+class="rglWebGL html-widget "></div>
+
+(Looks like I should think about rounding the height value!)
+
+All the interesting stuff (including the alt tags) is added within the div by Javascript that runs after the page is loaded.  The fact that it didn't show up in your reader indicates to me that either it needs to be there before the Javascript runs, or that I put the text in the wrong place.  I'll try a few variations on the code and hopefully find something that works.
+
+Your comments about the content of the tags was also very helpful.  I am imagining that there are at least two groups of readers who might make use of them:
+
+   - readers who would skip over the graphics completely, but who would be helped by knowing what they missed.
+
+   - readers who can get information from the graphics but only with an effort, so they would want to know where to apply that effort.
+
+For the document I posted, there might not be very many people in either group, but I'm hoping to make the package useful to others, who would be writing documents with different audiences.
+
+Duncan Murdoch
+
+On 17/03/2023 5:18 p.m., Jonathan Godfrey wrote:
+> Hello Duncan,
+> 
+> I guess a few people might expect me to contribute to your request. First I'll assure you that two graphics do have an alt tag which my screen reader is telling me about, so in a sense that is success. I did not check with multiple screen readers or different browsers because I would only find fault if I used inferior software; I expect success with JAWS or NVDA to represent the other and likewise for browsers. These two successes are the lattice and base graphics relating to the volcano data. Others are not showing to my screen reader (JAWS) and browser (Chrome) on my OS (Windows). I note that these are inserted using <img> though.
+> 
+> What should appear in an alt tag is an area of much debate though, and the attitude towards their creation differs widely. I believe that the context is the primary driver for what should be communicated. In your context, where you are obviously writing about the package (in general) and comparison of lattice v base graphics (where I do see the alt tags), it is the main text that should be communicating with your audience. You know what you are writing and why. If you do not write about the differences then you leave it up to chance that your (mostly visually-dependent) audience sees the differences that matter to you and your efforts as an author/developer. Complementing that information intended for the whole audience with a sensible alt tag on the graphics for the blind part of your audience, would be fundamentally different to what you might need to offer for the same graphics in another context, say an analysis feeding into a business report for example. In your context, the blind person needs to know that the graphic does appear, and that the graphic has a unique (enough) label to make it obvious which graphic appeared where. We do not need a full description of every last detail of each graphic, although in other contexts, that is exactly what we need.
+> 
+> Generating alt tag text automatically (no human interaction) is going to deliver on the technical aspects, without the analytic outcomes, although our recent efforts with the BrailleR package are trying to offer more and more factual information that could help with the analysis of the data. Our main aim is to assure the blind producer of a graphic that it does actually exist and what (roughly) it shows; it would not be great text for an alt tag in most circumstances. I've done some limited testing with AI solutions but haven't yet been overwhelmed by positive experiences.
+> 
+> Anyone using an R markdown workflow can add alt text using the fig.alt option in the header of their chunks. Without that, the fig.cap option is used, and if neither is used, the screen reader user is victim to their personal settings. (We choose whether to be told about unlabelled graphics which used to be helpful for ignoring advertising.) I don't put unique alt tags in all of my work because I just need to convey that the graphic is there, but I do make sure there is a default bit of text that saves blind users with the wrong settings from their decisions.
+> 
+> 
+> An author wishing to support blind consumers of their efforts, could spend lots of time working out what to write, and never get it perfectly correct because the desires of those consumers are not homogeneous. I advise people to use an alt tag, but to make sure it does not duplicate what is already said in the main text of their document. Authors already do this when thinking about the right caption for their figures, but it is easy to see how varied that can be. At least the target audience of captions is well known to the author given the author is part of that population; in contrast, most authors are not blind and may over or under-estimate the needs of the blind readers of their work. Before doing everything an individual requests, please make sure that what is being sought is in keeping with what you are hoping to communicate.
+> 
+> I despair at the retrospective creation of alt tags, especially if applied to living documents. Creation of alt tags is simple for anyone using regular markdown based insertion of their graphics because the ![]() construct embraces them in the []. Authors using a LaTeX workflow must load an additional package and add an optional argument to their \includegraphics{} commands. MS Word users can label their graphics anytime but of late there is an increased use of an automated alt tag creation for them (and messages in Outlook too for that matter). I am loathed to fully describe the LaTeX pipeline unless the author is also committed to producing their output in HTML as I have utter contempt for the pdf (or post script) that is the default for most authors using any TeX workflows.
+> 
+> Post hoc editing of html is perhaps the worst possible action I observe. This process has separated the creator of the content from the creator of the access for blind people, and is heavily reliant on the skill set of the accessibility "expert". Such editing is common in university settings where the Disability Support Service is responsible for the accessibility. If I was an undergraduate today, I'd be camping outside the doors of my teaching staff to get the alt tags inserted. I spent plenty of time back then, sitting in corridors waiting my turn, but so many of the access challenges of the dead-tree era are thankfully behind us.
+> 
+> 
+> I'm curious though that a blind person is going to benefit much from your package given so much of what I read relies on using a mouse, or having the ability to imagine the 3d data projected into an inherently 2d page/screen/image. In turn, that inaccessibility might heavily influence my effort to provide comprehensive alt tags.
+> 
+> I'd be more than happy to continue this conversation, and to do so on list because I think there are so many opportunities on offer today for people to embrace; many of which will not create piles of extra work.
+> 
+> Jonathan
+> 
+> 
+> 
+> -----Original Message-----
+> From: R-package-devel <r-package-devel-bounces at r-project.org> On 
+> Behalf Of Duncan Murdoch
+> Sent: Saturday, 18 March 2023 8:26 am
+> To: r-package-devel at r-project.org
+> Subject: [R-pkg-devel] Screen reader help request
+> 
+> I received a request a few days ago to add alt text to the plots in the HTML vignettes for the rgl package.
+> 
+> That was easy to do, and I did it, but realized most of the graphics that rgl produces are not in <img> format, they are WebGL canvases, and those don't support the same method of adding alternate text.  Online I've seen a variety of suggestions about how to do it for <canvas> elements, and have implemented one of them.
+> 
+> Could I ask someone who is familiar with one or more screen readers to test whether the method that I used works?  A sample web page produced with the new code is here:
+> 
+>     
+> https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fdmur
+> doch.github.io%2Frgl%2Fdev%2Farticles%2Frgl.html&data=05%7C01%7CA.J.Go
+> dfrey%40massey.ac.nz%7Cc0745ee90c414eebafa508db273e28e6%7C388728e1bbd0
+> 437898dcf8682e644300%7C1%7C0%7C638146920163482319%7CUnknown%7CTWFpbGZs
+> b3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D
+> %7C3000%7C%7C%7C&sdata=tgPjXHerM93yrUrb963Tsa1MwsY7AKbFzaAFP8ZRYc8%3D&
+> reserved=0
+> 
+> The very first graphic is a plot of the iris data, and it should have alt text reading "rglwidget in chunk unnamed-chunk-1".
+> 
+> That was default text generated without user input, users could put whatever they wanted there instead.
+> 
+> Some related questions:
+> 
+>    - Could you suggest better default text to use?
+> 
+>    - Could you suggest good custom text for this particular graphic?
+> 
+>    - The text is inserted when some Javascript has run to initialize the page, so if the Javascript fails, there'll be no alt text.  Is that a reasonable limitation?
+> 
+> Duncan Murdoch
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat
+> .ethz.ch%2Fmailman%2Flistinfo%2Fr-package-devel&data=05%7C01%7CA.J.God
+> frey%40massey.ac.nz%7Cc0745ee90c414eebafa508db273e28e6%7C388728e1bbd04
+> 37898dcf8682e644300%7C1%7C0%7C638146920163482319%7CUnknown%7CTWFpbGZsb
+> 3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%
+> 7C3000%7C%7C%7C&sdata=DTNqoAST5GrdK70Y%2B6X0gSOgn0dQQoXEN6cIR608YyE%3D
+> &reserved=0
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat
+> .ethz.ch%2Fmailman%2Flistinfo%2Fr-package-devel&data=05%7C01%7CA.J.God
+> frey%40massey.ac.nz%7Cc0745ee90c414eebafa508db273e28e6%7C388728e1bbd04
+> 37898dcf8682e644300%7C1%7C0%7C638146920163482319%7CUnknown%7CTWFpbGZsb
+> 3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%
+> 7C3000%7C%7C%7C&sdata=DTNqoAST5GrdK70Y%2B6X0gSOgn0dQQoXEN6cIR608YyE%3D
+> &reserved=0
+
+
