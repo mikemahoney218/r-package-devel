@@ -18310,3 +18310,1016 @@ On 17/03/2023 5:18 p.m., Jonathan Godfrey wrote:
 > &reserved=0
 
 
+From berryboe@@enkoo| @end|ng |rom hotm@||@com  Sat Mar 18 09:54:45 2023
+From: berryboe@@enkoo| @end|ng |rom hotm@||@com (Berry Boessenkool)
+Date: Sat, 18 Mar 2023 08:54:45 +0000
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <cc32cb58cb3b40aeaadbd771c46b8591@tiho-hannover.de>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+ <20230316211448.0dee9f35@Tarkus>
+ <BY5PR04MB662799A65F1CC8AE1A84C615F9BC9@BY5PR04MB6627.namprd04.prod.outlook.com>
+ <ce33881470bb4743847e495abf35245d@tiho-hannover.de>
+ <1d55266d-dd43-f8b4-e27a-564dbd838918@gmail.com>
+ <423fc050c0554e9eaf1f2bca3582ad9e@tiho-hannover.de>
+ <606f0f1a-1b8b-f32b-261a-8877672c80dc@gmail.com>
+ <03f5eac57bda4158afe6778f98b17874@tiho-hannover.de>,
+ <F866225D-5763-4FD3-9DF4-D0CDB463869C@R-project.org>
+ <cc32cb58cb3b40aeaadbd771c46b8591@tiho-hannover.de>
+Message-ID: <GV2PR02MB877010C19AF243F9EAE6EF2CD5829@GV2PR02MB8770.eurprd02.prod.outlook.com>
+
+
+I would use conditional returns to make the code more readable (see below) and then run the examples conditionally.
+
+check_limma <- function() # Returns TRUE if available, FALSE otherwise
+{
+  if(requireNamespace("limma", quietly=TRUE)) return(TRUE)
+  if(!interactive()) return(FALSE)
+  inst <- menu(c("Yes", "No"), title="Package {limma} required but not installed.\nDo you want to install it now?")
+  if(inst != 1)
+    {
+    message("To run this example, first install {limma} following the directions at 'https://bioconductor.org/packages/limma'")
+    return(FALSE)
+    }
+  # the following could be wrapped in try and conditionally return TRUE / FALSE
+  if(!requireNamespace("BiocManager", quietly=TRUE)) install.packages("BiocManager", quiet=TRUE)
+  BiocManager::install("limma", update=FALSE, ask=FALSE, quiet=TRUE)
+  return(TRUE)
+}
+
+# In the examples:
+if(check_limma()){
+group = gl(2, n)
+design = model.matrix(~ group)
+fit1 = limma::lmFit(X, design)
+fit = limma::eBayes(fit1)
+}
+
+My 2 cents ?
+
+Berry
+
+-------------------------------------
+
+________________________________
+From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Ruff, Sergej <Sergej.Ruff at tiho-hannover.de>
+Sent: Friday, March 17, 2023 22:29
+To: Simon Urbanek <simon.urbanek at R-project.org>
+Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+
+thank,
+
+
+I was wondering if my idea regarding the implementation is correct.
+
+
+I took the idea from Tiago Olivoto and wrote an additional function that checks if limma is installed.
+
+
+Here is a mockup based on Tiago?s package:
+
+
+check_limma<- function(){
+  if(!requireNamespace("limma", quietly = TRUE)) {
+    if(interactive() == TRUE){
+      inst <-
+        switch(menu(c("Yes", "No"), title = "Package {limma} required but not installed.\nDo you want to install it now?"),
+               "yes", "no")
+      if(inst == "yes"){
+        if(!requireNamespace("BiocManager", quietly = TRUE)) {
+          install.packages("BiocManager", quiet = TRUE)
+        }
+        BiocManager::install("limma",
+                             update = FALSE,
+                             ask = FALSE,
+                             quiet = TRUE)
+      } else{
+        message("To run this example}, first install {limma} following the directions at 'https://bioconductor.org/packages/limma'")
+      }
+    }
+  }
+}
+
+I would add the check in my example before limma functions are used.
+
+
+### Differential expression analysis with limma
+
+check_limma()
+group = gl(2, n)
+design = model.matrix(~ group)
+fit1 = limma::lmFit(X, design)
+fit = limma::eBayes(fit1)
+
+I tried running the R CMD Check but I keep getting 1 error and note.
+Is the implementation incorrect?
+
+regards, Sergej
+
+
+________________________________
+Von: Simon Urbanek <simon.urbanek at R-project.org>
+Gesendet: Freitag, 17. M?rz 2023 22:05:00
+An: Ruff, Sergej
+Cc: Duncan Murdoch; Martin Morgan; Ivan Krylov; r-package-devel at r-project.org
+Betreff: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+
+Packages can only be installed from the repositories listed and only CRAN is the default so only CRAN package are guaranteed to work. I'd like to add that the issue below is exactly why, personally, I would not recommend using Bioconductor package as strong dependency (imports/depends), because that makes the package unusable for most users, as it cannot be installed (without extra steps they don't know about) since the dependency doesn't exist on CRAN.
+
+If your users are already Bioconductor users by the virtue of the package application then they already know so it's fine, but then you are probably better off to have your package on Bioconductor as part of the ecosystem which is much more streamlined and coordinated.
+
+If it is only suggested (weak dependency) for some optional functionality, then your package will work even if the dependency is not installed so all is well. And if the optional Bioconductor functionality is used you can direct the user to instructions explaining that Bioconductor is required for that - but the package has to do that, it is not anything automatic in R.
+
+Cheers,
+Simon
+
+
+> On Mar 18, 2023, at 1:29 AM, Ruff, Sergej <Sergej.Ruff at tiho-hannover.de> wrote:
+>
+> Really.Whats a problem i have when all dependencies arent prei installed. I thought the problem would be solved once my package is available on CRAN.
+>
+>
+> Here is a recent question I had regarding the same issue:
+>
+>
+> I am currently working on a r-package. I would like to submit my r package to CRAN, but I have a question regarding dependency installations on CRAN.
+>
+> I have almost finished my package, added the required dependencies to the NAMESPACE and DESCRIPTION files as Imports, and get no errors or warnings
+>
+> when running the check in Rstudio. The package runs on the pc, where I?ve built the package, but when I install the package on a pc, where the dependencies
+>
+> are not preinstalled, I get the following error:
+>
+> ERROR:
+>
+> dependencies 'depth', 'geometry' are not available for package 'packagename'
+> * removing 'C:/Users/156932/AppData/Local/Programs/R/R-4.2.1/library/packagename'
+> Warning in install.packages : installation of package ?packagename? had non-zero exit status
+>
+>
+> The problem is that a local installation of my package (via USB-stick for example) can?t install the dependencies from CRAN.
+>
+> The package works perfectly fine, if the dependencies are preinstalled.
+>
+> Now I don?t want to submit my package to CRAN if the end user gets the same error message when installing my package.
+>
+> Question: After I submit my package to CRAN, will CRAN install dependencies automatically (via "install.packages()"), resolving the issue I have right now?
+>
+> Or do I have to modify the R-package or the Description-file to make sure my Package can install dependencies?
+>
+> I provided the dependencies to the NAMESPACE-file as @ImportFrom via the devtools::document()-function. I added the dependencies to the DESCRIPTION-file via usethis::use_package("x",type="Imports"). The Description looks like this:
+>
+> License: GPL (>= 3)
+> Encoding: UTF-8
+> LazyData: true
+> RoxygenNote: 7.2.3
+> Imports:
+>    depth,
+>    geometry,
+>    graphics,
+>    grDevices,
+>    MASS,
+>    mvtnorm,
+>    nlme,
+>    rgl,
+>    stats
+>
+>
+>
+> So I thought all dependencies would install automatically from CRAN? Is that not the case?
+>
+
+
+        [[alternative HTML version deleted]]
+
+
+	[[alternative HTML version deleted]]
+
+
+From Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de  Sat Mar 18 09:56:55 2023
+From: Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de (Ruff, Sergej)
+Date: Sat, 18 Mar 2023 08:56:55 +0000
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <GV2PR02MB877010C19AF243F9EAE6EF2CD5829@GV2PR02MB8770.eurprd02.prod.outlook.com>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+ <20230316211448.0dee9f35@Tarkus>
+ <BY5PR04MB662799A65F1CC8AE1A84C615F9BC9@BY5PR04MB6627.namprd04.prod.outlook.com>
+ <ce33881470bb4743847e495abf35245d@tiho-hannover.de>
+ <1d55266d-dd43-f8b4-e27a-564dbd838918@gmail.com>
+ <423fc050c0554e9eaf1f2bca3582ad9e@tiho-hannover.de>
+ <606f0f1a-1b8b-f32b-261a-8877672c80dc@gmail.com>
+ <03f5eac57bda4158afe6778f98b17874@tiho-hannover.de>,
+ <F866225D-5763-4FD3-9DF4-D0CDB463869C@R-project.org>
+ <cc32cb58cb3b40aeaadbd771c46b8591@tiho-hannover.de>,
+ <GV2PR02MB877010C19AF243F9EAE6EF2CD5829@GV2PR02MB8770.eurprd02.prod.outlook.com>
+Message-ID: <4ceaafc8f8d5434aa591a5c7f35753dc@tiho-hannover.de>
+
+thank you, berry for your idea.
+
+________________________________
+Von: Berry Boessenkool <berryboessenkool at hotmail.com>
+Gesendet: Samstag, 18. M?rz 2023 09:54:45
+An: Ruff, Sergej; Simon Urbanek
+Cc: r-package-devel at r-project.org
+Betreff: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+
+
+I would use conditional returns to make the code more readable (see below) and then run the examples conditionally.
+
+check_limma <- function() # Returns TRUE if available, FALSE otherwise
+{
+  if(requireNamespace("limma", quietly=TRUE)) return(TRUE)
+  if(!interactive()) return(FALSE)
+  inst <- menu(c("Yes", "No"), title="Package {limma} required but not installed.\nDo you want to install it now?")
+  if(inst != 1)
+    {
+    message("To run this example, first install {limma} following the directions at 'https://bioconductor.org/packages/limma'")
+    return(FALSE)
+    }
+  # the following could be wrapped in try and conditionally return TRUE / FALSE
+  if(!requireNamespace("BiocManager", quietly=TRUE)) install.packages("BiocManager", quiet=TRUE)
+  BiocManager::install("limma", update=FALSE, ask=FALSE, quiet=TRUE)
+  return(TRUE)
+}
+
+# In the examples:
+if(check_limma()){
+group = gl(2, n)
+design = model.matrix(~ group)
+fit1 = limma::lmFit(X, design)
+fit = limma::eBayes(fit1)
+}
+
+My 2 cents ?
+
+Berry
+
+-------------------------------------
+
+________________________________
+From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Ruff, Sergej <Sergej.Ruff at tiho-hannover.de>
+Sent: Friday, March 17, 2023 22:29
+To: Simon Urbanek <simon.urbanek at R-project.org>
+Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+
+thank,
+
+
+I was wondering if my idea regarding the implementation is correct.
+
+
+I took the idea from Tiago Olivoto and wrote an additional function that checks if limma is installed.
+
+
+Here is a mockup based on Tiago?s package:
+
+
+check_limma<- function(){
+  if(!requireNamespace("limma", quietly = TRUE)) {
+    if(interactive() == TRUE){
+      inst <-
+        switch(menu(c("Yes", "No"), title = "Package {limma} required but not installed.\nDo you want to install it now?"),
+               "yes", "no")
+      if(inst == "yes"){
+        if(!requireNamespace("BiocManager", quietly = TRUE)) {
+          install.packages("BiocManager", quiet = TRUE)
+        }
+        BiocManager::install("limma",
+                             update = FALSE,
+                             ask = FALSE,
+                             quiet = TRUE)
+      } else{
+        message("To run this example}, first install {limma} following the directions at 'https://bioconductor.org/packages/limma'")
+      }
+    }
+  }
+}
+
+I would add the check in my example before limma functions are used.
+
+
+### Differential expression analysis with limma
+
+check_limma()
+group = gl(2, n)
+design = model.matrix(~ group)
+fit1 = limma::lmFit(X, design)
+fit = limma::eBayes(fit1)
+
+I tried running the R CMD Check but I keep getting 1 error and note.
+Is the implementation incorrect?
+
+regards, Sergej
+
+
+________________________________
+Von: Simon Urbanek <simon.urbanek at R-project.org>
+Gesendet: Freitag, 17. M?rz 2023 22:05:00
+An: Ruff, Sergej
+Cc: Duncan Murdoch; Martin Morgan; Ivan Krylov; r-package-devel at r-project.org
+Betreff: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+
+Packages can only be installed from the repositories listed and only CRAN is the default so only CRAN package are guaranteed to work. I'd like to add that the issue below is exactly why, personally, I would not recommend using Bioconductor package as strong dependency (imports/depends), because that makes the package unusable for most users, as it cannot be installed (without extra steps they don't know about) since the dependency doesn't exist on CRAN.
+
+If your users are already Bioconductor users by the virtue of the package application then they already know so it's fine, but then you are probably better off to have your package on Bioconductor as part of the ecosystem which is much more streamlined and coordinated.
+
+If it is only suggested (weak dependency) for some optional functionality, then your package will work even if the dependency is not installed so all is well. And if the optional Bioconductor functionality is used you can direct the user to instructions explaining that Bioconductor is required for that - but the package has to do that, it is not anything automatic in R.
+
+Cheers,
+Simon
+
+
+> On Mar 18, 2023, at 1:29 AM, Ruff, Sergej <Sergej.Ruff at tiho-hannover.de> wrote:
+>
+> Really.Whats a problem i have when all dependencies arent prei installed. I thought the problem would be solved once my package is available on CRAN.
+>
+>
+> Here is a recent question I had regarding the same issue:
+>
+>
+> I am currently working on a r-package. I would like to submit my r package to CRAN, but I have a question regarding dependency installations on CRAN.
+>
+> I have almost finished my package, added the required dependencies to the NAMESPACE and DESCRIPTION files as Imports, and get no errors or warnings
+>
+> when running the check in Rstudio. The package runs on the pc, where I?ve built the package, but when I install the package on a pc, where the dependencies
+>
+> are not preinstalled, I get the following error:
+>
+> ERROR:
+>
+> dependencies 'depth', 'geometry' are not available for package 'packagename'
+> * removing 'C:/Users/156932/AppData/Local/Programs/R/R-4.2.1/library/packagename'
+> Warning in install.packages : installation of package ?packagename? had non-zero exit status
+>
+>
+> The problem is that a local installation of my package (via USB-stick for example) can?t install the dependencies from CRAN.
+>
+> The package works perfectly fine, if the dependencies are preinstalled.
+>
+> Now I don?t want to submit my package to CRAN if the end user gets the same error message when installing my package.
+>
+> Question: After I submit my package to CRAN, will CRAN install dependencies automatically (via "install.packages()"), resolving the issue I have right now?
+>
+> Or do I have to modify the R-package or the Description-file to make sure my Package can install dependencies?
+>
+> I provided the dependencies to the NAMESPACE-file as @ImportFrom via the devtools::document()-function. I added the dependencies to the DESCRIPTION-file via usethis::use_package("x",type="Imports"). The Description looks like this:
+>
+> License: GPL (>= 3)
+> Encoding: UTF-8
+> LazyData: true
+> RoxygenNote: 7.2.3
+> Imports:
+>    depth,
+>    geometry,
+>    graphics,
+>    grDevices,
+>    MASS,
+>    mvtnorm,
+>    nlme,
+>    rgl,
+>    stats
+>
+>
+>
+> So I thought all dependencies would install automatically from CRAN? Is that not the case?
+>
+
+
+        [[alternative HTML version deleted]]
+
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Mar 18 19:39:09 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 18 Mar 2023 14:39:09 -0400
+Subject: [R-pkg-devel] Screen reader help request
+In-Reply-To: <MEAPR01MB3829E1EB5164584342271A5193BD9@MEAPR01MB3829.ausprd01.prod.outlook.com>
+References: <745a3154-4cf1-36c1-6b44-c6ba7d146749@gmail.com>
+ <MEAPR01MB38297A22F7F2F8AC12768D5893BD9@MEAPR01MB3829.ausprd01.prod.outlook.com>
+ <9eb2e213-c915-c99e-3c4d-f0ff3424f4c6@gmail.com>
+ <MEAPR01MB3829E1EB5164584342271A5193BD9@MEAPR01MB3829.ausprd01.prod.outlook.com>
+Message-ID: <2ca432c2-d412-6893-5b60-d255389b2df5@gmail.com>
+
+I've made another attempt at this now.  I'm a bit more hopeful about 
+this one, but still not sure.
+
+In the new code, I write the text in a <p> element which is hidden, and 
+use aria-labelledby to say that both the <div> and the <canvas> are 
+labelled by that text.
+
+I am quite hopeful that the text will be detected by a screen reader 
+now.  You may hear it twice; if so, I have a couple of ideas how to fix 
+that.
+
+I've also thought about what you said about the default text, and have 
+changed it slightly.  Now the first plot in the page
+
+   https://dmurdoch.github.io/rgl/dev/articles/rgl.html
+
+will have alt text "Rotatable plot with label unnamed-chunk-1". 
+Obviously customized text would be better, but I think this should be 
+better than nothing.
+
+For authors using this, the R Markdown optional fig.alt setting almost 
+works.  It's fine if you only have one plot, but if you have multiple 
+plots with different fig.alt settings rgl will only use the first one. 
+I think a change in knitr is needed so that rgl can work out which one 
+you really want.
+
+The Shiny support is also a little deficient.  It would make sense in an 
+interactive Shiny page to be able to change the alt text in response to 
+user actions, but that's not possible yet.  If there are any Shiny 
+experts reading this, I could use some help with that.
+
+Duncan Murdoch
+
+On 17/03/2023 7:59 p.m., Jonathan Godfrey wrote:
+> Hello again Duncan,
+> 
+> I could see the two successes were <img> ... </img> creations and that the others weren't.
+> 
+> I worry though that in searching for a solution, you need to end up with something that is as simple for authors as what little effort is needed for fig.alt; having looked at the HTML, I'd rather know what is happening at the Rmd file stage and how anything created there gets passed on.
+> 
+> IMO:  Your reflections on the content of the tags is bang on target. In a perfect world, this is where authors' efforts should be, not on the technical "how do I get that done" aspects.
+> 
+> I suspect that fixing the toolkit is necessary. A demonstration that a problem can be solved is often a first step in creating access. Furthermore, this is not a problem unique to your single document. Other authors will want to use the same tools which you are demonstrating.
+> 
+> Alt tags are a perfect demonstration of access that does not impinge on everyone who doesn't need that feature. Use of fig.cap (initially) and latterly fig.alt to provide the access was done at the toolkit level, and it cannot get any easier for authors. That maximises the chances that authors do then turn to the content of the tags.
+> 
+> I'm happy to assist on projects that lead to positive improvements under the hood that ultimately create access without authors having to become experts in providing access.
+> 
+> We might take the testing off list, but keep the discussion of access on list.
+> 
+> Jonathan
+> 
+> 
+> -----Original Message-----
+> From: Duncan Murdoch <murdoch.duncan at gmail.com>
+> Sent: Saturday, 18 March 2023 12:20 pm
+> To: Jonathan Godfrey <A.J.Godfrey at massey.ac.nz>; R Package Development <R-package-devel at r-project.org>
+> Subject: Re: [R-pkg-devel] Screen reader help request
+> 
+> Thanks very much for your response.
+> 
+> The two images where the tags showed up are regular figures, using lattice and base graphics.  There are also a lot of rgl figures, which have HTML code like this in the source .html file:
+> 
+>     <div id="rgl61108" style="width:480px;height:296.662546353523px;"
+> class="rglWebGL html-widget "></div>
+> 
+> (Looks like I should think about rounding the height value!)
+> 
+> All the interesting stuff (including the alt tags) is added within the div by Javascript that runs after the page is loaded.  The fact that it didn't show up in your reader indicates to me that either it needs to be there before the Javascript runs, or that I put the text in the wrong place.  I'll try a few variations on the code and hopefully find something that works.
+> 
+> Your comments about the content of the tags was also very helpful.  I am imagining that there are at least two groups of readers who might make use of them:
+> 
+>     - readers who would skip over the graphics completely, but who would be helped by knowing what they missed.
+> 
+>     - readers who can get information from the graphics but only with an effort, so they would want to know where to apply that effort.
+> 
+> For the document I posted, there might not be very many people in either group, but I'm hoping to make the package useful to others, who would be writing documents with different audiences.
+> 
+> Duncan Murdoch
+> 
+> On 17/03/2023 5:18 p.m., Jonathan Godfrey wrote:
+>> Hello Duncan,
+>>
+>> I guess a few people might expect me to contribute to your request. First I'll assure you that two graphics do have an alt tag which my screen reader is telling me about, so in a sense that is success. I did not check with multiple screen readers or different browsers because I would only find fault if I used inferior software; I expect success with JAWS or NVDA to represent the other and likewise for browsers. These two successes are the lattice and base graphics relating to the volcano data. Others are not showing to my screen reader (JAWS) and browser (Chrome) on my OS (Windows). I note that these are inserted using <img> though.
+>>
+>> What should appear in an alt tag is an area of much debate though, and the attitude towards their creation differs widely. I believe that the context is the primary driver for what should be communicated. In your context, where you are obviously writing about the package (in general) and comparison of lattice v base graphics (where I do see the alt tags), it is the main text that should be communicating with your audience. You know what you are writing and why. If you do not write about the differences then you leave it up to chance that your (mostly visually-dependent) audience sees the differences that matter to you and your efforts as an author/developer. Complementing that information intended for the whole audience with a sensible alt tag on the graphics for the blind part of your audience, would be fundamentally different to what you might need to offer for the same graphics in another context, say an analysis feeding into a business report for example. In your context, the blind person needs to know that the graphic does appear, and that the graphic has a unique (enough) label to make it obvious which graphic appeared where. We do not need a full description of every last detail of each graphic, although in other contexts, that is exactly what we need.
+>>
+>> Generating alt tag text automatically (no human interaction) is going to deliver on the technical aspects, without the analytic outcomes, although our recent efforts with the BrailleR package are trying to offer more and more factual information that could help with the analysis of the data. Our main aim is to assure the blind producer of a graphic that it does actually exist and what (roughly) it shows; it would not be great text for an alt tag in most circumstances. I've done some limited testing with AI solutions but haven't yet been overwhelmed by positive experiences.
+>>
+>> Anyone using an R markdown workflow can add alt text using the fig.alt option in the header of their chunks. Without that, the fig.cap option is used, and if neither is used, the screen reader user is victim to their personal settings. (We choose whether to be told about unlabelled graphics which used to be helpful for ignoring advertising.) I don't put unique alt tags in all of my work because I just need to convey that the graphic is there, but I do make sure there is a default bit of text that saves blind users with the wrong settings from their decisions.
+>>
+>>
+>> An author wishing to support blind consumers of their efforts, could spend lots of time working out what to write, and never get it perfectly correct because the desires of those consumers are not homogeneous. I advise people to use an alt tag, but to make sure it does not duplicate what is already said in the main text of their document. Authors already do this when thinking about the right caption for their figures, but it is easy to see how varied that can be. At least the target audience of captions is well known to the author given the author is part of that population; in contrast, most authors are not blind and may over or under-estimate the needs of the blind readers of their work. Before doing everything an individual requests, please make sure that what is being sought is in keeping with what you are hoping to communicate.
+>>
+>> I despair at the retrospective creation of alt tags, especially if applied to living documents. Creation of alt tags is simple for anyone using regular markdown based insertion of their graphics because the ![]() construct embraces them in the []. Authors using a LaTeX workflow must load an additional package and add an optional argument to their \includegraphics{} commands. MS Word users can label their graphics anytime but of late there is an increased use of an automated alt tag creation for them (and messages in Outlook too for that matter). I am loathed to fully describe the LaTeX pipeline unless the author is also committed to producing their output in HTML as I have utter contempt for the pdf (or post script) that is the default for most authors using any TeX workflows.
+>>
+>> Post hoc editing of html is perhaps the worst possible action I observe. This process has separated the creator of the content from the creator of the access for blind people, and is heavily reliant on the skill set of the accessibility "expert". Such editing is common in university settings where the Disability Support Service is responsible for the accessibility. If I was an undergraduate today, I'd be camping outside the doors of my teaching staff to get the alt tags inserted. I spent plenty of time back then, sitting in corridors waiting my turn, but so many of the access challenges of the dead-tree era are thankfully behind us.
+>>
+>>
+>> I'm curious though that a blind person is going to benefit much from your package given so much of what I read relies on using a mouse, or having the ability to imagine the 3d data projected into an inherently 2d page/screen/image. In turn, that inaccessibility might heavily influence my effort to provide comprehensive alt tags.
+>>
+>> I'd be more than happy to continue this conversation, and to do so on list because I think there are so many opportunities on offer today for people to embrace; many of which will not create piles of extra work.
+>>
+>> Jonathan
+>>
+>>
+>>
+>> -----Original Message-----
+>> From: R-package-devel <r-package-devel-bounces at r-project.org> On
+>> Behalf Of Duncan Murdoch
+>> Sent: Saturday, 18 March 2023 8:26 am
+>> To: r-package-devel at r-project.org
+>> Subject: [R-pkg-devel] Screen reader help request
+>>
+>> I received a request a few days ago to add alt text to the plots in the HTML vignettes for the rgl package.
+>>
+>> That was easy to do, and I did it, but realized most of the graphics that rgl produces are not in <img> format, they are WebGL canvases, and those don't support the same method of adding alternate text.  Online I've seen a variety of suggestions about how to do it for <canvas> elements, and have implemented one of them.
+>>
+>> Could I ask someone who is familiar with one or more screen readers to test whether the method that I used works?  A sample web page produced with the new code is here:
+>>
+>>      
+>> https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fdmur
+>> doch.github.io%2Frgl%2Fdev%2Farticles%2Frgl.html&data=05%7C01%7CA.J.Go
+>> dfrey%40massey.ac.nz%7Cc0745ee90c414eebafa508db273e28e6%7C388728e1bbd0
+>> 437898dcf8682e644300%7C1%7C0%7C638146920163482319%7CUnknown%7CTWFpbGZs
+>> b3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D
+>> %7C3000%7C%7C%7C&sdata=tgPjXHerM93yrUrb963Tsa1MwsY7AKbFzaAFP8ZRYc8%3D&
+>> reserved=0
+>>
+>> The very first graphic is a plot of the iris data, and it should have alt text reading "rglwidget in chunk unnamed-chunk-1".
+>>
+>> That was default text generated without user input, users could put whatever they wanted there instead.
+>>
+>> Some related questions:
+>>
+>>     - Could you suggest better default text to use?
+>>
+>>     - Could you suggest good custom text for this particular graphic?
+>>
+>>     - The text is inserted when some Javascript has run to initialize the page, so if the Javascript fails, there'll be no alt text.  Is that a reasonable limitation?
+>>
+>> Duncan Murdoch
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat
+>> .ethz.ch%2Fmailman%2Flistinfo%2Fr-package-devel&data=05%7C01%7CA.J.God
+>> frey%40massey.ac.nz%7Cc0745ee90c414eebafa508db273e28e6%7C388728e1bbd04
+>> 37898dcf8682e644300%7C1%7C0%7C638146920163482319%7CUnknown%7CTWFpbGZsb
+>> 3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%
+>> 7C3000%7C%7C%7C&sdata=DTNqoAST5GrdK70Y%2B6X0gSOgn0dQQoXEN6cIR608YyE%3D
+>> &reserved=0
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat
+>> .ethz.ch%2Fmailman%2Flistinfo%2Fr-package-devel&data=05%7C01%7CA.J.God
+>> frey%40massey.ac.nz%7Cc0745ee90c414eebafa508db273e28e6%7C388728e1bbd04
+>> 37898dcf8682e644300%7C1%7C0%7C638146920163482319%7CUnknown%7CTWFpbGZsb
+>> 3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%
+>> 7C3000%7C%7C%7C&sdata=DTNqoAST5GrdK70Y%2B6X0gSOgn0dQQoXEN6cIR608YyE%3D
+>> &reserved=0
+> 
+
+
+From A@J@God|rey @end|ng |rom m@@@ey@@c@nz  Sat Mar 18 20:25:45 2023
+From: A@J@God|rey @end|ng |rom m@@@ey@@c@nz (Jonathan Godfrey)
+Date: Sat, 18 Mar 2023 19:25:45 +0000
+Subject: [R-pkg-devel] Screen reader help request
+In-Reply-To: <2ca432c2-d412-6893-5b60-d255389b2df5@gmail.com>
+References: <745a3154-4cf1-36c1-6b44-c6ba7d146749@gmail.com>
+ <MEAPR01MB38297A22F7F2F8AC12768D5893BD9@MEAPR01MB3829.ausprd01.prod.outlook.com>
+ <9eb2e213-c915-c99e-3c4d-f0ff3424f4c6@gmail.com>
+ <MEAPR01MB3829E1EB5164584342271A5193BD9@MEAPR01MB3829.ausprd01.prod.outlook.com>
+ <2ca432c2-d412-6893-5b60-d255389b2df5@gmail.com>
+Message-ID: <MEAPR01MB3829D60465A3EA15D2E6DBCF93829@MEAPR01MB3829.ausprd01.prod.outlook.com>
+
+Duncan et al., I report success.
+
+The promised text was attached to a graphic, and only appeared once. Not sure what the hidden text is about, or why it is needed. (?) so I went and edited the raw html (to make sure the alt text is only located in there) and my edit is plain to hear.
+
+So there are not two audible versions and the one that matters is in the right place. I can tell the second graphic has a different style of alt text and that later graphics are separated by other code chunks that do not generate graphics (8, 9, and 10) N.B. I was skimming to look for graphics, not reading the associated text or code.
+
+>From a user perspective, the graphics created using canvas are indistinguishable from those inserted using img. This is an example where success in access is unnoticeable to the end user and seldom gets acknowledge of effort as a consequence. I'll say thank you now on behalf of the blissfully unaware blind readers.
+
+I'd like to know that the effort required by future authors is equal for all types of images. The failing of fig.alt to deliver on multiple images in a chunk is something to worry about in a different conversation. I'm watching this and other issues with respect to the development of quarto documents, but in order to test those, I  start with he Rmd performance as a reference point. I hadn't tested multiple plots yet, probably because I don't use them very often.
+
+I can't address the Shiny issues. I can tell people though that there are access issues with some Shiny widgets. These were being investigated by another blind R user so I can check how that has progressed. I sense that his work is not yet complete.
+
+Jonathan
+
+
+
+
+-----Original Message-----
+From: Duncan Murdoch <murdoch.duncan at gmail.com> 
+Sent: Sunday, 19 March 2023 7:39 am
+To: Jonathan Godfrey <A.J.Godfrey at massey.ac.nz>; R Package Development <R-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Screen reader help request
+
+I've made another attempt at this now.  I'm a bit more hopeful about this one, but still not sure.
+
+In the new code, I write the text in a <p> element which is hidden, and use aria-labelledby to say that both the <div> and the <canvas> are labelled by that text.
+
+I am quite hopeful that the text will be detected by a screen reader now.  You may hear it twice; if so, I have a couple of ideas how to fix that.
+
+I've also thought about what you said about the default text, and have changed it slightly.  Now the first plot in the page
+
+   https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fdmurdoch.github.io%2Frgl%2Fdev%2Farticles%2Frgl.html&data=05%7C01%7CA.J.Godfrey%40massey.ac.nz%7C8f0eb72383f74148cef008db27e01261%7C388728e1bbd0437898dcf8682e644300%7C1%7C0%7C638147615570986760%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=3B9Oapk8PCYTb62K1UBbvHg7DoxdMX3e9ZwRyXFg6CA%3D&reserved=0
+
+will have alt text "Rotatable plot with label unnamed-chunk-1". 
+Obviously customized text would be better, but I think this should be better than nothing.
+
+For authors using this, the R Markdown optional fig.alt setting almost works.  It's fine if you only have one plot, but if you have multiple plots with different fig.alt settings rgl will only use the first one. 
+I think a change in knitr is needed so that rgl can work out which one you really want.
+
+The Shiny support is also a little deficient.  It would make sense in an interactive Shiny page to be able to change the alt text in response to user actions, but that's not possible yet.  If there are any Shiny experts reading this, I could use some help with that.
+
+Duncan Murdoch
+
+On 17/03/2023 7:59 p.m., Jonathan Godfrey wrote:
+> Hello again Duncan,
+> 
+> I could see the two successes were <img> ... </img> creations and that the others weren't.
+> 
+> I worry though that in searching for a solution, you need to end up with something that is as simple for authors as what little effort is needed for fig.alt; having looked at the HTML, I'd rather know what is happening at the Rmd file stage and how anything created there gets passed on.
+> 
+> IMO:  Your reflections on the content of the tags is bang on target. In a perfect world, this is where authors' efforts should be, not on the technical "how do I get that done" aspects.
+> 
+> I suspect that fixing the toolkit is necessary. A demonstration that a problem can be solved is often a first step in creating access. Furthermore, this is not a problem unique to your single document. Other authors will want to use the same tools which you are demonstrating.
+> 
+> Alt tags are a perfect demonstration of access that does not impinge on everyone who doesn't need that feature. Use of fig.cap (initially) and latterly fig.alt to provide the access was done at the toolkit level, and it cannot get any easier for authors. That maximises the chances that authors do then turn to the content of the tags.
+> 
+> I'm happy to assist on projects that lead to positive improvements under the hood that ultimately create access without authors having to become experts in providing access.
+> 
+> We might take the testing off list, but keep the discussion of access on list.
+> 
+> Jonathan
+> 
+> 
+> -----Original Message-----
+> From: Duncan Murdoch <murdoch.duncan at gmail.com>
+> Sent: Saturday, 18 March 2023 12:20 pm
+> To: Jonathan Godfrey <A.J.Godfrey at massey.ac.nz>; R Package Development 
+> <R-package-devel at r-project.org>
+> Subject: Re: [R-pkg-devel] Screen reader help request
+> 
+> Thanks very much for your response.
+> 
+> The two images where the tags showed up are regular figures, using lattice and base graphics.  There are also a lot of rgl figures, which have HTML code like this in the source .html file:
+> 
+>     <div id="rgl61108" style="width:480px;height:296.662546353523px;"
+> class="rglWebGL html-widget "></div>
+> 
+> (Looks like I should think about rounding the height value!)
+> 
+> All the interesting stuff (including the alt tags) is added within the div by Javascript that runs after the page is loaded.  The fact that it didn't show up in your reader indicates to me that either it needs to be there before the Javascript runs, or that I put the text in the wrong place.  I'll try a few variations on the code and hopefully find something that works.
+> 
+> Your comments about the content of the tags was also very helpful.  I am imagining that there are at least two groups of readers who might make use of them:
+> 
+>     - readers who would skip over the graphics completely, but who would be helped by knowing what they missed.
+> 
+>     - readers who can get information from the graphics but only with an effort, so they would want to know where to apply that effort.
+> 
+> For the document I posted, there might not be very many people in either group, but I'm hoping to make the package useful to others, who would be writing documents with different audiences.
+> 
+> Duncan Murdoch
+> 
+> On 17/03/2023 5:18 p.m., Jonathan Godfrey wrote:
+>> Hello Duncan,
+>>
+>> I guess a few people might expect me to contribute to your request. First I'll assure you that two graphics do have an alt tag which my screen reader is telling me about, so in a sense that is success. I did not check with multiple screen readers or different browsers because I would only find fault if I used inferior software; I expect success with JAWS or NVDA to represent the other and likewise for browsers. These two successes are the lattice and base graphics relating to the volcano data. Others are not showing to my screen reader (JAWS) and browser (Chrome) on my OS (Windows). I note that these are inserted using <img> though.
+>>
+>> What should appear in an alt tag is an area of much debate though, and the attitude towards their creation differs widely. I believe that the context is the primary driver for what should be communicated. In your context, where you are obviously writing about the package (in general) and comparison of lattice v base graphics (where I do see the alt tags), it is the main text that should be communicating with your audience. You know what you are writing and why. If you do not write about the differences then you leave it up to chance that your (mostly visually-dependent) audience sees the differences that matter to you and your efforts as an author/developer. Complementing that information intended for the whole audience with a sensible alt tag on the graphics for the blind part of your audience, would be fundamentally different to what you might need to offer for the same graphics in another context, say an analysis feeding into a business report for example. In your context, the blind person needs to know that the graphic does appear, and that the graphic has a unique (enough) label to make it obvious which graphic appeared where. We do not need a full description of every last detail of each graphic, although in other contexts, that is exactly what we need.
+>>
+>> Generating alt tag text automatically (no human interaction) is going to deliver on the technical aspects, without the analytic outcomes, although our recent efforts with the BrailleR package are trying to offer more and more factual information that could help with the analysis of the data. Our main aim is to assure the blind producer of a graphic that it does actually exist and what (roughly) it shows; it would not be great text for an alt tag in most circumstances. I've done some limited testing with AI solutions but haven't yet been overwhelmed by positive experiences.
+>>
+>> Anyone using an R markdown workflow can add alt text using the fig.alt option in the header of their chunks. Without that, the fig.cap option is used, and if neither is used, the screen reader user is victim to their personal settings. (We choose whether to be told about unlabelled graphics which used to be helpful for ignoring advertising.) I don't put unique alt tags in all of my work because I just need to convey that the graphic is there, but I do make sure there is a default bit of text that saves blind users with the wrong settings from their decisions.
+>>
+>>
+>> An author wishing to support blind consumers of their efforts, could spend lots of time working out what to write, and never get it perfectly correct because the desires of those consumers are not homogeneous. I advise people to use an alt tag, but to make sure it does not duplicate what is already said in the main text of their document. Authors already do this when thinking about the right caption for their figures, but it is easy to see how varied that can be. At least the target audience of captions is well known to the author given the author is part of that population; in contrast, most authors are not blind and may over or under-estimate the needs of the blind readers of their work. Before doing everything an individual requests, please make sure that what is being sought is in keeping with what you are hoping to communicate.
+>>
+>> I despair at the retrospective creation of alt tags, especially if applied to living documents. Creation of alt tags is simple for anyone using regular markdown based insertion of their graphics because the ![]() construct embraces them in the []. Authors using a LaTeX workflow must load an additional package and add an optional argument to their \includegraphics{} commands. MS Word users can label their graphics anytime but of late there is an increased use of an automated alt tag creation for them (and messages in Outlook too for that matter). I am loathed to fully describe the LaTeX pipeline unless the author is also committed to producing their output in HTML as I have utter contempt for the pdf (or post script) that is the default for most authors using any TeX workflows.
+>>
+>> Post hoc editing of html is perhaps the worst possible action I observe. This process has separated the creator of the content from the creator of the access for blind people, and is heavily reliant on the skill set of the accessibility "expert". Such editing is common in university settings where the Disability Support Service is responsible for the accessibility. If I was an undergraduate today, I'd be camping outside the doors of my teaching staff to get the alt tags inserted. I spent plenty of time back then, sitting in corridors waiting my turn, but so many of the access challenges of the dead-tree era are thankfully behind us.
+>>
+>>
+>> I'm curious though that a blind person is going to benefit much from your package given so much of what I read relies on using a mouse, or having the ability to imagine the 3d data projected into an inherently 2d page/screen/image. In turn, that inaccessibility might heavily influence my effort to provide comprehensive alt tags.
+>>
+>> I'd be more than happy to continue this conversation, and to do so on list because I think there are so many opportunities on offer today for people to embrace; many of which will not create piles of extra work.
+>>
+>> Jonathan
+>>
+>>
+>>
+>> -----Original Message-----
+>> From: R-package-devel <r-package-devel-bounces at r-project.org> On 
+>> Behalf Of Duncan Murdoch
+>> Sent: Saturday, 18 March 2023 8:26 am
+>> To: r-package-devel at r-project.org
+>> Subject: [R-pkg-devel] Screen reader help request
+>>
+>> I received a request a few days ago to add alt text to the plots in the HTML vignettes for the rgl package.
+>>
+>> That was easy to do, and I did it, but realized most of the graphics that rgl produces are not in <img> format, they are WebGL canvases, and those don't support the same method of adding alternate text.  Online I've seen a variety of suggestions about how to do it for <canvas> elements, and have implemented one of them.
+>>
+>> Could I ask someone who is familiar with one or more screen readers to test whether the method that I used works?  A sample web page produced with the new code is here:
+>>
+>>      
+>> https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fdmu
+>> r%2F&data=05%7C01%7CA.J.Godfrey%40massey.ac.nz%7C8f0eb72383f74148cef0
+>> 08db27e01261%7C388728e1bbd0437898dcf8682e644300%7C1%7C0%7C63814761557
+>> 0986760%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiL
+>> CJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=6O%2BFOsnLvWvYHVE
+>> ElsNJ0cCbVcs1N33xHsv8YAjHf%2FE%3D&reserved=0
+>> doch.github.io%2Frgl%2Fdev%2Farticles%2Frgl.html&data=05%7C01%7CA.J.G
+>> o
+>> dfrey%40massey.ac.nz%7Cc0745ee90c414eebafa508db273e28e6%7C388728e1bbd
+>> 0 
+>> 437898dcf8682e644300%7C1%7C0%7C638146920163482319%7CUnknown%7CTWFpbGZ
+>> s 
+>> b3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3
+>> D 
+>> %7C3000%7C%7C%7C&sdata=tgPjXHerM93yrUrb963Tsa1MwsY7AKbFzaAFP8ZRYc8%3D
+>> &
+>> reserved=0
+>>
+>> The very first graphic is a plot of the iris data, and it should have alt text reading "rglwidget in chunk unnamed-chunk-1".
+>>
+>> That was default text generated without user input, users could put whatever they wanted there instead.
+>>
+>> Some related questions:
+>>
+>>     - Could you suggest better default text to use?
+>>
+>>     - Could you suggest good custom text for this particular graphic?
+>>
+>>     - The text is inserted when some Javascript has run to initialize the page, so if the Javascript fails, there'll be no alt text.  Is that a reasonable limitation?
+>>
+>> Duncan Murdoch
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fsta
+>> t%2F&data=05%7C01%7CA.J.Godfrey%40massey.ac.nz%7C8f0eb72383f74148cef0
+>> 08db27e01261%7C388728e1bbd0437898dcf8682e644300%7C1%7C0%7C63814761557
+>> 0986760%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiL
+>> CJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=yxBjLllMyBklfekVB
+>> SFESvDi7wc2AInXELdc9OjSMm4%3D&reserved=0
+>> .ethz.ch%2Fmailman%2Flistinfo%2Fr-package-devel&data=05%7C01%7CA.J.Go
+>> d
+>> frey%40massey.ac.nz%7Cc0745ee90c414eebafa508db273e28e6%7C388728e1bbd0
+>> 4 
+>> 37898dcf8682e644300%7C1%7C0%7C638146920163482319%7CUnknown%7CTWFpbGZs
+>> b 
+>> 3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D
+>> % 
+>> 7C3000%7C%7C%7C&sdata=DTNqoAST5GrdK70Y%2B6X0gSOgn0dQQoXEN6cIR608YyE%3
+>> D
+>> &reserved=0
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fsta
+>> t%2F&data=05%7C01%7CA.J.Godfrey%40massey.ac.nz%7C8f0eb72383f74148cef0
+>> 08db27e01261%7C388728e1bbd0437898dcf8682e644300%7C1%7C0%7C63814761557
+>> 0986760%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiL
+>> CJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=yxBjLllMyBklfekVB
+>> SFESvDi7wc2AInXELdc9OjSMm4%3D&reserved=0
+>> .ethz.ch%2Fmailman%2Flistinfo%2Fr-package-devel&data=05%7C01%7CA.J.Go
+>> d
+>> frey%40massey.ac.nz%7Cc0745ee90c414eebafa508db273e28e6%7C388728e1bbd0
+>> 4 
+>> 37898dcf8682e644300%7C1%7C0%7C638146920163482319%7CUnknown%7CTWFpbGZs
+>> b 
+>> 3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D
+>> % 
+>> 7C3000%7C%7C%7C&sdata=DTNqoAST5GrdK70Y%2B6X0gSOgn0dQQoXEN6cIR608YyE%3
+>> D
+>> &reserved=0
+> 
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Mar 18 21:26:50 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 18 Mar 2023 16:26:50 -0400
+Subject: [R-pkg-devel] Screen reader help request
+In-Reply-To: <MEAPR01MB3829D60465A3EA15D2E6DBCF93829@MEAPR01MB3829.ausprd01.prod.outlook.com>
+References: <745a3154-4cf1-36c1-6b44-c6ba7d146749@gmail.com>
+ <MEAPR01MB38297A22F7F2F8AC12768D5893BD9@MEAPR01MB3829.ausprd01.prod.outlook.com>
+ <9eb2e213-c915-c99e-3c4d-f0ff3424f4c6@gmail.com>
+ <MEAPR01MB3829E1EB5164584342271A5193BD9@MEAPR01MB3829.ausprd01.prod.outlook.com>
+ <2ca432c2-d412-6893-5b60-d255389b2df5@gmail.com>
+ <MEAPR01MB3829D60465A3EA15D2E6DBCF93829@MEAPR01MB3829.ausprd01.prod.outlook.com>
+Message-ID: <8f448bf0-02b2-9375-d1e3-a9069069acf7@gmail.com>
+
+That's great news.  Thanks for your rapid testing!
+
+Regarding quarto:  most of what I did for embedding rgl in R Markdown 
+just worked in quarto:  it uses a very similar system for embedding 
+graphics.  There were one or two issues which I believe have been fixed.
+
+I think the next task is getting the multiple-figure situation sorted out.
+
+Duncan
+
+On 18/03/2023 3:25 p.m., Jonathan Godfrey wrote:
+> Duncan et al., I report success.
+> 
+> The promised text was attached to a graphic, and only appeared once. Not sure what the hidden text is about, or why it is needed. (?) so I went and edited the raw html (to make sure the alt text is only located in there) and my edit is plain to hear.
+> 
+> So there are not two audible versions and the one that matters is in the right place. I can tell the second graphic has a different style of alt text and that later graphics are separated by other code chunks that do not generate graphics (8, 9, and 10) N.B. I was skimming to look for graphics, not reading the associated text or code.
+> 
+>  From a user perspective, the graphics created using canvas are indistinguishable from those inserted using img. This is an example where success in access is unnoticeable to the end user and seldom gets acknowledge of effort as a consequence. I'll say thank you now on behalf of the blissfully unaware blind readers.
+> 
+> I'd like to know that the effort required by future authors is equal for all types of images. The failing of fig.alt to deliver on multiple images in a chunk is something to worry about in a different conversation. I'm watching this and other issues with respect to the development of quarto documents, but in order to test those, I  start with he Rmd performance as a reference point. I hadn't tested multiple plots yet, probably because I don't use them very often.
+> 
+> I can't address the Shiny issues. I can tell people though that there are access issues with some Shiny widgets. These were being investigated by another blind R user so I can check how that has progressed. I sense that his work is not yet complete.
+> 
+> Jonathan
+> 
+> 
+> 
+> 
+> -----Original Message-----
+> From: Duncan Murdoch <murdoch.duncan at gmail.com>
+> Sent: Sunday, 19 March 2023 7:39 am
+> To: Jonathan Godfrey <A.J.Godfrey at massey.ac.nz>; R Package Development <R-package-devel at r-project.org>
+> Subject: Re: [R-pkg-devel] Screen reader help request
+> 
+> I've made another attempt at this now.  I'm a bit more hopeful about this one, but still not sure.
+> 
+> In the new code, I write the text in a <p> element which is hidden, and use aria-labelledby to say that both the <div> and the <canvas> are labelled by that text.
+> 
+> I am quite hopeful that the text will be detected by a screen reader now.  You may hear it twice; if so, I have a couple of ideas how to fix that.
+> 
+> I've also thought about what you said about the default text, and have changed it slightly.  Now the first plot in the page
+> 
+>     https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fdmurdoch.github.io%2Frgl%2Fdev%2Farticles%2Frgl.html&data=05%7C01%7CA.J.Godfrey%40massey.ac.nz%7C8f0eb72383f74148cef008db27e01261%7C388728e1bbd0437898dcf8682e644300%7C1%7C0%7C638147615570986760%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=3B9Oapk8PCYTb62K1UBbvHg7DoxdMX3e9ZwRyXFg6CA%3D&reserved=0
+> 
+> will have alt text "Rotatable plot with label unnamed-chunk-1".
+> Obviously customized text would be better, but I think this should be better than nothing.
+> 
+> For authors using this, the R Markdown optional fig.alt setting almost works.  It's fine if you only have one plot, but if you have multiple plots with different fig.alt settings rgl will only use the first one.
+> I think a change in knitr is needed so that rgl can work out which one you really want.
+> 
+> The Shiny support is also a little deficient.  It would make sense in an interactive Shiny page to be able to change the alt text in response to user actions, but that's not possible yet.  If there are any Shiny experts reading this, I could use some help with that.
+> 
+> Duncan Murdoch
+> 
+> On 17/03/2023 7:59 p.m., Jonathan Godfrey wrote:
+>> Hello again Duncan,
+>>
+>> I could see the two successes were <img> ... </img> creations and that the others weren't.
+>>
+>> I worry though that in searching for a solution, you need to end up with something that is as simple for authors as what little effort is needed for fig.alt; having looked at the HTML, I'd rather know what is happening at the Rmd file stage and how anything created there gets passed on.
+>>
+>> IMO:  Your reflections on the content of the tags is bang on target. In a perfect world, this is where authors' efforts should be, not on the technical "how do I get that done" aspects.
+>>
+>> I suspect that fixing the toolkit is necessary. A demonstration that a problem can be solved is often a first step in creating access. Furthermore, this is not a problem unique to your single document. Other authors will want to use the same tools which you are demonstrating.
+>>
+>> Alt tags are a perfect demonstration of access that does not impinge on everyone who doesn't need that feature. Use of fig.cap (initially) and latterly fig.alt to provide the access was done at the toolkit level, and it cannot get any easier for authors. That maximises the chances that authors do then turn to the content of the tags.
+>>
+>> I'm happy to assist on projects that lead to positive improvements under the hood that ultimately create access without authors having to become experts in providing access.
+>>
+>> We might take the testing off list, but keep the discussion of access on list.
+>>
+>> Jonathan
+>>
+>>
+>> -----Original Message-----
+>> From: Duncan Murdoch <murdoch.duncan at gmail.com>
+>> Sent: Saturday, 18 March 2023 12:20 pm
+>> To: Jonathan Godfrey <A.J.Godfrey at massey.ac.nz>; R Package Development
+>> <R-package-devel at r-project.org>
+>> Subject: Re: [R-pkg-devel] Screen reader help request
+>>
+>> Thanks very much for your response.
+>>
+>> The two images where the tags showed up are regular figures, using lattice and base graphics.  There are also a lot of rgl figures, which have HTML code like this in the source .html file:
+>>
+>>      <div id="rgl61108" style="width:480px;height:296.662546353523px;"
+>> class="rglWebGL html-widget "></div>
+>>
+>> (Looks like I should think about rounding the height value!)
+>>
+>> All the interesting stuff (including the alt tags) is added within the div by Javascript that runs after the page is loaded.  The fact that it didn't show up in your reader indicates to me that either it needs to be there before the Javascript runs, or that I put the text in the wrong place.  I'll try a few variations on the code and hopefully find something that works.
+>>
+>> Your comments about the content of the tags was also very helpful.  I am imagining that there are at least two groups of readers who might make use of them:
+>>
+>>      - readers who would skip over the graphics completely, but who would be helped by knowing what they missed.
+>>
+>>      - readers who can get information from the graphics but only with an effort, so they would want to know where to apply that effort.
+>>
+>> For the document I posted, there might not be very many people in either group, but I'm hoping to make the package useful to others, who would be writing documents with different audiences.
+>>
+>> Duncan Murdoch
+>>
+>> On 17/03/2023 5:18 p.m., Jonathan Godfrey wrote:
+>>> Hello Duncan,
+>>>
+>>> I guess a few people might expect me to contribute to your request. First I'll assure you that two graphics do have an alt tag which my screen reader is telling me about, so in a sense that is success. I did not check with multiple screen readers or different browsers because I would only find fault if I used inferior software; I expect success with JAWS or NVDA to represent the other and likewise for browsers. These two successes are the lattice and base graphics relating to the volcano data. Others are not showing to my screen reader (JAWS) and browser (Chrome) on my OS (Windows). I note that these are inserted using <img> though.
+>>>
+>>> What should appear in an alt tag is an area of much debate though, and the attitude towards their creation differs widely. I believe that the context is the primary driver for what should be communicated. In your context, where you are obviously writing about the package (in general) and comparison of lattice v base graphics (where I do see the alt tags), it is the main text that should be communicating with your audience. You know what you are writing and why. If you do not write about the differences then you leave it up to chance that your (mostly visually-dependent) audience sees the differences that matter to you and your efforts as an author/developer. Complementing that information intended for the whole audience with a sensible alt tag on the graphics for the blind part of your audience, would be fundamentally different to what you might need to offer for the same graphics in another context, say an analysis feeding into a business report for example. In your context, the blind person needs to know that the graphic does appear, and that the graphic has a unique (enough) label to make it obvious which graphic appeared where. We do not need a full description of every last detail of each graphic, although in other contexts, that is exactly what we need.
+>>>
+>>> Generating alt tag text automatically (no human interaction) is going to deliver on the technical aspects, without the analytic outcomes, although our recent efforts with the BrailleR package are trying to offer more and more factual information that could help with the analysis of the data. Our main aim is to assure the blind producer of a graphic that it does actually exist and what (roughly) it shows; it would not be great text for an alt tag in most circumstances. I've done some limited testing with AI solutions but haven't yet been overwhelmed by positive experiences.
+>>>
+>>> Anyone using an R markdown workflow can add alt text using the fig.alt option in the header of their chunks. Without that, the fig.cap option is used, and if neither is used, the screen reader user is victim to their personal settings. (We choose whether to be told about unlabelled graphics which used to be helpful for ignoring advertising.) I don't put unique alt tags in all of my work because I just need to convey that the graphic is there, but I do make sure there is a default bit of text that saves blind users with the wrong settings from their decisions.
+>>>
+>>>
+>>> An author wishing to support blind consumers of their efforts, could spend lots of time working out what to write, and never get it perfectly correct because the desires of those consumers are not homogeneous. I advise people to use an alt tag, but to make sure it does not duplicate what is already said in the main text of their document. Authors already do this when thinking about the right caption for their figures, but it is easy to see how varied that can be. At least the target audience of captions is well known to the author given the author is part of that population; in contrast, most authors are not blind and may over or under-estimate the needs of the blind readers of their work. Before doing everything an individual requests, please make sure that what is being sought is in keeping with what you are hoping to communicate.
+>>>
+>>> I despair at the retrospective creation of alt tags, especially if applied to living documents. Creation of alt tags is simple for anyone using regular markdown based insertion of their graphics because the ![]() construct embraces them in the []. Authors using a LaTeX workflow must load an additional package and add an optional argument to their \includegraphics{} commands. MS Word users can label their graphics anytime but of late there is an increased use of an automated alt tag creation for them (and messages in Outlook too for that matter). I am loathed to fully describe the LaTeX pipeline unless the author is also committed to producing their output in HTML as I have utter contempt for the pdf (or post script) that is the default for most authors using any TeX workflows.
+>>>
+>>> Post hoc editing of html is perhaps the worst possible action I observe. This process has separated the creator of the content from the creator of the access for blind people, and is heavily reliant on the skill set of the accessibility "expert". Such editing is common in university settings where the Disability Support Service is responsible for the accessibility. If I was an undergraduate today, I'd be camping outside the doors of my teaching staff to get the alt tags inserted. I spent plenty of time back then, sitting in corridors waiting my turn, but so many of the access challenges of the dead-tree era are thankfully behind us.
+>>>
+>>>
+>>> I'm curious though that a blind person is going to benefit much from your package given so much of what I read relies on using a mouse, or having the ability to imagine the 3d data projected into an inherently 2d page/screen/image. In turn, that inaccessibility might heavily influence my effort to provide comprehensive alt tags.
+>>>
+>>> I'd be more than happy to continue this conversation, and to do so on list because I think there are so many opportunities on offer today for people to embrace; many of which will not create piles of extra work.
+>>>
+>>> Jonathan
+>>>
+>>>
+>>>
+>>> -----Original Message-----
+>>> From: R-package-devel <r-package-devel-bounces at r-project.org> On
+>>> Behalf Of Duncan Murdoch
+>>> Sent: Saturday, 18 March 2023 8:26 am
+>>> To: r-package-devel at r-project.org
+>>> Subject: [R-pkg-devel] Screen reader help request
+>>>
+>>> I received a request a few days ago to add alt text to the plots in the HTML vignettes for the rgl package.
+>>>
+>>> That was easy to do, and I did it, but realized most of the graphics that rgl produces are not in <img> format, they are WebGL canvases, and those don't support the same method of adding alternate text.  Online I've seen a variety of suggestions about how to do it for <canvas> elements, and have implemented one of them.
+>>>
+>>> Could I ask someone who is familiar with one or more screen readers to test whether the method that I used works?  A sample web page produced with the new code is here:
+>>>
+>>>       
+>>> https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fdmu
+>>> r%2F&data=05%7C01%7CA.J.Godfrey%40massey.ac.nz%7C8f0eb72383f74148cef0
+>>> 08db27e01261%7C388728e1bbd0437898dcf8682e644300%7C1%7C0%7C63814761557
+>>> 0986760%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiL
+>>> CJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=6O%2BFOsnLvWvYHVE
+>>> ElsNJ0cCbVcs1N33xHsv8YAjHf%2FE%3D&reserved=0
+>>> doch.github.io%2Frgl%2Fdev%2Farticles%2Frgl.html&data=05%7C01%7CA.J.G
+>>> o
+>>> dfrey%40massey.ac.nz%7Cc0745ee90c414eebafa508db273e28e6%7C388728e1bbd
+>>> 0
+>>> 437898dcf8682e644300%7C1%7C0%7C638146920163482319%7CUnknown%7CTWFpbGZ
+>>> s
+>>> b3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3
+>>> D
+>>> %7C3000%7C%7C%7C&sdata=tgPjXHerM93yrUrb963Tsa1MwsY7AKbFzaAFP8ZRYc8%3D
+>>> &
+>>> reserved=0
+>>>
+>>> The very first graphic is a plot of the iris data, and it should have alt text reading "rglwidget in chunk unnamed-chunk-1".
+>>>
+>>> That was default text generated without user input, users could put whatever they wanted there instead.
+>>>
+>>> Some related questions:
+>>>
+>>>      - Could you suggest better default text to use?
+>>>
+>>>      - Could you suggest good custom text for this particular graphic?
+>>>
+>>>      - The text is inserted when some Javascript has run to initialize the page, so if the Javascript fails, there'll be no alt text.  Is that a reasonable limitation?
+>>>
+>>> Duncan Murdoch
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fsta
+>>> t%2F&data=05%7C01%7CA.J.Godfrey%40massey.ac.nz%7C8f0eb72383f74148cef0
+>>> 08db27e01261%7C388728e1bbd0437898dcf8682e644300%7C1%7C0%7C63814761557
+>>> 0986760%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiL
+>>> CJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=yxBjLllMyBklfekVB
+>>> SFESvDi7wc2AInXELdc9OjSMm4%3D&reserved=0
+>>> .ethz.ch%2Fmailman%2Flistinfo%2Fr-package-devel&data=05%7C01%7CA.J.Go
+>>> d
+>>> frey%40massey.ac.nz%7Cc0745ee90c414eebafa508db273e28e6%7C388728e1bbd0
+>>> 4
+>>> 37898dcf8682e644300%7C1%7C0%7C638146920163482319%7CUnknown%7CTWFpbGZs
+>>> b
+>>> 3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D
+>>> %
+>>> 7C3000%7C%7C%7C&sdata=DTNqoAST5GrdK70Y%2B6X0gSOgn0dQQoXEN6cIR608YyE%3
+>>> D
+>>> &reserved=0
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fsta
+>>> t%2F&data=05%7C01%7CA.J.Godfrey%40massey.ac.nz%7C8f0eb72383f74148cef0
+>>> 08db27e01261%7C388728e1bbd0437898dcf8682e644300%7C1%7C0%7C63814761557
+>>> 0986760%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiL
+>>> CJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=yxBjLllMyBklfekVB
+>>> SFESvDi7wc2AInXELdc9OjSMm4%3D&reserved=0
+>>> .ethz.ch%2Fmailman%2Flistinfo%2Fr-package-devel&data=05%7C01%7CA.J.Go
+>>> d
+>>> frey%40massey.ac.nz%7Cc0745ee90c414eebafa508db273e28e6%7C388728e1bbd0
+>>> 4
+>>> 37898dcf8682e644300%7C1%7C0%7C638146920163482319%7CUnknown%7CTWFpbGZs
+>>> b
+>>> 3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D
+>>> %
+>>> 7C3000%7C%7C%7C&sdata=DTNqoAST5GrdK70Y%2B6X0gSOgn0dQQoXEN6cIR608YyE%3
+>>> D
+>>> &reserved=0
+>>
+> 
+
+
