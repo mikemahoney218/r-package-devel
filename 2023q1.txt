@@ -19323,3 +19323,839 @@ On 18/03/2023 3:25 p.m., Jonathan Godfrey wrote:
 > 
 
 
+From Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de  Mon Mar 20 09:38:41 2023
+From: Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de (Ruff, Sergej)
+Date: Mon, 20 Mar 2023 08:38:41 +0000
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <4ceaafc8f8d5434aa591a5c7f35753dc@tiho-hannover.de>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+ <20230316211448.0dee9f35@Tarkus>
+ <BY5PR04MB662799A65F1CC8AE1A84C615F9BC9@BY5PR04MB6627.namprd04.prod.outlook.com>
+ <ce33881470bb4743847e495abf35245d@tiho-hannover.de>
+ <1d55266d-dd43-f8b4-e27a-564dbd838918@gmail.com>
+ <423fc050c0554e9eaf1f2bca3582ad9e@tiho-hannover.de>
+ <606f0f1a-1b8b-f32b-261a-8877672c80dc@gmail.com>
+ <03f5eac57bda4158afe6778f98b17874@tiho-hannover.de>,
+ <F866225D-5763-4FD3-9DF4-D0CDB463869C@R-project.org>
+ <cc32cb58cb3b40aeaadbd771c46b8591@tiho-hannover.de>,
+ <GV2PR02MB877010C19AF243F9EAE6EF2CD5829@GV2PR02MB8770.eurprd02.prod.outlook.com>,
+ <4ceaafc8f8d5434aa591a5c7f35753dc@tiho-hannover.de>
+Message-ID: <735aa12f9ac94ef5a5f557bfd53046e8@tiho-hannover.de>
+
+I implemented Berrys function.
+
+
+I works fine when limma is pre-installed.
+
+When Limma is ?re-installed, I get the following Note:
+
+
+"Package suggested but not available for checking: 'limma'".
+
+
+Seems like the functions isnt installing limma.
+
+Is there something I am missing? I added BiocManager and limma to the suggests and utils to Imports.
+
+
+Regards,
+
+Sergej
+
+________________________________
+Von: Ruff, Sergej
+Gesendet: Samstag, 18. M?rz 2023 09:56:55
+An: Berry Boessenkool; Simon Urbanek
+Cc: r-package-devel at r-project.org
+Betreff: AW: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+
+
+thank you, berry for your idea.
+
+________________________________
+Von: Berry Boessenkool <berryboessenkool at hotmail.com>
+Gesendet: Samstag, 18. M?rz 2023 09:54:45
+An: Ruff, Sergej; Simon Urbanek
+Cc: r-package-devel at r-project.org
+Betreff: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+
+
+I would use conditional returns to make the code more readable (see below) and then run the examples conditionally.
+
+check_limma <- function() # Returns TRUE if available, FALSE otherwise
+{
+  if(requireNamespace("limma", quietly=TRUE)) return(TRUE)
+  if(!interactive()) return(FALSE)
+  inst <- menu(c("Yes", "No"), title="Package {limma} required but not installed.\nDo you want to install it now?")
+  if(inst != 1)
+    {
+    message("To run this example, first install {limma} following the directions at 'https://bioconductor.org/packages/limma'")
+    return(FALSE)
+    }
+  # the following could be wrapped in try and conditionally return TRUE / FALSE
+  if(!requireNamespace("BiocManager", quietly=TRUE)) install.packages("BiocManager", quiet=TRUE)
+  BiocManager::install("limma", update=FALSE, ask=FALSE, quiet=TRUE)
+  return(TRUE)
+}
+
+# In the examples:
+if(check_limma()){
+group = gl(2, n)
+design = model.matrix(~ group)
+fit1 = limma::lmFit(X, design)
+fit = limma::eBayes(fit1)
+}
+
+My 2 cents ?
+
+Berry
+
+-------------------------------------
+
+________________________________
+From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Ruff, Sergej <Sergej.Ruff at tiho-hannover.de>
+Sent: Friday, March 17, 2023 22:29
+To: Simon Urbanek <simon.urbanek at R-project.org>
+Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+
+thank,
+
+
+I was wondering if my idea regarding the implementation is correct.
+
+
+I took the idea from Tiago Olivoto and wrote an additional function that checks if limma is installed.
+
+
+Here is a mockup based on Tiago?s package:
+
+
+check_limma<- function(){
+  if(!requireNamespace("limma", quietly = TRUE)) {
+    if(interactive() == TRUE){
+      inst <-
+        switch(menu(c("Yes", "No"), title = "Package {limma} required but not installed.\nDo you want to install it now?"),
+               "yes", "no")
+      if(inst == "yes"){
+        if(!requireNamespace("BiocManager", quietly = TRUE)) {
+          install.packages("BiocManager", quiet = TRUE)
+        }
+        BiocManager::install("limma",
+                             update = FALSE,
+                             ask = FALSE,
+                             quiet = TRUE)
+      } else{
+        message("To run this example}, first install {limma} following the directions at 'https://bioconductor.org/packages/limma'")
+      }
+    }
+  }
+}
+
+I would add the check in my example before limma functions are used.
+
+
+### Differential expression analysis with limma
+
+check_limma()
+group = gl(2, n)
+design = model.matrix(~ group)
+fit1 = limma::lmFit(X, design)
+fit = limma::eBayes(fit1)
+
+I tried running the R CMD Check but I keep getting 1 error and note.
+Is the implementation incorrect?
+
+regards, Sergej
+
+
+________________________________
+Von: Simon Urbanek <simon.urbanek at R-project.org>
+Gesendet: Freitag, 17. M?rz 2023 22:05:00
+An: Ruff, Sergej
+Cc: Duncan Murdoch; Martin Morgan; Ivan Krylov; r-package-devel at r-project.org
+Betreff: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+
+Packages can only be installed from the repositories listed and only CRAN is the default so only CRAN package are guaranteed to work. I'd like to add that the issue below is exactly why, personally, I would not recommend using Bioconductor package as strong dependency (imports/depends), because that makes the package unusable for most users, as it cannot be installed (without extra steps they don't know about) since the dependency doesn't exist on CRAN.
+
+If your users are already Bioconductor users by the virtue of the package application then they already know so it's fine, but then you are probably better off to have your package on Bioconductor as part of the ecosystem which is much more streamlined and coordinated.
+
+If it is only suggested (weak dependency) for some optional functionality, then your package will work even if the dependency is not installed so all is well. And if the optional Bioconductor functionality is used you can direct the user to instructions explaining that Bioconductor is required for that - but the package has to do that, it is not anything automatic in R.
+
+Cheers,
+Simon
+
+
+> On Mar 18, 2023, at 1:29 AM, Ruff, Sergej <Sergej.Ruff at tiho-hannover.de> wrote:
+>
+> Really.Whats a problem i have when all dependencies arent prei installed. I thought the problem would be solved once my package is available on CRAN.
+>
+>
+> Here is a recent question I had regarding the same issue:
+>
+>
+> I am currently working on a r-package. I would like to submit my r package to CRAN, but I have a question regarding dependency installations on CRAN.
+>
+> I have almost finished my package, added the required dependencies to the NAMESPACE and DESCRIPTION files as Imports, and get no errors or warnings
+>
+> when running the check in Rstudio. The package runs on the pc, where I?ve built the package, but when I install the package on a pc, where the dependencies
+>
+> are not preinstalled, I get the following error:
+>
+> ERROR:
+>
+> dependencies 'depth', 'geometry' are not available for package 'packagename'
+> * removing 'C:/Users/156932/AppData/Local/Programs/R/R-4.2.1/library/packagename'
+> Warning in install.packages : installation of package ?packagename? had non-zero exit status
+>
+>
+> The problem is that a local installation of my package (via USB-stick for example) can?t install the dependencies from CRAN.
+>
+> The package works perfectly fine, if the dependencies are preinstalled.
+>
+> Now I don?t want to submit my package to CRAN if the end user gets the same error message when installing my package.
+>
+> Question: After I submit my package to CRAN, will CRAN install dependencies automatically (via "install.packages()"), resolving the issue I have right now?
+>
+> Or do I have to modify the R-package or the Description-file to make sure my Package can install dependencies?
+>
+> I provided the dependencies to the NAMESPACE-file as @ImportFrom via the devtools::document()-function. I added the dependencies to the DESCRIPTION-file via usethis::use_package("x",type="Imports"). The Description looks like this:
+>
+> License: GPL (>= 3)
+> Encoding: UTF-8
+> LazyData: true
+> RoxygenNote: 7.2.3
+> Imports:
+>    depth,
+>    geometry,
+>    graphics,
+>    grDevices,
+>    MASS,
+>    mvtnorm,
+>    nlme,
+>    rgl,
+>    stats
+>
+>
+>
+> So I thought all dependencies would install automatically from CRAN? Is that not the case?
+>
+
+
+        [[alternative HTML version deleted]]
+
+
+	[[alternative HTML version deleted]]
+
+
+From Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de  Mon Mar 20 10:11:25 2023
+From: Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de (Ruff, Sergej)
+Date: Mon, 20 Mar 2023 09:11:25 +0000
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>,
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+Message-ID: <0f4f7bd2b6074df3a0a0e88874db5c4c@tiho-hannover.de>
+
+I implemented a function to check if limma is available as suggested by Berry and Tiago.
+
+It works fine when limma is pre-installed.
+When Limma is not pre-installed, I get the following Note:
+
+"Package suggested but not available for checking: 'limma'".
+
+Seems like the functions isn't installing limma.
+Is there something I am missing? I added BiocManager and limma to the suggests and utils to Imports.
+
+check_limma <- function() # Returns TRUE if available, FALSE otherwise
+{
+  if(requireNamespace("limma", quietly=TRUE)) return(TRUE)
+  if(!interactive()) return(FALSE)
+  inst <- menu(c("Yes", "No"), title="Package {limma} required but not installed.\nDo you want to install it now?")
+  if(inst != 1)
+  {
+    message("To run this example, first install {limma} following the directions at 'https://bioconductor.org/packages/limma'")
+    return(FALSE)
+  }
+  # the following could be wrapped in try and conditionally return TRUE / FALSE
+  if(!requireNamespace("BiocManager", quietly=TRUE)) install.packages("BiocManager", quiet=TRUE)
+  BiocManager::install("limma", update=FALSE, ask=FALSE, quiet=TRUE)
+  return(TRUE)
+}
+
+The check also never brings up the menu to ask me, if limma should be installed. Is that normal or should I change something about the
+function.
+
+Regards,
+Sergej
+
+
+________________________________
+Von: Tiago Olivoto <tiagoolivoto at gmail.com>
+Gesendet: Donnerstag, 16. M?rz 2023 17:36:47
+An: Ruff, Sergej
+Cc: r-package-devel at r-project.org
+Betreff: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+
+Hi,
+My package pliman depends on EBImage which is in Bioconductor. I have created a function check_ebi() <https://github.com/TiagoOlivoto/pliman/blob/e6efc4b6a2396600939e308c235aeb9ab47af375/R/utilities.R#L534> that is called in .onAttach() <https://github.com/TiagoOlivoto/pliman/blob/master/R/zzz.R#L36>  and checks if EBImage is installed. If not, the function asks the user to install it. Both EBImage and BiocManager are listed as suggests <https://github.com/TiagoOlivoto/pliman/blob/master/DESCRIPTION#L22>
+
+I believe that this could be a possible solution
+Best regards,
+Olivoto
+
+
+Em qui., 16 de mar. de 2023 ?s 11:18, Ruff, Sergej <Sergej.Ruff at tiho-hannover.de<mailto:Sergej.Ruff at tiho-hannover.de>> escreveu:
+I am currently building a package which uses the "limma"-package as a dependency.
+
+I want to submit my package to CRAN.
+
+Do I need to declare Bioconductor-dependencies such as Limma differently in the Description-File of my Package?
+
+The Check-Function in R shows no Notes, Warnings or Errors, but I am not sure if that means that limma will install when installing my package from CRAN.
+
+Currently I am declaring limma like this:
+
+Suggests:
+
+    limma
+
+
+
+Can CRAN identify that limma is a Bioconductor-Package and will it Limma install, when installing my package from CRAN?
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-package-devel at r-project.org<mailto:R-package-devel at r-project.org> mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Mon Mar 20 12:55:58 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Mon, 20 Mar 2023 14:55:58 +0300
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <735aa12f9ac94ef5a5f557bfd53046e8@tiho-hannover.de>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+ <20230316211448.0dee9f35@Tarkus>
+ <BY5PR04MB662799A65F1CC8AE1A84C615F9BC9@BY5PR04MB6627.namprd04.prod.outlook.com>
+ <ce33881470bb4743847e495abf35245d@tiho-hannover.de>
+ <1d55266d-dd43-f8b4-e27a-564dbd838918@gmail.com>
+ <423fc050c0554e9eaf1f2bca3582ad9e@tiho-hannover.de>
+ <606f0f1a-1b8b-f32b-261a-8877672c80dc@gmail.com>
+ <03f5eac57bda4158afe6778f98b17874@tiho-hannover.de>
+ <F866225D-5763-4FD3-9DF4-D0CDB463869C@R-project.org>
+ <cc32cb58cb3b40aeaadbd771c46b8591@tiho-hannover.de>
+ <GV2PR02MB877010C19AF243F9EAE6EF2CD5829@GV2PR02MB8770.eurprd02.prod.outlook.com>
+ <4ceaafc8f8d5434aa591a5c7f35753dc@tiho-hannover.de>
+ <735aa12f9ac94ef5a5f557bfd53046e8@tiho-hannover.de>
+Message-ID: <20230320145558.4ab8939f@arachnoid>
+
+? Mon, 20 Mar 2023 08:38:41 +0000
+"Ruff, Sergej" <Sergej.Ruff at tiho-hannover.de> ?????:
+
+> When Limma is ?re-installed, I get the following Note:
+> 
+> 
+> "Package suggested but not available for checking: 'limma'".
+> 
+> 
+> Seems like the functions isnt installing limma.
+> 
+> Is there something I am missing?
+
+No, this is exactly how it's supposed to behave under R CMD check. The
+CRAN policy forbids packages to install other packages ("Packages
+should not write in the user?s home filespace <...> nor anywhere else
+on the file system") except when the user gives permission to do so
+("Limited exceptions may be allowed in interactive sessions if the
+package obtains confirmation from the user").
+
+Under R CMD check, interactive() is FALSE because there is no user to
+ask permission from, so the function correctly decides not to install
+the package. The resulting NOTE is the expected result here. The
+important part is that your example doesn't crash because it's unable
+to load the limma namespace.
+
+-- 
+Best regards,
+Ivan
+
+
+From gu|do@kr@emer @end|ng |rom un|-|e|pz|g@de  Mon Mar 20 16:36:10 2023
+From: gu|do@kr@emer @end|ng |rom un|-|e|pz|g@de (Guido Kraemer)
+Date: Mon, 20 Mar 2023 16:36:10 +0100
+Subject: [R-pkg-devel] DLL requires the use of native symbols
+Message-ID: <2fbfc3d9-56ae-aee2-d351-31dab157c062@uni-leipzig.de>
+
+
+I am the maintainer of coRanking and got a message about an error, the 
+error can be found here [1]. I can reproduce the error on my own machine 
+with the latest R-devel but don't quite understand what the error means 
+and how I can fix it. A search leads to an issue in Rcpp [2] where the 
+characters in .Call are replaced by? symbols (apostrophe to backtick). 
+When I do this, I get an error when building the vignette:
+
+ > NULL value passed as symbol address
+
+What am I doing wrong and how do I fix the error?
+
+Best
+
+Guido
+
+
+[1] 
+https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-debian-gcc/coRanking-00check.html
+
+[2] https://github.com/RcppCore/Rcpp/issues/1255
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon Mar 20 17:43:40 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 20 Mar 2023 12:43:40 -0400
+Subject: [R-pkg-devel] DLL requires the use of native symbols
+In-Reply-To: <2fbfc3d9-56ae-aee2-d351-31dab157c062@uni-leipzig.de>
+References: <2fbfc3d9-56ae-aee2-d351-31dab157c062@uni-leipzig.de>
+Message-ID: <72555a83-d59e-5acf-e129-b876b07b73c9@gmail.com>
+
+It appears that you have some uses of .Call() where you are passing a 
+character variable as the first argument, instead of registering the 
+entry point and passing the variable containing the registration 
+information.
+
+ From your second link, it looks like Rcpp has some special way to 
+handle entry point registration.  I'm not familiar with that, I use the 
+basic way described in Writing R Extensions, section 5.4 "Registering 
+native routines".
+
+Duncan Murdoch
+
+On 20/03/2023 11:36 a.m., Guido Kraemer wrote:
+> 
+> I am the maintainer of coRanking and got a message about an error, the
+> error can be found here [1]. I can reproduce the error on my own machine
+> with the latest R-devel but don't quite understand what the error means
+> and how I can fix it. A search leads to an issue in Rcpp [2] where the
+> characters in .Call are replaced by? symbols (apostrophe to backtick).
+> When I do this, I get an error when building the vignette:
+> 
+>   > NULL value passed as symbol address
+> 
+> What am I doing wrong and how do I fix the error?
+> 
+> Best
+> 
+> Guido
+> 
+> 
+> [1]
+> https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-debian-gcc/coRanking-00check.html
+> 
+> [2] https://github.com/RcppCore/Rcpp/issues/1255
+> 
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon Mar 20 17:46:09 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 20 Mar 2023 12:46:09 -0400
+Subject: [R-pkg-devel] DLL requires the use of native symbols
+In-Reply-To: <72555a83-d59e-5acf-e129-b876b07b73c9@gmail.com>
+References: <2fbfc3d9-56ae-aee2-d351-31dab157c062@uni-leipzig.de>
+ <72555a83-d59e-5acf-e129-b876b07b73c9@gmail.com>
+Message-ID: <961f4776-d4f6-326f-63d0-4e8b0d8af52a@gmail.com>
+
+I found three such calls in a quick search.  The first is here:
+
+https://github.com/gdkrmr/coRanking/blob/3656bc0cd3032a650be8c8783414a1e62e419437/R/coranking_internals.R#L20
+
+Duncan Murdoch
+
+On 20/03/2023 12:43 p.m., Duncan Murdoch wrote:
+> It appears that you have some uses of .Call() where you are passing a
+> character variable as the first argument, instead of registering the
+> entry point and passing the variable containing the registration
+> information.
+> 
+>   From your second link, it looks like Rcpp has some special way to
+> handle entry point registration.  I'm not familiar with that, I use the
+> basic way described in Writing R Extensions, section 5.4 "Registering
+> native routines".
+> 
+> Duncan Murdoch
+> 
+> On 20/03/2023 11:36 a.m., Guido Kraemer wrote:
+>>
+>> I am the maintainer of coRanking and got a message about an error, the
+>> error can be found here [1]. I can reproduce the error on my own machine
+>> with the latest R-devel but don't quite understand what the error means
+>> and how I can fix it. A search leads to an issue in Rcpp [2] where the
+>> characters in .Call are replaced by? symbols (apostrophe to backtick).
+>> When I do this, I get an error when building the vignette:
+>>
+>>    > NULL value passed as symbol address
+>>
+>> What am I doing wrong and how do I fix the error?
+>>
+>> Best
+>>
+>> Guido
+>>
+>>
+>> [1]
+>> https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-debian-gcc/coRanking-00check.html
+>>
+>> [2] https://github.com/RcppCore/Rcpp/issues/1255
+>>
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+From edd @end|ng |rom deb|@n@org  Mon Mar 20 17:56:16 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Mon, 20 Mar 2023 11:56:16 -0500
+Subject: [R-pkg-devel] DLL requires the use of native symbols
+In-Reply-To: <72555a83-d59e-5acf-e129-b876b07b73c9@gmail.com>
+References: <2fbfc3d9-56ae-aee2-d351-31dab157c062@uni-leipzig.de>
+ <72555a83-d59e-5acf-e129-b876b07b73c9@gmail.com>
+Message-ID: <25624.36912.688403.149497@rob.eddelbuettel.com>
+
+
+On 20 March 2023 at 12:43, Duncan Murdoch wrote:
+| It appears that you have some uses of .Call() where you are passing a 
+| character variable as the first argument, instead of registering the 
+| entry point and passing the variable containing the registration 
+| information.
+
+Correct. And to make the case worse, the package then calls (on line 130 of
+coranking_main.cpp) the very 'R_forceSymbols(info, TRUE);' that is now
+telling it about the error of using _quoted_ ("text") rather than symbol
+references. Just removing line 130 may work.
+ 
+|  From your second link, it looks like Rcpp has some special way to 
+| handle entry point registration.  I'm not familiar with that, I use the 
+| basic way described in Writing R Extensions, section 5.4 "Registering 
+| native routines".
+
+Rcpp checks if a useDynLib("nameofpackage") has `, .registration=TRUE)` and
+if so, creates glue code with symbols (ie what Guido desires here) instead of
+text variables (as was common a long time ago).
+
+That was the case of package 'sf' which I helped yesterday; all it took there
+was to ensure it used `useDynLib("sf", .registration=TRUE)` and to re-create
+the generated RcppExports.R via Rcpp's own `compileAttributes()` function (as
+I did in PR that Edzer merged hours later).
+
+But none of this helps Guido as his package prefers to do it all by hand --
+which is perfectly fine and valid, of course -- but a little bit more work.
+
+Hth, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de  Mon Mar 20 20:32:03 2023
+From: Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de (Ruff, Sergej)
+Date: Mon, 20 Mar 2023 19:32:03 +0000
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <20230320145558.4ab8939f@arachnoid>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+ <20230316211448.0dee9f35@Tarkus>
+ <BY5PR04MB662799A65F1CC8AE1A84C615F9BC9@BY5PR04MB6627.namprd04.prod.outlook.com>
+ <ce33881470bb4743847e495abf35245d@tiho-hannover.de>
+ <1d55266d-dd43-f8b4-e27a-564dbd838918@gmail.com>
+ <423fc050c0554e9eaf1f2bca3582ad9e@tiho-hannover.de>
+ <606f0f1a-1b8b-f32b-261a-8877672c80dc@gmail.com>
+ <03f5eac57bda4158afe6778f98b17874@tiho-hannover.de>
+ <F866225D-5763-4FD3-9DF4-D0CDB463869C@R-project.org>
+ <cc32cb58cb3b40aeaadbd771c46b8591@tiho-hannover.de>
+ <GV2PR02MB877010C19AF243F9EAE6EF2CD5829@GV2PR02MB8770.eurprd02.prod.outlook.com>
+ <4ceaafc8f8d5434aa591a5c7f35753dc@tiho-hannover.de>
+ <735aa12f9ac94ef5a5f557bfd53046e8@tiho-hannover.de>,
+ <20230320145558.4ab8939f@arachnoid>
+Message-ID: <634b7abcc447481f912133910fe29ba3@tiho-hannover.de>
+
+thanks,
+
+
+but I thought Notes will also cause rejection when submitting a package to CRAN. Won?t that be a problem?
+
+My package isn?t new, so it will most likely only be checked by CRAN?s automatic system.
+
+________________________________
+Von: Ivan Krylov <krylov.r00t at gmail.com>
+Gesendet: Montag, 20. M?rz 2023 12:55:58
+An: Ruff, Sergej
+Cc: r-package-devel at r-project.org
+Betreff: Re: [R-pkg-devel] How to declare Bioconductor Dependencies in the Description File of my R Package
+
+? Mon, 20 Mar 2023 08:38:41 +0000
+"Ruff, Sergej" <Sergej.Ruff at tiho-hannover.de> ?????:
+
+> When Limma is ?re-installed, I get the following Note:
+>
+>
+> "Package suggested but not available for checking: 'limma'".
+>
+>
+> Seems like the functions isnt installing limma.
+>
+> Is there something I am missing?
+
+No, this is exactly how it's supposed to behave under R CMD check. The
+CRAN policy forbids packages to install other packages ("Packages
+should not write in the user?s home filespace <...> nor anywhere else
+on the file system") except when the user gives permission to do so
+("Limited exceptions may be allowed in interactive sessions if the
+package obtains confirmation from the user").
+
+Under R CMD check, interactive() is FALSE because there is no user to
+ask permission from, so the function correctly decides not to install
+the package. The resulting NOTE is the expected result here. The
+important part is that your example doesn't crash because it's unable
+to load the limma namespace.
+
+--
+Best regards,
+Ivan
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Mon Mar 20 21:08:38 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Mon, 20 Mar 2023 23:08:38 +0300
+Subject: [R-pkg-devel] How to declare Bioconductor Dependencies in the
+ Description File of my R Package
+In-Reply-To: <634b7abcc447481f912133910fe29ba3@tiho-hannover.de>
+References: <2c40c4ab71734309917f7e914887ddd3@tiho-hannover.de>
+ <CAMyz+tUStG9z=JFkBVBatquzyonuQ2d5KjHXbq6C8Faz9Aijkg@mail.gmail.com>
+ <221c8bb7465e4bcaa9db4c34738da689@tiho-hannover.de>
+ <20230316211448.0dee9f35@Tarkus>
+ <BY5PR04MB662799A65F1CC8AE1A84C615F9BC9@BY5PR04MB6627.namprd04.prod.outlook.com>
+ <ce33881470bb4743847e495abf35245d@tiho-hannover.de>
+ <1d55266d-dd43-f8b4-e27a-564dbd838918@gmail.com>
+ <423fc050c0554e9eaf1f2bca3582ad9e@tiho-hannover.de>
+ <606f0f1a-1b8b-f32b-261a-8877672c80dc@gmail.com>
+ <03f5eac57bda4158afe6778f98b17874@tiho-hannover.de>
+ <F866225D-5763-4FD3-9DF4-D0CDB463869C@R-project.org>
+ <cc32cb58cb3b40aeaadbd771c46b8591@tiho-hannover.de>
+ <GV2PR02MB877010C19AF243F9EAE6EF2CD5829@GV2PR02MB8770.eurprd02.prod.outlook.com>
+ <4ceaafc8f8d5434aa591a5c7f35753dc@tiho-hannover.de>
+ <735aa12f9ac94ef5a5f557bfd53046e8@tiho-hannover.de>
+ <20230320145558.4ab8939f@arachnoid>
+ <634b7abcc447481f912133910fe29ba3@tiho-hannover.de>
+Message-ID: <20230320230838.045b31ba@Tarkus>
+
+On Mon, 20 Mar 2023 19:32:03 +0000
+"Ruff, Sergej" <Sergej.Ruff at tiho-hannover.de> wrote:
+
+> but I thought Notes will also cause rejection when submitting a
+> package to CRAN. Won?t that be a problem?
+
+True, a NOTE during an automatic check may cause a rejection, but you
+won't get this NOTE there. Automatic CRAN pre-tests are done with a
+full package set: anything from CRAN and BioConductor that runs on a
+given operating system can be loaded.
+
+(This differentiates CRAN from, say, PyPI or NPM: the two latter
+ecosystems are much larger and are expected to handle conflicting
+dependency requirements. CRAN is small enough to be able to enforce the
+rule that every package must play well with the latest version of
+everything else.)
+
+There's an additional CRAN check called noSuggests
+<https://www.stats.ox.ac.uk/pub/bdr/noSuggests/README.txt>. You will
+get a NOTE there, but it's expected and won't count against you. The
+only way avoid this NOTE there is to not have any packages in Suggests:
+(or Enhances:).
+
+-- 
+Best regards,
+Ivan
+
+
+From gu|do@kr@emer @end|ng |rom un|-|e|pz|g@de  Mon Mar 20 21:25:00 2023
+From: gu|do@kr@emer @end|ng |rom un|-|e|pz|g@de (Guido Kraemer)
+Date: Mon, 20 Mar 2023 21:25:00 +0100
+Subject: [R-pkg-devel] DLL requires the use of native symbols
+In-Reply-To: <25624.36912.688403.149497@rob.eddelbuettel.com>
+References: <2fbfc3d9-56ae-aee2-d351-31dab157c062@uni-leipzig.de>
+ <72555a83-d59e-5acf-e129-b876b07b73c9@gmail.com>
+ <25624.36912.688403.149497@rob.eddelbuettel.com>
+Message-ID: <7d790a6f-ab26-d48c-d8e6-0c0cafa18c34@uni-leipzig.de>
+
+Thanks for the pointers! I think I fixed it. Here is what I did [1]. To 
+be honest, I am not sure what was wrong before, but I followed [2], 
+especially the code box at the very end of the section. I wonder if this 
+was always wrong or if the R internals changed at some point.
+
+
+[1] 
+https://github.com/gdkrmr/coRanking/commit/012c3e340ba64e7da0adab38c8927a92dfebe432#diff-993bc9d43b232315c8f4edcd1823237e621593cd1186436fe42783c6240d4d1fL128
+
+
+[2] 
+https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Converting-a-package-to-use-registration
+
+
+On 3/20/23 17:56, Dirk Eddelbuettel wrote:
+> On 20 March 2023 at 12:43, Duncan Murdoch wrote:
+> | It appears that you have some uses of .Call() where you are passing a
+> | character variable as the first argument, instead of registering the
+> | entry point and passing the variable containing the registration
+> | information.
+>
+> Correct. And to make the case worse, the package then calls (on line 130 of
+> coranking_main.cpp) the very 'R_forceSymbols(info, TRUE);' that is now
+> telling it about the error of using _quoted_ ("text") rather than symbol
+> references. Just removing line 130 may work.
+>   
+> |  From your second link, it looks like Rcpp has some special way to
+> | handle entry point registration.  I'm not familiar with that, I use the
+> | basic way described in Writing R Extensions, section 5.4 "Registering
+> | native routines".
+>
+> Rcpp checks if a useDynLib("nameofpackage") has `, .registration=TRUE)` and
+> if so, creates glue code with symbols (ie what Guido desires here) instead of
+> text variables (as was common a long time ago).
+>
+> That was the case of package 'sf' which I helped yesterday; all it took there
+> was to ensure it used `useDynLib("sf", .registration=TRUE)` and to re-create
+> the generated RcppExports.R via Rcpp's own `compileAttributes()` function (as
+> I did in PR that Edzer merged hours later).
+>
+> But none of this helps Guido as his package prefers to do it all by hand --
+> which is perfectly fine and valid, of course -- but a little bit more work.
+>
+> Hth, Dirk
+>
+-- 
+
+Dr. Guido Kraemer
+Remote Sensing Center for Earth System Research
+Uni Leipzig
+Talstr. 35
+D-04103 Leipzig
+Germany
+
+https://rsc4earth.de/authors/gkraemer/
+https://www.guido-kraemer.com
+https://twitter.com/gdkrmr
+
+Phone: +49 1577 6099439
+Email:guido.kraemer at uni-leipzig.de
+
+
+From edd @end|ng |rom deb|@n@org  Mon Mar 20 22:32:19 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Mon, 20 Mar 2023 16:32:19 -0500
+Subject: [R-pkg-devel] DLL requires the use of native symbols
+In-Reply-To: <7d790a6f-ab26-d48c-d8e6-0c0cafa18c34@uni-leipzig.de>
+References: <2fbfc3d9-56ae-aee2-d351-31dab157c062@uni-leipzig.de>
+ <72555a83-d59e-5acf-e129-b876b07b73c9@gmail.com>
+ <25624.36912.688403.149497@rob.eddelbuettel.com>
+ <7d790a6f-ab26-d48c-d8e6-0c0cafa18c34@uni-leipzig.de>
+Message-ID: <25624.53475.583932.449205@rob.eddelbuettel.com>
+
+
+On 20 March 2023 at 21:25, Guido Kraemer wrote:
+| Thanks for the pointers! I think I fixed it. Here is what I did [1]. To 
+| be honest, I am not sure what was wrong before, but I followed [2], 
+| especially the code box at the very end of the section. I wonder if this 
+| was always wrong or if the R internals changed at some point.
+| 
+| 
+| [1] 
+| https://github.com/gdkrmr/coRanking/commit/012c3e340ba64e7da0adab38c8927a92dfebe432#diff-993bc9d43b232315c8f4edcd1823237e621593cd1186436fe42783c6240d4d1fL128
+
+Looks good.
+ 
+| [2] 
+| https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Converting-a-package-to-use-registration
+
+Sure. I think your main issue was that you were "almost there" but didn't
+actually go through calling as symbols, and the very recent change of having
+R_forceSymbols() then error caught you out.
+
+But all good now, and that's why we have checks and balances.
+
+(One micro nit for something else I noticed: you have a nice pkgdown site,
+but not linked to it anywhere.)
+
+Cheers, Dirk
+
+| 
+| On 3/20/23 17:56, Dirk Eddelbuettel wrote:
+| > On 20 March 2023 at 12:43, Duncan Murdoch wrote:
+| > | It appears that you have some uses of .Call() where you are passing a
+| > | character variable as the first argument, instead of registering the
+| > | entry point and passing the variable containing the registration
+| > | information.
+| >
+| > Correct. And to make the case worse, the package then calls (on line 130 of
+| > coranking_main.cpp) the very 'R_forceSymbols(info, TRUE);' that is now
+| > telling it about the error of using _quoted_ ("text") rather than symbol
+| > references. Just removing line 130 may work.
+| >   
+| > |  From your second link, it looks like Rcpp has some special way to
+| > | handle entry point registration.  I'm not familiar with that, I use the
+| > | basic way described in Writing R Extensions, section 5.4 "Registering
+| > | native routines".
+| >
+| > Rcpp checks if a useDynLib("nameofpackage") has `, .registration=TRUE)` and
+| > if so, creates glue code with symbols (ie what Guido desires here) instead of
+| > text variables (as was common a long time ago).
+| >
+| > That was the case of package 'sf' which I helped yesterday; all it took there
+| > was to ensure it used `useDynLib("sf", .registration=TRUE)` and to re-create
+| > the generated RcppExports.R via Rcpp's own `compileAttributes()` function (as
+| > I did in PR that Edzer merged hours later).
+| >
+| > But none of this helps Guido as his package prefers to do it all by hand --
+| > which is perfectly fine and valid, of course -- but a little bit more work.
+| >
+| > Hth, Dirk
+| >
+| -- 
+| 
+| Dr. Guido Kraemer
+| Remote Sensing Center for Earth System Research
+| Uni Leipzig
+| Talstr. 35
+| D-04103 Leipzig
+| Germany
+| 
+| https://rsc4earth.de/authors/gkraemer/
+| https://www.guido-kraemer.com
+| https://twitter.com/gdkrmr
+| 
+| Phone: +49 1577 6099439
+| Email:guido.kraemer at uni-leipzig.de
+| 
+| [DELETED ATTACHMENT smime.p7s, application/pkcs7-signature]
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
