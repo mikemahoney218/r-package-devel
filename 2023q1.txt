@@ -20159,3 +20159,101 @@ Cheers, Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From yoh@nn@|oucher @end|ng |rom un|v-po|t|er@@|r  Tue Mar 21 23:08:43 2023
+From: yoh@nn@|oucher @end|ng |rom un|v-po|t|er@@|r (Yohann Foucher)
+Date: Tue, 21 Mar 2023 23:08:43 +0100
+Subject: [R-pkg-devel] Check: Rd \usage sections,
+ Result: The \usage entries for S3 methods should use
+ the \method markup and not their full name.
+Message-ID: <FA0F6570-F778-4025-93DA-6D6833D883CD@univ-poitiers.fr>
+
+Dear all,
+
+I maintain the RISCA package and I have the following new issue when I submit the novel version 1.0.4 on the CRAN:
+
+***
+CRAN teams' auto-check service
+Flavor: r-devel-linux-x86_64-debian-gcc, r-devel-windows-x86_64
+Check: CRAN incoming feasibility, Result: Note_to_CRAN_maintainers
+ Maintainer: 'Yohann Foucher <Yohann.Foucher at univ-poitiers.fr <mailto:Yohann.Foucher at univ-poitiers.fr>>'
+
+Flavor: r-devel-linux-x86_64-debian-gcc, r-devel-windows-x86_64
+Check: Rd \usage sections, Result: NOTE
+ S3 methods shown with full name in documentation object 'nnet.time':
+   'nnet.time'
+
+ The \usage entries for S3 methods should use the \method markup and not
+ their full name.
+ See chapter 'Writing R documentation files' in the 'Writing R
+ Extensions' manual.
+***
+
+Nevertheless, as for other S3 methods, I did not change this function compared to the last version 1.0.3 (which is online). I use the \method markup in the Rd file:
+
+***
+\usage{
+\method{predict}{nnet.time}(object, ..., newdata, newtimes)
+}
+***
+
+When I use ?  R CMD check --as-cran ?, this NOTE is not identified. Do you have any idea of solution?
+
+Thank you for your support.
+
+Yohann
+
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Mar 22 09:51:14 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 22 Mar 2023 11:51:14 +0300
+Subject: [R-pkg-devel] Check: Rd \usage sections,
+ Result: The \usage entries for S3 methods should use
+ the \method markup and not their full name.
+In-Reply-To: <FA0F6570-F778-4025-93DA-6D6833D883CD@univ-poitiers.fr>
+References: <FA0F6570-F778-4025-93DA-6D6833D883CD@univ-poitiers.fr>
+Message-ID: <20230322115114.7a67343f@Tarkus>
+
+On Tue, 21 Mar 2023 23:08:43 +0100
+Yohann Foucher <yohann.foucher at univ-poitiers.fr> wrote:
+
+> Check: Rd \usage sections, Result: NOTE
+>  S3 methods shown with full name in documentation object 'nnet.time':
+>    'nnet.time'
+> 
+>  The \usage entries for S3 methods should use the \method markup and
+> not their full name.
+
+I have downloaded your package from the CRAN FTP server (under
+incoming/archived) and took a look at it. This NOTE is about the
+nnet.time function itself (documented in man/nnet.time.Rd), which R CMD
+check mistakenly took for a nnet() method on class "time".
+
+This is a problem because you import nnet::nnet, which is an S3
+generic, and R is slowly migrating its behaviour in cases like this.
+Previously, calling nnet::nnet(structure(..., class = 'time')) would
+mistakenly call your nnet.time function, despite it's not intended to
+be an S3 method. The idea is to only call S3 methods when they are
+registered as such (so, don't call nnet.time in this case), but this
+requires writing tests and identifying every case of this pattern
+working by mistake. Your nnet.time function is a false positive for
+such a test.
+
+It's hard to decide what to do next. Your users would prefer nnet.time
+to keep working (so you can't just rename it, especially if you have
+other packages depending on it), and CRAN would prefer nnet.time to keep
+being not-an-S3-method, but right now it's causing you a NOTE due to
+its name.
+
+Did the rejection e-mail say whether you can reply-to-all /
+reply-to-sender and explain it's a false positive? Even if you decide
+to rename nnet.time and everything else, it would still need to spend
+at least one release on CRAN as a deprecated function.
+
+-- 
+Best regards,
+Ivan
+
+
