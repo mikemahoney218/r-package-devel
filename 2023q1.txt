@@ -20257,3 +20257,232 @@ Best regards,
 Ivan
 
 
+From chr|@topherkenny @end|ng |rom |@@@h@rv@rd@edu  Wed Mar 22 16:51:54 2023
+From: chr|@topherkenny @end|ng |rom |@@@h@rv@rd@edu (Kenny, Christopher)
+Date: Wed, 22 Mar 2023 15:51:54 +0000
+Subject: [R-pkg-devel] How to identify what flags "Additional Issues" for
+ UBSAN
+Message-ID: <BL0PR07MB5491A43C8D1DE04DB14647BC80869@BL0PR07MB5491.namprd07.prod.outlook.com>
+
+Hi folks,
+
+I'm the maintainer of the redist package (https://cran.r-project.org/web/checks/check_results_redist.html) which was flagged for additional issues with clang-UBSAN and gcc-UBSAN. Both of the 00check.log files say that the status is "OK" at the bottom.
+
+Is there an easy way to identify what is causing the flag? I see things that it could be, for example in the tests Rout files, there are sanitizer errors like:
+wilson.cpp:165:34: runtime error: signed integer overflow: -2147483648 * -1 cannot be represented in type 'int'
+However, my understanding is that these errors should be expected, as the input is controlled from within the package and checking for these types of errors in every loop would push against the purpose of using C++ for performance here.
+
+That leads me to believe that either I'm looking past the seriousness of one of these sanitizer warnings or I am missing something else that is being flagged.  I've looked at Writing R Extensions part 4.3, but do not see any specific additional information on this. Does anyone have advice or any guidance on figuring out exactly what causes the "Additional Issues" flag and subsequent email about fixing it?
+
+Thank you,
+Chris
+
+ckenny at g.harvard.edu - christopherkenny at fas.harvard.edu
+V.O. Key Fellow - Department of Government - Harvard University
+Ashford Fellow - Graduate School of Arts and Sciences - Harvard University
+
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Mar 23 12:06:17 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 23 Mar 2023 14:06:17 +0300
+Subject: [R-pkg-devel] 
+ How to identify what flags "Additional Issues" for UBSAN
+In-Reply-To: <BL0PR07MB5491A43C8D1DE04DB14647BC80869@BL0PR07MB5491.namprd07.prod.outlook.com>
+References: <BL0PR07MB5491A43C8D1DE04DB14647BC80869@BL0PR07MB5491.namprd07.prod.outlook.com>
+Message-ID: <20230323140617.7639f81e@arachnoid>
+
+? Wed, 22 Mar 2023 15:51:54 +0000
+"Kenny, Christopher" <christopherkenny at fas.harvard.edu> ?????:
+
+> Is there an easy way to identify what is causing the flag?
+
+Unfortunately, it's _all_ the sanitizer errors.
+
+> wilson.cpp:165:34: runtime error: signed integer overflow:
+> -2147483648 * -1 cannot be represented in type 'int'
+
+> However, my understanding is that these errors should be expected, as
+> the input is controlled from within the package and checking for
+> these types of errors in every loop would push against the purpose of
+> using C++ for performance here.
+
+You'd be right to think that signed integer overflow just wraps around
+on modern CPUs with no adverse effects on the rest of the execution.
+Unfortunately, you'd also need to convince the C++ optimiser, and it's
+currently allowed to think otherwise.
+
+In C++, signed integer overflow (and other similar errors, such as
+casing NaN to an integer) is undefined behaviour, which, according to
+the standard, means that anything can happen after that, ranging from
+nothing out of order to a crash and also to silent corruption of
+important research results. Other languages define integer overflow to
+have a more limited impact (wrap the value around or at least guarantee
+a crash), but not C and C++. [*]
+
+Thankfully, I only see one spot where you encounter UB, in
+src/wilson.cpp line 165, which should be relatively easy to fix by
+adjusting your strategy for calculating the maximum number of tries.
+(Do you get a NaN when `remaining` is -1? Why is it -1? Or is it 0?)
+
+-- 
+Best regards,
+Ivan
+
+[*]
+Some old gcc version used to launch the game Nethack when certain kinds
+of UB were encountered. The situation has improved in some ways since
+that and worsened in others: modern C and C++ compilers, especially
+Clang, use UB to guide their optimisation efforts, so if the optimiser
+can prove "if A is true then UB happens", it optimises with the
+assumption that A is false.
+
+Combined with optimizer bugs, this understanding of undefined
+behaviour may lead to funny situations where the inability of the
+compiler to prove certain facts about the program leads to
+mathematically inconsistent results:
+https://blog.regehr.org/archives/140
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Thu Mar 23 12:12:53 2023
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Thu, 23 Mar 2023 12:12:53 +0100
+Subject: [R-pkg-devel] 
+ How to identify what flags "Additional Issues" for UBSAN
+In-Reply-To: <BL0PR07MB5491A43C8D1DE04DB14647BC80869@BL0PR07MB5491.namprd07.prod.outlook.com>
+References: <BL0PR07MB5491A43C8D1DE04DB14647BC80869@BL0PR07MB5491.namprd07.prod.outlook.com>
+Message-ID: <df778205-8243-c739-3172-218d4b699fd9@gmail.com>
+
+
+On 3/22/23 16:51, Kenny, Christopher wrote:
+> Hi folks,
+>
+> I'm the maintainer of the redist package (https://cran.r-project.org/web/checks/check_results_redist.html) which was flagged for additional issues with clang-UBSAN and gcc-UBSAN. Both of the 00check.log files say that the status is "OK" at the bottom.
+>
+> Is there an easy way to identify what is causing the flag? I see things that it could be, for example in the tests Rout files, there are sanitizer errors like:
+> wilson.cpp:165:34: runtime error: signed integer overflow: -2147483648 * -1 cannot be represented in type 'int'
+> However, my understanding is that these errors should be expected, as the input is controlled from within the package and checking for these types of errors in every loop would push against the purpose of using C++ for performance here.
+
+UBSAN reports runtime errors, which means that the overflow has really 
+happened, so this clearly should be narrowed down and fixed. I would 
+restructure the code to avoid the overflow and only worry about a 
+possible slowdown if that happens.
+
+In the code pointed to by the stacktrace
+
+ ??? int max_try = 50 * remaining * ((int) std::log(remaining));
+ ??? while (remaining > 0) {
+
+perhaps the problem is when "remaining" is 0 (but I am guessing, I don't 
+know the code). Right, the overflow is benign because the value isn't 
+used, but one should fix this anyway and it should be easy, e.g.
+
+if (remaining > 0) {
+
+ ? int max_try = ...
+ ? while(remaining > 0)
+
+}
+
+this extra condition would not have a measurable overhead in this code.
+
+> That leads me to believe that either I'm looking past the seriousness of one of these sanitizer warnings or I am missing something else that is being flagged.  I've looked at Writing R Extensions part 4.3, but do not see any specific additional information on this. Does anyone have advice or any guidance on figuring out exactly what causes the "Additional Issues" flag and subsequent email about fixing it?
+
+ From the stack traces these are all instances of the same problem. If I 
+were you I would simply fix that and submit.
+
+Best
+Tomas
+
+>
+> Thank you,
+> Chris
+>
+> ckenny at g.harvard.edu - christopherkenny at fas.harvard.edu
+> V.O. Key Fellow - Department of Government - Harvard University
+> Ashford Fellow - Graduate School of Arts and Sciences - Harvard University
+>
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From hugh@p@r@on@ge @end|ng |rom gm@||@com  Thu Mar 23 12:17:12 2023
+From: hugh@p@r@on@ge @end|ng |rom gm@||@com (Hugh Parsonage)
+Date: Thu, 23 Mar 2023 22:17:12 +1100
+Subject: [R-pkg-devel] 
+ How to identify what flags "Additional Issues" for UBSAN
+In-Reply-To: <20230323140617.7639f81e@arachnoid>
+References: <BL0PR07MB5491A43C8D1DE04DB14647BC80869@BL0PR07MB5491.namprd07.prod.outlook.com>
+ <20230323140617.7639f81e@arachnoid>
+Message-ID: <CAJmOi+N-FsPpHkeV9=B2an-=1S_A12MzxVpTRzGJN76Q0Ld9+A@mail.gmail.com>
+
+In line https://github.com/alarm-redist/redist/blob/f1ed042841469456c1d8c149092bc818e2a5c1a5/src/wilson.cpp#L165
+
+int max_try = 50 * remaining * ((int) std::log(remaining));
+
+you need to ensure remaining > 0.  At some point it became -1.
+
+On Thu, 23 Mar 2023 at 22:07, Ivan Krylov <krylov.r00t at gmail.com> wrote:
+>
+> ? Wed, 22 Mar 2023 15:51:54 +0000
+> "Kenny, Christopher" <christopherkenny at fas.harvard.edu> ?????:
+>
+> > Is there an easy way to identify what is causing the flag?
+>
+> Unfortunately, it's _all_ the sanitizer errors.
+>
+> > wilson.cpp:165:34: runtime error: signed integer overflow:
+> > -2147483648 * -1 cannot be represented in type 'int'
+>
+> > However, my understanding is that these errors should be expected, as
+> > the input is controlled from within the package and checking for
+> > these types of errors in every loop would push against the purpose of
+> > using C++ for performance here.
+>
+> You'd be right to think that signed integer overflow just wraps around
+> on modern CPUs with no adverse effects on the rest of the execution.
+> Unfortunately, you'd also need to convince the C++ optimiser, and it's
+> currently allowed to think otherwise.
+>
+> In C++, signed integer overflow (and other similar errors, such as
+> casing NaN to an integer) is undefined behaviour, which, according to
+> the standard, means that anything can happen after that, ranging from
+> nothing out of order to a crash and also to silent corruption of
+> important research results. Other languages define integer overflow to
+> have a more limited impact (wrap the value around or at least guarantee
+> a crash), but not C and C++. [*]
+>
+> Thankfully, I only see one spot where you encounter UB, in
+> src/wilson.cpp line 165, which should be relatively easy to fix by
+> adjusting your strategy for calculating the maximum number of tries.
+> (Do you get a NaN when `remaining` is -1? Why is it -1? Or is it 0?)
+>
+> --
+> Best regards,
+> Ivan
+>
+> [*]
+> Some old gcc version used to launch the game Nethack when certain kinds
+> of UB were encountered. The situation has improved in some ways since
+> that and worsened in others: modern C and C++ compilers, especially
+> Clang, use UB to guide their optimisation efforts, so if the optimiser
+> can prove "if A is true then UB happens", it optimises with the
+> assumption that A is false.
+>
+> Combined with optimizer bugs, this understanding of undefined
+> behaviour may lead to funny situations where the inability of the
+> compiler to prove certain facts about the program leads to
+> mathematically inconsistent results:
+> https://blog.regehr.org/archives/140
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
