@@ -20486,3 +20486,439 @@ On Thu, 23 Mar 2023 at 22:07, Ivan Krylov <krylov.r00t at gmail.com> wrote:
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From pro|jcn@@h @end|ng |rom gm@||@com  Fri Mar 24 20:03:39 2023
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Fri, 24 Mar 2023 15:03:39 -0400
+Subject: [R-pkg-devel] Discovering M1mac cowpads
+Message-ID: <16f16b02-5e30-8069-e8ac-3bf6a526d38d@gmail.com>
+
+Recently I updated my package nlsr and it passed all the usual checks and was
+uploaded to CRAN. A few days later I got a message that I should "fix" my
+package as it had failed in "M1max" tests.
+
+The "error" was actually a failure in a DIFFERENT package that was used as
+an example in a vignette. I fixed it in my vignette with try(). However, I
+am interested in just where the M1 causes trouble.
+
+As far as I can determine so far, for numerical computations, differences will
+show up only when a package is able to take advantage of extended precision
+registers in the IEEE arithmetic. I think this means that in pure R, it won't
+be seen. Packages that call C or Fortran could do so. However, I've not yet
+got a good handle on this.
+
+Does anyone have some small, reproducible examples? (For me, reproducing so
+far means making a small package and submitting to macbuilder, as I don't
+have an M1 Mac.)
+
+Cheers,
+
+John Nash
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Fri Mar 24 22:57:54 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Sat, 25 Mar 2023 10:57:54 +1300
+Subject: [R-pkg-devel] Discovering M1mac cowpads
+In-Reply-To: <16f16b02-5e30-8069-e8ac-3bf6a526d38d@gmail.com>
+References: <16f16b02-5e30-8069-e8ac-3bf6a526d38d@gmail.com>
+Message-ID: <A16CAA1C-2EE3-4529-BC78-24714742322F@R-project.org>
+
+John,
+
+you provide no details to go on, but generally the main difference is that arm64 uses 64-bit precision for long double (which is permitted by the C standard), while Intel uses 80-bits of precision (on systems that enable it). That leads to differences in results, e.g. when computing long sums:
+
+set.seed(1); x=rnorm(1e6)
+
+## Intel with extended precision
+> sprintf("%a", sum(x))
+[1] "0x1.7743176e2372bp+5"
+
+## arm64
+> sprintf("%a", sum(x))
+[1] "0x1.7743176e23a33p+5"
+
+
+For R you can get the same results on all platforms by using --disable-long-double which prevents the use of extended precision doubles in R - this is Intel with --disable-long-double:
+
+> sprintf("%a", sum(x))
+[1] "0x1.7743176e23a33p+5"
+
+Cheers,
+Simon
+
+
+
+> On Mar 25, 2023, at 8:03 AM, J C Nash <profjcnash at gmail.com> wrote:
+> 
+> Recently I updated my package nlsr and it passed all the usual checks and was
+> uploaded to CRAN. A few days later I got a message that I should "fix" my
+> package as it had failed in "M1max" tests.
+> 
+> The "error" was actually a failure in a DIFFERENT package that was used as
+> an example in a vignette. I fixed it in my vignette with try(). However, I
+> am interested in just where the M1 causes trouble.
+> 
+> As far as I can determine so far, for numerical computations, differences will
+> show up only when a package is able to take advantage of extended precision
+> registers in the IEEE arithmetic. I think this means that in pure R, it won't
+> be seen. Packages that call C or Fortran could do so. However, I've not yet
+> got a good handle on this.
+> 
+> Does anyone have some small, reproducible examples? (For me, reproducing so
+> far means making a small package and submitting to macbuilder, as I don't
+> have an M1 Mac.)
+> 
+> Cheers,
+> 
+> John Nash
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From @w@y @end|ng |rom empowerph@rm@cy@com  Sat Mar 25 14:01:06 2023
+From: @w@y @end|ng |rom empowerph@rm@cy@com (Shawn Way)
+Date: Sat, 25 Mar 2023 13:01:06 +0000
+Subject: [R-pkg-devel] Another DLL requires the use of native symbols thread
+In-Reply-To: <SA1PR13MB48789DAF905496F22996CF0AC3849@SA1PR13MB4878.namprd13.prod.outlook.com>
+References: <SA1PR13MB48789DAF905496F22996CF0AC3849@SA1PR13MB4878.namprd13.prod.outlook.com>
+Message-ID: <SA1PR13MB48780AED002BFE3D1A6CA460C3859@SA1PR13MB4878.namprd13.prod.outlook.com>
+
+Sorry to kind of repeat this but I really didn't understand the issues with the prior thread and how it relates to my issue.
+
+I'm getting the error message in
+
+    B_T <- BT(Temp)
+    Error in BT(Temp) : DLL requires the use of native symbols
+    Execution halted
+
+And frankly, I have no idea what this means.  The function call is pretty simple and meets the requirement of .Fortran
+
+res <- .Fortran('BT', as.double(Temp), as.double(y), as.integer(icode))
+
+and the following matches the R-ext's method for using registration:
+
+extern void F77_NAME(bt)(double *T, double *B, int *icode);
+
+void R_init_IAPWS95(DllInfo *dll)
+{
+  R_registerRoutines(dll, NULL, NULL, FortranEntries, NULL);
+  R_useDynamicSymbols(dll, FALSE);
+  R_forceSymbols(dll, TRUE);
+}
+
+With
+
+static const R_FortranMethodDef FortranEntries[] = {
+  {"bt",        (DL_FUNC) &F77_NAME(bt),        3},
+  {NULL, NULL, 0}
+};
+
+Furthermore the NAMESPACE includes:
+
+useDynLib(splines, .registration = TRUE, .fixes = "C_")
+
+
+which matches R-ext.
+
+Since this is only occurring on the Linux versions for the software and I use windows, can someone point me in the right direction to fix this error?
+
+Shawn Way
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Mar 25 14:09:29 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 25 Mar 2023 09:09:29 -0400
+Subject: [R-pkg-devel] 
+ Another DLL requires the use of native symbols thread
+In-Reply-To: <SA1PR13MB48780AED002BFE3D1A6CA460C3859@SA1PR13MB4878.namprd13.prod.outlook.com>
+References: <SA1PR13MB48789DAF905496F22996CF0AC3849@SA1PR13MB4878.namprd13.prod.outlook.com>
+ <SA1PR13MB48780AED002BFE3D1A6CA460C3859@SA1PR13MB4878.namprd13.prod.outlook.com>
+Message-ID: <b2ed977a-1c6c-2a06-4753-e6f7ccdd24d4@gmail.com>
+
+The message says you shouldn't be using the string 'BT' in the .Fortran 
+call, you should be using the object that was produced by 
+R_registerRoutines.  That's probably named BT (without any quotes), 
+though you can add a prefix in useDynLib() in your NAMESPACE file.
+
+So your call should look like this:
+
+   res <- .Fortran(BT, as.double(Temp), as.double(y), as.integer(icode))
+
+Duncan Murdoch
+
+On 25/03/2023 9:01 a.m., Shawn Way wrote:
+> Sorry to kind of repeat this but I really didn't understand the issues with the prior thread and how it relates to my issue.
+> 
+> I'm getting the error message in
+> 
+>      B_T <- BT(Temp)
+>      Error in BT(Temp) : DLL requires the use of native symbols
+>      Execution halted
+> 
+> And frankly, I have no idea what this means.  The function call is pretty simple and meets the requirement of .Fortran
+> 
+> res <- .Fortran('BT', as.double(Temp), as.double(y), as.integer(icode))
+> 
+> and the following matches the R-ext's method for using registration:
+> 
+> extern void F77_NAME(bt)(double *T, double *B, int *icode);
+> 
+> void R_init_IAPWS95(DllInfo *dll)
+> {
+>    R_registerRoutines(dll, NULL, NULL, FortranEntries, NULL);
+>    R_useDynamicSymbols(dll, FALSE);
+>    R_forceSymbols(dll, TRUE);
+> }
+> 
+> With
+> 
+> static const R_FortranMethodDef FortranEntries[] = {
+>    {"bt",        (DL_FUNC) &F77_NAME(bt),        3},
+>    {NULL, NULL, 0}
+> };
+> 
+> Furthermore the NAMESPACE includes:
+> 
+> useDynLib(splines, .registration = TRUE, .fixes = "C_")
+> 
+> 
+> which matches R-ext.
+> 
+> Since this is only occurring on the Linux versions for the software and I use windows, can someone point me in the right direction to fix this error?
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Mar 25 14:11:49 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 25 Mar 2023 09:11:49 -0400
+Subject: [R-pkg-devel] 
+ Another DLL requires the use of native symbols thread
+In-Reply-To: <b2ed977a-1c6c-2a06-4753-e6f7ccdd24d4@gmail.com>
+References: <SA1PR13MB48789DAF905496F22996CF0AC3849@SA1PR13MB4878.namprd13.prod.outlook.com>
+ <SA1PR13MB48780AED002BFE3D1A6CA460C3859@SA1PR13MB4878.namprd13.prod.outlook.com>
+ <b2ed977a-1c6c-2a06-4753-e6f7ccdd24d4@gmail.com>
+Message-ID: <179f02f5-76f0-97b5-925a-c6f09180b7a8@gmail.com>
+
+On 25/03/2023 9:09 a.m., Duncan Murdoch wrote:
+> The message says you shouldn't be using the string 'BT' in the .Fortran
+> call, you should be using the object that was produced by
+> R_registerRoutines.  That's probably named BT (without any quotes),
+> though you can add a prefix in useDynLib() in your NAMESPACE file.
+> 
+> So your call should look like this:
+> 
+>     res <- .Fortran(BT, as.double(Temp), as.double(y), as.integer(icode))
+
+Sorry, that should be
+
+       res <- .Fortran(bt, as.double(Temp), as.double(y), as.integer(icode))
+
+because of the mapping to lowercase.
+
+Duncan Murdoch
+
+> 
+> Duncan Murdoch
+> 
+> On 25/03/2023 9:01 a.m., Shawn Way wrote:
+>> Sorry to kind of repeat this but I really didn't understand the issues with the prior thread and how it relates to my issue.
+>>
+>> I'm getting the error message in
+>>
+>>       B_T <- BT(Temp)
+>>       Error in BT(Temp) : DLL requires the use of native symbols
+>>       Execution halted
+>>
+>> And frankly, I have no idea what this means.  The function call is pretty simple and meets the requirement of .Fortran
+>>
+>> res <- .Fortran('BT', as.double(Temp), as.double(y), as.integer(icode))
+>>
+>> and the following matches the R-ext's method for using registration:
+>>
+>> extern void F77_NAME(bt)(double *T, double *B, int *icode);
+>>
+>> void R_init_IAPWS95(DllInfo *dll)
+>> {
+>>     R_registerRoutines(dll, NULL, NULL, FortranEntries, NULL);
+>>     R_useDynamicSymbols(dll, FALSE);
+>>     R_forceSymbols(dll, TRUE);
+>> }
+>>
+>> With
+>>
+>> static const R_FortranMethodDef FortranEntries[] = {
+>>     {"bt",        (DL_FUNC) &F77_NAME(bt),        3},
+>>     {NULL, NULL, 0}
+>> };
+>>
+>> Furthermore the NAMESPACE includes:
+>>
+>> useDynLib(splines, .registration = TRUE, .fixes = "C_")
+>>
+>>
+>> which matches R-ext.
+>>
+>> Since this is only occurring on the Linux versions for the software and I use windows, can someone point me in the right direction to fix this error?
+> 
+>
+
+
+From edd @end|ng |rom deb|@n@org  Sat Mar 25 14:19:38 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Sat, 25 Mar 2023 08:19:38 -0500
+Subject: [R-pkg-devel] 
+ Another DLL requires the use of native symbols thread
+In-Reply-To: <SA1PR13MB48780AED002BFE3D1A6CA460C3859@SA1PR13MB4878.namprd13.prod.outlook.com>
+References: <SA1PR13MB48789DAF905496F22996CF0AC3849@SA1PR13MB4878.namprd13.prod.outlook.com>
+ <SA1PR13MB48780AED002BFE3D1A6CA460C3859@SA1PR13MB4878.namprd13.prod.outlook.com>
+Message-ID: <25630.62698.159436.106571@rob.eddelbuettel.com>
+
+
+On 25 March 2023 at 13:01, Shawn Way wrote:
+| Sorry to kind of repeat this but I really didn't understand the issues with the prior thread and how it relates to my issue.
+| 
+| I'm getting the error message in
+| 
+|     B_T <- BT(Temp)
+|     Error in BT(Temp) : DLL requires the use of native symbols
+|     Execution halted
+| 
+| And frankly, I have no idea what this means.  The function call is pretty simple and meets the requirement of .Fortran
+| 
+| res <- .Fortran('BT', as.double(Temp), as.double(y), as.integer(icode))
+                  ^^^^
+
+'BT' is a character (as opposed to a symbol) yet ...
+
+| and the following matches the R-ext's method for using registration:
+| 
+| extern void F77_NAME(bt)(double *T, double *B, int *icode);
+| 
+| void R_init_IAPWS95(DllInfo *dll)
+| {
+|   R_registerRoutines(dll, NULL, NULL, FortranEntries, NULL);
+|   R_useDynamicSymbols(dll, FALSE);
+|   R_forceSymbols(dll, TRUE);
+
+... this line ask R to enfore a (registered, the two preceeding lines) symbol.
+
+This is a conflict, and R-devel now flags it as error (when a 'switch it on'
+environment variable is set). Sometimes such changes become mandatory.
+
+In any event it is something you can change. Either stick with the character
+variable identifying your routine (and likely suffer epsilon-size slowdowns
+for the lookup) and go through with calling the routine by its registered
+symbol.  I do not interface much with .Fortran() and was under the impression
+that its use is (strongly !!) discouraged (as is .C()) given that using
+.Call() from R is so much more efficient (so you'd write a C(++) wrapper to
+receive arguments and then have the C(++) wrapper call your Fortran routine.
+There are prior threads about the mechanics of that in the list archive.
+
+Hth,  Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From iuke-tier@ey m@iii@g oii uiow@@edu  Sat Mar 25 15:41:47 2023
+From: iuke-tier@ey m@iii@g oii uiow@@edu (iuke-tier@ey m@iii@g oii uiow@@edu)
+Date: Sat, 25 Mar 2023 09:41:47 -0500 (CDT)
+Subject: [R-pkg-devel] [External] Another DLL requires the use of native
+ symbols thread
+In-Reply-To: <SA1PR13MB48780AED002BFE3D1A6CA460C3859@SA1PR13MB4878.namprd13.prod.outlook.com>
+References: <SA1PR13MB48789DAF905496F22996CF0AC3849@SA1PR13MB4878.namprd13.prod.outlook.com>
+ <SA1PR13MB48780AED002BFE3D1A6CA460C3859@SA1PR13MB4878.namprd13.prod.outlook.com>
+Message-ID: <1b9367b8-917d-6662-bdfd-d8afdd877430@uiowa.edu>
+
+Take another look at R-exts, specifically
+
+https://cran.r-project.org/doc/manuals/R-exts.html#Registering-native-routines
+
+Your call
+
+     R_forceSymbols(dll, TRUE);
+
+says you want foreign function calls to only work with entry points
+specified by R objects representing native symbols. This was not being
+enforced but is now in R devel.
+
+Your NAMESPACE file directive
+
+     useDynLib(splines, .registration = TRUE, .fixes = "C_")
+
+says that these R objects should use a C_ prefix, so your .Fortran
+call should be
+
+    res <- .Fortran(C_bt, as.double(Temp), as.double(y), as.integer(icode))
+
+So you can either fix your .Fortran call to be consistent with what
+you have asked R to use, or drop the R_forceSymbols call.
+
+Best,
+
+luke
+
+On Sat, 25 Mar 2023, Shawn Way wrote:
+
+> Sorry to kind of repeat this but I really didn't understand the issues with the prior thread and how it relates to my issue.
+>
+> I'm getting the error message in
+>
+>    B_T <- BT(Temp)
+>    Error in BT(Temp) : DLL requires the use of native symbols
+>    Execution halted
+>
+> And frankly, I have no idea what this means.  The function call is pretty simple and meets the requirement of .Fortran
+>
+> res <- .Fortran('BT', as.double(Temp), as.double(y), as.integer(icode))
+>
+> and the following matches the R-ext's method for using registration:
+>
+> extern void F77_NAME(bt)(double *T, double *B, int *icode);
+>
+> void R_init_IAPWS95(DllInfo *dll)
+> {
+>  R_registerRoutines(dll, NULL, NULL, FortranEntries, NULL);
+>  R_useDynamicSymbols(dll, FALSE);
+>  R_forceSymbols(dll, TRUE);
+> }
+>
+> With
+>
+> static const R_FortranMethodDef FortranEntries[] = {
+>  {"bt",        (DL_FUNC) &F77_NAME(bt),        3},
+>  {NULL, NULL, 0}
+> };
+>
+> Furthermore the NAMESPACE includes:
+>
+> useDynLib(splines, .registration = TRUE, .fixes = "C_")
+>
+>
+> which matches R-ext.
+>
+> Since this is only occurring on the Linux versions for the software and I use windows, can someone point me in the right direction to fix this error?
+>
+> Shawn Way
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+-- 
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa                  Phone:             319-335-3386
+Department of Statistics and        Fax:               319-335-3017
+    Actuarial Science
+241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu
+
+
