@@ -1,0 +1,938 @@
+From kev|n@r@coombe@ @end|ng |rom gm@||@com  Sat Apr  1 23:03:28 2023
+From: kev|n@r@coombe@ @end|ng |rom gm@||@com (Kevin R. Coombes)
+Date: Sat, 1 Apr 2023 17:03:28 -0400
+Subject: [R-pkg-devel] correcting errors in an existing package
+In-Reply-To: <CAJJ-gHw4O47SvoLHCeMxiTAsFWwCpJdxpZhom-4jRW5Onmp0QQ@mail.gmail.com>
+References: <CAJJ-gHw4O47SvoLHCeMxiTAsFWwCpJdxpZhom-4jRW5Onmp0QQ@mail.gmail.com>
+Message-ID: <2ea294cc-1b19-fc91-0007-6d1a60ef3ca2@gmail.com>
+
+1. Yes, remove the "lazyData" line from the DESCRIPTION file.
+
+2. Do you have "stats" in the "Imports" line in the DESCRIPTION file? If 
+not, put it in along with the "importFrom" line in the NAMESPACE file.
+
+On 3/31/2023 4:51 PM, Dennis Boos wrote:
+> Recently I got a message from CRAN that my package Monte.Carlo.se (on CRAN
+> for the last few years) does not pass current testing.  There seemed to be
+> 2 problems:
+>
+> ***************************************************************************************************************
+>
+> 1. * checking LazyData ... NOTE
+>    'LazyData' is specified without a 'data' directory
+>
+> I have this line in my DESCRIPTION file:
+>
+> LazyData: true
+>
+> Should I remove that?
+>
+> *****************************************************************************************************************
+>
+> 2. * checking examples with --run-donttest ... [42s/42s] ERROR
+> Running examples in ?Monte.Carlo.se-Ex.R? failed
+> The error most likely occurred in:
+>
+>> pairwise.se(hold,xcol=10:12,summary.f=cv)
+> Error: object 'hold' not found
+> Execution halted
+>
+> ***************************************************************************************
+>
+> So, I put in the R code to generate the data matrix *hold.  *But that
+> brought a host of other errors when checking in Rstudio with
+>
+>> devtools::check("S:/Documents/srcis/a.projects/Monte.Carlo.isr.and.package/Monte.Carlo.se.March.2023")
+> I started seeing the following list about standard functions like sd.
+>
+> N  checking R code for possible problems (3.4s)
+>     boot.se: no visible global function definition for 'sd'
+>     boot.var: no visible global function definition for 'var'
+>     corr: no visible global function definition for 'cor'
+>     cv: no visible global function definition for 'sd'
+>     ratio.mean.sdhat.sd: no visible global function definition for 'sd'
+>     ratio.mean.vhat.var: no visible global function definition for 'var'
+>     ratio.sd: no visible global function definition for 'sd'
+>     ratio.var: no visible global function definition for 'var'
+>     varn: no visible global function definition for 'var'
+>     Undefined global functions or variables:
+>       cor sd var
+>     Consider adding
+>       importFrom("stats", "cor", "sd", "var")
+>     to your NAMESPACE file.
+>
+> But you can't add those functions to NAMESPACE. Well I did but
+>
+> devtools::build()
+>
+>
+> gets rid of it. Also, I keep getting the message in the Rstudio check
+>
+> WARNING
+>     'qpdf' is needed for checks on size reduction of PDFs
+>
+>
+> but I got the latest versions of R and Rstudio and was able to get
+> qpdf to install and loaded with library(qpdf), but Rstudio still gives
+> that message.
+>
+> So, if anybody has any suggestions, I would appreciate it.
+>
+> Thanks.
+>
+> Dennis
+>
+>
+>
+>
+>
+>
+>
+>
+>
+>
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Apr  1 23:34:08 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 1 Apr 2023 17:34:08 -0400
+Subject: [R-pkg-devel] correcting errors in an existing package
+In-Reply-To: <CAJJ-gHw4O47SvoLHCeMxiTAsFWwCpJdxpZhom-4jRW5Onmp0QQ@mail.gmail.com>
+References: <CAJJ-gHw4O47SvoLHCeMxiTAsFWwCpJdxpZhom-4jRW5Onmp0QQ@mail.gmail.com>
+Message-ID: <c6b52458-35c0-8ef4-93aa-d37c50769460@gmail.com>
+
+On 31/03/2023 4:51 p.m., Dennis Boos wrote:
+> Recently I got a message from CRAN that my package Monte.Carlo.se (on CRAN
+> for the last few years) does not pass current testing.  There seemed to be
+> 2 problems:
+> 
+> ***************************************************************************************************************
+> 
+> 1. * checking LazyData ... NOTE
+>    'LazyData' is specified without a 'data' directory
+> 
+> I have this line in my DESCRIPTION file:
+> 
+> LazyData: true
+> 
+> Should I remove that?
+> 
+> *****************************************************************************************************************
+> 
+> 2. * checking examples with --run-donttest ... [42s/42s] ERROR
+> Running examples in ?Monte.Carlo.se-Ex.R? failed
+> The error most likely occurred in:
+> 
+>> pairwise.se(hold,xcol=10:12,summary.f=cv)
+> Error: object 'hold' not found
+> Execution halted
+> 
+> ***************************************************************************************
+> 
+> So, I put in the R code to generate the data matrix *hold.  *But that
+> brought a host of other errors when checking in Rstudio with
+> 
+>> devtools::check("S:/Documents/srcis/a.projects/Monte.Carlo.isr.and.package/Monte.Carlo.se.March.2023")
+> 
+> I started seeing the following list about standard functions like sd.
+> 
+> N  checking R code for possible problems (3.4s)
+>     boot.se: no visible global function definition for 'sd'
+>     boot.var: no visible global function definition for 'var'
+>     corr: no visible global function definition for 'cor'
+>     cv: no visible global function definition for 'sd'
+>     ratio.mean.sdhat.sd: no visible global function definition for 'sd'
+>     ratio.mean.vhat.var: no visible global function definition for 'var'
+>     ratio.sd: no visible global function definition for 'sd'
+>     ratio.var: no visible global function definition for 'var'
+>     varn: no visible global function definition for 'var'
+>     Undefined global functions or variables:
+>       cor sd var
+>     Consider adding
+>       importFrom("stats", "cor", "sd", "var")
+>     to your NAMESPACE file.
+> 
+> But you can't add those functions to NAMESPACE. Well I did but
+> 
+> devtools::build()
+> 
+> 
+> gets rid of it. Also, I keep getting the message in the Rstudio check
+> 
+> WARNING
+>     'qpdf' is needed for checks on size reduction of PDFs
+> 
+> 
+> but I got the latest versions of R and Rstudio and was able to get
+> qpdf to install and loaded with library(qpdf), but Rstudio still gives
+> that message.
+> 
+
+It sounds as though you're using Roxygen2 to generate your NAMESPACE 
+file.  If so, you need @imports directives in the comments 
+(conventionally before the function that uses the import, but I think it 
+doesn't really matter where).
+
+Duncan Murdoch
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Apr  1 23:36:50 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 1 Apr 2023 17:36:50 -0400
+Subject: [R-pkg-devel] Vignette rebuilding failed
+In-Reply-To: <CA+Rxh848cSvnnQ50CbiNr+dXagAx069hxPuGvNipHsvBWj2=8Q@mail.gmail.com>
+References: <CA+Rxh848cSvnnQ50CbiNr+dXagAx069hxPuGvNipHsvBWj2=8Q@mail.gmail.com>
+Message-ID: <f40b010f-25bc-a75c-151a-5e71d967cc1c@gmail.com>
+
+The error message seems pretty clear:  "The function xfun::isFALSE() 
+will be deprecated in the future. Please consider using base::isFALSE(x) 
+or identical(x, FALSE) instead".
+
+So don't use xfun::isFALSE().
+
+Duncan Murdoch
+
+
+
+On 31/03/2023 5:01 p.m., Deepankar Basu wrote:
+> Hello All,
+> 
+> I am in the process of developing an R package (
+> https://github.com/dbasu-umass/clptheory) and have encountered problems
+> with the vignette.
+> 
+> I had initially been able to build the vignette but *after *I added a new
+> function to my package, I have been  getting the error message that
+> "Vignette rebuilding failed" when I use devtools:check().
+> 
+> If I use devtools:check(vignette=FALSE), there are no error messages. I can
+> also compile the vignette with knitr.
+> 
+> Below is the output from devtools:check(vignette=FALSE)
+>> devtools::check(vignettes = FALSE)
+> ?? Documenting
+> ?????????????????????????????????????????????????????????????????????????????????????????????
+> ? Updating clptheory documentation
+> ? Loading clptheory
+> 
+> ?? Building
+> ????????????????????????????????????????????????????????????????????????????????????????????????
+> Setting env vars:
+> ? CFLAGS    : -Wall -pedantic -fdiagnostics-color=always
+> ? CXXFLAGS  : -Wall -pedantic -fdiagnostics-color=always
+> ? CXX11FLAGS: -Wall -pedantic -fdiagnostics-color=always
+> ? CXX14FLAGS: -Wall -pedantic -fdiagnostics-color=always
+> ? CXX17FLAGS: -Wall -pedantic -fdiagnostics-color=always
+> ? CXX20FLAGS: -Wall -pedantic -fdiagnostics-color=always
+> ?? R CMD build
+> ?????????????????????????????????????????????????????????????????????????????????????????????
+> ?  checking for file ?/home/basu15/MyRProjects/clptheory/DESCRIPTION? ...
+> ?  preparing ?clptheory?:
+> ?  checking DESCRIPTION meta-information ...
+> ?  checking for LF line-endings in source and make files and shell scripts
+> ?  checking for empty or unneeded directories
+> ?  building ?clptheory_0.0.0.9000.tar.gz?
+> 
+> ?? Checking
+> ????????????????????????????????????????????????????????????????????????????????????????????????
+> Setting env vars:
+> ? _R_CHECK_CRAN_INCOMING_USE_ASPELL_           : TRUE
+> ? _R_CHECK_CRAN_INCOMING_REMOTE_               : FALSE
+> ? _R_CHECK_CRAN_INCOMING_                      : FALSE
+> ? _R_CHECK_FORCE_SUGGESTS_                     : FALSE
+> ? _R_CHECK_PACKAGES_USED_IGNORE_UNUSED_IMPORTS_: FALSE
+> ? NOT_CRAN                                     : true
+> ?? R CMD check
+> ?????????????????????????????????????????????????????????????????????????????????????????????
+> ?  using log directory ?/tmp/RtmpCSbZbZ/file3f721a56f9d0/clptheory.Rcheck?
+> ?  using R version 4.2.3 (2023-03-15)
+> ?  using platform: x86_64-pc-linux-gnu (64-bit)
+> ?  using session charset: UTF-8
+> ?  using options ?--no-manual --ignore-vignettes --as-cran?
+> ?  checking for file ?clptheory/DESCRIPTION?
+> ?  this is package ?clptheory? version ?0.0.0.9000?
+> ?  package encoding: UTF-8
+> ?  checking package namespace information
+> ?  checking package dependencies (2.5s)
+> ?  checking if this is a source package ...
+> ?  checking if there is a namespace
+> ?  checking for executable files ...
+> ?  checking for hidden files and directories ...
+> ?  checking for portable file names
+> ?  checking for sufficient/correct file permissions
+> ?  checking serialization versions ...
+> ?  checking whether package ?clptheory? can be installed (7.1s)
+> ?  checking installed package size
+> ?  checking package directory ...
+> ?  checking for future file timestamps ...
+> ?  checking DESCRIPTION meta-information ...
+> ?  checking top-level files ...
+> ?  checking for left-over files
+> ?  checking index information
+> ?  checking package subdirectories ...
+> ?  checking R files for non-ASCII characters ...
+> ?  checking R files for syntax errors ...
+> ?  checking whether the package can be loaded (1.8s)
+> ?  checking whether the package can be loaded with stated dependencies
+> (1.6s)
+> ?  checking whether the package can be unloaded cleanly (1.6s)
+> ?  checking whether the namespace can be loaded with stated dependencies
+> (1.6s)
+> ?  checking whether the namespace can be unloaded cleanly (1.8s)
+> ?  checking loading without being on the library search path (1.8s)
+> ?  checking dependencies in R code (1.7s)
+> ?  checking S3 generic/method consistency (2.4s)
+> ?  checking replacement functions (1.7s)
+> ?  checking foreign function calls (1.7s)
+> ?  checking R code for possible problems (9.5s)
+> ?  checking Rd files ...
+> ?  checking Rd metadata ...
+> ?  checking Rd line widths ...
+> ?  checking Rd cross-references ...
+> ?  checking for missing documentation entries (1.7s)
+> ?  checking for code/documentation mismatches (5.1s)
+> ?  checking Rd \usage sections (2.5s)
+> ?  checking Rd contents ...
+> ?  checking for unstated dependencies in examples ...
+> ?  checking contents of ?data? directory ...
+> ?  checking data for non-ASCII characters (413ms)
+> ?  checking LazyData
+> ?  checking data for ASCII and uncompressed saves ...
+> ?  checking files in ?vignettes? ... SKIPPED
+> ?  checking examples (4.9s)
+> ?  checking for non-standard things in the check directory
+> ?  checking for detritus in the temp directory
+> 
+> 
+> ?? R CMD check results
+> ??????????????????????????????????????????????????????????? clptheory
+> 0.0.0.9000 ????
+> Duration: 55.1s
+> 
+> 0 errors ? | 0 warnings ? | 0 notes ?
+> 
+> Below is the output form devtools:check()
+> 
+>> devtools::check()
+> ?? Documenting
+> ?????????????????????????????????????????????????????????????????????????????????????????????
+> ? Updating clptheory documentation
+> ? Loading clptheory
+> 
+> ?? Building
+> ????????????????????????????????????????????????????????????????????????????????????????????????
+> Setting env vars:
+> ? CFLAGS    : -Wall -pedantic -fdiagnostics-color=always
+> ? CXXFLAGS  : -Wall -pedantic -fdiagnostics-color=always
+> ? CXX11FLAGS: -Wall -pedantic -fdiagnostics-color=always
+> ? CXX14FLAGS: -Wall -pedantic -fdiagnostics-color=always
+> ? CXX17FLAGS: -Wall -pedantic -fdiagnostics-color=always
+> ? CXX20FLAGS: -Wall -pedantic -fdiagnostics-color=always
+> ?? R CMD build
+> ?????????????????????????????????????????????????????????????????????????????????????????????
+> ?  checking for file ?/home/basu15/MyRProjects/clptheory/DESCRIPTION? ...
+> ?  preparing ?clptheory?:
+> ?  checking DESCRIPTION meta-information ...
+> ?  installing the package to build vignettes
+> ?  creating vignettes (9.9s)
+> ?  checking for LF line-endings in source and make files and shell scripts
+> ?  checking for empty or unneeded directories
+> ?  building ?clptheory_0.0.0.9000.tar.gz?
+> 
+> ?? Checking
+> ????????????????????????????????????????????????????????????????????????????????????????????????
+> Setting env vars:
+> ? _R_CHECK_CRAN_INCOMING_USE_ASPELL_           : TRUE
+> ? _R_CHECK_CRAN_INCOMING_REMOTE_               : FALSE
+> ? _R_CHECK_CRAN_INCOMING_                      : FALSE
+> ? _R_CHECK_FORCE_SUGGESTS_                     : FALSE
+> ? _R_CHECK_PACKAGES_USED_IGNORE_UNUSED_IMPORTS_: FALSE
+> ? NOT_CRAN                                     : true
+> ?? R CMD check
+> ?????????????????????????????????????????????????????????????????????????????????????????????
+> ?  using log directory ?/tmp/RtmpCSbZbZ/file3f72577bb739/clptheory.Rcheck?
+> ?  using R version 4.2.3 (2023-03-15)
+> ?  using platform: x86_64-pc-linux-gnu (64-bit)
+> ?  using session charset: UTF-8
+> ?  using options ?--no-manual --as-cran?
+> ?  checking for file ?clptheory/DESCRIPTION?
+> ?  this is package ?clptheory? version ?0.0.0.9000?
+> ?  package encoding: UTF-8
+> ?  checking package namespace information
+> ?  checking package dependencies (2.9s)
+> ?  checking if this is a source package ...
+> ?  checking if there is a namespace
+> ?  checking for executable files ...
+> ?  checking for hidden files and directories ...
+> ?  checking for portable file names
+> ?  checking for sufficient/correct file permissions
+> ?  checking serialization versions ...
+> ?  checking whether package ?clptheory? can be installed (7.6s)
+> ?  checking installed package size ...
+> ?  checking package directory
+> ?  checking for future file timestamps ...
+> ?  checking ?build? directory ...
+> ?  checking DESCRIPTION meta-information ...
+> ?  checking top-level files ...
+> ?  checking for left-over files
+> ?  checking index information ...
+> ?  checking package subdirectories ...
+> ?  checking R files for non-ASCII characters ...
+> ?  checking R files for syntax errors ...
+> ?  checking whether the package can be loaded (2s)
+> ?  checking whether the package can be loaded with stated dependencies
+> (1.8s)
+> ?  checking whether the package can be unloaded cleanly (1.7s)
+> ?  checking whether the namespace can be loaded with stated dependencies
+> (1.8s)
+> ?  checking whether the namespace can be unloaded cleanly (1.8s)
+> ?  checking loading without being on the library search path (1.8s)
+> ?  checking dependencies in R code (1.7s)
+> ?  checking S3 generic/method consistency (2.3s)
+> ?  checking replacement functions (1.6s)
+> ?  checking foreign function calls (1.7s)
+> ?  checking R code for possible problems (10s)
+> ?  checking Rd files (367ms)
+> ?  checking Rd metadata ...
+> ?  checking Rd line widths ...
+> ?  checking Rd cross-references ...
+> ?  checking for missing documentation entries (2.1s)
+> ?  checking for code/documentation mismatches (8.9s)
+> ?  checking Rd \usage sections (3.3s)
+> ?  checking Rd contents ...
+> ?  checking for unstated dependencies in examples ...
+> ?  checking contents of ?data? directory (335ms)
+> ?  checking data for non-ASCII characters (584ms)
+> ?  checking LazyData
+> ?  checking data for ASCII and uncompressed saves (535ms)
+> ?  checking installed files from ?inst/doc?
+> ?  checking files in ?vignettes?
+> ?  checking examples (6.9s)
+> ?  checking for unstated dependencies in vignettes ...
+> ?  checking package vignettes in ?inst/doc?
+> E  checking re-building of vignette outputs (594ms)
+>     Error(s) in re-building vignettes:
+>       ...
+>     --- re-building ?lvpp.Rmd? using rmarkdown
+>     Quitting from lines 11-15 (lvpp.Rmd)
+>     Error: processing vignette 'lvpp.Rmd' failed with diagnostics:
+>     The function xfun::isFALSE() will be deprecated in the future. Please
+> consider using base::isFALSE(x) or identical(x, FALSE) instead.
+>     --- failed re-building ?lvpp.Rmd?
+> 
+>     SUMMARY: processing the following file failed:
+>       ?lvpp.Rmd?
+> 
+>     Error: Vignette re-building failed.
+>     Execution halted
+> 
+> ?  checking for non-standard things in the check directory
+> ?  checking for detritus in the temp directory
+> 
+>     See
+>       ?/tmp/RtmpCSbZbZ/file3f72577bb739/clptheory.Rcheck/00check.log?
+>     for details.
+> 
+> 
+> ?? R CMD check results
+> ??????????????????????????????????????????????????????????? clptheory
+> 0.0.0.9000 ????
+> Duration: 1m 6.2s
+> 
+> ? checking re-building of vignette outputs ... ERROR
+>    Error(s) in re-building vignettes:
+>      ...
+>    --- re-building ?lvpp.Rmd? using rmarkdown
+>    Quitting from lines 11-15 (lvpp.Rmd)
+>    Error: processing vignette 'lvpp.Rmd' failed with diagnostics:
+>    The function xfun::isFALSE() will be deprecated in the future. Please
+> consider using base::isFALSE(x) or identical(x, FALSE) instead.
+>    --- failed re-building ?lvpp.Rmd?
+> 
+>    SUMMARY: processing the following file failed:
+>      ?lvpp.Rmd?
+> 
+>    Error: Vignette re-building failed.
+>    Execution halted
+> 
+> 1 error ? | 0 warnings ? | 0 notes ?
+> 
+> My package is available here: https://github.com/dbasu-umass/clptheory
+> 
+> Any help will be appreciated. (I found a few pages like this
+> <https://github.com/r-lib/devtools/issues/2140> on this problem but the
+> issue does not seem to have been resolved).
+> 
+> Thank you.
+> DB
+> 
+>
+
+
+From @hot@och|1990 @end|ng |rom gm@||@com  Sun Apr  2 00:42:38 2023
+From: @hot@och|1990 @end|ng |rom gm@||@com (Shota Ochi)
+Date: Sun, 2 Apr 2023 07:42:38 +0900
+Subject: [R-pkg-devel] Vignette rebuilding failed
+In-Reply-To: <f40b010f-25bc-a75c-151a-5e71d967cc1c@gmail.com>
+References: <CA+Rxh848cSvnnQ50CbiNr+dXagAx069hxPuGvNipHsvBWj2=8Q@mail.gmail.com>
+ <f40b010f-25bc-a75c-151a-5e71d967cc1c@gmail.com>
+Message-ID: <CANOYX1RYgVM_hBiSZwJS+HXah0FE+5gpzVqszPXJKQgycyGapQ@mail.gmail.com>
+
+>  Error(s) in re-building vignettes:
+>    ...
+>  --- re-building ?lvpp.Rmd? using rmarkdown
+>  Quitting from lines 11-15 (lvpp.Rmd)
+>  Error: processing vignette 'lvpp.Rmd' failed with diagnostics:
+>  The function xfun::isFALSE() will be deprecated in the future. Please
+>consider using base::isFALSE(x) or identical(x, FALSE) instead.
+>  --- failed re-building ?lvpp.Rmd?
+
+The error message means a function (knitr::opts_chunk$set) called
+xfun::isFALSE() in lines 11-15 (lvpp.Rmd).
+However, knitr::opts_chunk$set stopped using xfun::isFALSE().
+See the commit shown below.
+https://github.com/yihui/knitr/commit/ccb07c4c2266666f7375e5df242103672bd629ac
+
+Updating knitr package should fix the error.
+
+I tested your package on my Ubuntu machine and
+got no error even after removing vignettes from .Rbuildignore.
+I believe the cause of the error is not your package but your environment.
+
+Best,
+Shota Ochi
+
+
+2023?4?2?(?) 6:44 Duncan Murdoch <murdoch.duncan at gmail.com>:
+
+> The error message seems pretty clear:  "The function xfun::isFALSE()
+> will be deprecated in the future. Please consider using base::isFALSE(x)
+> or identical(x, FALSE) instead".
+>
+> So don't use xfun::isFALSE().
+>
+> Duncan Murdoch
+>
+>
+>
+> On 31/03/2023 5:01 p.m., Deepankar Basu wrote:
+> > Hello All,
+> >
+> > I am in the process of developing an R package (
+> > https://github.com/dbasu-umass/clptheory) and have encountered problems
+> > with the vignette.
+> >
+> > I had initially been able to build the vignette but *after *I added a new
+> > function to my package, I have been  getting the error message that
+> > "Vignette rebuilding failed" when I use devtools:check().
+> >
+> > If I use devtools:check(vignette=FALSE), there are no error messages. I
+> can
+> > also compile the vignette with knitr.
+> >
+> > Below is the output from devtools:check(vignette=FALSE)
+> >> devtools::check(vignettes = FALSE)
+> > ?? Documenting
+> >
+> ?????????????????????????????????????????????????????????????????????????????????????????????
+> > ? Updating clptheory documentation
+> > ? Loading clptheory
+> >
+> > ?? Building
+> >
+> ????????????????????????????????????????????????????????????????????????????????????????????????
+> > Setting env vars:
+> > ? CFLAGS    : -Wall -pedantic -fdiagnostics-color=always
+> > ? CXXFLAGS  : -Wall -pedantic -fdiagnostics-color=always
+> > ? CXX11FLAGS: -Wall -pedantic -fdiagnostics-color=always
+> > ? CXX14FLAGS: -Wall -pedantic -fdiagnostics-color=always
+> > ? CXX17FLAGS: -Wall -pedantic -fdiagnostics-color=always
+> > ? CXX20FLAGS: -Wall -pedantic -fdiagnostics-color=always
+> > ?? R CMD build
+> >
+> ?????????????????????????????????????????????????????????????????????????????????????????????
+> > ?  checking for file ?/home/basu15/MyRProjects/clptheory/DESCRIPTION? ...
+> > ?  preparing ?clptheory?:
+> > ?  checking DESCRIPTION meta-information ...
+> > ?  checking for LF line-endings in source and make files and shell
+> scripts
+> > ?  checking for empty or unneeded directories
+> > ?  building ?clptheory_0.0.0.9000.tar.gz?
+> >
+> > ?? Checking
+> >
+> ????????????????????????????????????????????????????????????????????????????????????????????????
+> > Setting env vars:
+> > ? _R_CHECK_CRAN_INCOMING_USE_ASPELL_           : TRUE
+> > ? _R_CHECK_CRAN_INCOMING_REMOTE_               : FALSE
+> > ? _R_CHECK_CRAN_INCOMING_                      : FALSE
+> > ? _R_CHECK_FORCE_SUGGESTS_                     : FALSE
+> > ? _R_CHECK_PACKAGES_USED_IGNORE_UNUSED_IMPORTS_: FALSE
+> > ? NOT_CRAN                                     : true
+> > ?? R CMD check
+> >
+> ?????????????????????????????????????????????????????????????????????????????????????????????
+> > ?  using log directory
+> ?/tmp/RtmpCSbZbZ/file3f721a56f9d0/clptheory.Rcheck?
+> > ?  using R version 4.2.3 (2023-03-15)
+> > ?  using platform: x86_64-pc-linux-gnu (64-bit)
+> > ?  using session charset: UTF-8
+> > ?  using options ?--no-manual --ignore-vignettes --as-cran?
+> > ?  checking for file ?clptheory/DESCRIPTION?
+> > ?  this is package ?clptheory? version ?0.0.0.9000?
+> > ?  package encoding: UTF-8
+> > ?  checking package namespace information
+> > ?  checking package dependencies (2.5s)
+> > ?  checking if this is a source package ...
+> > ?  checking if there is a namespace
+> > ?  checking for executable files ...
+> > ?  checking for hidden files and directories ...
+> > ?  checking for portable file names
+> > ?  checking for sufficient/correct file permissions
+> > ?  checking serialization versions ...
+> > ?  checking whether package ?clptheory? can be installed (7.1s)
+> > ?  checking installed package size
+> > ?  checking package directory ...
+> > ?  checking for future file timestamps ...
+> > ?  checking DESCRIPTION meta-information ...
+> > ?  checking top-level files ...
+> > ?  checking for left-over files
+> > ?  checking index information
+> > ?  checking package subdirectories ...
+> > ?  checking R files for non-ASCII characters ...
+> > ?  checking R files for syntax errors ...
+> > ?  checking whether the package can be loaded (1.8s)
+> > ?  checking whether the package can be loaded with stated dependencies
+> > (1.6s)
+> > ?  checking whether the package can be unloaded cleanly (1.6s)
+> > ?  checking whether the namespace can be loaded with stated dependencies
+> > (1.6s)
+> > ?  checking whether the namespace can be unloaded cleanly (1.8s)
+> > ?  checking loading without being on the library search path (1.8s)
+> > ?  checking dependencies in R code (1.7s)
+> > ?  checking S3 generic/method consistency (2.4s)
+> > ?  checking replacement functions (1.7s)
+> > ?  checking foreign function calls (1.7s)
+> > ?  checking R code for possible problems (9.5s)
+> > ?  checking Rd files ...
+> > ?  checking Rd metadata ...
+> > ?  checking Rd line widths ...
+> > ?  checking Rd cross-references ...
+> > ?  checking for missing documentation entries (1.7s)
+> > ?  checking for code/documentation mismatches (5.1s)
+> > ?  checking Rd \usage sections (2.5s)
+> > ?  checking Rd contents ...
+> > ?  checking for unstated dependencies in examples ...
+> > ?  checking contents of ?data? directory ...
+> > ?  checking data for non-ASCII characters (413ms)
+> > ?  checking LazyData
+> > ?  checking data for ASCII and uncompressed saves ...
+> > ?  checking files in ?vignettes? ... SKIPPED
+> > ?  checking examples (4.9s)
+> > ?  checking for non-standard things in the check directory
+> > ?  checking for detritus in the temp directory
+> >
+> >
+> > ?? R CMD check results
+> > ??????????????????????????????????????????????????????????? clptheory
+> > 0.0.0.9000 ????
+> > Duration: 55.1s
+> >
+> > 0 errors ? | 0 warnings ? | 0 notes ?
+> >
+> > Below is the output form devtools:check()
+> >
+> >> devtools::check()
+> > ?? Documenting
+> >
+> ?????????????????????????????????????????????????????????????????????????????????????????????
+> > ? Updating clptheory documentation
+> > ? Loading clptheory
+> >
+> > ?? Building
+> >
+> ????????????????????????????????????????????????????????????????????????????????????????????????
+> > Setting env vars:
+> > ? CFLAGS    : -Wall -pedantic -fdiagnostics-color=always
+> > ? CXXFLAGS  : -Wall -pedantic -fdiagnostics-color=always
+> > ? CXX11FLAGS: -Wall -pedantic -fdiagnostics-color=always
+> > ? CXX14FLAGS: -Wall -pedantic -fdiagnostics-color=always
+> > ? CXX17FLAGS: -Wall -pedantic -fdiagnostics-color=always
+> > ? CXX20FLAGS: -Wall -pedantic -fdiagnostics-color=always
+> > ?? R CMD build
+> >
+> ?????????????????????????????????????????????????????????????????????????????????????????????
+> > ?  checking for file ?/home/basu15/MyRProjects/clptheory/DESCRIPTION? ...
+> > ?  preparing ?clptheory?:
+> > ?  checking DESCRIPTION meta-information ...
+> > ?  installing the package to build vignettes
+> > ?  creating vignettes (9.9s)
+> > ?  checking for LF line-endings in source and make files and shell
+> scripts
+> > ?  checking for empty or unneeded directories
+> > ?  building ?clptheory_0.0.0.9000.tar.gz?
+> >
+> > ?? Checking
+> >
+> ????????????????????????????????????????????????????????????????????????????????????????????????
+> > Setting env vars:
+> > ? _R_CHECK_CRAN_INCOMING_USE_ASPELL_           : TRUE
+> > ? _R_CHECK_CRAN_INCOMING_REMOTE_               : FALSE
+> > ? _R_CHECK_CRAN_INCOMING_                      : FALSE
+> > ? _R_CHECK_FORCE_SUGGESTS_                     : FALSE
+> > ? _R_CHECK_PACKAGES_USED_IGNORE_UNUSED_IMPORTS_: FALSE
+> > ? NOT_CRAN                                     : true
+> > ?? R CMD check
+> >
+> ?????????????????????????????????????????????????????????????????????????????????????????????
+> > ?  using log directory
+> ?/tmp/RtmpCSbZbZ/file3f72577bb739/clptheory.Rcheck?
+> > ?  using R version 4.2.3 (2023-03-15)
+> > ?  using platform: x86_64-pc-linux-gnu (64-bit)
+> > ?  using session charset: UTF-8
+> > ?  using options ?--no-manual --as-cran?
+> > ?  checking for file ?clptheory/DESCRIPTION?
+> > ?  this is package ?clptheory? version ?0.0.0.9000?
+> > ?  package encoding: UTF-8
+> > ?  checking package namespace information
+> > ?  checking package dependencies (2.9s)
+> > ?  checking if this is a source package ...
+> > ?  checking if there is a namespace
+> > ?  checking for executable files ...
+> > ?  checking for hidden files and directories ...
+> > ?  checking for portable file names
+> > ?  checking for sufficient/correct file permissions
+> > ?  checking serialization versions ...
+> > ?  checking whether package ?clptheory? can be installed (7.6s)
+> > ?  checking installed package size ...
+> > ?  checking package directory
+> > ?  checking for future file timestamps ...
+> > ?  checking ?build? directory ...
+> > ?  checking DESCRIPTION meta-information ...
+> > ?  checking top-level files ...
+> > ?  checking for left-over files
+> > ?  checking index information ...
+> > ?  checking package subdirectories ...
+> > ?  checking R files for non-ASCII characters ...
+> > ?  checking R files for syntax errors ...
+> > ?  checking whether the package can be loaded (2s)
+> > ?  checking whether the package can be loaded with stated dependencies
+> > (1.8s)
+> > ?  checking whether the package can be unloaded cleanly (1.7s)
+> > ?  checking whether the namespace can be loaded with stated dependencies
+> > (1.8s)
+> > ?  checking whether the namespace can be unloaded cleanly (1.8s)
+> > ?  checking loading without being on the library search path (1.8s)
+> > ?  checking dependencies in R code (1.7s)
+> > ?  checking S3 generic/method consistency (2.3s)
+> > ?  checking replacement functions (1.6s)
+> > ?  checking foreign function calls (1.7s)
+> > ?  checking R code for possible problems (10s)
+> > ?  checking Rd files (367ms)
+> > ?  checking Rd metadata ...
+> > ?  checking Rd line widths ...
+> > ?  checking Rd cross-references ...
+> > ?  checking for missing documentation entries (2.1s)
+> > ?  checking for code/documentation mismatches (8.9s)
+> > ?  checking Rd \usage sections (3.3s)
+> > ?  checking Rd contents ...
+> > ?  checking for unstated dependencies in examples ...
+> > ?  checking contents of ?data? directory (335ms)
+> > ?  checking data for non-ASCII characters (584ms)
+> > ?  checking LazyData
+> > ?  checking data for ASCII and uncompressed saves (535ms)
+> > ?  checking installed files from ?inst/doc?
+> > ?  checking files in ?vignettes?
+> > ?  checking examples (6.9s)
+> > ?  checking for unstated dependencies in vignettes ...
+> > ?  checking package vignettes in ?inst/doc?
+> > E  checking re-building of vignette outputs (594ms)
+> >     Error(s) in re-building vignettes:
+> >       ...
+> >     --- re-building ?lvpp.Rmd? using rmarkdown
+> >     Quitting from lines 11-15 (lvpp.Rmd)
+> >     Error: processing vignette 'lvpp.Rmd' failed with diagnostics:
+> >     The function xfun::isFALSE() will be deprecated in the future. Please
+> > consider using base::isFALSE(x) or identical(x, FALSE) instead.
+> >     --- failed re-building ?lvpp.Rmd?
+> >
+> >     SUMMARY: processing the following file failed:
+> >       ?lvpp.Rmd?
+> >
+> >     Error: Vignette re-building failed.
+> >     Execution halted
+> >
+> > ?  checking for non-standard things in the check directory
+> > ?  checking for detritus in the temp directory
+> >
+> >     See
+> >       ?/tmp/RtmpCSbZbZ/file3f72577bb739/clptheory.Rcheck/00check.log?
+> >     for details.
+> >
+> >
+> > ?? R CMD check results
+> > ??????????????????????????????????????????????????????????? clptheory
+> > 0.0.0.9000 ????
+> > Duration: 1m 6.2s
+> >
+> > ? checking re-building of vignette outputs ... ERROR
+> >    Error(s) in re-building vignettes:
+> >      ...
+> >    --- re-building ?lvpp.Rmd? using rmarkdown
+> >    Quitting from lines 11-15 (lvpp.Rmd)
+> >    Error: processing vignette 'lvpp.Rmd' failed with diagnostics:
+> >    The function xfun::isFALSE() will be deprecated in the future. Please
+> > consider using base::isFALSE(x) or identical(x, FALSE) instead.
+> >    --- failed re-building ?lvpp.Rmd?
+> >
+> >    SUMMARY: processing the following file failed:
+> >      ?lvpp.Rmd?
+> >
+> >    Error: Vignette re-building failed.
+> >    Execution halted
+> >
+> > 1 error ? | 0 warnings ? | 0 notes ?
+> >
+> > My package is available here: https://github.com/dbasu-umass/clptheory
+> >
+> > Any help will be appreciated. (I found a few pages like this
+> > <https://github.com/r-lib/devtools/issues/2140> on this problem but the
+> > issue does not seem to have been resolved).
+> >
+> > Thank you.
+> > DB
+> >
+> >
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sun Apr  2 07:37:44 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sun, 2 Apr 2023 08:37:44 +0300
+Subject: [R-pkg-devel] correcting errors in an existing package
+In-Reply-To: <CAJJ-gHw4O47SvoLHCeMxiTAsFWwCpJdxpZhom-4jRW5Onmp0QQ@mail.gmail.com>
+References: <CAJJ-gHw4O47SvoLHCeMxiTAsFWwCpJdxpZhom-4jRW5Onmp0QQ@mail.gmail.com>
+Message-ID: <20230402083744.2c1abeb7@Tarkus>
+
+On Fri, 31 Mar 2023 16:51:40 -0400
+Dennis Boos <boos at ncsu.edu> wrote:
+
+> Also, I keep getting the message in the Rstudio check
+> 
+> WARNING
+>    'qpdf' is needed for checks on size reduction of PDFs
+> 
+> 
+> but I got the latest versions of R and Rstudio and was able to get
+> qpdf to install and loaded with library(qpdf), but Rstudio still gives
+> that message.
+
+Almost there.
+
+The 'qpdf' package interfaces to the same code that the 'qpdf' command
+line tool uses to do its job. R CMD check uses the latter, not the
+former. It looks like you're on Windows, so you need to install Rtools
+in order to get a compatible version of 'qpdf':
+https://cran.r-project.org/bin/windows/Rtools/rtools43/rtools.html
+
+-- 
+Best regards,
+Ivan
+
+
+From ||@t@ @end|ng |rom dewey@myzen@co@uk  Sun Apr  2 12:12:39 2023
+From: ||@t@ @end|ng |rom dewey@myzen@co@uk (Michael Dewey)
+Date: Sun, 2 Apr 2023 11:12:39 +0100
+Subject: [R-pkg-devel] correcting errors in an existing package
+In-Reply-To: <20230402083744.2c1abeb7@Tarkus>
+References: <CAJJ-gHw4O47SvoLHCeMxiTAsFWwCpJdxpZhom-4jRW5Onmp0QQ@mail.gmail.com>
+ <20230402083744.2c1abeb7@Tarkus>
+Message-ID: <a91eb3b8-944b-0023-49bd-4d5bbe11792e@dewey.myzen.co.uk>
+
+Comment in-line
+
+On 02/04/2023 06:37, Ivan Krylov wrote:
+> On Fri, 31 Mar 2023 16:51:40 -0400
+> Dennis Boos <boos at ncsu.edu> wrote:
+> 
+>> Also, I keep getting the message in the Rstudio check
+>>
+>> WARNING
+>>     'qpdf' is needed for checks on size reduction of PDFs
+>>
+>>
+>> but I got the latest versions of R and Rstudio and was able to get
+>> qpdf to install and loaded with library(qpdf), but Rstudio still gives
+>> that message.
+> 
+> Almost there.
+> 
+> The 'qpdf' package interfaces to the same code that the 'qpdf' command
+> line tool uses to do its job. R CMD check uses the latter, not the
+> former. It looks like you're on Windows, so you need to install Rtools
+> in order to get a compatible version of 'qpdf':
+> https://cran.r-project.org/bin/windows/Rtools/rtools43/rtools.html
+> 
+
+I always get the warning about qpdf (on Windows) but it does not seem to 
+be a problem on CRAN or winbuilder.
+
+-- 
+Michael
+http://www.dewey.myzen.co.uk/home.html
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Sun Apr  2 17:33:49 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Sun, 2 Apr 2023 17:33:49 +0200
+Subject: [R-pkg-devel] correcting errors in an existing package
+In-Reply-To: <a91eb3b8-944b-0023-49bd-4d5bbe11792e@dewey.myzen.co.uk>
+References: <CAJJ-gHw4O47SvoLHCeMxiTAsFWwCpJdxpZhom-4jRW5Onmp0QQ@mail.gmail.com>
+ <20230402083744.2c1abeb7@Tarkus>
+ <a91eb3b8-944b-0023-49bd-4d5bbe11792e@dewey.myzen.co.uk>
+Message-ID: <78f7a5aa-99dc-dd85-c125-eff7068f106c@statistik.tu-dortmund.de>
+
+
+
+On 02.04.2023 12:12, Michael Dewey wrote:
+> Comment in-line
+> 
+> On 02/04/2023 06:37, Ivan Krylov wrote:
+>> On Fri, 31 Mar 2023 16:51:40 -0400
+>> Dennis Boos <boos at ncsu.edu> wrote:
+>>
+>>> Also, I keep getting the message in the Rstudio check
+>>>
+>>> WARNING
+>>> ??? 'qpdf' is needed for checks on size reduction of PDFs
+>>>
+>>>
+>>> but I got the latest versions of R and Rstudio and was able to get
+>>> qpdf to install and loaded with library(qpdf), but Rstudio still gives
+>>> that message.
+>>
+>> Almost there.
+>>
+>> The 'qpdf' package interfaces to the same code that the 'qpdf' command
+>> line tool uses to do its job. R CMD check uses the latter, not the
+>> former. It looks like you're on Windows, so you need to install Rtools
+>> in order to get a compatible version of 'qpdf':
+>> https://cran.r-project.org/bin/windows/Rtools/rtools43/rtools.html
+>>
+> 
+> I always get the warning about qpdf (on Windows) but it does not seem to 
+> be a problem on CRAN or winbuilder.
+> 
+
+You have to have qpdf installed and on your PATH.
+
+Best,
+Uwe Ligges
+
+
