@@ -936,3 +936,1432 @@ Best,
 Uwe Ligges
 
 
+From rodr|go@tob@rc@rr|zo @end|ng |rom uw@@edu@@u  Tue Apr  4 09:08:52 2023
+From: rodr|go@tob@rc@rr|zo @end|ng |rom uw@@edu@@u (Rodrigo Tobar Carrizo)
+Date: Tue, 4 Apr 2023 07:08:52 +0000
+Subject: [R-pkg-devel] OpenMP and CRAN checks
+Message-ID: <SYCPR01MB40477F5D574DBBC27DD0F32BA9939@SYCPR01MB4047.ausprd01.prod.outlook.com>
+
+Hi list,
+
+We are having an issue with submitting a new version of the imager package to CRAN, and would like to understand how we are getting a particular NOTE. The package uses OpenMP for parallelisation of tasks. While we have a routine to set the number of threads that OpenMP should use (it internally issues a `omp_set_num_threads(threads)` call), we don't invoke it ourselves -- we let the users do it. None of our OpenMP pragmas set an explicit number of threads either. In other words, by default we use the system as-is.
+
+In my environment (8 cores, 2 threads per core) I can see this working as expected. If I set the OMP_NUM_THREADS or OMP_THREAD_LIMIT environment variables to a given number before starting R, I can see that parallelisation stays within the given boundary. For example:
+
+=================== examples============================
+# No explicit limit, usually means "use all available cores"
+$> Rscript -e 'library(foreach); library(imager); temp = foreach(1:100)%do%{as.cimg(matrix(rnorm(400^2),400,400))}; times = system.time(foreach(1:10)%do%{parmed(temp)}); print(times["user.self"]/times["elapsed"])' |& tail -n 1
+15.75708
+
+# 1 thread via OMP_THREAD_LIMIT
+$> OMP_THREAD_LIMIT=1 Rscript -e 'library(foreach); library(imager); temp = foreach(1:100)%do%{as.cimg(matrix(rnorm(400^2),400,400))}; times = system.time(foreach(1:10)%do%{parmed(temp)}); print(times["user.self"]/times["elapsed"])' |& tail -n 1
+0.994263
+
+# 2 threads via OMP_NUM_THREADS
+$> OMP_NUM_THREADS=2 Rscript -e 'library(foreach); library(imager); temp = foreach(1:100)%do%{as.cimg(matrix(rnorm(400^2),400,400))}; times = system.time(foreach(1:10)%do%{parmed(temp)}); print(times["user.self"]/times["elapsed"])' |& tail -n 1
+1.994128
+=================== examples============================
+
+It is also our understanding (from [1], and more detailed in [2]) that the CRAN machines set OMP_THREAD_LIMIT=2 when running package checks to avoid package examples and vignettes from using more than 2 threads each, and thus be able to share the infrastructure as expected.
+
+However, upon submission we received the following NOTE:
+
+* checking examples ... [24s/21s] NOTE
+Examples with CPU time > 2.5 times elapsed time
+             user system elapsed ratio
+cannyEdges 1.095  0.052   0.385 2.979
+
+What I cannot explain is how, if OMP_THREAD_LIMIT is set, the example runs using more than 2 threads, therefor triggering such a NOTE. Isn't the OpenMP runtime supposed to limit the number of threads if this limit is set, hence limiting our parallelisation? I wouldn't single out this particular example: since OpenMP is used across the codebase it might be a question of good/bad luck which example triggers the warning. The code also doesn't spawn any child processes, all CPU utilisation stems from the main R process.
+
+I do appreciate that we might have a future, different problem, where OMP_THREAD_LIMIT is specified but the code could still *try* to use more threads than the given limit (hence triggering a warning in some OpenMP platforms). That's the issue presented in [2], which they went and fixed -- but the limit should be obeyed by the OpenMP runtime in the first place, which is what puzzles me.
+
+Any hints/help/guidance would be appreciated.
+
+Regards,
+
+Rodrigo
+
+[1] https://rdrr.io/cran/data.table/man/openmp-utils.html
+[2] https://github.com/Rdatatable/data.table/issues/3300
+
+From boo@ @end|ng |rom nc@u@edu  Tue Apr  4 15:41:41 2023
+From: boo@ @end|ng |rom nc@u@edu (Dennis Boos)
+Date: Tue, 4 Apr 2023 09:41:41 -0400
+Subject: [R-pkg-devel] correcting errors in an existing package
+In-Reply-To: <c6b52458-35c0-8ef4-93aa-d37c50769460@gmail.com>
+References: <CAJJ-gHw4O47SvoLHCeMxiTAsFWwCpJdxpZhom-4jRW5Onmp0QQ@mail.gmail.com>
+ <c6b52458-35c0-8ef4-93aa-d37c50769460@gmail.com>
+Message-ID: <CAJJ-gHznV18NyPtuweYaGFdxisLTc+j26eN_uR2WVYzxttSG0Q@mail.gmail.com>
+
+Thanks so much to all of you.  If you have time, I'm getting really
+contradictory results.
+
+1. It first seemed to have passed the check in Rstudio (I used
+device::build() in the R window and then clicked on check in the drop down
+menu under build).
+
+==> devtools::check(document = FALSE, args = c('--as-cran'))
+?? R CMD check results  Monte.Carlo.se 0.1.1 ????
+Duration: 56.6s
+0 errors ? | 0 warnings ? | 0 notes ?
+
+R CMD check succeeded
+
+However, I then couldn't find the tar.gz where it was supposed to be. It
+was just gone.
+
+
+Here is my namespace.  It says not to edit, but I had been told to add
+the importFrom. So I didn't use
+devtools::document() for fear roxygen2 would get rid of it.
+
+# Generated by roxygen2: do not edit by hand
+importFrom("stats", "cor", "sd", "var")
+export(boot.se)
+export(jack.se)
+export(mc.se.matrix)
+export(mc.se.vector)
+export(pairwise.se)
+export(sim.samp)
+
+4. Here is my DESCRIPTION file
+
+Package: Monte.Carlo.se
+Type: Package
+Title: Monte Carlo Standard Errors
+Version: 0.1.1
+Author: Dennis Boos, Kevin Matthew, Jason Osborne
+Maintainer: Dennis Boos <boos at ncsu.edu>
+Description: Computes Monte Carlo standard errors for summaries of
+Monte Carlo output. Summaries and their standard errors are based on
+columns of Monte Carlo simulation output. Dennis D. Boos and Jason A.
+Osborne (2015) <doi:10.1111/insr.12087>.
+License: GPL-3
+Encoding: UTF-8
+RoxygenNote: 7.2.3
+Suggests: knitr, rmarkdown
+Imports: stats
+VignetteBuilder: knitr
+
+5. And because of your advice: " It sounds as though you're using
+Roxygen2 to generate your NAMESPACE file.
+ff so, you need @imports directives in the comments
+(conventionally before the function that uses the import, but I think it
+doesn't really matter where)."
+
+So I put "@imports" in the function that had trouble
+
+#' @examples
+#' \donttest{
+#' # Using the output data matrix hold generated in vignette Example3,
+#' # calculate jackknife and bootstrap standard errors
+#' # for the differences and ratios of the CV estimates.
+#' # First get the components of hold needed.
+#'
+#' @imports
+#'
+#' trim20 <- function(x){mean(x,.2)} # 20% trimmed mean function
+
+Was that the correct thing to do?
+
+6. And here are the failed check results. I'm clueless at this point.
+
+==> devtools::check(document = FALSE, args = c('--as-cran'))
+?? Building ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????Setting
+env vars:
+? CFLAGS    : -Wall -pedantic -fdiagnostics-color=always
+? CXXFLAGS  : -Wall -pedantic -fdiagnostics-color=always
+? CXX11FLAGS: -Wall -pedantic -fdiagnostics-color=always
+? CXX14FLAGS: -Wall -pedantic -fdiagnostics-color=always
+? CXX17FLAGS: -Wall -pedantic -fdiagnostics-color=always
+? CXX20FLAGS: -Wall -pedantic -fdiagnostics-color=always?? R CMD build
+??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+ checking for file 'C:\Users\boos\Dropbox\My PC
+(boos-home)\Desktop\dennis\R.packages\Monte.Carlo.se.March.2023/DESCRIPTION'
+...?  preparing 'Monte.Carlo.se':?  checking DESCRIPTION
+meta-information ...?  installing the package to build vignettes?
+creating vignettes (3.6s)?  checking for LF line-endings in source and
+make files and shell scripts?  checking for empty or unneeded
+directories?  building 'Monte.Carlo.se_0.1.1.tar.gz'
+   ?? Checking ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????Setting
+env vars:
+? _R_CHECK_CRAN_INCOMING_REMOTE_               : FALSE
+? _R_CHECK_CRAN_INCOMING_                      : FALSE
+? _R_CHECK_FORCE_SUGGESTS_                     : FALSE
+? _R_CHECK_PACKAGES_USED_IGNORE_UNUSED_IMPORTS_: FALSE
+? NOT_CRAN                                     : true?? R CMD check
+??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+ using log directory 'C:/Users/boos/Dropbox/My PC
+(boos-home)/Desktop/dennis/R.packages/Monte.Carlo.se.Rcheck' (793ms)?
+using R version 4.2.3 (2023-03-15 ucrt)?  using platform:
+x86_64-w64-mingw32 (64-bit)?  using session charset: UTF-8?  using
+options '--no-manual --as-cran' (653ms)?  checking for file
+'Monte.Carlo.se/DESCRIPTION'?  checking extension type ... Package?
+this is package 'Monte.Carlo.se' version '0.1.1'?  package encoding:
+UTF-8?  checking package namespace information?  checking package
+dependencies (3.2s)?  checking if this is a source package?  checking
+if there is a namespace?  checking for executable files (491ms)?
+checking for hidden files and directories ...?  checking for portable
+file names?  checking serialization versions?  checking whether
+package 'Monte.Carlo.se' can be installed (2.9s)?  checking installed
+package size ... ?  checking package directory ...?  checking for
+future file timestamps ... ?  checking 'build' directory?  checking
+DESCRIPTION meta-information ... ?  checking top-level files ...?
+checking for left-over files?  checking index information ... ?
+checking package subdirectories ... ?  checking R files for non-ASCII
+characters ... ?  checking R files for syntax errors ... ?  checking
+whether the package can be loaded ... ?  checking whether the package
+can be loaded with stated dependencies ... ?  checking whether the
+package can be unloaded cleanly ... ?  checking whether the namespace
+can be loaded with stated dependencies ... ?  checking whether the
+namespace can be unloaded cleanly ... ?  checking loading without
+being on the library search path ... N  checking dependencies in R
+code ...
+   Namespace in Imports field not imported from: 'stats'
+     All declared Imports should be used.?  checking S3 generic/method
+consistency (422ms)?  checking replacement functions ... ?  checking
+foreign function calls ... N  checking R code for possible problems
+(3s)
+   boot.se: no visible global function definition for 'sd'
+   boot.var: no visible global function definition for 'var'
+   corr: no visible global function definition for 'cor'
+   cv: no visible global function definition for 'sd'
+   ratio.mean.sdhat.sd: no visible global function definition for 'sd'
+   ratio.mean.vhat.var: no visible global function definition for 'var'
+   ratio.sd: no visible global function definition for 'sd'
+   ratio.var: no visible global function definition for 'var'
+   varn: no visible global function definition for 'var'
+   Undefined global functions or variables:
+     cor sd var
+   Consider adding
+     importFrom("stats", "cor", "sd", "var")
+   to your NAMESPACE file.?  checking Rd files ... ?  checking Rd
+metadata ... ?  checking Rd line widths ... ?  checking Rd
+cross-references ... ?  checking for missing documentation entries ...
+?  checking for code/documentation mismatches (562ms)?  checking Rd
+\usage sections (661ms)?  checking Rd contents ... ?  checking for
+unstated dependencies in examples ... ?  checking installed files from
+'inst/doc'W  checking files in 'vignettes' ...
+   Files in the 'vignettes' directory newer than same file in 'inst/doc':
+     'Brief-Overview.Rmd'?  checking examples (573ms)?  checking
+examples with --run-donttest ... [24s] OK (24.7s)?  checking for
+unstated dependencies in vignettes ... ?  checking package vignettes
+in 'inst/doc' ...?  checking re-building of vignette outputs (6.8s)?
+checking for non-standard things in the check directory ...?  checking
+for detritus in the temp directory
+
+   See
+     'C:/Users/boos/Dropbox/My PC
+(boos-home)/Desktop/dennis/R.packages/Monte.Carlo.se.Rcheck/00check.log'
+   for details.
+
+   ?? R CMD check results
+???????????????????????????????????????????????????????????????????????????????????
+Monte.Carlo.se 0.1.1 ????
+Duration: 51.5s
+? checking files in 'vignettes' ... WARNING
+  Files in the 'vignettes' directory newer than same file in 'inst/doc':
+    'Brief-Overview.Rmd'
+? checking dependencies in R code ... NOTE
+  Namespace in Imports field not imported from: 'stats'
+    All declared Imports should be used.
+? checking R code for possible problems ... NOTE
+  boot.se: no visible global function definition for 'sd'
+  boot.var: no visible global function definition for 'var'
+  corr: no visible global function definition for 'cor'
+  cv: no visible global function definition for 'sd'
+  ratio.mean.sdhat.sd: no visible global function definition for 'sd'
+  ratio.mean.vhat.var: no visible global function definition for 'var'
+  ratio.sd: no visible global function definition for 'sd'
+  ratio.var: no visible global function definition for 'var'
+  varn: no visible global function definition for 'var'
+  Undefined global functions or variables:
+    cor sd var
+  Consider adding
+    importFrom("stats", "cor", "sd", "var")
+  to your NAMESPACE file.
+0 errors ? | 1 warning ? | 2 notes ?
+Error: R CMD check found WARNINGs
+Execution halted
+
+Exited with status 1.
+
+
+
+
+
+On Sat, Apr 1, 2023 at 5:34?PM Duncan Murdoch <murdoch.duncan at gmail.com>
+wrote:
+
+> On 31/03/2023 4:51 p.m., Dennis Boos wrote:
+> > Recently I got a message from CRAN that my package Monte.Carlo.se (on
+> CRAN
+> > for the last few years) does not pass current testing.  There seemed to
+> be
+> > 2 problems:
+> >
+> >
+> ***************************************************************************************************************
+> >
+> > 1. * checking LazyData ... NOTE
+> >    'LazyData' is specified without a 'data' directory
+> >
+> > I have this line in my DESCRIPTION file:
+> >
+> > LazyData: true
+> >
+> > Should I remove that?
+> >
+> >
+> *****************************************************************************************************************
+> >
+> > 2. * checking examples with --run-donttest ... [42s/42s] ERROR
+> > Running examples in ?Monte.Carlo.se-Ex.R? failed
+> > The error most likely occurred in:
+> >
+> >> pairwise.se(hold,xcol=10:12,summary.f=cv)
+> > Error: object 'hold' not found
+> > Execution halted
+> >
+> >
+> ***************************************************************************************
+> >
+> > So, I put in the R code to generate the data matrix *hold.  *But that
+> > brought a host of other errors when checking in Rstudio with
+> >
+> >>
+> devtools::check("S:/Documents/srcis/a.projects/Monte.Carlo.isr.and.package/Monte.Carlo.se.March.2023")
+> >
+> > I started seeing the following list about standard functions like sd.
+> >
+> > N  checking R code for possible problems (3.4s)
+> >     boot.se: no visible global function definition for 'sd'
+> >     boot.var: no visible global function definition for 'var'
+> >     corr: no visible global function definition for 'cor'
+> >     cv: no visible global function definition for 'sd'
+> >     ratio.mean.sdhat.sd: no visible global function definition for 'sd'
+> >     ratio.mean.vhat.var: no visible global function definition for 'var'
+> >     ratio.sd: no visible global function definition for 'sd'
+> >     ratio.var: no visible global function definition for 'var'
+> >     varn: no visible global function definition for 'var'
+> >     Undefined global functions or variables:
+> >       cor sd var
+> >     Consider adding
+> >       importFrom("stats", "cor", "sd", "var")
+> >     to your NAMESPACE file.
+> >
+> > But you can't add those functions to NAMESPACE. Well I did but
+> >
+> > devtools::build()
+> >
+> >
+> > gets rid of it. Also, I keep getting the message in the Rstudio check
+> >
+> > WARNING
+> >     'qpdf' is needed for checks on size reduction of PDFs
+> >
+> >
+> > but I got the latest versions of R and Rstudio and was able to get
+> > qpdf to install and loaded with library(qpdf), but Rstudio still gives
+> > that message.
+> >
+>
+> It sounds as though you're using Roxygen2 to generate your NAMESPACE
+> file.  If so, you need @imports directives in the comments
+> (conventionally before the function that uses the import, but I think it
+> doesn't really matter where).
+>
+> Duncan Murdoch
+>
+>
+
+-- 
+Dennis Boos                      email: dennis_boos at ncsu.edu
+Department of Statistics    Phone: 919-515-1918
+NC State University           Fax: 919-515-1169
+Raleigh, NC 27695-8203   http://www4.stat.ncsu.edu/~boos
+
+Aim for kindness, tolerance, and humility.
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Tue Apr  4 16:00:00 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 4 Apr 2023 09:00:00 -0500
+Subject: [R-pkg-devel] OpenMP and CRAN checks
+In-Reply-To: <SYCPR01MB40477F5D574DBBC27DD0F32BA9939@SYCPR01MB4047.ausprd01.prod.outlook.com>
+References: <SYCPR01MB40477F5D574DBBC27DD0F32BA9939@SYCPR01MB4047.ausprd01.prod.outlook.com>
+Message-ID: <25644.11616.284536.185116@rob.eddelbuettel.com>
+
+
+Hi Rodrigo,
+
+This came up recently again on social media where I illustrated how the
+tiledb package deals with it. So a quick recap:
+
+First off, let's make the goals clear.
+
+We want to _simultaneously_
+ - abide by CRAN Policy rules and cap ourselves to two cores there
+ - do not impose any limits on our users: ALL cores ALL the time
+
+The solution we implemented a while is to use a function _that is an opt-in_
+which looks at the standard OpenMP variable as well as at R's own Ncpus:
+
+    limitTileDBCores <- function(ncores, verbose=FALSE) {
+      if (missing(ncores)) {
+        ## start with a simple fallback: 'Ncpus' (if set) or else 2
+        ncores <- getOption("Ncpus", 2L)
+        ## also consider OMP_THREAD_LIMIT (cf Writing R Extensions), gets NA if envvar unset
+        ompcores <- as.integer(Sys.getenv("OMP_THREAD_LIMIT"))
+        ## and then keep the smaller
+        ncores <- min(na.omit(c(ncores, ompcores)))
+      }
+      stopifnot(`The 'ncores' argument must be numeric or character` = is.numeric(ncores) || is.character(ncores))
+      ## for brevity omitted here how ncores propagates to TileDB library -- creates `cfg`
+      if (verbose) message("Limiting TileDB to ",ncores," cores. See ?limitTileDBCores.")
+      invisible(cfg)
+    }
+
+The key is that we reflect the smaller of Ncpus and OMP_THREAD_LIMIT along
+with a fall-back of two in case nothing is set.
+
+That function is then called (and feeds into the library config) at the
+beginning of each
+ - help file example
+ - unit test file
+ - vignette
+
+As example (from a help file) is
+
+    \dontshow{ctx <- tiledb_ctx(limitTileDBCores())}
+
+(where ctx a context object controlling, inter alia, the thread pool).
+
+By throttling it anywhere CRAN executes code, and using the prescribed
+maximum of two core, we satisfy goal one of not getting thrown off CRAN. By
+making it an _explicit_ opt-in we satisfy our goal of never slowing down our
+users who (presumably) do not opt in. And those who have, say, Ncpus set (as
+I do to spread R's own package installations over all my cores) get the
+maximum performance for examples, tests, and vignettes too as they opted in.
+
+"Works for us" as they say.
+
+Hope this helps,  Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Apr  4 16:04:05 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 4 Apr 2023 10:04:05 -0400
+Subject: [R-pkg-devel] correcting errors in an existing package
+In-Reply-To: <CAJJ-gHznV18NyPtuweYaGFdxisLTc+j26eN_uR2WVYzxttSG0Q@mail.gmail.com>
+References: <CAJJ-gHw4O47SvoLHCeMxiTAsFWwCpJdxpZhom-4jRW5Onmp0QQ@mail.gmail.com>
+ <c6b52458-35c0-8ef4-93aa-d37c50769460@gmail.com>
+ <CAJJ-gHznV18NyPtuweYaGFdxisLTc+j26eN_uR2WVYzxttSG0Q@mail.gmail.com>
+Message-ID: <443004df-44a8-21b2-55f9-df852e9ac872@gmail.com>
+
+Your message is posted using HTML, which mangles a lot of it.  For 
+example, the NAMESPACE file you posted has URLs mixed in with the text.
+
+But if I can guess correctly what was in those files, it looks as though 
+the package being checked doesn't have those files in it.  I don't know 
+exactly what devtools::check does, but it's probably your problem.
+
+I'd suggest this:  build the tarball, and check the tarball.
+
+Duncan Murdoch
+
+On 04/04/2023 9:41 a.m., Dennis Boos wrote:
+> Thanks so much to all of you.? If you have time, I'm getting really 
+> contradictory results.
+> 
+> 1. It first seemed to have passed the check in Rstudio (I used 
+> device::build() in the R window and then clicked on check in the drop 
+> down menu under build).
+> 
+> ==> devtools::check(document = FALSE, args = c('--as-cran'))
+> 
+> ?? R CMD check results Monte.Carlo.se <http://Monte.Carlo.se> 0.1.1 
+> ????Duration: 56.6s 0 errors ?| 0 warnings ?| 0 notes ?R CMD check succeeded
+> 
+> However, I then couldn't find the tar.gz where it was supposed to be. It 
+> was just gone.
+> 
+> 
+> Here is my namespace. It says not to edit, but I had been told to add 
+> the importFrom. So I didn't use
+> devtools::document() for fear roxygen2 would get rid of it.
+> 
+> # Generated by roxygen2: do not edit by hand
+> importFrom("stats", "cor", "sd", "var")
+> export(boot.se  <http://boot.se>)
+> export(jack.se  <http://jack.se>)
+> export(mc.se.matrix)
+> export(mc.se.vector)
+> export(pairwise.se  <http://pairwise.se>)
+> export(sim.samp)
+> 
+> 4.Here is my DESCRIPTION file
+> 
+> Package:Monte.Carlo.se  <http://Monte.Carlo.se>
+> Type: Package
+> Title: Monte Carlo Standard Errors
+> Version: 0.1.1
+> Author: Dennis Boos, Kevin Matthew, Jason Osborne
+> Maintainer: Dennis Boos <boos at ncsu.edu  <mailto:boos at ncsu.edu>>
+> Description: Computes Monte Carlo standard errors for summaries of Monte Carlo output. Summaries and their standard errors are based on columns of Monte Carlo simulation output. Dennis D. Boos and Jason A. Osborne (2015) <doi:10.1111/insr.12087>.
+> License: GPL-3
+> Encoding: UTF-8
+> RoxygenNote: 7.2.3
+> Suggests: knitr, rmarkdown
+> Imports: stats
+> VignetteBuilder: knitr
+> 
+> 5.And because of your advice:  " It sounds as though you're using Roxygen2 to generate your NAMESPACE file.
+> ff so, you need @imports directives in the comments
+> (conventionally before the function that uses the import, but I think it
+> doesn't really matter where)."
+> 
+> So I put "@imports" in the function that had trouble
+> 
+> #' @examples
+> #' \donttest{
+> #' # Using the output data matrix hold generated in vignette Example3,
+> #' # calculate jackknife and bootstrap standard errors
+> #' # for the differences and ratios of the CV estimates.
+> #' # First get the components of hold needed.
+> #'
+> #' @imports
+> #'
+> #' trim20 <- function(x){mean(x,.2)} # 20% trimmed mean function
+> 
+> Was that the correct thing to do?
+> 
+> 6.And here are the failed check results. I'm clueless at this point.
+> 
+> 
+> ==> devtools::check(document = FALSE, args = c('--as-cran')) 
+> ??Building????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????Setting env vars:? CFLAGS : -Wall -pedantic -fdiagnostics-color=always? CXXFLAGS : -Wall -pedantic -fdiagnostics-color=always? CXX11FLAGS: -Wall -pedantic -fdiagnostics-color=always? CXX14FLAGS: -Wall -pedantic -fdiagnostics-color=always? CXX17FLAGS: -Wall -pedantic -fdiagnostics-color=always? CXX20FLAGS: -Wall -pedantic -fdiagnostics-color=always??R CMD build??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????checking for file 'C:\Users\boos\Dropbox\My PC (boos-home)\Desktop\dennis\R.packages\Monte.Carlo.se.March.2023/DESCRIPTION'... ?preparing 'Monte.Carlo.se <http://Monte.Carlo.se>':?checking DESCRIPTION meta-information... ?installing the package to build vignettes?creating vignettes(3.6s)?checking for LF line-endings in source and make files and shell scripts?checking for empty or unneeded directories?building 'Monte.Carlo.se_0.1.1.tar.gz'??Checking????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????Setting env vars:? _R_CHECK_CRAN_INCOMING_REMOTE_ : FALSE? _R_CHECK_CRAN_INCOMING_ : FALSE? _R_CHECK_FORCE_SUGGESTS_ : FALSE? _R_CHECK_PACKAGES_USED_IGNORE_UNUSED_IMPORTS_: FALSE? NOT_CRAN : true?? R CMD check ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????using log directory 'C:/Users/boos/Dropbox/My PC (boos-home)/Desktop/dennis/R.packages/Monte.Carlo.se.Rcheck'(793ms)?using R version 4.2.3 (2023-03-15 ucrt)? using platform: x86_64-w64-mingw32 (64-bit)? using session charset: UTF-8?using options '--no-manual --as-cran'(653ms)?checking for file 'Monte.Carlo.se/DESCRIPTION <http://Monte.Carlo.se/DESCRIPTION>'? checking extension type ... Package? this is package 'Monte.Carlo.se <http://Monte.Carlo.se>' version '0.1.1'? package encoding: UTF-8?checking package namespace information?checking package dependencies(3.2s)?checking if this is a source package?checking if there is a namespace?checking for executable files(491ms)?checking for hidden files and directories... ?checking for portable file names?checking serialization versions?checking whether package 'Monte.Carlo.se <http://Monte.Carlo.se>' can be installed(2.9s)?checking installed package size... ?checking package directory... ?checking for future file timestamps... ?checking 'build' directory?checking DESCRIPTION meta-information... ?checking top-level files... ?checking for left-over files?checking index information... ?checking package subdirectories... ?checking R files for non-ASCII characters... ?checking R files for syntax errors... ?checking whether the package can be loaded... ?checking whether the package can be loaded with stated dependencies... ?checking whether the package can be unloaded cleanly... ?checking whether the namespace can be loaded with stated dependencies... ?checking whether the namespace can be unloaded cleanly... ?checking loading without being on the library search path... N checking dependencies in R code... Namespace in Imports field not imported from: 'stats' All declared Imports should be used. ?checking S3 generic/method consistency(422ms)?checking replacement functions... ?checking foreign function calls... N checking R code for possible problems(3s)boot.se <http://boot.se>: no visible global function definition for 'sd' boot.var: no visible global function definition for 'var' corr: no visible global function definition for 'cor' cv: no visible global function definition for 'sd' ratio.mean.sdhat.sd <http://ratio.mean.sdhat.sd>: no visible global function definition for 'sd' ratio.mean.vhat.var: no visible global function definition for 'var' ratio.sd <http://ratio.sd>: no visible global function definition for 'sd' ratio.var: no visible global function definition for 'var' varn: no visible global function definition for 'var' Undefined global functions or variables: cor sd var Consider adding importFrom("stats", "cor", "sd", "var") to your NAMESPACE file. ?checking Rd files... ?checking Rd metadata... ?checking Rd line widths... ?checking Rd cross-references... ?checking for missing documentation entries... ?checking for code/documentation mismatches(562ms)?checking Rd \usage sections(661ms)?checking Rd contents... ?checking for unstated dependencies in examples... ?checking installed files from 'inst/doc'W checking files in 'vignettes'... Files in the 'vignettes' directory newer than same file in 'inst/doc': 'Brief-Overview.Rmd' ?checking examples(573ms)?checking examples with --run-donttest ... [24s] OK(24.7s)?checking for unstated dependencies in vignettes... ?checking package vignettes in 'inst/doc'... ?checking re-building of vignette outputs(6.8s)?checking for non-standard things in the check directory... ?checking for detritus in the temp directorySee 'C:/Users/boos/Dropbox/My PC (boos-home)/Desktop/dennis/R.packages/Monte.Carlo.se.Rcheck/00check.log' for details. ?? R CMD check results ??????????????????????????????????????????????????????????????????????????????????? Monte.Carlo.se <http://Monte.Carlo.se> 0.1.1 ????Duration: 51.5s ? checking files in 'vignettes' ... WARNINGFiles in the 'vignettes' directory newer than same file in 'inst/doc': 'Brief-Overview.Rmd' ? checking dependencies in R code ... NOTENamespace in Imports field not imported from: 'stats' All declared Imports should be used. ? checking R code for possible problems ... NOTEboot.se <http://boot.se>: no visible global function definition for 'sd' boot.var: no visible global function definition for 'var' corr: no visible global function definition for 'cor' cv: no visible global function definition for 'sd' ratio.mean.sdhat.sd <http://ratio.mean.sdhat.sd>: no visible global function definition for 'sd' ratio.mean.vhat.var: no visible global function definition for 'var' ratio.sd <http://ratio.sd>: no visible global function definition for 'sd' ratio.var: no visible global function definition for 'var' varn: no visible global function definition for 'var' Undefined global functions or variables: cor sd var Consider adding importFrom("stats", "cor", "sd", "var") to your NAMESPACE file. 0 errors ?| 1 warning ?| 2 notes ?Error: R CMD check found WARNINGs Execution halted Exited with status 1.
+> 
+> 
+> 
+> 
+> 
+> 
+> 
+> On Sat, Apr 1, 2023 at 5:34?PM Duncan Murdoch <murdoch.duncan at gmail.com 
+> <mailto:murdoch.duncan at gmail.com>> wrote:
+> 
+>     On 31/03/2023 4:51 p.m., Dennis Boos wrote:
+>      > Recently I got a message from CRAN that my package Monte.Carlo.se
+>     <http://Monte.Carlo.se> (on CRAN
+>      > for the last few years) does not pass current testing.? There
+>     seemed to be
+>      > 2 problems:
+>      >
+>      >
+>     ***************************************************************************************************************
+>      >
+>      > 1. * checking LazyData ... NOTE
+>      >? ? 'LazyData' is specified without a 'data' directory
+>      >
+>      > I have this line in my DESCRIPTION file:
+>      >
+>      > LazyData: true
+>      >
+>      > Should I remove that?
+>      >
+>      >
+>     *****************************************************************************************************************
+>      >
+>      > 2. * checking examples with --run-donttest ... [42s/42s] ERROR
+>      > Running examples in ?Monte.Carlo.se-Ex.R? failed
+>      > The error most likely occurred in:
+>      >
+>      >> pairwise.se <http://pairwise.se>(hold,xcol=10:12,summary.f=cv)
+>      > Error: object 'hold' not found
+>      > Execution halted
+>      >
+>      >
+>     ***************************************************************************************
+>      >
+>      > So, I put in the R code to generate the data matrix *hold.? *But that
+>      > brought a host of other errors when checking in Rstudio with
+>      >
+>      >>
+>     devtools::check("S:/Documents/srcis/a.projects/Monte.Carlo.isr.and.package/Monte.Carlo.se.March.2023")
+>      >
+>      > I started seeing the following list about standard functions like sd.
+>      >
+>      > N? checking R code for possible problems (3.4s)
+>      > boot.se <http://boot.se>: no visible global function definition
+>     for 'sd'
+>      >? ? ?boot.var: no visible global function definition for 'var'
+>      >? ? ?corr: no visible global function definition for 'cor'
+>      >? ? ?cv: no visible global function definition for 'sd'
+>      > ratio.mean.sdhat.sd <http://ratio.mean.sdhat.sd>: no visible
+>     global function definition for 'sd'
+>      >? ? ?ratio.mean.vhat.var: no visible global function definition
+>     for 'var'
+>      > ratio.sd <http://ratio.sd>: no visible global function definition
+>     for 'sd'
+>      >? ? ?ratio.var: no visible global function definition for 'var'
+>      >? ? ?varn: no visible global function definition for 'var'
+>      >? ? ?Undefined global functions or variables:
+>      >? ? ? ?cor sd var
+>      >? ? ?Consider adding
+>      >? ? ? ?importFrom("stats", "cor", "sd", "var")
+>      >? ? ?to your NAMESPACE file.
+>      >
+>      > But you can't add those functions to NAMESPACE. Well I did but
+>      >
+>      > devtools::build()
+>      >
+>      >
+>      > gets rid of it. Also, I keep getting the message in the Rstudio check
+>      >
+>      > WARNING
+>      >? ? ?'qpdf' is needed for checks on size reduction of PDFs
+>      >
+>      >
+>      > but I got the latest versions of R and Rstudio and was able to get
+>      > qpdf to install and loaded with library(qpdf), but Rstudio still
+>     gives
+>      > that message.
+>      >
+> 
+>     It sounds as though you're using Roxygen2 to generate your NAMESPACE
+>     file.? If so, you need @imports directives in the comments
+>     (conventionally before the function that uses the import, but I
+>     think it
+>     doesn't really matter where).
+> 
+>     Duncan Murdoch
+> 
+> 
+> 
+> -- 
+> Dennis Boos? ? ? ? ? ? ? ? ? ? ? email: dennis_boos at ncsu.edu 
+> <mailto:dennis_boos at ncsu.edu>
+> Department of Statistics? ? Phone: 919-515-1918
+> NC State University? ? ? ? ? ?Fax: 919-515-1169
+> Raleigh, NC 27695-8203 http://www4.stat.ncsu.edu/~boos 
+> <http://www4.stat.ncsu.edu/~boos>
+> 
+> Aim for kindness, tolerance, and humility.
+
+
+From edd @end|ng |rom deb|@n@org  Tue Apr  4 16:23:41 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 4 Apr 2023 09:23:41 -0500
+Subject: [R-pkg-devel] correcting errors in an existing package
+In-Reply-To: <443004df-44a8-21b2-55f9-df852e9ac872@gmail.com>
+References: <CAJJ-gHw4O47SvoLHCeMxiTAsFWwCpJdxpZhom-4jRW5Onmp0QQ@mail.gmail.com>
+ <c6b52458-35c0-8ef4-93aa-d37c50769460@gmail.com>
+ <CAJJ-gHznV18NyPtuweYaGFdxisLTc+j26eN_uR2WVYzxttSG0Q@mail.gmail.com>
+ <443004df-44a8-21b2-55f9-df852e9ac872@gmail.com>
+Message-ID: <25644.13037.198070.776153@rob.eddelbuettel.com>
+
+
+On 4 April 2023 at 10:04, Duncan Murdoch wrote:
+| I'd suggest this:  build the tarball, and check the tarball.
+
+Strong second. The _Writing R Extensions_ manual does not mention devtools.
+As Uwe often reminds everybody here the package is not used by CRAN either.
+
+This may sound harsh but one of the key approaches to debugging often is to
+strip away the layers to identify more atomic and minimal operations.  (And
+RStudio can build the tarball for you too, see Build -> More -> Build Source
+Package. Similarly you can ask it to not check the package using devtools.
+You can always flip the switch back. Convenient helpers are useful, but at
+times it is advisable to turn them off.)
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From ||one| @end|ng |rom po@|t@co  Tue Apr  4 16:46:46 2023
+From: ||one| @end|ng |rom po@|t@co (Lionel Henry)
+Date: Tue, 4 Apr 2023 16:46:46 +0200
+Subject: [R-pkg-devel] correcting errors in an existing package
+In-Reply-To: <CAJf4E3ptG7j1M5MVUUvhx=S6DTzhiL0ksrD=X1uaVyAEw1+HjQ@mail.gmail.com>
+References: <CAJJ-gHw4O47SvoLHCeMxiTAsFWwCpJdxpZhom-4jRW5Onmp0QQ@mail.gmail.com>
+ <c6b52458-35c0-8ef4-93aa-d37c50769460@gmail.com>
+ <CAJJ-gHznV18NyPtuweYaGFdxisLTc+j26eN_uR2WVYzxttSG0Q@mail.gmail.com>
+ <CAJf4E3ptG7j1M5MVUUvhx=S6DTzhiL0ksrD=X1uaVyAEw1+HjQ@mail.gmail.com>
+Message-ID: <CAJf4E3qDNekz5BRLS0Wt8E=698T4e-QFVHhKTTfrvZHEB-U6og@mail.gmail.com>
+
+> Here is my namespace.  It says not to edit, but I had been told to add
+> the importFrom. So I didn't use
+> devtools::document() for fear roxygen2 would get rid of it.
+
+`devtools::check()` calls `document()` automatically so your changes to
+the NAMESPACE file get overwritten. You can see this in the output.
+
+To solve this, add the appropriate roxygen2 tag somewhere in your package e.g.
+
+```
+#' @importFrom stats var sd etc
+NULL
+```
+
+Best,
+Lionel
+
+On 4/4/23, Lionel Henry <lionel at posit.co> wrote:
+>> Here is my namespace.  It says not to edit, but I had been told to add
+>> the importFrom. So I didn't use
+>> devtools::document() for fear roxygen2 would get rid of it.
+>
+> `devtools::check()` calls `document()` automatically so your changes to
+> the NAMESPACE file get overwritten. You can see this in the output.
+>
+> To solve this, add the appropriate roxygen2 tag somewhere in your package
+> e.g.
+>
+> ```
+> #' @importFrom stats var sd etc
+> NULL
+> ```
+>
+> Best,
+> Lionel
+>
+> On 4/4/23, Dennis Boos <boos at ncsu.edu> wrote:
+>> Thanks so much to all of you.  If you have time, I'm getting really
+>> contradictory results.
+>>
+>> 1. It first seemed to have passed the check in Rstudio (I used
+>> device::build() in the R window and then clicked on check in the drop
+>> down
+>> menu under build).
+>>
+>> ==> devtools::check(document = FALSE, args = c('--as-cran'))
+>> ?? R CMD check results  Monte.Carlo.se 0.1.1 ????
+>> Duration: 56.6s
+>> 0 errors ? | 0 warnings ? | 0 notes ?
+>>
+>> R CMD check succeeded
+>>
+>> However, I then couldn't find the tar.gz where it was supposed to be. It
+>> was just gone.
+>>
+>>
+>> Here is my namespace.  It says not to edit, but I had been told to add
+>> the importFrom. So I didn't use
+>> devtools::document() for fear roxygen2 would get rid of it.
+>>
+>> # Generated by roxygen2: do not edit by hand
+>> importFrom("stats", "cor", "sd", "var")
+>> export(boot.se)
+>> export(jack.se)
+>> export(mc.se.matrix)
+>> export(mc.se.vector)
+>> export(pairwise.se)
+>> export(sim.samp)
+>>
+>> 4. Here is my DESCRIPTION file
+>>
+>> Package: Monte.Carlo.se
+>> Type: Package
+>> Title: Monte Carlo Standard Errors
+>> Version: 0.1.1
+>> Author: Dennis Boos, Kevin Matthew, Jason Osborne
+>> Maintainer: Dennis Boos <boos at ncsu.edu>
+>> Description: Computes Monte Carlo standard errors for summaries of
+>> Monte Carlo output. Summaries and their standard errors are based on
+>> columns of Monte Carlo simulation output. Dennis D. Boos and Jason A.
+>> Osborne (2015) <doi:10.1111/insr.12087>.
+>> License: GPL-3
+>> Encoding: UTF-8
+>> RoxygenNote: 7.2.3
+>> Suggests: knitr, rmarkdown
+>> Imports: stats
+>> VignetteBuilder: knitr
+>>
+>> 5. And because of your advice: " It sounds as though you're using
+>> Roxygen2 to generate your NAMESPACE file.
+>> ff so, you need @imports directives in the comments
+>> (conventionally before the function that uses the import, but I think it
+>> doesn't really matter where)."
+>>
+>> So I put "@imports" in the function that had trouble
+>>
+>> #' @examples
+>> #' \donttest{
+>> #' # Using the output data matrix hold generated in vignette Example3,
+>> #' # calculate jackknife and bootstrap standard errors
+>> #' # for the differences and ratios of the CV estimates.
+>> #' # First get the components of hold needed.
+>> #'
+>> #' @imports
+>> #'
+>> #' trim20 <- function(x){mean(x,.2)} # 20% trimmed mean function
+>>
+>> Was that the correct thing to do?
+>>
+>> 6. And here are the failed check results. I'm clueless at this point.
+>>
+>> ==> devtools::check(document = FALSE, args = c('--as-cran'))
+>> ?? Building
+>> ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????Setting
+>> env vars:
+>> ? CFLAGS    : -Wall -pedantic -fdiagnostics-color=always
+>> ? CXXFLAGS  : -Wall -pedantic -fdiagnostics-color=always
+>> ? CXX11FLAGS: -Wall -pedantic -fdiagnostics-color=always
+>> ? CXX14FLAGS: -Wall -pedantic -fdiagnostics-color=always
+>> ? CXX17FLAGS: -Wall -pedantic -fdiagnostics-color=always
+>> ? CXX20FLAGS: -Wall -pedantic -fdiagnostics-color=always?? R CMD build
+>> ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+>>  checking for file 'C:\Users\boos\Dropbox\My PC
+>> (boos-home)\Desktop\dennis\R.packages\Monte.Carlo.se.March.2023/DESCRIPTION'
+>> ...?  preparing 'Monte.Carlo.se':?  checking DESCRIPTION
+>> meta-information ...?  installing the package to build vignettes?
+>> creating vignettes (3.6s)?  checking for LF line-endings in source and
+>> make files and shell scripts?  checking for empty or unneeded
+>> directories?  building 'Monte.Carlo.se_0.1.1.tar.gz'
+>>    ?? Checking
+>> ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????Setting
+>> env vars:
+>> ? _R_CHECK_CRAN_INCOMING_REMOTE_               : FALSE
+>> ? _R_CHECK_CRAN_INCOMING_                      : FALSE
+>> ? _R_CHECK_FORCE_SUGGESTS_                     : FALSE
+>> ? _R_CHECK_PACKAGES_USED_IGNORE_UNUSED_IMPORTS_: FALSE
+>> ? NOT_CRAN                                     : true?? R CMD check
+>> ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+>>  using log directory 'C:/Users/boos/Dropbox/My PC
+>> (boos-home)/Desktop/dennis/R.packages/Monte.Carlo.se.Rcheck' (793ms)?
+>> using R version 4.2.3 (2023-03-15 ucrt)?  using platform:
+>> x86_64-w64-mingw32 (64-bit)?  using session charset: UTF-8?  using
+>> options '--no-manual --as-cran' (653ms)?  checking for file
+>> 'Monte.Carlo.se/DESCRIPTION'?  checking extension type ... Package?
+>> this is package 'Monte.Carlo.se' version '0.1.1'?  package encoding:
+>> UTF-8?  checking package namespace information?  checking package
+>> dependencies (3.2s)?  checking if this is a source package?  checking
+>> if there is a namespace?  checking for executable files (491ms)?
+>> checking for hidden files and directories ...?  checking for portable
+>> file names?  checking serialization versions?  checking whether
+>> package 'Monte.Carlo.se' can be installed (2.9s)?  checking installed
+>> package size ... ?  checking package directory ...?  checking for
+>> future file timestamps ... ?  checking 'build' directory?  checking
+>> DESCRIPTION meta-information ... ?  checking top-level files ...?
+>> checking for left-over files?  checking index information ... ?
+>> checking package subdirectories ... ?  checking R files for non-ASCII
+>> characters ... ?  checking R files for syntax errors ... ?  checking
+>> whether the package can be loaded ... ?  checking whether the package
+>> can be loaded with stated dependencies ... ?  checking whether the
+>> package can be unloaded cleanly ... ?  checking whether the namespace
+>> can be loaded with stated dependencies ... ?  checking whether the
+>> namespace can be unloaded cleanly ... ?  checking loading without
+>> being on the library search path ... N  checking dependencies in R
+>> code ...
+>>    Namespace in Imports field not imported from: 'stats'
+>>      All declared Imports should be used.?  checking S3 generic/method
+>> consistency (422ms)?  checking replacement functions ... ?  checking
+>> foreign function calls ... N  checking R code for possible problems
+>> (3s)
+>>    boot.se: no visible global function definition for 'sd'
+>>    boot.var: no visible global function definition for 'var'
+>>    corr: no visible global function definition for 'cor'
+>>    cv: no visible global function definition for 'sd'
+>>    ratio.mean.sdhat.sd: no visible global function definition for 'sd'
+>>    ratio.mean.vhat.var: no visible global function definition for 'var'
+>>    ratio.sd: no visible global function definition for 'sd'
+>>    ratio.var: no visible global function definition for 'var'
+>>    varn: no visible global function definition for 'var'
+>>    Undefined global functions or variables:
+>>      cor sd var
+>>    Consider adding
+>>      importFrom("stats", "cor", "sd", "var")
+>>    to your NAMESPACE file.?  checking Rd files ... ?  checking Rd
+>> metadata ... ?  checking Rd line widths ... ?  checking Rd
+>> cross-references ... ?  checking for missing documentation entries ...
+>> ?  checking for code/documentation mismatches (562ms)?  checking Rd
+>> \usage sections (661ms)?  checking Rd contents ... ?  checking for
+>> unstated dependencies in examples ... ?  checking installed files from
+>> 'inst/doc'W  checking files in 'vignettes' ...
+>>    Files in the 'vignettes' directory newer than same file in 'inst/doc':
+>>      'Brief-Overview.Rmd'?  checking examples (573ms)?  checking
+>> examples with --run-donttest ... [24s] OK (24.7s)?  checking for
+>> unstated dependencies in vignettes ... ?  checking package vignettes
+>> in 'inst/doc' ...?  checking re-building of vignette outputs (6.8s)?
+>> checking for non-standard things in the check directory ...?  checking
+>> for detritus in the temp directory
+>>
+>>    See
+>>      'C:/Users/boos/Dropbox/My PC
+>> (boos-home)/Desktop/dennis/R.packages/Monte.Carlo.se.Rcheck/00check.log'
+>>    for details.
+>>
+>>    ?? R CMD check results
+>> ???????????????????????????????????????????????????????????????????????????????????
+>> Monte.Carlo.se 0.1.1 ????
+>> Duration: 51.5s
+>> ? checking files in 'vignettes' ... WARNING
+>>   Files in the 'vignettes' directory newer than same file in 'inst/doc':
+>>     'Brief-Overview.Rmd'
+>> ? checking dependencies in R code ... NOTE
+>>   Namespace in Imports field not imported from: 'stats'
+>>     All declared Imports should be used.
+>> ? checking R code for possible problems ... NOTE
+>>   boot.se: no visible global function definition for 'sd'
+>>   boot.var: no visible global function definition for 'var'
+>>   corr: no visible global function definition for 'cor'
+>>   cv: no visible global function definition for 'sd'
+>>   ratio.mean.sdhat.sd: no visible global function definition for 'sd'
+>>   ratio.mean.vhat.var: no visible global function definition for 'var'
+>>   ratio.sd: no visible global function definition for 'sd'
+>>   ratio.var: no visible global function definition for 'var'
+>>   varn: no visible global function definition for 'var'
+>>   Undefined global functions or variables:
+>>     cor sd var
+>>   Consider adding
+>>     importFrom("stats", "cor", "sd", "var")
+>>   to your NAMESPACE file.
+>> 0 errors ? | 1 warning ? | 2 notes ?
+>> Error: R CMD check found WARNINGs
+>> Execution halted
+>>
+>> Exited with status 1.
+>>
+>>
+>>
+>>
+>>
+>> On Sat, Apr 1, 2023 at 5:34?PM Duncan Murdoch <murdoch.duncan at gmail.com>
+>> wrote:
+>>
+>>> On 31/03/2023 4:51 p.m., Dennis Boos wrote:
+>>> > Recently I got a message from CRAN that my package Monte.Carlo.se (on
+>>> CRAN
+>>> > for the last few years) does not pass current testing.  There seemed
+>>> > to
+>>> be
+>>> > 2 problems:
+>>> >
+>>> >
+>>> ***************************************************************************************************************
+>>> >
+>>> > 1. * checking LazyData ... NOTE
+>>> >    'LazyData' is specified without a 'data' directory
+>>> >
+>>> > I have this line in my DESCRIPTION file:
+>>> >
+>>> > LazyData: true
+>>> >
+>>> > Should I remove that?
+>>> >
+>>> >
+>>> *****************************************************************************************************************
+>>> >
+>>> > 2. * checking examples with --run-donttest ... [42s/42s] ERROR
+>>> > Running examples in ?Monte.Carlo.se-Ex.R? failed
+>>> > The error most likely occurred in:
+>>> >
+>>> >> pairwise.se(hold,xcol=10:12,summary.f=cv)
+>>> > Error: object 'hold' not found
+>>> > Execution halted
+>>> >
+>>> >
+>>> ***************************************************************************************
+>>> >
+>>> > So, I put in the R code to generate the data matrix *hold.  *But that
+>>> > brought a host of other errors when checking in Rstudio with
+>>> >
+>>> >>
+>>> devtools::check("S:/Documents/srcis/a.projects/Monte.Carlo.isr.and.package/Monte.Carlo.se.March.2023")
+>>> >
+>>> > I started seeing the following list about standard functions like sd.
+>>> >
+>>> > N  checking R code for possible problems (3.4s)
+>>> >     boot.se: no visible global function definition for 'sd'
+>>> >     boot.var: no visible global function definition for 'var'
+>>> >     corr: no visible global function definition for 'cor'
+>>> >     cv: no visible global function definition for 'sd'
+>>> >     ratio.mean.sdhat.sd: no visible global function definition for
+>>> > 'sd'
+>>> >     ratio.mean.vhat.var: no visible global function definition for
+>>> > 'var'
+>>> >     ratio.sd: no visible global function definition for 'sd'
+>>> >     ratio.var: no visible global function definition for 'var'
+>>> >     varn: no visible global function definition for 'var'
+>>> >     Undefined global functions or variables:
+>>> >       cor sd var
+>>> >     Consider adding
+>>> >       importFrom("stats", "cor", "sd", "var")
+>>> >     to your NAMESPACE file.
+>>> >
+>>> > But you can't add those functions to NAMESPACE. Well I did but
+>>> >
+>>> > devtools::build()
+>>> >
+>>> >
+>>> > gets rid of it. Also, I keep getting the message in the Rstudio check
+>>> >
+>>> > WARNING
+>>> >     'qpdf' is needed for checks on size reduction of PDFs
+>>> >
+>>> >
+>>> > but I got the latest versions of R and Rstudio and was able to get
+>>> > qpdf to install and loaded with library(qpdf), but Rstudio still gives
+>>> > that message.
+>>> >
+>>>
+>>> It sounds as though you're using Roxygen2 to generate your NAMESPACE
+>>> file.  If so, you need @imports directives in the comments
+>>> (conventionally before the function that uses the import, but I think it
+>>> doesn't really matter where).
+>>>
+>>> Duncan Murdoch
+>>>
+>>>
+>>
+>> --
+>> Dennis Boos                      email: dennis_boos at ncsu.edu
+>> Department of Statistics    Phone: 919-515-1918
+>> NC State University           Fax: 919-515-1169
+>> Raleigh, NC 27695-8203   http://www4.stat.ncsu.edu/~boos
+>>
+>> Aim for kindness, tolerance, and humility.
+>>
+>> 	[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>
+
+
+From ||one| @end|ng |rom po@|t@co  Tue Apr  4 22:19:15 2023
+From: ||one| @end|ng |rom po@|t@co (Lionel Henry)
+Date: Tue, 4 Apr 2023 22:19:15 +0200
+Subject: [R-pkg-devel] correcting errors in an existing package
+In-Reply-To: <CAJf4E3qDNekz5BRLS0Wt8E=698T4e-QFVHhKTTfrvZHEB-U6og@mail.gmail.com>
+References: <CAJJ-gHw4O47SvoLHCeMxiTAsFWwCpJdxpZhom-4jRW5Onmp0QQ@mail.gmail.com>
+ <c6b52458-35c0-8ef4-93aa-d37c50769460@gmail.com>
+ <CAJJ-gHznV18NyPtuweYaGFdxisLTc+j26eN_uR2WVYzxttSG0Q@mail.gmail.com>
+ <CAJf4E3ptG7j1M5MVUUvhx=S6DTzhiL0ksrD=X1uaVyAEw1+HjQ@mail.gmail.com>
+ <CAJf4E3qDNekz5BRLS0Wt8E=698T4e-QFVHhKTTfrvZHEB-U6og@mail.gmail.com>
+Message-ID: <CAJf4E3oQfZe20XcQhTndM_2=qHbPfBNJpyMuCKZWVmeGzizkmw@mail.gmail.com>
+
+Hi Dennis,
+
+I'm reincluding the list so that other people can see the clarifications too.
+
+On 4/4/23, Dennis Boos <boos at ncsu.edu> wrote:
+
+> Thanks so much. Could you give me a little more clarity?
+>
+> 1. Where do I add
+>
+> #' @importFrom stats var sd etc
+>
+> Within the R functions? Each one separately
+>
+> 2. Was "NULL" part of the code you meant me to use?
+
+The roxygen code needs to be attached to some objects. You can include
+the importFrom line as part of the docstring of another function but
+since an import is often used in many functions it makes more sense to
+declare them separately. Here I've used the `NULL` object for these
+declarations, another option would have been "_PACKAGE", see
+https://r-pkgs.org/man.html#sec-man-package-doc
+
+
+> 3. I had no idea that the "check" remakes the tar.gz file from the folder.
+> I thought it would have wanted to work off the created tar.gz because
+> that's what we submit.
+
+In the devtools workflow we rarely work directly with tar.gz files. They
+are created behind the scene in the temp folder. At submission time we
+use `devtools::release()` to create and send the tarball to CRAN.
+
+Of course it's also fine to use the manual workflow or mix both.
+
+Best,
+Lionel
+
+On 4/4/23, Lionel Henry <lionel at posit.co> wrote:
+>> Here is my namespace.  It says not to edit, but I had been told to add
+>> the importFrom. So I didn't use
+>> devtools::document() for fear roxygen2 would get rid of it.
+>
+> `devtools::check()` calls `document()` automatically so your changes to
+> the NAMESPACE file get overwritten. You can see this in the output.
+>
+> To solve this, add the appropriate roxygen2 tag somewhere in your package
+> e.g.
+>
+> ```
+> #' @importFrom stats var sd etc
+> NULL
+> ```
+>
+> Best,
+> Lionel
+>
+> On 4/4/23, Lionel Henry <lionel at posit.co> wrote:
+>>> Here is my namespace.  It says not to edit, but I had been told to add
+>>> the importFrom. So I didn't use
+>>> devtools::document() for fear roxygen2 would get rid of it.
+>>
+>> `devtools::check()` calls `document()` automatically so your changes to
+>> the NAMESPACE file get overwritten. You can see this in the output.
+>>
+>> To solve this, add the appropriate roxygen2 tag somewhere in your package
+>> e.g.
+>>
+>> ```
+>> #' @importFrom stats var sd etc
+>> NULL
+>> ```
+>>
+>> Best,
+>> Lionel
+>>
+>> On 4/4/23, Dennis Boos <boos at ncsu.edu> wrote:
+>>> Thanks so much to all of you.  If you have time, I'm getting really
+>>> contradictory results.
+>>>
+>>> 1. It first seemed to have passed the check in Rstudio (I used
+>>> device::build() in the R window and then clicked on check in the drop
+>>> down
+>>> menu under build).
+>>>
+>>> ==> devtools::check(document = FALSE, args = c('--as-cran'))
+>>> ?? R CMD check results  Monte.Carlo.se 0.1.1 ????
+>>> Duration: 56.6s
+>>> 0 errors ? | 0 warnings ? | 0 notes ?
+>>>
+>>> R CMD check succeeded
+>>>
+>>> However, I then couldn't find the tar.gz where it was supposed to be. It
+>>> was just gone.
+>>>
+>>>
+>>> Here is my namespace.  It says not to edit, but I had been told to add
+>>> the importFrom. So I didn't use
+>>> devtools::document() for fear roxygen2 would get rid of it.
+>>>
+>>> # Generated by roxygen2: do not edit by hand
+>>> importFrom("stats", "cor", "sd", "var")
+>>> export(boot.se)
+>>> export(jack.se)
+>>> export(mc.se.matrix)
+>>> export(mc.se.vector)
+>>> export(pairwise.se)
+>>> export(sim.samp)
+>>>
+>>> 4. Here is my DESCRIPTION file
+>>>
+>>> Package: Monte.Carlo.se
+>>> Type: Package
+>>> Title: Monte Carlo Standard Errors
+>>> Version: 0.1.1
+>>> Author: Dennis Boos, Kevin Matthew, Jason Osborne
+>>> Maintainer: Dennis Boos <boos at ncsu.edu>
+>>> Description: Computes Monte Carlo standard errors for summaries of
+>>> Monte Carlo output. Summaries and their standard errors are based on
+>>> columns of Monte Carlo simulation output. Dennis D. Boos and Jason A.
+>>> Osborne (2015) <doi:10.1111/insr.12087>.
+>>> License: GPL-3
+>>> Encoding: UTF-8
+>>> RoxygenNote: 7.2.3
+>>> Suggests: knitr, rmarkdown
+>>> Imports: stats
+>>> VignetteBuilder: knitr
+>>>
+>>> 5. And because of your advice: " It sounds as though you're using
+>>> Roxygen2 to generate your NAMESPACE file.
+>>> ff so, you need @imports directives in the comments
+>>> (conventionally before the function that uses the import, but I think it
+>>> doesn't really matter where)."
+>>>
+>>> So I put "@imports" in the function that had trouble
+>>>
+>>> #' @examples
+>>> #' \donttest{
+>>> #' # Using the output data matrix hold generated in vignette Example3,
+>>> #' # calculate jackknife and bootstrap standard errors
+>>> #' # for the differences and ratios of the CV estimates.
+>>> #' # First get the components of hold needed.
+>>> #'
+>>> #' @imports
+>>> #'
+>>> #' trim20 <- function(x){mean(x,.2)} # 20% trimmed mean function
+>>>
+>>> Was that the correct thing to do?
+>>>
+>>> 6. And here are the failed check results. I'm clueless at this point.
+>>>
+>>> ==> devtools::check(document = FALSE, args = c('--as-cran'))
+>>> ?? Building
+>>> ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????Setting
+>>> env vars:
+>>> ? CFLAGS    : -Wall -pedantic -fdiagnostics-color=always
+>>> ? CXXFLAGS  : -Wall -pedantic -fdiagnostics-color=always
+>>> ? CXX11FLAGS: -Wall -pedantic -fdiagnostics-color=always
+>>> ? CXX14FLAGS: -Wall -pedantic -fdiagnostics-color=always
+>>> ? CXX17FLAGS: -Wall -pedantic -fdiagnostics-color=always
+>>> ? CXX20FLAGS: -Wall -pedantic -fdiagnostics-color=always?? R CMD build
+>>> ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+>>>  checking for file 'C:\Users\boos\Dropbox\My PC
+>>> (boos-home)\Desktop\dennis\R.packages\Monte.Carlo.se.March.2023/DESCRIPTION'
+>>> ...?  preparing 'Monte.Carlo.se':?  checking DESCRIPTION
+>>> meta-information ...?  installing the package to build vignettes?
+>>> creating vignettes (3.6s)?  checking for LF line-endings in source and
+>>> make files and shell scripts?  checking for empty or unneeded
+>>> directories?  building 'Monte.Carlo.se_0.1.1.tar.gz'
+>>>    ?? Checking
+>>> ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????Setting
+>>> env vars:
+>>> ? _R_CHECK_CRAN_INCOMING_REMOTE_               : FALSE
+>>> ? _R_CHECK_CRAN_INCOMING_                      : FALSE
+>>> ? _R_CHECK_FORCE_SUGGESTS_                     : FALSE
+>>> ? _R_CHECK_PACKAGES_USED_IGNORE_UNUSED_IMPORTS_: FALSE
+>>> ? NOT_CRAN                                     : true?? R CMD check
+>>> ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+>>>  using log directory 'C:/Users/boos/Dropbox/My PC
+>>> (boos-home)/Desktop/dennis/R.packages/Monte.Carlo.se.Rcheck' (793ms)?
+>>> using R version 4.2.3 (2023-03-15 ucrt)?  using platform:
+>>> x86_64-w64-mingw32 (64-bit)?  using session charset: UTF-8?  using
+>>> options '--no-manual --as-cran' (653ms)?  checking for file
+>>> 'Monte.Carlo.se/DESCRIPTION'?  checking extension type ... Package?
+>>> this is package 'Monte.Carlo.se' version '0.1.1'?  package encoding:
+>>> UTF-8?  checking package namespace information?  checking package
+>>> dependencies (3.2s)?  checking if this is a source package?  checking
+>>> if there is a namespace?  checking for executable files (491ms)?
+>>> checking for hidden files and directories ...?  checking for portable
+>>> file names?  checking serialization versions?  checking whether
+>>> package 'Monte.Carlo.se' can be installed (2.9s)?  checking installed
+>>> package size ... ?  checking package directory ...?  checking for
+>>> future file timestamps ... ?  checking 'build' directory?  checking
+>>> DESCRIPTION meta-information ... ?  checking top-level files ...?
+>>> checking for left-over files?  checking index information ... ?
+>>> checking package subdirectories ... ?  checking R files for non-ASCII
+>>> characters ... ?  checking R files for syntax errors ... ?  checking
+>>> whether the package can be loaded ... ?  checking whether the package
+>>> can be loaded with stated dependencies ... ?  checking whether the
+>>> package can be unloaded cleanly ... ?  checking whether the namespace
+>>> can be loaded with stated dependencies ... ?  checking whether the
+>>> namespace can be unloaded cleanly ... ?  checking loading without
+>>> being on the library search path ... N  checking dependencies in R
+>>> code ...
+>>>    Namespace in Imports field not imported from: 'stats'
+>>>      All declared Imports should be used.?  checking S3 generic/method
+>>> consistency (422ms)?  checking replacement functions ... ?  checking
+>>> foreign function calls ... N  checking R code for possible problems
+>>> (3s)
+>>>    boot.se: no visible global function definition for 'sd'
+>>>    boot.var: no visible global function definition for 'var'
+>>>    corr: no visible global function definition for 'cor'
+>>>    cv: no visible global function definition for 'sd'
+>>>    ratio.mean.sdhat.sd: no visible global function definition for 'sd'
+>>>    ratio.mean.vhat.var: no visible global function definition for 'var'
+>>>    ratio.sd: no visible global function definition for 'sd'
+>>>    ratio.var: no visible global function definition for 'var'
+>>>    varn: no visible global function definition for 'var'
+>>>    Undefined global functions or variables:
+>>>      cor sd var
+>>>    Consider adding
+>>>      importFrom("stats", "cor", "sd", "var")
+>>>    to your NAMESPACE file.?  checking Rd files ... ?  checking Rd
+>>> metadata ... ?  checking Rd line widths ... ?  checking Rd
+>>> cross-references ... ?  checking for missing documentation entries ...
+>>> ?  checking for code/documentation mismatches (562ms)?  checking Rd
+>>> \usage sections (661ms)?  checking Rd contents ... ?  checking for
+>>> unstated dependencies in examples ... ?  checking installed files from
+>>> 'inst/doc'W  checking files in 'vignettes' ...
+>>>    Files in the 'vignettes' directory newer than same file in
+>>> 'inst/doc':
+>>>      'Brief-Overview.Rmd'?  checking examples (573ms)?  checking
+>>> examples with --run-donttest ... [24s] OK (24.7s)?  checking for
+>>> unstated dependencies in vignettes ... ?  checking package vignettes
+>>> in 'inst/doc' ...?  checking re-building of vignette outputs (6.8s)?
+>>> checking for non-standard things in the check directory ...?  checking
+>>> for detritus in the temp directory
+>>>
+>>>    See
+>>>      'C:/Users/boos/Dropbox/My PC
+>>> (boos-home)/Desktop/dennis/R.packages/Monte.Carlo.se.Rcheck/00check.log'
+>>>    for details.
+>>>
+>>>    ?? R CMD check results
+>>> ???????????????????????????????????????????????????????????????????????????????????
+>>> Monte.Carlo.se 0.1.1 ????
+>>> Duration: 51.5s
+>>> ? checking files in 'vignettes' ... WARNING
+>>>   Files in the 'vignettes' directory newer than same file in 'inst/doc':
+>>>     'Brief-Overview.Rmd'
+>>> ? checking dependencies in R code ... NOTE
+>>>   Namespace in Imports field not imported from: 'stats'
+>>>     All declared Imports should be used.
+>>> ? checking R code for possible problems ... NOTE
+>>>   boot.se: no visible global function definition for 'sd'
+>>>   boot.var: no visible global function definition for 'var'
+>>>   corr: no visible global function definition for 'cor'
+>>>   cv: no visible global function definition for 'sd'
+>>>   ratio.mean.sdhat.sd: no visible global function definition for 'sd'
+>>>   ratio.mean.vhat.var: no visible global function definition for 'var'
+>>>   ratio.sd: no visible global function definition for 'sd'
+>>>   ratio.var: no visible global function definition for 'var'
+>>>   varn: no visible global function definition for 'var'
+>>>   Undefined global functions or variables:
+>>>     cor sd var
+>>>   Consider adding
+>>>     importFrom("stats", "cor", "sd", "var")
+>>>   to your NAMESPACE file.
+>>> 0 errors ? | 1 warning ? | 2 notes ?
+>>> Error: R CMD check found WARNINGs
+>>> Execution halted
+>>>
+>>> Exited with status 1.
+>>>
+>>>
+>>>
+>>>
+>>>
+>>> On Sat, Apr 1, 2023 at 5:34?PM Duncan Murdoch <murdoch.duncan at gmail.com>
+>>> wrote:
+>>>
+>>>> On 31/03/2023 4:51 p.m., Dennis Boos wrote:
+>>>> > Recently I got a message from CRAN that my package Monte.Carlo.se (on
+>>>> CRAN
+>>>> > for the last few years) does not pass current testing.  There seemed
+>>>> > to
+>>>> be
+>>>> > 2 problems:
+>>>> >
+>>>> >
+>>>> ***************************************************************************************************************
+>>>> >
+>>>> > 1. * checking LazyData ... NOTE
+>>>> >    'LazyData' is specified without a 'data' directory
+>>>> >
+>>>> > I have this line in my DESCRIPTION file:
+>>>> >
+>>>> > LazyData: true
+>>>> >
+>>>> > Should I remove that?
+>>>> >
+>>>> >
+>>>> *****************************************************************************************************************
+>>>> >
+>>>> > 2. * checking examples with --run-donttest ... [42s/42s] ERROR
+>>>> > Running examples in ?Monte.Carlo.se-Ex.R? failed
+>>>> > The error most likely occurred in:
+>>>> >
+>>>> >> pairwise.se(hold,xcol=10:12,summary.f=cv)
+>>>> > Error: object 'hold' not found
+>>>> > Execution halted
+>>>> >
+>>>> >
+>>>> ***************************************************************************************
+>>>> >
+>>>> > So, I put in the R code to generate the data matrix *hold.  *But that
+>>>> > brought a host of other errors when checking in Rstudio with
+>>>> >
+>>>> >>
+>>>> devtools::check("S:/Documents/srcis/a.projects/Monte.Carlo.isr.and.package/Monte.Carlo.se.March.2023")
+>>>> >
+>>>> > I started seeing the following list about standard functions like sd.
+>>>> >
+>>>> > N  checking R code for possible problems (3.4s)
+>>>> >     boot.se: no visible global function definition for 'sd'
+>>>> >     boot.var: no visible global function definition for 'var'
+>>>> >     corr: no visible global function definition for 'cor'
+>>>> >     cv: no visible global function definition for 'sd'
+>>>> >     ratio.mean.sdhat.sd: no visible global function definition for
+>>>> > 'sd'
+>>>> >     ratio.mean.vhat.var: no visible global function definition for
+>>>> > 'var'
+>>>> >     ratio.sd: no visible global function definition for 'sd'
+>>>> >     ratio.var: no visible global function definition for 'var'
+>>>> >     varn: no visible global function definition for 'var'
+>>>> >     Undefined global functions or variables:
+>>>> >       cor sd var
+>>>> >     Consider adding
+>>>> >       importFrom("stats", "cor", "sd", "var")
+>>>> >     to your NAMESPACE file.
+>>>> >
+>>>> > But you can't add those functions to NAMESPACE. Well I did but
+>>>> >
+>>>> > devtools::build()
+>>>> >
+>>>> >
+>>>> > gets rid of it. Also, I keep getting the message in the Rstudio check
+>>>> >
+>>>> > WARNING
+>>>> >     'qpdf' is needed for checks on size reduction of PDFs
+>>>> >
+>>>> >
+>>>> > but I got the latest versions of R and Rstudio and was able to get
+>>>> > qpdf to install and loaded with library(qpdf), but Rstudio still
+>>>> > gives
+>>>> > that message.
+>>>> >
+>>>>
+>>>> It sounds as though you're using Roxygen2 to generate your NAMESPACE
+>>>> file.  If so, you need @imports directives in the comments
+>>>> (conventionally before the function that uses the import, but I think
+>>>> it
+>>>> doesn't really matter where).
+>>>>
+>>>> Duncan Murdoch
+>>>>
+>>>>
+>>>
+>>> --
+>>> Dennis Boos                      email: dennis_boos at ncsu.edu
+>>> Department of Statistics    Phone: 919-515-1918
+>>> NC State University           Fax: 919-515-1169
+>>> Raleigh, NC 27695-8203   http://www4.stat.ncsu.edu/~boos
+>>>
+>>> Aim for kindness, tolerance, and humility.
+>>>
+>>> 	[[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>
+>>
+>
+
+
+From |@w@onj@|7net @end|ng |rom gm@||@com  Tue Apr  4 22:28:52 2023
+From: |@w@onj@|7net @end|ng |rom gm@||@com (John Lawson)
+Date: Tue, 4 Apr 2023 14:28:52 -0600
+Subject: [R-pkg-devel] What checks are required before uploading a package
+ to CRAN?
+Message-ID: <CAJiVmSCVmKoSTcGOeUoBHKWH8Yvf9X4Q2jmoy8X+tCW08pMmfg@mail.gmail.com>
+
+My R package checks on my windows computer with no errors, warnings or
+notes. Next I used the win-builder upload page to check the package. I
+uploaded the tar.gz file on R-release. I read the 00check.log file and
+the only Note stated was that I was the developer. I understood that I
+needed to upload the file to both R-release and R-devel before I could
+upload it to the cran.r-project.org/submit.html page. I tried to
+upload the file to the R-devel, but I got the following message.
+
+ERROR: Access to the path
+'C:\Inetpub\ftproot\R-devel\daewr_1.2-9.tar.gz' is denied. (perhaps
+you uploaded already and the file has not been processed yet?)
+
+It has been 4 days since I uploaded the file to R-release, and I get
+automatic emails every other day from Uwe Ligges telling me my package
+has been checked and built.
+
+What checks are required before uploading the package tar.gz file to
+the cran.r-project.org/submit.html page?
+
+John Lawson
+
+
