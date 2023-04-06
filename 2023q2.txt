@@ -2365,3 +2365,188 @@ the cran.r-project.org/submit.html page?
 John Lawson
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Apr  5 09:17:45 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 5 Apr 2023 10:17:45 +0300
+Subject: [R-pkg-devel] 
+ What checks are required before uploading a package to CRAN?
+In-Reply-To: <CAJiVmSCVmKoSTcGOeUoBHKWH8Yvf9X4Q2jmoy8X+tCW08pMmfg@mail.gmail.com>
+References: <CAJiVmSCVmKoSTcGOeUoBHKWH8Yvf9X4Q2jmoy8X+tCW08pMmfg@mail.gmail.com>
+Message-ID: <20230405101745.3588f05c@Tarkus>
+
+On Tue, 4 Apr 2023 14:28:52 -0600
+John Lawson <lawsonjsl7net at gmail.com> wrote:
+
+> ERROR: Access to the path
+> 'C:\Inetpub\ftproot\R-devel\daewr_1.2-9.tar.gz' is denied. (perhaps
+> you uploaded already and the file has not been processed yet?)
+> 
+> It has been 4 days since I uploaded the file to R-release, and I get
+> automatic emails every other day from Uwe Ligges telling me my package
+> has been checked and built.
+
+This might need some help from Uwe Ligges to resolve the package queue
+problems.
+
+> What checks are required before uploading the package tar.gz file to
+> the cran.r-project.org/submit.html page?
+
+The policy strongly recommends checking the package with R-devel but
+doesn't require you to use Win-Builder. You can get R-devel for Windows
+from <https://cran.r-project.org/bin/windows/base/rdevel.html> and run
+R CMD check from that.
+
+If you don't want to install additional software, you can use R-hub
+<https://builder.r-hub.io/advanced> and other package checking services.
+They don't run exactly the same software on exactly the same hardware
+as CRAN checks, but they do fulfil the requirement to have your package
+checked by R-devel.
+
+-- 
+Best regards,
+Ivan
+
+
+From rodr|go@tob@rc@rr|zo @end|ng |rom uw@@edu@@u  Wed Apr  5 09:45:14 2023
+From: rodr|go@tob@rc@rr|zo @end|ng |rom uw@@edu@@u (Rodrigo Tobar Carrizo)
+Date: Wed, 5 Apr 2023 07:45:14 +0000
+Subject: [R-pkg-devel] OpenMP and CRAN checks
+In-Reply-To: <25644.11616.284536.185116@rob.eddelbuettel.com>
+References: <SYCPR01MB40477F5D574DBBC27DD0F32BA9939@SYCPR01MB4047.ausprd01.prod.outlook.com>
+ <25644.11616.284536.185116@rob.eddelbuettel.com>
+Message-ID: <SYCPR01MB4047F1337590AB97ED22DD41A9909@SYCPR01MB4047.ausprd01.prod.outlook.com>
+
+Hi Dirk,
+
+Thanks for your response. In a way this is more or less what I knew we would have to end up doing (i.e., explicit limit ourselves to 2 CPUs maximum for anything running on CRAN), but it still confuses me why this didn't just happen, given how CRAN sets OMP_THREAD_LIMIT=2 already, which should constrain us automatically.
+
+I've taken your advice onboard and put in a very similar function that I am then invoking in all examples, tests and vignettes. Our code uses roxygen2, and there are 150 @examples in the inline documentation, so a midly complex sed command did the trick. The vignettes and tests were not as bad.
+
+We'll try a resubmission and see how we fare.
+
+Thanks again,
+
+Rodrigo
+________________________________
+Von: Dirk Eddelbuettel <edd at debian.org>
+Gesendet: Dienstag, 4. April 2023 22:00
+An: Rodrigo Tobar Carrizo <rodrigo.tobarcarrizo at uwa.edu.au>
+Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Betreff: Re: [R-pkg-devel] OpenMP and CRAN checks
+
+
+Hi Rodrigo,
+
+This came up recently again on social media where I illustrated how the
+tiledb package deals with it. So a quick recap:
+
+First off, let's make the goals clear.
+
+We want to _simultaneously_
+ - abide by CRAN Policy rules and cap ourselves to two cores there
+ - do not impose any limits on our users: ALL cores ALL the time
+
+The solution we implemented a while is to use a function _that is an opt-in_
+which looks at the standard OpenMP variable as well as at R's own Ncpus:
+
+    limitTileDBCores <- function(ncores, verbose=FALSE) {
+      if (missing(ncores)) {
+        ## start with a simple fallback: 'Ncpus' (if set) or else 2
+        ncores <- getOption("Ncpus", 2L)
+        ## also consider OMP_THREAD_LIMIT (cf Writing R Extensions), gets NA if envvar unset
+        ompcores <- as.integer(Sys.getenv("OMP_THREAD_LIMIT"))
+        ## and then keep the smaller
+        ncores <- min(na.omit(c(ncores, ompcores)))
+      }
+      stopifnot(`The 'ncores' argument must be numeric or character` = is.numeric(ncores) || is.character(ncores))
+      ## for brevity omitted here how ncores propagates to TileDB library -- creates `cfg`
+      if (verbose) message("Limiting TileDB to ",ncores," cores. See ?limitTileDBCores.")
+      invisible(cfg)
+    }
+
+The key is that we reflect the smaller of Ncpus and OMP_THREAD_LIMIT along
+with a fall-back of two in case nothing is set.
+
+That function is then called (and feeds into the library config) at the
+beginning of each
+ - help file example
+ - unit test file
+ - vignette
+
+As example (from a help file) is
+
+    \dontshow{ctx <- tiledb_ctx(limitTileDBCores())}
+
+(where ctx a context object controlling, inter alia, the thread pool).
+
+By throttling it anywhere CRAN executes code, and using the prescribed
+maximum of two core, we satisfy goal one of not getting thrown off CRAN. By
+making it an _explicit_ opt-in we satisfy our goal of never slowing down our
+users who (presumably) do not opt in. And those who have, say, Ncpus set (as
+I do to spread R's own package installations over all my cores) get the
+maximum performance for examples, tests, and vignettes too as they opted in.
+
+"Works for us" as they say.
+
+Hope this helps,  Dirk
+
+--
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+	[[alternative HTML version deleted]]
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Wed Apr  5 11:08:25 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Wed, 5 Apr 2023 11:08:25 +0200
+Subject: [R-pkg-devel] 
+ What checks are required before uploading a package to CRAN?
+In-Reply-To: <20230405101745.3588f05c@Tarkus>
+References: <CAJiVmSCVmKoSTcGOeUoBHKWH8Yvf9X4Q2jmoy8X+tCW08pMmfg@mail.gmail.com>
+ <20230405101745.3588f05c@Tarkus>
+Message-ID: <bd2ecfc2-fb5d-b4da-c10b-24f8fdbbeab0@statistik.tu-dortmund.de>
+
+
+
+On 05.04.2023 09:17, Ivan Krylov wrote:
+> On Tue, 4 Apr 2023 14:28:52 -0600
+> John Lawson <lawsonjsl7net at gmail.com> wrote:
+> 
+>> ERROR: Access to the path
+>> 'C:\Inetpub\ftproot\R-devel\daewr_1.2-9.tar.gz' is denied. (perhaps
+>> you uploaded already and the file has not been processed yet?)
+>>
+>> It has been 4 days since I uploaded the file to R-release, and I get
+>> automatic emails every other day from Uwe Ligges telling me my package
+>> has been checked and built.
+
+Interesting, you shouild receive one mail for each upload.
+Can yoiu tell me when you got an unexpected one? Can you forward it to me?
+
+I do not see a package in any of the queues right now.
+
+Best,
+Uwe Ligges
+
+
+
+> 
+> This might need some help from Uwe Ligges to resolve the package queue
+> problems.
+> 
+>> What checks are required before uploading the package tar.gz file to
+>> the cran.r-project.org/submit.html page?
+> 
+> The policy strongly recommends checking the package with R-devel but
+> doesn't require you to use Win-Builder. You can get R-devel for Windows
+> from <https://cran.r-project.org/bin/windows/base/rdevel.html> and run
+> R CMD check from that.
+> 
+> If you don't want to install additional software, you can use R-hub
+> <https://builder.r-hub.io/advanced> and other package checking services.
+> They don't run exactly the same software on exactly the same hardware
+> as CRAN checks, but they do fulfil the requirement to have your package
+> checked by R-devel.
+>
+
+
