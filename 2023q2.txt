@@ -2726,3 +2726,86 @@ Uwe Ligges
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From b@rt-j@n@v@nro@@um @end|ng |rom wur@n|  Tue Apr 11 09:37:23 2023
+From: b@rt-j@n@v@nro@@um @end|ng |rom wur@n| (Rossum, Bart-Jan van)
+Date: Tue, 11 Apr 2023 07:37:23 +0000
+Subject: [R-pkg-devel] Problems on R-devel because of changes in stats
+ family function
+Message-ID: <AM0PR01MB4369F5226E6481DAF9C1C664B99A9@AM0PR01MB4369.eurprd01.prod.exchangelabs.com>
+
+Hi,
+
+When submitting a new version of my LMMsolver package to CRAN, it fails on the automated tests, see:
+
+Windows: https://win-builder.r-project.org/incoming_pretest/LMMsolver_1.0.5_20230407_120945/Windows/00check.log
+
+I managed to track this down to a change in the output of the family function in the stats package:
+https://search.r-project.org/R/refmans/stats/html/family.html
+
+More specifically, it is about a new output in the call to family():
+
+dispersion
+(optional since R version 4.3.0) numeric: value of the dispersion parameter, if fixed, or NA_real_ if free.
+
+Even though the documentation seems to suggest this output is optional, I don't see a way to suppress it. In all my calls to family I get an extra output dispersion with value NA.
+I need to store the family information in my own outputs for further processing. Also my output are quite complex by themselves so I tend to check my full output objects with outputs previously stored.
+Exactly this is giving me problems now. In R 4.3 all of my outputs will have an extra item as well, causing the tests to fail.
+
+I am not sure how to solve this. I could suppress the affected tests when an installation of stats with version >= 4.3 is detected, but that doesn't feel good.
+Do you have any other suggestions on how to solve this.
+
+Thanks in advance,
+Bart-Jan
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Apr 11 10:45:04 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 11 Apr 2023 04:45:04 -0400
+Subject: [R-pkg-devel] Problems on R-devel because of changes in stats
+ family function
+In-Reply-To: <AM0PR01MB4369F5226E6481DAF9C1C664B99A9@AM0PR01MB4369.eurprd01.prod.exchangelabs.com>
+References: <AM0PR01MB4369F5226E6481DAF9C1C664B99A9@AM0PR01MB4369.eurprd01.prod.exchangelabs.com>
+Message-ID: <b706ed1a-676a-1283-a9c9-7c13bc6932ee@gmail.com>
+
+On 11/04/2023 3:37 a.m., Rossum, Bart-Jan van wrote:
+> Hi,
+> 
+> When submitting a new version of my LMMsolver package to CRAN, it fails on the automated tests, see:
+> 
+> Windows: https://win-builder.r-project.org/incoming_pretest/LMMsolver_1.0.5_20230407_120945/Windows/00check.log
+> 
+> I managed to track this down to a change in the output of the family function in the stats package:
+> https://search.r-project.org/R/refmans/stats/html/family.html
+> 
+> More specifically, it is about a new output in the call to family():
+> 
+> dispersion
+> (optional since R version 4.3.0) numeric: value of the dispersion parameter, if fixed, or NA_real_ if free.
+> 
+> Even though the documentation seems to suggest this output is optional, I don't see a way to suppress it. In all my calls to family I get an extra output dispersion with value NA.
+> I need to store the family information in my own outputs for further processing. Also my output are quite complex by themselves so I tend to check my full output objects with outputs previously stored.
+> Exactly this is giving me problems now. In R 4.3 all of my outputs will have an extra item as well, causing the tests to fail.
+> 
+> I am not sure how to solve this. I could suppress the affected tests when an installation of stats with version >= 4.3 is detected, but that doesn't feel good.
+> Do you have any other suggestions on how to solve this.
+
+One way to solve it would be to set the dispersion parameter to NULL 
+before doing your comparison.  That should work across R versions.  For 
+example,
+
+    f <- gaussian()
+    f$dispersion <- NULL
+    expect_equal_to_reference(f, "family")
+
+Another possibility would be to save two reference values, e.g.
+
+    f <- gaussian()
+    expect_equal_to_reference(f, if (getRversion() < 4.3.0) "oldfamily" 
+else "newfamily")
+
+You should do some sort of manual comparison when those two reference 
+values are first created to make sure there are no other changes.
+
+Duncan Murdoch
+
+
