@@ -4719,3 +4719,210 @@ Joshua Ulrich  |  about.me/joshuaulrich
 FOSS Trading  |  www.fosstrading.com
 
 
+From d@v|d_j_z|mmerm@nn @end|ng |rom hotm@||@com  Fri Apr 21 21:17:15 2023
+From: d@v|d_j_z|mmerm@nn @end|ng |rom hotm@||@com (D Z)
+Date: Fri, 21 Apr 2023 19:17:15 +0000
+Subject: [R-pkg-devel] Segmentation Fault cause 'memory not mapped' on
+ Debian only
+Message-ID: <AS8PR03MB101195FCD51D3690649B9AA30D3609@AS8PR03MB10119.eurprd03.prod.outlook.com>
+
+Hi all,
+I wanted to publish my RITCH package (https://github.com/DavZim/RITCH) to CRAN, which has Rcpp code.
+It has, in it?s CICD Pipeline, Tests for Macos, Windows, and Ubuntu (devel, release,, and oldrel-1), which all succeed on Github Actions.
+When I submitted the package to CRAN, I was notified, that I got the following error on Debian (the tests on Windows throw no such bug, neither do the Github Actions tests):
+
+
+   *** caught segfault ***
+
+  address 0x55939b7ca000, cause 'memory not mapped'
+
+  Segmentation fault
+
+The full Report is currently available here: https://win-builder.r-project.org/incoming_pretest/RITCH_0.1.14_20230420_223157/Debian/00check.log (note the error happens in the test_filter_itch.R unit tests).
+
+I looked for the error online but couldn?t find anything useful, and as I am not able to reproduce the segfault locally, cannot debug it.
+Do you have any ideas or hunches what might cause this and how to resolve it?
+
+Thank you,
+David
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Fri Apr 21 21:32:50 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 21 Apr 2023 14:32:50 -0500
+Subject: [R-pkg-devel] Segmentation Fault cause 'memory not mapped' on
+ Debian only
+In-Reply-To: <AS8PR03MB101195FCD51D3690649B9AA30D3609@AS8PR03MB10119.eurprd03.prod.outlook.com>
+References: <AS8PR03MB101195FCD51D3690649B9AA30D3609@AS8PR03MB10119.eurprd03.prod.outlook.com>
+Message-ID: <25666.58594.218291.306640@rob.eddelbuettel.com>
+
+
+Hi David,
+
+On 21 April 2023 at 19:17, D Z wrote:
+| Hi all,
+| I wanted to publish my RITCH package (https://github.com/DavZim/RITCH) to CRAN, which has Rcpp code.
+
+That would be great!
+
+| It has, in it?s CICD Pipeline, Tests for Macos, Windows, and Ubuntu (devel, release,, and oldrel-1), which all succeed on Github Actions.
+| When I submitted the package to CRAN, I was notified, that I got the following error on Debian (the tests on Windows throw no such bug, neither do the Github Actions tests):
+| 
+| 
+|    *** caught segfault ***
+| 
+|   address 0x55939b7ca000, cause 'memory not mapped'
+| 
+|   Segmentation fault
+| 
+| The full Report is currently available here: https://win-builder.r-project.org/incoming_pretest/RITCH_0.1.14_20230420_223157/Debian/00check.log (note the error happens in the test_filter_itch.R unit tests).
+| 
+| I looked for the error online but couldn?t find anything useful, and as I am not able to reproduce the segfault locally, cannot debug it.
+| Do you have any ideas or hunches what might cause this and how to resolve it?
+
+"Absence of error" on one platform does proove correctness on all, the hint
+from the segfault should be taken seriously.  I just updated my older
+checkout of your repo, built a current tarball and simply invoked
+
+   R CMD check --use-valgrind RITCH_0.1.14.tar.gz
+
+which you could do on CI too (I can help as needed, I would also pull the CI
+runners forward from Ubuntu 20.04 to 22.04). When we do the above, the
+examples output file RITCH-Ex.Rout ends in
+
+  ==2269271== LEAK SUMMARY:
+  ==2269271==    definitely lost: 1,363,969 bytes in 5,473 blocks
+  ==2269271==    indirectly lost: 177,235 bytes in 1,281 blocks
+  ==2269271==      possibly lost: 101,924,267 bytes in 148 blocks
+  ==2269271==    still reachable: 89,572,890 bytes in 17,950 blocks
+  ==2269271==         suppressed: 0 bytes in 0 blocks
+  ==2269271== Reachable blocks (those to which a pointer was found) are not shown.
+  ==2269271== To see them, rerun with: --leak-check=full --show-leak-kinds=all
+  ==2269271== 
+  ==2269271== ERROR SUMMARY: 30 errors from 30 contexts (suppressed: 0 from 0)
+
+and the tests end in
+
+  ==2273761== LEAK SUMMARY:
+  ==2273761==    definitely lost: 5,223,981 bytes in 141,151 blocks
+  ==2273761==    indirectly lost: 2,241,700 bytes in 2,767 blocks
+  ==2273761==      possibly lost: 1,201,493,644 bytes in 270 blocks
+  ==2273761==    still reachable: 133,909,136 bytes in 19,110 blocks
+  ==2273761==         suppressed: 0 bytes in 0 blocks
+  ==2273761== Reachable blocks (those to which a pointer was found) are not shown.
+  ==2273761== To see them, rerun with: --leak-check=full --show-leak-kinds=all
+  ==2273761== 
+  ==2273761== ERROR SUMMARY: 43 errors from 39 contexts (suppressed: 0 from 0)
+
+That probably warrants a few more close looks.
+
+Hth, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From jo@h@m@u|r|ch @end|ng |rom gm@||@com  Fri Apr 21 21:48:31 2023
+From: jo@h@m@u|r|ch @end|ng |rom gm@||@com (Joshua Ulrich)
+Date: Fri, 21 Apr 2023 14:48:31 -0500
+Subject: [R-pkg-devel] Segmentation Fault cause 'memory not mapped' on
+ Debian only
+In-Reply-To: <25666.58594.218291.306640@rob.eddelbuettel.com>
+References: <AS8PR03MB101195FCD51D3690649B9AA30D3609@AS8PR03MB10119.eurprd03.prod.outlook.com>
+ <25666.58594.218291.306640@rob.eddelbuettel.com>
+Message-ID: <CAPPM_gTsq1pT1nsds63ag1rZkx4t4c3vp-wf2H4uJd3rAO9bog@mail.gmail.com>
+
+Hi David,
+
+In addition to running under valgrind as Dirk suggests below, you
+should also run under UBSAN and ASAN.
+
+You can do all 3 (and more) using Winston Cheng's docker images:
+https://github.com/wch/r-debug/
+
+That should help you narrow down the problematic code.
+
+Best,
+Josh
+
+
+On Fri, Apr 21, 2023 at 2:33?PM Dirk Eddelbuettel <edd at debian.org> wrote:
+>
+>
+> Hi David,
+>
+> On 21 April 2023 at 19:17, D Z wrote:
+> | Hi all,
+> | I wanted to publish my RITCH package (https://github.com/DavZim/RITCH) to CRAN, which has Rcpp code.
+>
+> That would be great!
+>
+> | It has, in it?s CICD Pipeline, Tests for Macos, Windows, and Ubuntu (devel, release,, and oldrel-1), which all succeed on Github Actions.
+> | When I submitted the package to CRAN, I was notified, that I got the following error on Debian (the tests on Windows throw no such bug, neither do the Github Actions tests):
+> |
+> |
+> |    *** caught segfault ***
+> |
+> |   address 0x55939b7ca000, cause 'memory not mapped'
+> |
+> |   Segmentation fault
+> |
+> | The full Report is currently available here: https://win-builder.r-project.org/incoming_pretest/RITCH_0.1.14_20230420_223157/Debian/00check.log (note the error happens in the test_filter_itch.R unit tests).
+> |
+> | I looked for the error online but couldn?t find anything useful, and as I am not able to reproduce the segfault locally, cannot debug it.
+> | Do you have any ideas or hunches what might cause this and how to resolve it?
+>
+> "Absence of error" on one platform does proove correctness on all, the hint
+> from the segfault should be taken seriously.  I just updated my older
+> checkout of your repo, built a current tarball and simply invoked
+>
+>    R CMD check --use-valgrind RITCH_0.1.14.tar.gz
+>
+> which you could do on CI too (I can help as needed, I would also pull the CI
+> runners forward from Ubuntu 20.04 to 22.04). When we do the above, the
+> examples output file RITCH-Ex.Rout ends in
+>
+>   ==2269271== LEAK SUMMARY:
+>   ==2269271==    definitely lost: 1,363,969 bytes in 5,473 blocks
+>   ==2269271==    indirectly lost: 177,235 bytes in 1,281 blocks
+>   ==2269271==      possibly lost: 101,924,267 bytes in 148 blocks
+>   ==2269271==    still reachable: 89,572,890 bytes in 17,950 blocks
+>   ==2269271==         suppressed: 0 bytes in 0 blocks
+>   ==2269271== Reachable blocks (those to which a pointer was found) are not shown.
+>   ==2269271== To see them, rerun with: --leak-check=full --show-leak-kinds=all
+>   ==2269271==
+>   ==2269271== ERROR SUMMARY: 30 errors from 30 contexts (suppressed: 0 from 0)
+>
+> and the tests end in
+>
+>   ==2273761== LEAK SUMMARY:
+>   ==2273761==    definitely lost: 5,223,981 bytes in 141,151 blocks
+>   ==2273761==    indirectly lost: 2,241,700 bytes in 2,767 blocks
+>   ==2273761==      possibly lost: 1,201,493,644 bytes in 270 blocks
+>   ==2273761==    still reachable: 133,909,136 bytes in 19,110 blocks
+>   ==2273761==         suppressed: 0 bytes in 0 blocks
+>   ==2273761== Reachable blocks (those to which a pointer was found) are not shown.
+>   ==2273761== To see them, rerun with: --leak-check=full --show-leak-kinds=all
+>   ==2273761==
+>   ==2273761== ERROR SUMMARY: 43 errors from 39 contexts (suppressed: 0 from 0)
+>
+> That probably warrants a few more close looks.
+>
+> Hth, Dirk
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+
+-- 
+Joshua Ulrich  |  about.me/joshuaulrich
+FOSS Trading  |  www.fosstrading.com
+
+
