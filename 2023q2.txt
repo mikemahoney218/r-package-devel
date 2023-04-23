@@ -4926,3 +4926,350 @@ Joshua Ulrich  |  about.me/joshuaulrich
 FOSS Trading  |  www.fosstrading.com
 
 
+From d@v|d_j_z|mmerm@nn @end|ng |rom hotm@||@com  Sat Apr 22 16:43:50 2023
+From: d@v|d_j_z|mmerm@nn @end|ng |rom hotm@||@com (D Z)
+Date: Sat, 22 Apr 2023 14:43:50 +0000
+Subject: [R-pkg-devel] Segmentation Fault cause 'memory not mapped' on
+ Debian only
+In-Reply-To: <CAPPM_gTsq1pT1nsds63ag1rZkx4t4c3vp-wf2H4uJd3rAO9bog@mail.gmail.com>
+References: <AS8PR03MB101195FCD51D3690649B9AA30D3609@AS8PR03MB10119.eurprd03.prod.outlook.com>
+ <25666.58594.218291.306640@rob.eddelbuettel.com>
+ <CAPPM_gTsq1pT1nsds63ag1rZkx4t4c3vp-wf2H4uJd3rAO9bog@mail.gmail.com>
+Message-ID: <AS8PR03MB10119AD02237E2C7F1A6D2E33D3619@AS8PR03MB10119.eurprd03.prod.outlook.com>
+
+Thank you Dirk and Joshua,
+Using Valgrind, I have found several memory leaks in the program that required some smaller rewrites.
+Valgrind (with Makevars flags -O0 and --ggdb) now reports no "definitely" and no "indirectly" lost bytes so that's a small win already.
+
+But two questions remain:
+
+  1.  I have 960 bytes "possibly lost", where the callstack does not touch any of my code but seems to originate from subset.c (base R?) and libgomp, is this ok/expected, or am I misreading the output?
+  2.  For all tests that I ran, there are still 105mln bytes still reachable. I read online that this can be problematic, but usually isn't. Is this something that I should invest more time in or can I ignore this?
+
+Thank you very much!
+David
+
+
+To reproduce the valgrind output using bash (this is using the latest code commit https://github.com/DavZim/RITCH/commit/13ea3f478717edf24f8db709f0cac1e22b501afc)
+
+echo "PKG_CXXFLAGS=-O0 -ggdb\nPKG_LIBS=-O0 -ggdb -lz" >> src/Makevars.win
+echo "PKG_CXXFLAGS=-O0 -ggdb\nPKG_LIBS=-O0 -ggdb -lz" >> src/Makevars
+
+R CMD build .
+R CMD INSTALL RITCH_0.1.15.tar.gz
+
+R -d "valgrind --tool=memcheck --leak-check=full" -e "tinytest::test_package('RITCH')"
+# omitted for brevity...
+tinytest::test_package('RITCH')
+test_filename_helpers.R.......   13 tests OK 1.1s
+test_filter_itch.R............   60 tests OK 30.1s
+test_gz_functions.R...........    5 tests OK 6.0s
+test_read_functions.R.........  122 tests OK 14.1s
+test_write_itch.R.............   18 tests OK 33.0s
+All ok, 218 results (1m 24.5s)
+>
+==1535==
+==1535== HEAP SUMMARY:
+==1535==     in use at exit: 105,616,149 bytes in 18,292 blocks
+==1535==   total heap usage: 562,268 allocs, 543,976 frees, 6,834,040,088 bytes allocated
+==1535==
+==1535== 960 bytes in 3 blocks are possibly lost in loss record 199 of 2,000
+==1535==    at 0x483DD99: calloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+==1535==    by 0x40149DA: allocate_dtv (dl-tls.c:286)
+==1535==    by 0x40149DA: _dl_allocate_tls (dl-tls.c:532)
+==1535==    by 0x5741322: allocate_stack (allocatestack.c:622)
+==1535==    by 0x5741322: pthread_create@@GLIBC_2.2.5 (pthread_create.c:660)
+==1535==    by 0x5710DEA: ??? (in /usr/lib/x86_64-linux-gnu/libgomp.so.1.0.0)
+==1535==    by 0x57088E0: GOMP_parallel (in /usr/lib/x86_64-linux-gnu/libgomp.so.1.0.0)
+==1535==    by 0x10882EB9: subsetVectorRaw (subset.c:54)
+==1535==    by 0x10883B50: subsetDT (subset.c:309)
+==1535==    by 0x494253D: ??? (in /usr/lib/R/lib/libR.so)
+==1535==    by 0x49861A6: ??? (in /usr/lib/R/lib/libR.so)
+==1535==    by 0x4999D77: Rf_eval (in /usr/lib/R/lib/libR.so)
+==1535==    by 0x499BC2E: ??? (in /usr/lib/R/lib/libR.so)
+==1535==    by 0x499CB21: Rf_applyClosure (in /usr/lib/R/lib/libR.so)
+==1535==
+==1535== LEAK SUMMARY:
+==1535==    definitely lost: 0 bytes in 0 blocks
+==1535==    indirectly lost: 0 bytes in 0 blocks
+==1535==      possibly lost: 960 bytes in 3 blocks
+==1535==    still reachable: 105,615,189 bytes in 18,289 blocks
+==1535==                       of which reachable via heuristic:
+==1535==                         newarray           : 4,264 bytes in 1 blocks
+==1535==         suppressed: 0 bytes in 0 blocks
+==1535== Reachable blocks (those to which a pointer was found) are not shown.
+==1535== To see them, rerun with: --leak-check=full --show-leak-kinds=all
+==1535==
+==1535== For lists of detected and suppressed errors, rerun with: -s
+==1535== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 0 from 0)
+
+________________________________
+From: Joshua Ulrich <josh.m.ulrich at gmail.com>
+Sent: Friday, April 21, 2023 7:48 PM
+To: Dirk Eddelbuettel <edd at debian.org>
+Cc: D Z <david_j_zimmermann at hotmail.com>; r-package-devel at r-project.org <R-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Segmentation Fault cause 'memory not mapped' on Debian only
+
+Hi David,
+
+In addition to running under valgrind as Dirk suggests below, you
+should also run under UBSAN and ASAN.
+
+You can do all 3 (and more) using Winston Cheng's docker images:
+https://github.com/wch/r-debug/
+
+That should help you narrow down the problematic code.
+
+Best,
+Josh
+
+
+On Fri, Apr 21, 2023 at 2:33?PM Dirk Eddelbuettel <edd at debian.org> wrote:
+>
+>
+> Hi David,
+>
+> On 21 April 2023 at 19:17, D Z wrote:
+> | Hi all,
+> | I wanted to publish my RITCH package (https://github.com/DavZim/RITCH) to CRAN, which has Rcpp code.
+>
+> That would be great!
+>
+> | It has, in it?s CICD Pipeline, Tests for Macos, Windows, and Ubuntu (devel, release,, and oldrel-1), which all succeed on Github Actions.
+> | When I submitted the package to CRAN, I was notified, that I got the following error on Debian (the tests on Windows throw no such bug, neither do the Github Actions tests):
+> |
+> |
+> |    *** caught segfault ***
+> |
+> |   address 0x55939b7ca000, cause 'memory not mapped'
+> |
+> |   Segmentation fault
+> |
+> | The full Report is currently available here: https://win-builder.r-project.org/incoming_pretest/RITCH_0.1.14_20230420_223157/Debian/00check.log (note the error happens in the test_filter_itch.R unit tests).
+> |
+> | I looked for the error online but couldn?t find anything useful, and as I am not able to reproduce the segfault locally, cannot debug it.
+> | Do you have any ideas or hunches what might cause this and how to resolve it?
+>
+> "Absence of error" on one platform does proove correctness on all, the hint
+> from the segfault should be taken seriously.  I just updated my older
+> checkout of your repo, built a current tarball and simply invoked
+>
+>    R CMD check --use-valgrind RITCH_0.1.14.tar.gz
+>
+> which you could do on CI too (I can help as needed, I would also pull the CI
+> runners forward from Ubuntu 20.04 to 22.04). When we do the above, the
+> examples output file RITCH-Ex.Rout ends in
+>
+>   ==2269271== LEAK SUMMARY:
+>   ==2269271==    definitely lost: 1,363,969 bytes in 5,473 blocks
+>   ==2269271==    indirectly lost: 177,235 bytes in 1,281 blocks
+>   ==2269271==      possibly lost: 101,924,267 bytes in 148 blocks
+>   ==2269271==    still reachable: 89,572,890 bytes in 17,950 blocks
+>   ==2269271==         suppressed: 0 bytes in 0 blocks
+>   ==2269271== Reachable blocks (those to which a pointer was found) are not shown.
+>   ==2269271== To see them, rerun with: --leak-check=full --show-leak-kinds=all
+>   ==2269271==
+>   ==2269271== ERROR SUMMARY: 30 errors from 30 contexts (suppressed: 0 from 0)
+>
+> and the tests end in
+>
+>   ==2273761== LEAK SUMMARY:
+>   ==2273761==    definitely lost: 5,223,981 bytes in 141,151 blocks
+>   ==2273761==    indirectly lost: 2,241,700 bytes in 2,767 blocks
+>   ==2273761==      possibly lost: 1,201,493,644 bytes in 270 blocks
+>   ==2273761==    still reachable: 133,909,136 bytes in 19,110 blocks
+>   ==2273761==         suppressed: 0 bytes in 0 blocks
+>   ==2273761== Reachable blocks (those to which a pointer was found) are not shown.
+>   ==2273761== To see them, rerun with: --leak-check=full --show-leak-kinds=all
+>   ==2273761==
+>   ==2273761== ERROR SUMMARY: 43 errors from 39 contexts (suppressed: 0 from 0)
+>
+> That probably warrants a few more close looks.
+>
+> Hth, Dirk
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+
+--
+Joshua Ulrich  |  about.me/joshuaulrich
+FOSS Trading  |  www.fosstrading.com<http://www.fosstrading.com>
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Sat Apr 22 17:07:00 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Sat, 22 Apr 2023 10:07:00 -0500
+Subject: [R-pkg-devel] Segmentation Fault cause 'memory not mapped' on
+ Debian only
+In-Reply-To: <AS8PR03MB10119AD02237E2C7F1A6D2E33D3619@AS8PR03MB10119.eurprd03.prod.outlook.com>
+References: <AS8PR03MB101195FCD51D3690649B9AA30D3609@AS8PR03MB10119.eurprd03.prod.outlook.com>
+ <25666.58594.218291.306640@rob.eddelbuettel.com>
+ <CAPPM_gTsq1pT1nsds63ag1rZkx4t4c3vp-wf2H4uJd3rAO9bog@mail.gmail.com>
+ <AS8PR03MB10119AD02237E2C7F1A6D2E33D3619@AS8PR03MB10119.eurprd03.prod.outlook.com>
+Message-ID: <25667.63508.772449.102784@rob.eddelbuettel.com>
+
+
+On 22 April 2023 at 14:43, D Z wrote:
+| Thank you Dirk and Joshua,
+| Using Valgrind, I have found several memory leaks in the program that required
+| some smaller rewrites.
+| Valgrind (with Makevars flags -O0 and --ggdb) now reports no "definitely" and
+| no "indirectly" lost bytes so that's a small win already.
+
+Very nice and good news!
+ 
+| But two questions remain:
+| 
+|  1. I have 960 bytes "possibly lost", where the callstack does not touch any of
+|     my code but seems to originate from subset.c (base R?) and libgomp, is this
+|     ok/expected, or am I misreading the output?
+|  2. For all tests that I ran, there are still 105mln bytes still reachable. I
+|     read online that this can be problematic, but usually isn't. Is this
+|     something that I should invest more time in or can I ignore this?
+
+It is difficult to say something _definite_ with a language like R that
+manages memory dynamically. This is fundamentally different from C/C++ which
+valgrind was written for.  So _ex ante_ you are in good news territory.  When
+I am in doubt I sometimes compare to valgrind output (using the same
+parameters) on a known-good package. You could try xts or zoo, for example,
+or another package equally focused on creating data objects from binary files
+as RITCH is.
+
+The log below mentions GOMP. Might be worthwhile opening another branch in
+your repo and throwing OpenMP out, or forcing a single thread, or ... for
+another test. 
+
+The additional ASAN/UBSAN tests mentioned by Josh are a good idea too -- and
+CRAN runs them anyway (as part of the add-on test suites running from a
+well-known university town in southern England...)
+
+Best,  Dirk
+
+| Thank you very much!
+| David
+| 
+| 
+| To reproduce the valgrind output using bash (this is using the latest code
+| commit https://github.com/DavZim/RITCH/commit/
+| 13ea3f478717edf24f8db709f0cac1e22b501afc)
+| 
+| echo "PKG_CXXFLAGS=-O0 -ggdb\nPKG_LIBS=-O0 -ggdb -lz" >> src/Makevars.win
+| echo "PKG_CXXFLAGS=-O0 -ggdb\nPKG_LIBS=-O0 -ggdb -lz" >> src/Makevars
+| 
+| R CMD build .
+| R CMD INSTALL RITCH_0.1.15.tar.gz
+| 
+| R -d "valgrind --tool=memcheck --leak-check=full" -e "tinytest::test_package
+| ('RITCH')"
+| # omitted for brevity...
+| tinytest::test_package('RITCH')
+| test_filename_helpers.R.......   13 tests OK 1.1s
+| test_filter_itch.R............   60 tests OK 30.1s
+| test_gz_functions.R...........    5 tests OK 6.0s
+| test_read_functions.R.........  122 tests OK 14.1s
+| test_write_itch.R.............   18 tests OK 33.0s
+| All ok, 218 results (1m 24.5s)
+| >
+| ==1535==
+| ==1535== HEAP SUMMARY:
+| ==1535==     in use at exit: 105,616,149 bytes in 18,292 blocks
+| ==1535==   total heap usage: 562,268 allocs, 543,976 frees, 6,834,040,088 bytes
+| allocated
+| ==1535==
+| ==1535== 960 bytes in 3 blocks are possibly lost in loss record 199 of 2,000
+| ==1535==    at 0x483DD99: calloc (in /usr/lib/x86_64-linux-gnu/valgrind/
+| vgpreload_memcheck-amd64-linux.so)
+| ==1535==    by 0x40149DA: allocate_dtv (dl-tls.c:286)
+| ==1535==    by 0x40149DA: _dl_allocate_tls (dl-tls.c:532)
+| ==1535==    by 0x5741322: allocate_stack (allocatestack.c:622)
+| ==1535==    by 0x5741322: pthread_create@@GLIBC_2.2.5 (pthread_create.c:660)
+| ==1535==    by 0x5710DEA: ??? (in /usr/lib/x86_64-linux-gnu/libgomp.so.1.0.0)
+| ==1535==    by 0x57088E0: GOMP_parallel (in /usr/lib/x86_64-linux-gnu/
+| libgomp.so.1.0.0)
+| ==1535==    by 0x10882EB9: subsetVectorRaw (subset.c:54)
+| ==1535==    by 0x10883B50: subsetDT (subset.c:309)
+| ==1535==    by 0x494253D: ??? (in /usr/lib/R/lib/libR.so)
+| ==1535==    by 0x49861A6: ??? (in /usr/lib/R/lib/libR.so)
+| ==1535==    by 0x4999D77: Rf_eval (in /usr/lib/R/lib/libR.so)
+| ==1535==    by 0x499BC2E: ??? (in /usr/lib/R/lib/libR.so)
+| ==1535==    by 0x499CB21: Rf_applyClosure (in /usr/lib/R/lib/libR.so)
+| ==1535==
+| ==1535== LEAK SUMMARY:
+| ==1535==    definitely lost: 0 bytes in 0 blocks
+| ==1535==    indirectly lost: 0 bytes in 0 blocks
+| ==1535==      possibly lost: 960 bytes in 3 blocks
+| ==1535==    still reachable: 105,615,189 bytes in 18,289 blocks
+| ==1535==                       of which reachable via heuristic:
+| ==1535==                         newarray           : 4,264 bytes in 1 blocks
+| ==1535==         suppressed: 0 bytes in 0 blocks
+| ==1535== Reachable blocks (those to which a pointer was found) are not shown.
+| ==1535== To see them, rerun with: --leak-check=full --show-leak-kinds=all
+| ==1535==
+| ==1535== For lists of detected and suppressed errors, rerun with: -s
+| ==1535== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 0 from 0)
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From bbo|ker @end|ng |rom gm@||@com  Sun Apr 23 00:56:08 2023
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Sat, 22 Apr 2023 18:56:08 -0400
+Subject: [R-pkg-devel] new/slightly mysterious CRAN warnings
+Message-ID: <a864d643-b3d6-09c8-3956-657763573859@gmail.com>
+
+   Submission of most recent version of lme4 threw a NOTE on CRAN's 
+Debian platform that we had not seen when running "R CMD check 
+--as-cran" with the most recent SVN checkout, nor when submitted to 
+win-builder/R-devel.  These are legitimate issues (all now fixed), but 
+we were taken by surprise because they weren't detected on any platforms 
+we tested on.
+
+   So far, archaeology in the R code base/Github mirror about recent 
+changes to tools::checkS3methods, or about environment variables, hasn't 
+been entirely successful, although based on
+
+grep Sys.getenv src/library/tools/R/QC.R  | sed -e 's/.*Sys.getenv("//' 
+| sed -e 's/"[,)].*//' | sort | uniq
+
+it looks like we *might* want to set
+
+_R_CHECK_S3_METHODS_SHOW_POSSIBLE_ISSUES_
+
+when testing ...
+
+   This is mostly a heads-up/documentation for anyone who might be 
+interested.
+
+
+Debian: 
+<https://win-builder.r-project.org/incoming_pretest/lme4_1.1-33_20230421_145951/Debian/00check.log>
+
+  R Under development (unstable) (2023-04-20 r84291)
+
+  NOTE
+Mismatches for apparent methods not registered:
+print:
+   function(x, ...)
+print.bootWarnings:
+   function(x, verbose)
+
+format:
+   function(x, ...)
+format.perc:
+   function(probs, digits)
+
+Apparent methods for exported generics not registered:
+   ngrps.default
+See section ?Registering S3 methods? in the ?Writing R Extensions?
+manual.
+
+
