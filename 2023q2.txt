@@ -5451,3 +5451,438 @@ Duncan Murdoch
 >
 
 
+From gb @end|ng |rom eh@r@@e  Mon Apr 24 18:17:22 2023
+From: gb @end|ng |rom eh@r@@e (=?UTF-8?Q?G=c3=b6ran_Brostr=c3=b6m?=)
+Date: Mon, 24 Apr 2023 18:17:22 +0200
+Subject: [R-pkg-devel] katex
+Message-ID: <720ec323-c1e0-83e0-407a-b6d621ccd4cb@ehar.se>
+
+I upgraded to 4.3.0 and rebuilt and checked a package with --as-cran, 
+receiving
+
+* checking PDF version of manual ... OK
+* checking HTML version of manual ...Warning in file(con, "r") :
+   cannot open file '/usr/lib/R/doc/html/katex/katex.js': No such file 
+or directory
+Error in file(con, "r") : cannot open the connection
+Execution halted
+
+Never heard of 'katex' but googled and found it interesting to try, so I 
+installed the R package katex and, on my ubuntu system:
+
+$ sudo apt install katex
+
+but I still get the error with R CMD check --as-cran. What am I missing?
+Obviously /usr/lib/R/doc/html/katex/katex.js (no 'doc'), but ...
+
+I am installing R via apt.
+
+Thanks, G?ran
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Apr 25 10:02:05 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 25 Apr 2023 11:02:05 +0300
+Subject: [R-pkg-devel] katex
+In-Reply-To: <720ec323-c1e0-83e0-407a-b6d621ccd4cb@ehar.se>
+References: <720ec323-c1e0-83e0-407a-b6d621ccd4cb@ehar.se>
+Message-ID: <20230425110205.3c3ab024@Tarkus>
+
+On Mon, 24 Apr 2023 18:17:22 +0200
+G?ran Brostr?m <gb at ehar.se> wrote:
+
+>    cannot open file '/usr/lib/R/doc/html/katex/katex.js': No such
+> file or directory
+
+> I still get the error with R CMD check --as-cran. What am I
+> missing? Obviously /usr/lib/R/doc/html/katex/katex.js (no 'doc'), but
+> ...
+> 
+> I am installing R via apt.
+
+Thank you for mentioning this detail!
+
+At least in Debian packages, R's copy of KaTeX lives in /usr/share: per
+Debian policy, "share" is for human-readable files like KaTeX, and
+"lib" is for shared libraries, compiled code and the like.
+
+For a copy of R built from source, it's not a problem:
+file.path(R.home(), 'doc', 'html') does point to where KaTeX lives.
+
+For a copy of R packaged into *.deb, the right path can be obtained
+using file.path(R.home("doc"), "html"):
+
+--- src/library/tools/R/utils.R (revision 84280)
++++ src/library/tools/R/utils.R (working copy)
+@@ -1788,7 +1788,7 @@
+     ctx <- NULL
+     function() {
+         if(is.null(fun) && requireNamespace("V8", quietly = TRUE)) {
+-            dir <- file.path(R.home(), "doc", "html")
++            dir <- file.path(R.home("doc"), "html")
+             ctx <<- V8::v8("window")
+             ctx$source(file.path(dir, "katex", "katex.js"))
+             ## Provides additional macros:
+
+This path is also valid for an R build launched from source (without
+"make install"). I don't know whether this would break a
+differently-packaged build of R, though.
+
+-- 
+Best regards,
+Ivan
+
+
+From gb @end|ng |rom eh@r@@e  Tue Apr 25 12:02:08 2023
+From: gb @end|ng |rom eh@r@@e (=?UTF-8?Q?G=c3=b6ran_Brostr=c3=b6m?=)
+Date: Tue, 25 Apr 2023 12:02:08 +0200
+Subject: [R-pkg-devel] katex
+In-Reply-To: <20230425110205.3c3ab024@Tarkus>
+References: <720ec323-c1e0-83e0-407a-b6d621ccd4cb@ehar.se>
+ <20230425110205.3c3ab024@Tarkus>
+Message-ID: <b5a7e523-0d3a-1da0-fa6e-5790547e01b9@ehar.se>
+
+
+
+On 2023-04-25 10:02, Ivan Krylov wrote:
+> On Mon, 24 Apr 2023 18:17:22 +0200
+> G?ran Brostr?m <gb at ehar.se> wrote:
+> 
+>>     cannot open file '/usr/lib/R/doc/html/katex/katex.js': No such
+>> file or directory
+> 
+>> I still get the error with R CMD check --as-cran. What am I
+>> missing? Obviously /usr/lib/R/doc/html/katex/katex.js (no 'doc'), but
+>> ...
+>>
+>> I am installing R via apt.
+> 
+> Thank you for mentioning this detail!
+> 
+> At least in Debian packages, R's copy of KaTeX lives in /usr/share: per
+> Debian policy, "share" is for human-readable files like KaTeX, and
+> "lib" is for shared libraries, compiled code and the like.
+> 
+> For a copy of R built from source, it's not a problem:
+
+Thanks. I have now built R from source and can confirm that everything 
+works nicely. Can't remember when and why I stopped building R from 
+source, probably not a good idea.
+
+G?ran
+
+
+From edd @end|ng |rom deb|@n@org  Tue Apr 25 13:39:23 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 25 Apr 2023 06:39:23 -0500
+Subject: [R-pkg-devel] katex
+In-Reply-To: <20230425110205.3c3ab024@Tarkus>
+References: <720ec323-c1e0-83e0-407a-b6d621ccd4cb@ehar.se>
+ <20230425110205.3c3ab024@Tarkus>
+Message-ID: <25671.48107.989212.333685@rob.eddelbuettel.com>
+
+
+On 25 April 2023 at 11:02, Ivan Krylov wrote:
+| On Mon, 24 Apr 2023 18:17:22 +0200
+| G?ran Brostr?m <gb at ehar.se> wrote:
+| 
+| >    cannot open file '/usr/lib/R/doc/html/katex/katex.js': No such
+| > file or directory
+| 
+| > I still get the error with R CMD check --as-cran. What am I
+| > missing? Obviously /usr/lib/R/doc/html/katex/katex.js (no 'doc'), but
+| > ...
+| > 
+| > I am installing R via apt.
+| 
+| Thank you for mentioning this detail!
+| 
+| At least in Debian packages, R's copy of KaTeX lives in /usr/share: per
+| Debian policy, "share" is for human-readable files like KaTeX, and
+| "lib" is for shared libraries, compiled code and the like.
+
+Yes, that is a distribution-wide preference other Linux distributions have
+too, and that was turned on many, many years ago in Debian (glancing at
+changelog: one reference to 1999 when Doug was still maintainer; otherwise
+mostly in 2006 it seems).
+
+It does make R depart from the 'everything below RHOME' model, but the
+relevant changes have mostly been caught.
+ 
+| For a copy of R built from source, it's not a problem:
+| file.path(R.home(), 'doc', 'html') does point to where KaTeX lives.
+| 
+| For a copy of R packaged into *.deb, the right path can be obtained
+| using file.path(R.home("doc"), "html"):
+| 
+| --- src/library/tools/R/utils.R (revision 84280)
+| +++ src/library/tools/R/utils.R (working copy)
+| @@ -1788,7 +1788,7 @@
+|      ctx <- NULL
+|      function() {
+|          if(is.null(fun) && requireNamespace("V8", quietly = TRUE)) {
+| -            dir <- file.path(R.home(), "doc", "html")
+| +            dir <- file.path(R.home("doc"), "html")
+|              ctx <<- V8::v8("window")
+|              ctx$source(file.path(dir, "katex", "katex.js"))
+|              ## Provides additional macros:
+
+Nice catch. In favour. Would you mind filing a bugzilla report to make sure
+this persists and makes it into R 4.3.1 or 4.4.0 or ... ?
+ 
+| This path is also valid for an R build launched from source (without
+| "make install"). I don't know whether this would break a
+| differently-packaged build of R, though.
+
+I would not expect it to.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From wo||g@ng@v|echtb@uer @end|ng |rom m@@@tr|chtun|ver@|ty@n|  Tue Apr 25 13:39:14 2023
+From: wo||g@ng@v|echtb@uer @end|ng |rom m@@@tr|chtun|ver@|ty@n| (Viechtbauer, Wolfgang (NP))
+Date: Tue, 25 Apr 2023 11:39:14 +0000
+Subject: [R-pkg-devel] katex
+In-Reply-To: <b5a7e523-0d3a-1da0-fa6e-5790547e01b9@ehar.se>
+References: <720ec323-c1e0-83e0-407a-b6d621ccd4cb@ehar.se>
+ <20230425110205.3c3ab024@Tarkus>
+ <b5a7e523-0d3a-1da0-fa6e-5790547e01b9@ehar.se>
+Message-ID: <e414533084754191b43984e9073230fc@UM-MAIL3210.unimaas.nl>
+
+I ran into the same issue (on Ubuntu 20.04).
+
+I just copied everything from /usr/share/R/doc to /usr/lib/R:
+
+A bit of a hack but then everything works fine.
+
+Best,
+Wolfgang
+
+>-----Original Message-----
+>From: R-package-devel [mailto:r-package-devel-bounces at r-project.org] On Behalf Of
+>G?ran Brostr?m
+>Sent: Tuesday, 25 April, 2023 12:02
+>To: Ivan Krylov
+>Cc: R-package-devel at r-project.org
+>Subject: Re: [R-pkg-devel] katex
+>
+>On 2023-04-25 10:02, Ivan Krylov wrote:
+>> On Mon, 24 Apr 2023 18:17:22 +0200
+>> G?ran Brostr?m <gb at ehar.se> wrote:
+>>
+>>>     cannot open file '/usr/lib/R/doc/html/katex/katex.js': No such
+>>> file or directory
+>>
+>>> I still get the error with R CMD check --as-cran. What am I
+>>> missing? Obviously /usr/lib/R/doc/html/katex/katex.js (no 'doc'), but
+>>> ...
+>>>
+>>> I am installing R via apt.
+>>
+>> Thank you for mentioning this detail!
+>>
+>> At least in Debian packages, R's copy of KaTeX lives in /usr/share: per
+>> Debian policy, "share" is for human-readable files like KaTeX, and
+>> "lib" is for shared libraries, compiled code and the like.
+>>
+>> For a copy of R built from source, it's not a problem:
+>
+>Thanks. I have now built R from source and can confirm that everything
+>works nicely. Can't remember when and why I stopped building R from
+>source, probably not a good idea.
+>
+>G?ran
+
+From edd @end|ng |rom deb|@n@org  Tue Apr 25 13:50:29 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 25 Apr 2023 06:50:29 -0500
+Subject: [R-pkg-devel] katex
+In-Reply-To: <e414533084754191b43984e9073230fc@UM-MAIL3210.unimaas.nl>
+References: <720ec323-c1e0-83e0-407a-b6d621ccd4cb@ehar.se>
+ <20230425110205.3c3ab024@Tarkus>
+ <b5a7e523-0d3a-1da0-fa6e-5790547e01b9@ehar.se>
+ <e414533084754191b43984e9073230fc@UM-MAIL3210.unimaas.nl>
+Message-ID: <25671.48773.596668.820414@rob.eddelbuettel.com>
+
+
+On 25 April 2023 at 11:39, Viechtbauer, Wolfgang (NP) wrote:
+| I ran into the same issue (on Ubuntu 20.04).
+| 
+| I just copied everything from /usr/share/R/doc to /usr/lib/R:
+| 
+| A bit of a hack but then everything works fine.
+
+That is rather bad as you create lots of 'orphan' files your package manager
+does not know about.  We really should not be advertise this in public
+without strong disclaimers (which you added, so thanks).
+
+This whole thread would have been well at home on r-sig-debian.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From wo||g@ng@v|echtb@uer @end|ng |rom m@@@tr|chtun|ver@|ty@n|  Tue Apr 25 13:59:31 2023
+From: wo||g@ng@v|echtb@uer @end|ng |rom m@@@tr|chtun|ver@|ty@n| (Viechtbauer, Wolfgang (NP))
+Date: Tue, 25 Apr 2023 11:59:31 +0000
+Subject: [R-pkg-devel] katex
+In-Reply-To: <25671.48773.596668.820414@rob.eddelbuettel.com>
+References: <720ec323-c1e0-83e0-407a-b6d621ccd4cb@ehar.se>
+ <20230425110205.3c3ab024@Tarkus>
+ <b5a7e523-0d3a-1da0-fa6e-5790547e01b9@ehar.se>
+ <e414533084754191b43984e9073230fc@UM-MAIL3210.unimaas.nl>
+ <25671.48773.596668.820414@rob.eddelbuettel.com>
+Message-ID: <a46e877878414704b857c90b8e2ded19@UM-MAIL3210.unimaas.nl>
+
+Yeah, I know -- like I said, hack / not recommended / should handle this properly.
+
+I spent a few hours yesterday rebuilding my package library because I build all packages from source -- really should start using r2u (thanks!) -- so once I got that issue, I was just trying to move on to get some work done.
+
+Best,
+Wolfgang
+
+>-----Original Message-----
+>From: Dirk Eddelbuettel [mailto:edd at debian.org]
+>Sent: Tuesday, 25 April, 2023 13:50
+>To: Viechtbauer, Wolfgang (NP)
+>Cc: G?ran Brostr?m; Ivan Krylov; R-package-devel at r-project.org
+>Subject: Re: [R-pkg-devel] katex
+>
+>On 25 April 2023 at 11:39, Viechtbauer, Wolfgang (NP) wrote:
+>| I ran into the same issue (on Ubuntu 20.04).
+>|
+>| I just copied everything from /usr/share/R/doc to /usr/lib/R:
+>|
+>| A bit of a hack but then everything works fine.
+>
+>That is rather bad as you create lots of 'orphan' files your package manager
+>does not know about.  We really should not be advertise this in public
+>without strong disclaimers (which you added, so thanks).
+>
+>This whole thread would have been well at home on r-sig-debian.
+>
+>Dirk
+>
+>--
+>dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Apr 25 14:01:05 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 25 Apr 2023 15:01:05 +0300
+Subject: [R-pkg-devel] katex
+In-Reply-To: <25671.48107.989212.333685@rob.eddelbuettel.com>
+References: <720ec323-c1e0-83e0-407a-b6d621ccd4cb@ehar.se>
+ <20230425110205.3c3ab024@Tarkus>
+ <25671.48107.989212.333685@rob.eddelbuettel.com>
+Message-ID: <20230425150105.031fa126@arachnoid>
+
+On Tue, 25 Apr 2023 06:39:23 -0500
+Dirk Eddelbuettel <edd at debian.org> wrote:
+
+> Nice catch. In favour. Would you mind filing a bugzilla report to
+> make sure this persists and makes it into R 4.3.1 or 4.4.0 or ... ?
+
+Thanks for the review! Filed the report at
+<https://bugs.r-project.org/show_bug.cgi?id=18517>.
+
+-- 
+Best regards,
+Ivan
+
+
+From konr@d@rudo|ph @end|ng |rom gm@||@com  Tue Apr 25 17:27:34 2023
+From: konr@d@rudo|ph @end|ng |rom gm@||@com (Konrad Rudolph)
+Date: Tue, 25 Apr 2023 17:27:34 +0200
+Subject: [R-pkg-devel] 
+ How to format the NEWS.md file for CRAN submissions?
+In-Reply-To: <84c5598b-47ab-ef3e-431e-8dbbef272b08@gmail.com>
+References: <CAM2gKPbCPo6Y46e3QhCpC9uBTHqDsYmEdKKdKZ=AkbtgtQ_KGQ@mail.gmail.com>
+ <84c5598b-47ab-ef3e-431e-8dbbef272b08@gmail.com>
+Message-ID: <CAM2gKPYrhB1u_3a66xrBmjkMWFO1p4kt6n=E1zgYVs_aXeq9jQ@mail.gmail.com>
+
+Hi Duncan,
+
+Thanks, that?s perfect. So the issue in my case was the ?0.0.x? version
+instead of the package name. That?s easily fixable, as verified by running
+`utils::news()` on my package.
+
+Cheers,
+Konrad
+
+On Mon, Apr 24, 2023 at 10:54?PM Duncan Murdoch <murdoch.duncan at gmail.com>
+wrote:
+
+> On 24/04/2023 4:39 p.m., Konrad Rudolph wrote:
+> > My package is creating a CRAN check NOTE because CRAN does not like the
+> way
+> > my NEWS.md file [1] is formatted.
+> >
+> > I am largely adhering to existing conventions with regards to my NEWS.md,
+> > in particular the (rather minimal) GNU conventions [2] mentioned in
+> R-exts
+> > as well as the conventions used by ?pkgdown? to compile the file into a
+> web
+> > page. The one peculiarity of my NEWS.md file (and where it diverges from
+> > the documented ?pkgdown? convention) is caused by the fact that my
+> package
+> > has undergone a name change in the past. As a consequence, not all
+> headings
+> > in the NEWS.md file follow the format `# ?pkgname? ?version?`.
+> > Consequently, the CRAN check complains
+> >
+> >>    Cannot extract version info from the following section titles:
+> >>      modules 0.x
+> >
+> > I have two questions:
+> >
+> > 1. Am I overlooking where the CRAN requirements for NEWS files are
+> > documented? As far as I can see I am not violating a documented rule.
+>
+> The documentation is in the ?util::news help topic.  It says:
+>
+> "File ?NEWS.md? should contain the news in Markdown (following the
+> CommonMark (https://commonmark.org/) specification), with the primary
+> heading level giving the version number after a prefix followed by a
+> space, and optionally followed by a space and a parenthesized ISO 8601
+> format date."
+>
+>
+> > 2. What is the best way of avoiding this NOTE _without_ dropping the
+> > changelog pre package name change? In particular, since ?pkgdown? does
+> not
+> > support this I would like keep these changes in a single NEWS.md file
+> > rather than moving them into a separate file. Likewise, I think it would
+> be
+> > misleading (and hence undesirable) to change the section headings to use
+> > the current package name for the old revisions.
+>
+> I don't think it cares what the prefix is, so you could use something
+> other than the current package name there.
+>
+> Duncan Murdoch
+>
+>
+> >
+> > [1]
+> >
+> https://github.com/klmr/box/blob/9f35bd28b26306fe94ade874c2b93a89ae3f3a61/NEWS.md
+> > [2] https://www.gnu.org/prep/standards/standards.html#NEWS-File
+> >
+> > Cheers,
+> > Konrad
+> >
+>
+>
+
+-- 
+Konrad Rudolph // @klmr
+
+	[[alternative HTML version deleted]]
+
+
