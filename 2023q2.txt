@@ -5886,3 +5886,262 @@ Konrad Rudolph // @klmr
 	[[alternative HTML version deleted]]
 
 
+From edd @end|ng |rom deb|@n@org  Wed Apr 26 16:02:33 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 26 Apr 2023 09:02:33 -0500
+Subject: [R-pkg-devel] 'Default' macos (x86) download URL now gone?
+In-Reply-To: <5F0CF217-5A2E-466F-9738-B49A43688CAA@R-project.org>
+References: <25669.19936.694972.114117@rob.eddelbuettel.com>
+ <5F0CF217-5A2E-466F-9738-B49A43688CAA@R-project.org>
+Message-ID: <25673.12025.938360.399881@rob.eddelbuettel.com>
+
+
+Simon,
+
+On 24 April 2023 at 18:28, Simon Urbanek wrote:
+| thanks - the problem is that there is not a single installer package (for several years now), so that URL is ambiguous. Whether the missing link is a good or bad depends on how it is used. I would argue that any link to that URL is inherently bad, because there is no way of knowing that the link works for a particular system - that's why I have originally removed it with the R 4.3.0 release. I have restored it now, making it point to the R 4.3.0 arm64 release since that is arguably the closest to a single "latest R". R releases have not been stored in /bin/macosx since 2015, so anyone using a link there is asking for trouble.
+
+Restoring it _but switching the architecture under it_ is another subtle way
+to still break things where the expectation based on a decade+ of prior
+practice was that this works:
+
+   installer: Error - R 4.3.0 for macOS (ARM64) can?t be installed on this computer.
+   Error: Process completed with exit code 1.
+
+I long have repaired my (main) script in r-ci but this will likely surprise others.
+
+| For any CI I would strongly recommend using the "last-success" links: https://mac.r-project.org/big-sur/last-success/ in particular the .xz versions are they are specifically designed to be used by CI (small download, fast and localized install).
+
+That is a fine idea but no replacement as it leads to a need for a different
+deployment and how / where to untar etc.
+
+Maybe you are someone wants to wrap that into a suitable script or 'action
+snippet' and document that?   I can't, I don't even have a mac.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Apr 26 17:00:06 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 26 Apr 2023 18:00:06 +0300
+Subject: [R-pkg-devel] RFC: An ad-hoc "cluster" one can leave and rejoin
+ later
+Message-ID: <20230426180006.445b9bcb@arachnoid>
+
+Hello R-package-devel members,
+
+I've got an idea for a package. I'm definitely reinventing a wheel, but
+I couldn't find anything that would fulfil 100% of my requirements.
+
+I've got a computational experiment that takes a while to complete, but
+the set of machines that can run it varies during the day. For example,
+I can leave a computer running in my bedroom, but I'd rather turn it
+off for the night. For now, I work around the problem with a lot of
+caching [*], restarting the job with different cluster geometries and
+letting it load the parts that are already done from the disk.
+
+Here's a proof of concept implementation of a server that sits between
+the clients and a pool of compute nodes, dynamically distributing the
+tasks between the nodes: https://github.com/aitap/nodepool
+
+In addition to letting nodes come and go as they like, it also doesn't
+strain R's NCONNECTIONS limit on nodes and clients (although the pool
+would still benefit from it being increased) and only requires the pool
+to be available for inbound connections [**].
+
+It's definitely not CRAN quality yet and at the very least needs a
+better task submission API, but it does seem to work. Does it sound
+like it could be useful in your own work? Any ideas I could implement,
+besides those mentioned in the README?
+
+Here's a terrible hack: the pool speaks R's cluster protocol. One
+could, in theory, construct a mock-"cluster" object consisting of
+connections to the pool server and use parLapplyLB to distribute a
+number of tasks between the pool nodes. But that's a bad idea for a lot
+of reasons.
+
+-- 
+Best regards,
+Ivan
+
+[*] I need caching anyway because some of my machines have hardware
+problems and may just reboot for no reason.
+
+[**] Although Henrik Bengtsson's excellent
+parallelly::makeClusterPSOCK() makes it much less of a problem.
+
+
+From gert @end|ng |rom gertvv@n|  Wed Apr 26 20:38:36 2023
+From: gert @end|ng |rom gertvv@n| (Gert van Valkenhoef)
+Date: Wed, 26 Apr 2023 20:38:36 +0200
+Subject: [R-pkg-devel] CRAN check fails on NEWS
+Message-ID: <f15cecf9-a55d-9193-5e64-541aba0d4e07@gertvv.nl>
+
+Hi all,
+
+I'm hoping you can help me understand this new CRAN check failure that 
+occurs on Debian but not on Windows:
+
+Debian:<https://win-builder.r-project.org/incoming_pretest/smaa_0.3-2_20230424_202447/Debian/00check.log>
+Status: 1 NOTE
+
+* checking package subdirectories ... NOTE
+Problems with news in ?NEWS?:
+   Cannot process chunk/lines:
+     smaa 0.3-0
+   ... etc ...
+
+This error was not raised by previous versions and I did not change the 
+NEWS file for this version. The same package passes the same check on 
+Debian r-devel on r-hub (see the full build log: HTML 
+<https://builder.r-hub.io/status/smaa_0.3-2.tar.gz-6ab795be6475b44b1ec363a82c45a2cb>, 
+text 
+<https://builder.r-hub.io/status/original/smaa_0.3-2.tar.gz-6ab795be6475b44b1ec363a82c45a2cb>, 
+artifacts 
+<https://artifacts.r-hub.io/smaa_0.3-2.tar.gz-6ab795be6475b44b1ec363a82c45a2cb>.)
+
+I couldn't find any documentation regarding this error or a clear 
+specification of how NEWS should be formatted. I had understood it t be 
+a plain text file.
+
+Thanks in advance,
+
+Gert
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Apr 26 21:32:15 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 26 Apr 2023 22:32:15 +0300
+Subject: [R-pkg-devel] CRAN check fails on NEWS
+In-Reply-To: <f15cecf9-a55d-9193-5e64-541aba0d4e07@gertvv.nl>
+References: <f15cecf9-a55d-9193-5e64-541aba0d4e07@gertvv.nl>
+Message-ID: <20230426223215.7a0e6102@Tarkus>
+
+On Wed, 26 Apr 2023 20:38:36 +0200
+Gert van Valkenhoef <gert at gertvv.nl> wrote:
+
+> I'm hoping you can help me understand this new CRAN check failure
+> that occurs on Debian but not on Windows:
+
+Unfortunately, not all checks are enabled on all check machines.
+
+> * checking package subdirectories ... NOTE
+> Problems with news in ?NEWS?:
+>    Cannot process chunk/lines:
+>      smaa 0.3-0
+>    ... etc ...
+
+Your NEWS file at
+<https://github.com/gertvv/rsmaa/blob/master/smaa/NEWS> looks like
+valid Markdown to me. In fact, I can parse it using R's NEWS.md parser
+without any warnings, so in order to solve the problem, you just need
+to rename it to NEWS.md.
+
+R's requirements for "plain text" NEWS files are documented in
+help(news) (together with requirements for NEWS.md and NEWS.Rd).
+
+> The same package passes the same check on  Debian r-devel on r-hub
+> (see the full build log:
+> HTML
+> <https://builder.r-hub.io/status/smaa_0.3-2.tar.gz-6ab795be6475b44b1ec363a82c45a2cb>, 
+
+Are they running R CMD check without --as-cran? This could be the
+reason why they didn't pick up this problem sooner. Running
+rhub::check_for_cran() will run a more comprehensive set of checks on
+your package.
+
+-- 
+Best regards,
+Ivan
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Wed Apr 26 21:50:50 2023
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Wed, 26 Apr 2023 12:50:50 -0700
+Subject: [R-pkg-devel] CRAN check fails on NEWS
+In-Reply-To: <20230426223215.7a0e6102@Tarkus>
+References: <f15cecf9-a55d-9193-5e64-541aba0d4e07@gertvv.nl>
+ <20230426223215.7a0e6102@Tarkus>
+Message-ID: <CAFDcVCSJ1ktbDKH5dRTJYXEbiboSm1WOU+DVjTi6sUEm7cmQpg@mail.gmail.com>
+
+To reproduce this, you can use tools:::.news_reader_default(), e.g.
+
+> utils::download.file("https://raw.githubusercontent.com/gertvv/rsmaa/master/smaa/NEWS", "NEWS", quiet = TRUE)
+> news <- tools:::.news_reader_default("NEWS")
+Warning messages:
+1: Cannot process chunk/lines:
+  smaa 0.3-0
+2: Cannot process chunk/lines:
+  smaa 0.2-5
+...
+9: Cannot process chunk/lines:
+  smaa 0.1
+
+You can check for attribute 'bad' to detect if there are parsing errors, e.g.
+
+> bad <- which(attr(news, "bad"))
+> news[bad, "Version"]
+[1] "0.3-0" "0.2-5" "0.2-4" "0.2-3" "0.2-2" "0.2-1" "0.2"   "0.1-1" "0.1"
+
+I have a check_news() [0] that does this job for me (it checks both
+NEWS and NEWS.md), e.g.
+
+> check_news("NEWS")
+Error: Detected 9 malformed entries in 'NEWS': 0.3-0, 0.2-5, 0.2-4,
+0.2-3, 0.2-2, 0.2-1, 0.2, 0.1-1, 0.1
+
+Hope this helps,
+
+/Henrik
+
+[0] https://github.com/HenrikBengtsson/dotfiles-for-R/blob/master/Rprofile.d/interactive%3DTRUE/check_news.R
+
+On Wed, Apr 26, 2023 at 12:32?PM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+>
+> On Wed, 26 Apr 2023 20:38:36 +0200
+> Gert van Valkenhoef <gert at gertvv.nl> wrote:
+>
+> > I'm hoping you can help me understand this new CRAN check failure
+> > that occurs on Debian but not on Windows:
+>
+> Unfortunately, not all checks are enabled on all check machines.
+>
+> > * checking package subdirectories ... NOTE
+> > Problems with news in ?NEWS?:
+> >    Cannot process chunk/lines:
+> >      smaa 0.3-0
+> >    ... etc ...
+>
+> Your NEWS file at
+> <https://github.com/gertvv/rsmaa/blob/master/smaa/NEWS> looks like
+> valid Markdown to me. In fact, I can parse it using R's NEWS.md parser
+> without any warnings, so in order to solve the problem, you just need
+> to rename it to NEWS.md.
+>
+> R's requirements for "plain text" NEWS files are documented in
+> help(news) (together with requirements for NEWS.md and NEWS.Rd).
+>
+> > The same package passes the same check on  Debian r-devel on r-hub
+> > (see the full build log:
+> > HTML
+> > <https://builder.r-hub.io/status/smaa_0.3-2.tar.gz-6ab795be6475b44b1ec363a82c45a2cb>,
+>
+> Are they running R CMD check without --as-cran? This could be the
+> reason why they didn't pick up this problem sooner. Running
+> rhub::check_for_cran() will run a more comprehensive set of checks on
+> your package.
+>
+> --
+> Best regards,
+> Ivan
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
