@@ -6145,3 +6145,75 @@ On Wed, Apr 26, 2023 at 12:32?PM Ivan Krylov <krylov.r00t at gmail.com> wrote:
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From wo||g@ng@v|echtb@uer @end|ng |rom m@@@tr|chtun|ver@|ty@n|  Thu Apr 27 13:47:27 2023
+From: wo||g@ng@v|echtb@uer @end|ng |rom m@@@tr|chtun|ver@|ty@n| (Viechtbauer, Wolfgang (NP))
+Date: Thu, 27 Apr 2023 11:47:27 +0000
+Subject: [R-pkg-devel] RFC: An ad-hoc "cluster" one can leave and rejoin
+ later
+In-Reply-To: <20230426180006.445b9bcb@arachnoid>
+References: <20230426180006.445b9bcb@arachnoid>
+Message-ID: <ba8e2cd53b8146a1be61bd363ad9dc35@UM-MAIL3210.unimaas.nl>
+
+Dear Ivan,
+
+Yes, this is *definitely* very useful in my own work. In fact, I had thought about writing something like this myself!
+
+Can you clarify what happens if a node disconnects from the pool while it is running some assigned task? I assume/hope the pool server keeps track of that and will then submit the nonfinished task to another node.
+
+Also, are there any issues with using the pool machine also as a node?
+
+PS: In the README, 'cliends' -> 'clients'.
+
+Best,
+Wolfgang
+
+>-----Original Message-----
+>From: R-package-devel [mailto:r-package-devel-bounces at r-project.org] On Behalf Of
+>Ivan Krylov
+>Sent: Wednesday, 26 April, 2023 17:00
+>To: r-package-devel at r-project.org
+>Subject: [R-pkg-devel] RFC: An ad-hoc "cluster" one can leave and rejoin later
+>
+>Hello R-package-devel members,
+>
+>I've got an idea for a package. I'm definitely reinventing a wheel, but
+>I couldn't find anything that would fulfil 100% of my requirements.
+>
+>I've got a computational experiment that takes a while to complete, but
+>the set of machines that can run it varies during the day. For example,
+>I can leave a computer running in my bedroom, but I'd rather turn it
+>off for the night. For now, I work around the problem with a lot of
+>caching [*], restarting the job with different cluster geometries and
+>letting it load the parts that are already done from the disk.
+>
+>Here's a proof of concept implementation of a server that sits between
+>the clients and a pool of compute nodes, dynamically distributing the
+>tasks between the nodes: https://github.com/aitap/nodepool
+>
+>In addition to letting nodes come and go as they like, it also doesn't
+>strain R's NCONNECTIONS limit on nodes and clients (although the pool
+>would still benefit from it being increased) and only requires the pool
+>to be available for inbound connections [**].
+>
+>It's definitely not CRAN quality yet and at the very least needs a
+>better task submission API, but it does seem to work. Does it sound
+>like it could be useful in your own work? Any ideas I could implement,
+>besides those mentioned in the README?
+>
+>Here's a terrible hack: the pool speaks R's cluster protocol. One
+>could, in theory, construct a mock-"cluster" object consisting of
+>connections to the pool server and use parLapplyLB to distribute a
+>number of tasks between the pool nodes. But that's a bad idea for a lot
+>of reasons.
+>
+>--
+>Best regards,
+>Ivan
+>
+>[*] I need caching anyway because some of my machines have hardware
+>problems and may just reboot for no reason.
+>
+>[**] Although Henrik Bengtsson's excellent
+>parallelly::makeClusterPSOCK() makes it much less of a problem.
+
+
