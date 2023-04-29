@@ -6217,3 +6217,55 @@ Wolfgang
 >parallelly::makeClusterPSOCK() makes it much less of a problem.
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Apr 28 09:48:38 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 28 Apr 2023 10:48:38 +0300
+Subject: [R-pkg-devel] RFC: An ad-hoc "cluster" one can leave and rejoin
+ later
+In-Reply-To: <ba8e2cd53b8146a1be61bd363ad9dc35@UM-MAIL3210.unimaas.nl>
+References: <20230426180006.445b9bcb@arachnoid>
+ <ba8e2cd53b8146a1be61bd363ad9dc35@UM-MAIL3210.unimaas.nl>
+Message-ID: <20230428104838.0e612704@Tarkus>
+
+On Thu, 27 Apr 2023 11:47:27 +0000
+"Viechtbauer, Wolfgang (NP)"
+<wolfgang.viechtbauer at maastrichtuniversity.nl> wrote:
+
+> Can you clarify what happens if a node disconnects from the pool
+> while it is running some assigned task? I assume/hope the pool server
+> keeps track of that and will then submit the nonfinished task to
+> another node.
+
+This is exactly what happens. In the function that removes a node from
+the pool, there is a check for a pending task associated with that
+node. If such a task is found, it's put back at the end of the queue.
+
+(So if you accidentally create a task that crashes a node in a way that
+cannot be caught by tryCatch(), it will eventually take the whole pool
+offline. On the other hand, if the nodes are automatically restarted,
+they will run all other tasks in the queue before encountering the
+crashing task again.)
+
+I'd like to write an integration test that would create a pool with two
+nodes, send two tasks consisting of Sys.sleep() to them, then crash one
+of the nodes after they accept the tasks. Even without the crashing
+(which could be part of the task, if (node_destined_to_crash) q('no')),
+this is some hair-raising code: I need multiple child processes running
+with the same temporary library where the package version being tested
+is installed, and also some synchronisation between them.
+
+> Also, are there any issues with using the pool machine also as a node?
+
+There shouldn't be. In fact, I should probably add a parameter to the
+run_pool() function that automatically creates a number of nodes on the
+same machine.
+
+> PS: In the README, 'cliends' -> 'clients'.
+
+Thanks!
+
+-- 
+Best regards,
+Ivan
+
+
