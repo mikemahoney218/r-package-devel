@@ -6269,3 +6269,89 @@ Best regards,
 Ivan
 
 
+From gert @end|ng |rom gertvv@n|  Sat Apr 29 20:10:54 2023
+From: gert @end|ng |rom gertvv@n| (Gert van Valkenhoef)
+Date: Sat, 29 Apr 2023 20:10:54 +0200
+Subject: [R-pkg-devel] CRAN check fails on NEWS
+In-Reply-To: <CAFDcVCSJ1ktbDKH5dRTJYXEbiboSm1WOU+DVjTi6sUEm7cmQpg@mail.gmail.com>
+References: <f15cecf9-a55d-9193-5e64-541aba0d4e07@gertvv.nl>
+ <20230426223215.7a0e6102@Tarkus>
+ <CAFDcVCSJ1ktbDKH5dRTJYXEbiboSm1WOU+DVjTi6sUEm7cmQpg@mail.gmail.com>
+Message-ID: <aa0b18f2-15da-2883-2150-2729fc13f36a@gertvv.nl>
+
+Thanks all for the help, looks like the package is back in good standing 
+with CRAN. :-)
+
+On 26/04/2023 21.50, Henrik Bengtsson wrote:
+> To reproduce this, you can use tools:::.news_reader_default(), e.g.
+>
+>> utils::download.file("https://raw.githubusercontent.com/gertvv/rsmaa/master/smaa/NEWS", "NEWS", quiet = TRUE)
+>> news <- tools:::.news_reader_default("NEWS")
+> Warning messages:
+> 1: Cannot process chunk/lines:
+>    smaa 0.3-0
+> 2: Cannot process chunk/lines:
+>    smaa 0.2-5
+> ...
+> 9: Cannot process chunk/lines:
+>    smaa 0.1
+>
+> You can check for attribute 'bad' to detect if there are parsing errors, e.g.
+>
+>> bad <- which(attr(news, "bad"))
+>> news[bad, "Version"]
+> [1] "0.3-0" "0.2-5" "0.2-4" "0.2-3" "0.2-2" "0.2-1" "0.2"   "0.1-1" "0.1"
+>
+> I have a check_news() [0] that does this job for me (it checks both
+> NEWS and NEWS.md), e.g.
+>
+>> check_news("NEWS")
+> Error: Detected 9 malformed entries in 'NEWS': 0.3-0, 0.2-5, 0.2-4,
+> 0.2-3, 0.2-2, 0.2-1, 0.2, 0.1-1, 0.1
+>
+> Hope this helps,
+>
+> /Henrik
+>
+> [0] https://github.com/HenrikBengtsson/dotfiles-for-R/blob/master/Rprofile.d/interactive%3DTRUE/check_news.R
+>
+> On Wed, Apr 26, 2023 at 12:32?PM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+>> On Wed, 26 Apr 2023 20:38:36 +0200
+>> Gert van Valkenhoef <gert at gertvv.nl> wrote:
+>>
+>>> I'm hoping you can help me understand this new CRAN check failure
+>>> that occurs on Debian but not on Windows:
+>> Unfortunately, not all checks are enabled on all check machines.
+>>
+>>> * checking package subdirectories ... NOTE
+>>> Problems with news in ?NEWS?:
+>>>     Cannot process chunk/lines:
+>>>       smaa 0.3-0
+>>>     ... etc ...
+>> Your NEWS file at
+>> <https://github.com/gertvv/rsmaa/blob/master/smaa/NEWS> looks like
+>> valid Markdown to me. In fact, I can parse it using R's NEWS.md parser
+>> without any warnings, so in order to solve the problem, you just need
+>> to rename it to NEWS.md.
+>>
+>> R's requirements for "plain text" NEWS files are documented in
+>> help(news) (together with requirements for NEWS.md and NEWS.Rd).
+>>
+>>> The same package passes the same check on  Debian r-devel on r-hub
+>>> (see the full build log:
+>>> HTML
+>>> <https://builder.r-hub.io/status/smaa_0.3-2.tar.gz-6ab795be6475b44b1ec363a82c45a2cb>,
+>> Are they running R CMD check without --as-cran? This could be the
+>> reason why they didn't pick up this problem sooner. Running
+>> rhub::check_for_cran() will run a more comprehensive set of checks on
+>> your package.
+>>
+>> --
+>> Best regards,
+>> Ivan
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
