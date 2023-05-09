@@ -8301,3 +8301,1471 @@ wrote:
 	[[alternative HTML version deleted]]
 
 
+From u|r|ke@groemp|ng @end|ng |rom bht-ber||n@de  Mon May  8 11:50:19 2023
+From: u|r|ke@groemp|ng @end|ng |rom bht-ber||n@de (Ulrike Groemping)
+Date: Mon, 8 May 2023 11:50:19 +0200
+Subject: [R-pkg-devel] Unfortunate function name generic.something
+In-Reply-To: <CADNULg-AbELpZ7qmYmhK_PzMOuZwfpJC_tXFR-k8HqouC__smA@mail.gmail.com>
+References: <37f4055e-8a32-d053-3e19-3a8c8b9a082f@bht-berlin.de>
+ <CADNULg-AbELpZ7qmYmhK_PzMOuZwfpJC_tXFR-k8HqouC__smA@mail.gmail.com>
+Message-ID: <e40e8129-4559-93d6-ef03-2a399ce51c6a@bht-berlin.de>
+
+Thank your for the solution attempt. However, using the keyword internal 
+does not solve the problem, the note is still there. Any other proposals 
+for properly documenting a function that looks like an S3 method, but isn't?
+
+Best, Ulrike
+
+Am 05.05.2023 um 12:56 schrieb Iris Simmons:
+> You can add
+>
+> \keyword{internal}
+>
+> to the Rd file. Your documentation won't show up the in the pdf 
+> manual, it won't show up in the package index, but you'll still be 
+> able to access the doc page with ?levels.no <http://levels.no> or 
+> help("levels.no <http://levels.no>").
+>
+> This is usually used in a package's deprecated and defunct doc pages, 
+> but you can use it anywhere.
+>
+> On Fri, May 5, 2023, 06:49 Ulrike Groemping 
+> <ulrike.groemping at bht-berlin.de> wrote:
+>
+>     Dear package developeRs,
+>
+>     I am working on fixing some notes regarding package DoE.base.
+>     One note refers to the function levels.no <http://levels.no> and
+>     complains that the
+>     function is not documented as a method for the generic function
+>     levels.
+>     Actually, it is not a method for the generic levels, but a standalone
+>     internal function that I like to have documented.
+>
+>     Is there a way to document the function without renaming it and
+>     without
+>     triggering a note about method documentation?
+>
+>     Best, Ulrike
+>
+>     -- 
+>     ##############################################
+>     ## Prof. Ulrike Groemping
+>     ## FB II
+>     ## Berliner Hochschule f?r Technik (BHT)
+>     ##############################################
+>     ## prof.bht-berlin.de/groemping <http://prof.bht-berlin.de/groemping>
+>     ## Phone: +49(0)30 4504 5127
+>     ## Fax:? ?+49(0)30 4504 66 5127
+>     ## Home office: +49(0)30 394 04 863
+>     ##############################################
+>
+>     ______________________________________________
+>     R-package-devel at r-project.org mailing list
+>     https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon May  8 13:58:28 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 8 May 2023 07:58:28 -0400
+Subject: [R-pkg-devel] Unfortunate function name generic.something
+In-Reply-To: <e40e8129-4559-93d6-ef03-2a399ce51c6a@bht-berlin.de>
+References: <37f4055e-8a32-d053-3e19-3a8c8b9a082f@bht-berlin.de>
+ <CADNULg-AbELpZ7qmYmhK_PzMOuZwfpJC_tXFR-k8HqouC__smA@mail.gmail.com>
+ <e40e8129-4559-93d6-ef03-2a399ce51c6a@bht-berlin.de>
+Message-ID: <60113484-624e-0d69-cf8b-d142cfdc484a@gmail.com>
+
+There really isn't such a thing as "a function that looks like an S3 
+method, but isn't".  If it looks like an S3 method, then in the proper 
+circumstances, it will be called as one.
+
+In your case the function name is levels.no, and it isn't exported.  So 
+if you happen to have an object with a class inheriting from "no", and 
+you call levels() on it, levels.no might be called.
+
+This will only affect users of your package indirectly.  If they have 
+objects inheriting from "no" and call levels() on them, levels.no will 
+not be called.  But if they pass such an object to one of your package 
+functions, and that function calls levels() on it, they could end up 
+calling levels.no().  It all depends on what other classes that object 
+inherits from.
+
+You can test this yourself.  Set debugging on any one of your functions, 
+then call it in the normal way.  Then while still in the debugger set 
+debugging on levels.no, and create an object using
+
+   x <- structure(1, class = "no")
+
+and call levels(x).  You should break to the code of levels.no.
+
+That is why the WRE manual says "First, a caveat: a function named 
+gen.cl will be invoked by the generic gen for class cl, so do not name 
+functions in this style unless they are intended to be methods."
+
+So probably the best solution (even if inconvenient) is to rename 
+levels.no to something that doesn't look like an S3 method.
+
+Duncan Murdoch
+
+On 08/05/2023 5:50 a.m., Ulrike Groemping wrote:
+> Thank your for the solution attempt. However, using the keyword internal
+> does not solve the problem, the note is still there. Any other proposals
+> for properly documenting a function that looks like an S3 method, but isn't?
+> 
+> Best, Ulrike
+> 
+> Am 05.05.2023 um 12:56 schrieb Iris Simmons:
+>> You can add
+>>
+>> \keyword{internal}
+>>
+>> to the Rd file. Your documentation won't show up the in the pdf
+>> manual, it won't show up in the package index, but you'll still be
+>> able to access the doc page with ?levels.no <http://levels.no> or
+>> help("levels.no <http://levels.no>").
+>>
+>> This is usually used in a package's deprecated and defunct doc pages,
+>> but you can use it anywhere.
+>>
+>> On Fri, May 5, 2023, 06:49 Ulrike Groemping
+>> <ulrike.groemping at bht-berlin.de> wrote:
+>>
+>>      Dear package developeRs,
+>>
+>>      I am working on fixing some notes regarding package DoE.base.
+>>      One note refers to the function levels.no <http://levels.no> and
+>>      complains that the
+>>      function is not documented as a method for the generic function
+>>      levels.
+>>      Actually, it is not a method for the generic levels, but a standalone
+>>      internal function that I like to have documented.
+>>
+>>      Is there a way to document the function without renaming it and
+>>      without
+>>      triggering a note about method documentation?
+>>
+>>      Best, Ulrike
+>>
+>>      --
+>>      ##############################################
+>>      ## Prof. Ulrike Groemping
+>>      ## FB II
+>>      ## Berliner Hochschule f?r Technik (BHT)
+>>      ##############################################
+>>      ## prof.bht-berlin.de/groemping <http://prof.bht-berlin.de/groemping>
+>>      ## Phone: +49(0)30 4504 5127
+>>      ## Fax:? ?+49(0)30 4504 66 5127
+>>      ## Home office: +49(0)30 394 04 863
+>>      ##############################################
+>>
+>>      ______________________________________________
+>>      R-package-devel at r-project.org mailing list
+>>      https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From u|r|ke@groemp|ng @end|ng |rom bht-ber||n@de  Mon May  8 14:28:09 2023
+From: u|r|ke@groemp|ng @end|ng |rom bht-ber||n@de (Ulrike Groemping)
+Date: Mon, 8 May 2023 14:28:09 +0200
+Subject: [R-pkg-devel] Unfortunate function name generic.something
+In-Reply-To: <60113484-624e-0d69-cf8b-d142cfdc484a@gmail.com>
+References: <37f4055e-8a32-d053-3e19-3a8c8b9a082f@bht-berlin.de>
+ <CADNULg-AbELpZ7qmYmhK_PzMOuZwfpJC_tXFR-k8HqouC__smA@mail.gmail.com>
+ <e40e8129-4559-93d6-ef03-2a399ce51c6a@bht-berlin.de>
+ <60113484-624e-0d69-cf8b-d142cfdc484a@gmail.com>
+Message-ID: <16b3d9a8-6f54-b753-aed2-ec91b3d354d7@bht-berlin.de>
+
+Thanks, Duncan. I appreciate the view that levels.no acts as an S3 
+method for the generic levels, if an object of class "no" is handed to 
+it. However, as the function is not intended as an S3 method, it does 
+not make sense to document it as such. As the function is internal only, 
+which makes the scenario that it causes trouble extremely unlikely, I 
+will simply comment out the usage line for the function in order to get 
+rid of the note but keep the usage visible. I hope that this is OK.
+
+Best, Ulrike
+
+Am 08.05.2023 um 13:58 schrieb Duncan Murdoch:
+> There really isn't such a thing as "a function that looks like an S3 
+> method, but isn't".? If it looks like an S3 method, then in the proper 
+> circumstances, it will be called as one.
+>
+> In your case the function name is levels.no, and it isn't exported.? 
+> So if you happen to have an object with a class inheriting from "no", 
+> and you call levels() on it, levels.no might be called.
+>
+> This will only affect users of your package indirectly.? If they have 
+> objects inheriting from "no" and call levels() on them, levels.no will 
+> not be called.? But if they pass such an object to one of your package 
+> functions, and that function calls levels() on it, they could end up 
+> calling levels.no().? It all depends on what other classes that object 
+> inherits from.
+>
+> You can test this yourself.? Set debugging on any one of your 
+> functions, then call it in the normal way.? Then while still in the 
+> debugger set debugging on levels.no, and create an object using
+>
+> ? x <- structure(1, class = "no")
+>
+> and call levels(x).? You should break to the code of levels.no.
+>
+> That is why the WRE manual says "First, a caveat: a function named 
+> gen.cl will be invoked by the generic gen for class cl, so do not name 
+> functions in this style unless they are intended to be methods."
+>
+> So probably the best solution (even if inconvenient) is to rename 
+> levels.no to something that doesn't look like an S3 method.
+>
+> Duncan Murdoch
+>
+> On 08/05/2023 5:50 a.m., Ulrike Groemping wrote:
+>> Thank your for the solution attempt. However, using the keyword internal
+>> does not solve the problem, the note is still there. Any other proposals
+>> for properly documenting a function that looks like an S3 method, but 
+>> isn't?
+>>
+>> Best, Ulrike
+>>
+>> Am 05.05.2023 um 12:56 schrieb Iris Simmons:
+>>> You can add
+>>>
+>>> \keyword{internal}
+>>>
+>>> to the Rd file. Your documentation won't show up the in the pdf
+>>> manual, it won't show up in the package index, but you'll still be
+>>> able to access the doc page with ?levels.no <http://levels.no> or
+>>> help("levels.no <http://levels.no>").
+>>>
+>>> This is usually used in a package's deprecated and defunct doc pages,
+>>> but you can use it anywhere.
+>>>
+>>> On Fri, May 5, 2023, 06:49 Ulrike Groemping
+>>> <ulrike.groemping at bht-berlin.de> wrote:
+>>>
+>>> ???? Dear package developeRs,
+>>>
+>>> ???? I am working on fixing some notes regarding package DoE.base.
+>>> ???? One note refers to the function levels.no <http://levels.no> and
+>>> ???? complains that the
+>>> ???? function is not documented as a method for the generic function
+>>> ???? levels.
+>>> ???? Actually, it is not a method for the generic levels, but a 
+>>> standalone
+>>> ???? internal function that I like to have documented.
+>>>
+>>> ???? Is there a way to document the function without renaming it and
+>>> ???? without
+>>> ???? triggering a note about method documentation?
+>>>
+>>> ???? Best, Ulrike
+>>>
+>>> ???? --
+>>> ???? ##############################################
+>>> ???? ## Prof. Ulrike Groemping
+>>> ???? ## FB II
+>>> ???? ## Berliner Hochschule f?r Technik (BHT)
+>>> ???? ##############################################
+>>> ???? ## prof.bht-berlin.de/groemping 
+>>> <http://prof.bht-berlin.de/groemping>
+>>> ???? ## Phone: +49(0)30 4504 5127
+>>> ???? ## Fax:? ?+49(0)30 4504 66 5127
+>>> ???? ## Home office: +49(0)30 394 04 863
+>>> ???? ##############################################
+>>>
+>>> ???? ______________________________________________
+>>> ???? R-package-devel at r-project.org mailing list
+>>> ???? https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+From h@w|ckh@m @end|ng |rom gm@||@com  Mon May  8 14:45:51 2023
+From: h@w|ckh@m @end|ng |rom gm@||@com (Hadley Wickham)
+Date: Mon, 8 May 2023 07:45:51 -0500
+Subject: [R-pkg-devel] Unfortunate function name generic.something
+In-Reply-To: <16b3d9a8-6f54-b753-aed2-ec91b3d354d7@bht-berlin.de>
+References: <37f4055e-8a32-d053-3e19-3a8c8b9a082f@bht-berlin.de>
+ <CADNULg-AbELpZ7qmYmhK_PzMOuZwfpJC_tXFR-k8HqouC__smA@mail.gmail.com>
+ <e40e8129-4559-93d6-ef03-2a399ce51c6a@bht-berlin.de>
+ <60113484-624e-0d69-cf8b-d142cfdc484a@gmail.com>
+ <16b3d9a8-6f54-b753-aed2-ec91b3d354d7@bht-berlin.de>
+Message-ID: <CABdHhvHvhtOuVrui92C-MjHpFEwPughjy_5K7YbKASVN3V8gKw@mail.gmail.com>
+
+If it's internal only, you could change the name to levels_no()?
+Hadley
+
+On Mon, May 8, 2023 at 7:28?AM Ulrike Groemping
+<ulrike.groemping at bht-berlin.de> wrote:
+>
+> Thanks, Duncan. I appreciate the view that levels.no acts as an S3
+> method for the generic levels, if an object of class "no" is handed to
+> it. However, as the function is not intended as an S3 method, it does
+> not make sense to document it as such. As the function is internal only,
+> which makes the scenario that it causes trouble extremely unlikely, I
+> will simply comment out the usage line for the function in order to get
+> rid of the note but keep the usage visible. I hope that this is OK.
+>
+> Best, Ulrike
+>
+> Am 08.05.2023 um 13:58 schrieb Duncan Murdoch:
+> > There really isn't such a thing as "a function that looks like an S3
+> > method, but isn't".  If it looks like an S3 method, then in the proper
+> > circumstances, it will be called as one.
+> >
+> > In your case the function name is levels.no, and it isn't exported.
+> > So if you happen to have an object with a class inheriting from "no",
+> > and you call levels() on it, levels.no might be called.
+> >
+> > This will only affect users of your package indirectly.  If they have
+> > objects inheriting from "no" and call levels() on them, levels.no will
+> > not be called.  But if they pass such an object to one of your package
+> > functions, and that function calls levels() on it, they could end up
+> > calling levels.no().  It all depends on what other classes that object
+> > inherits from.
+> >
+> > You can test this yourself.  Set debugging on any one of your
+> > functions, then call it in the normal way.  Then while still in the
+> > debugger set debugging on levels.no, and create an object using
+> >
+> >   x <- structure(1, class = "no")
+> >
+> > and call levels(x).  You should break to the code of levels.no.
+> >
+> > That is why the WRE manual says "First, a caveat: a function named
+> > gen.cl will be invoked by the generic gen for class cl, so do not name
+> > functions in this style unless they are intended to be methods."
+> >
+> > So probably the best solution (even if inconvenient) is to rename
+> > levels.no to something that doesn't look like an S3 method.
+> >
+> > Duncan Murdoch
+> >
+> > On 08/05/2023 5:50 a.m., Ulrike Groemping wrote:
+> >> Thank your for the solution attempt. However, using the keyword internal
+> >> does not solve the problem, the note is still there. Any other proposals
+> >> for properly documenting a function that looks like an S3 method, but
+> >> isn't?
+> >>
+> >> Best, Ulrike
+> >>
+> >> Am 05.05.2023 um 12:56 schrieb Iris Simmons:
+> >>> You can add
+> >>>
+> >>> \keyword{internal}
+> >>>
+> >>> to the Rd file. Your documentation won't show up the in the pdf
+> >>> manual, it won't show up in the package index, but you'll still be
+> >>> able to access the doc page with ?levels.no <http://levels.no> or
+> >>> help("levels.no <http://levels.no>").
+> >>>
+> >>> This is usually used in a package's deprecated and defunct doc pages,
+> >>> but you can use it anywhere.
+> >>>
+> >>> On Fri, May 5, 2023, 06:49 Ulrike Groemping
+> >>> <ulrike.groemping at bht-berlin.de> wrote:
+> >>>
+> >>>      Dear package developeRs,
+> >>>
+> >>>      I am working on fixing some notes regarding package DoE.base.
+> >>>      One note refers to the function levels.no <http://levels.no> and
+> >>>      complains that the
+> >>>      function is not documented as a method for the generic function
+> >>>      levels.
+> >>>      Actually, it is not a method for the generic levels, but a
+> >>> standalone
+> >>>      internal function that I like to have documented.
+> >>>
+> >>>      Is there a way to document the function without renaming it and
+> >>>      without
+> >>>      triggering a note about method documentation?
+> >>>
+> >>>      Best, Ulrike
+> >>>
+> >>>      --
+> >>>      ##############################################
+> >>>      ## Prof. Ulrike Groemping
+> >>>      ## FB II
+> >>>      ## Berliner Hochschule f?r Technik (BHT)
+> >>>      ##############################################
+> >>>      ## prof.bht-berlin.de/groemping
+> >>> <http://prof.bht-berlin.de/groemping>
+> >>>      ## Phone: +49(0)30 4504 5127
+> >>>      ## Fax:   +49(0)30 4504 66 5127
+> >>>      ## Home office: +49(0)30 394 04 863
+> >>>      ##############################################
+> >>>
+> >>>      ______________________________________________
+> >>>      R-package-devel at r-project.org mailing list
+> >>>      https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >>>
+> >>
+> >> ______________________________________________
+> >> R-package-devel at r-project.org mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+
+-- 
+http://hadley.nz
+
+
+From u|r|ke@groemp|ng @end|ng |rom bht-ber||n@de  Mon May  8 14:48:36 2023
+From: u|r|ke@groemp|ng @end|ng |rom bht-ber||n@de (Ulrike Groemping)
+Date: Mon, 8 May 2023 14:48:36 +0200
+Subject: [R-pkg-devel] Unfortunate function name generic.something
+In-Reply-To: <CABdHhvHvhtOuVrui92C-MjHpFEwPughjy_5K7YbKASVN3V8gKw@mail.gmail.com>
+References: <37f4055e-8a32-d053-3e19-3a8c8b9a082f@bht-berlin.de>
+ <CADNULg-AbELpZ7qmYmhK_PzMOuZwfpJC_tXFR-k8HqouC__smA@mail.gmail.com>
+ <e40e8129-4559-93d6-ef03-2a399ce51c6a@bht-berlin.de>
+ <60113484-624e-0d69-cf8b-d142cfdc484a@gmail.com>
+ <16b3d9a8-6f54-b753-aed2-ec91b3d354d7@bht-berlin.de>
+ <CABdHhvHvhtOuVrui92C-MjHpFEwPughjy_5K7YbKASVN3V8gKw@mail.gmail.com>
+Message-ID: <a59bd480-0be2-cd36-81b0-a30ecf4eeb00@bht-berlin.de>
+
+I certainly could, but I'm using this little convenience function it in 
+so many places (and packages) that this would be a massive amount of 
+work - doesn't feel justified, given the tiny chance of causing a problem.
+Ulrike
+
+Am 08.05.2023 um 14:45 schrieb Hadley Wickham:
+> If it's internal only, you could change the name to levels_no()?
+> Hadley
+>
+> On Mon, May 8, 2023 at 7:28?AM Ulrike Groemping
+> <ulrike.groemping at bht-berlin.de> wrote:
+>> Thanks, Duncan. I appreciate the view that levels.no acts as an S3
+>> method for the generic levels, if an object of class "no" is handed to
+>> it. However, as the function is not intended as an S3 method, it does
+>> not make sense to document it as such. As the function is internal only,
+>> which makes the scenario that it causes trouble extremely unlikely, I
+>> will simply comment out the usage line for the function in order to get
+>> rid of the note but keep the usage visible. I hope that this is OK.
+>>
+>> Best, Ulrike
+>>
+>> Am 08.05.2023 um 13:58 schrieb Duncan Murdoch:
+>>> There really isn't such a thing as "a function that looks like an S3
+>>> method, but isn't".  If it looks like an S3 method, then in the proper
+>>> circumstances, it will be called as one.
+>>>
+>>> In your case the function name is levels.no, and it isn't exported.
+>>> So if you happen to have an object with a class inheriting from "no",
+>>> and you call levels() on it, levels.no might be called.
+>>>
+>>> This will only affect users of your package indirectly.  If they have
+>>> objects inheriting from "no" and call levels() on them, levels.no will
+>>> not be called.  But if they pass such an object to one of your package
+>>> functions, and that function calls levels() on it, they could end up
+>>> calling levels.no().  It all depends on what other classes that object
+>>> inherits from.
+>>>
+>>> You can test this yourself.  Set debugging on any one of your
+>>> functions, then call it in the normal way.  Then while still in the
+>>> debugger set debugging on levels.no, and create an object using
+>>>
+>>>    x <- structure(1, class = "no")
+>>>
+>>> and call levels(x).  You should break to the code of levels.no.
+>>>
+>>> That is why the WRE manual says "First, a caveat: a function named
+>>> gen.cl will be invoked by the generic gen for class cl, so do not name
+>>> functions in this style unless they are intended to be methods."
+>>>
+>>> So probably the best solution (even if inconvenient) is to rename
+>>> levels.no to something that doesn't look like an S3 method.
+>>>
+>>> Duncan Murdoch
+>>>
+>>> On 08/05/2023 5:50 a.m., Ulrike Groemping wrote:
+>>>> Thank your for the solution attempt. However, using the keyword internal
+>>>> does not solve the problem, the note is still there. Any other proposals
+>>>> for properly documenting a function that looks like an S3 method, but
+>>>> isn't?
+>>>>
+>>>> Best, Ulrike
+>>>>
+>>>> Am 05.05.2023 um 12:56 schrieb Iris Simmons:
+>>>>> You can add
+>>>>>
+>>>>> \keyword{internal}
+>>>>>
+>>>>> to the Rd file. Your documentation won't show up the in the pdf
+>>>>> manual, it won't show up in the package index, but you'll still be
+>>>>> able to access the doc page with ?levels.no <http://levels.no> or
+>>>>> help("levels.no <http://levels.no>").
+>>>>>
+>>>>> This is usually used in a package's deprecated and defunct doc pages,
+>>>>> but you can use it anywhere.
+>>>>>
+>>>>> On Fri, May 5, 2023, 06:49 Ulrike Groemping
+>>>>> <ulrike.groemping at bht-berlin.de> wrote:
+>>>>>
+>>>>>       Dear package developeRs,
+>>>>>
+>>>>>       I am working on fixing some notes regarding package DoE.base.
+>>>>>       One note refers to the function levels.no <http://levels.no> and
+>>>>>       complains that the
+>>>>>       function is not documented as a method for the generic function
+>>>>>       levels.
+>>>>>       Actually, it is not a method for the generic levels, but a
+>>>>> standalone
+>>>>>       internal function that I like to have documented.
+>>>>>
+>>>>>       Is there a way to document the function without renaming it and
+>>>>>       without
+>>>>>       triggering a note about method documentation?
+>>>>>
+>>>>>       Best, Ulrike
+>>>>>
+>>>>>       --
+>>>>>       ##############################################
+>>>>>       ## Prof. Ulrike Groemping
+>>>>>       ## FB II
+>>>>>       ## Berliner Hochschule f?r Technik (BHT)
+>>>>>       ##############################################
+>>>>>       ## prof.bht-berlin.de/groemping
+>>>>> <http://prof.bht-berlin.de/groemping>
+>>>>>       ## Phone: +49(0)30 4504 5127
+>>>>>       ## Fax:   +49(0)30 4504 66 5127
+>>>>>       ## Home office: +49(0)30 394 04 863
+>>>>>       ##############################################
+>>>>>
+>>>>>       ______________________________________________
+>>>>>       R-package-devel at r-project.org mailing list
+>>>>>       https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>>
+>>>> ______________________________________________
+>>>> R-package-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+>
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon May  8 15:48:02 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 8 May 2023 09:48:02 -0400
+Subject: [R-pkg-devel] Unfortunate function name generic.something
+In-Reply-To: <16b3d9a8-6f54-b753-aed2-ec91b3d354d7@bht-berlin.de>
+References: <37f4055e-8a32-d053-3e19-3a8c8b9a082f@bht-berlin.de>
+ <CADNULg-AbELpZ7qmYmhK_PzMOuZwfpJC_tXFR-k8HqouC__smA@mail.gmail.com>
+ <e40e8129-4559-93d6-ef03-2a399ce51c6a@bht-berlin.de>
+ <60113484-624e-0d69-cf8b-d142cfdc484a@gmail.com>
+ <16b3d9a8-6f54-b753-aed2-ec91b3d354d7@bht-berlin.de>
+Message-ID: <fac43d8b-aab8-636f-37ca-03b2ba36023e@gmail.com>
+
+On 08/05/2023 8:28 a.m., Ulrike Groemping wrote:
+> Thanks, Duncan. I appreciate the view that levels.no acts as an S3
+> method for the generic levels, if an object of class "no" is handed to
+> it. However, as the function is not intended as an S3 method, it does
+> not make sense to document it as such. As the function is internal only,
+> which makes the scenario that it causes trouble extremely unlikely, I
+> will simply comment out the usage line for the function in order to get
+> rid of the note but keep the usage visible. I hope that this is OK.
+
+I think that should solve the warning issue, and it's better than 
+documenting it as an S3 method when it's not intended to be one.
+
+I don't know how likely it is to cause trouble.  You do call levels(), 
+but I don't know if you ever call it on objects that weren't created 
+internally.  If so, then there's the possibility that one of them will 
+have that "no" class for a completely unrelated reason, and then there 
+will be trouble.
+
+Duncan Murdoch
+
+> 
+> Best, Ulrike
+> 
+> Am 08.05.2023 um 13:58 schrieb Duncan Murdoch:
+>> There really isn't such a thing as "a function that looks like an S3
+>> method, but isn't".? If it looks like an S3 method, then in the proper
+>> circumstances, it will be called as one.
+>>
+>> In your case the function name is levels.no, and it isn't exported.
+>> So if you happen to have an object with a class inheriting from "no",
+>> and you call levels() on it, levels.no might be called.
+>>
+>> This will only affect users of your package indirectly.? If they have
+>> objects inheriting from "no" and call levels() on them, levels.no will
+>> not be called.? But if they pass such an object to one of your package
+>> functions, and that function calls levels() on it, they could end up
+>> calling levels.no().? It all depends on what other classes that object
+>> inherits from.
+>>
+>> You can test this yourself.? Set debugging on any one of your
+>> functions, then call it in the normal way.? Then while still in the
+>> debugger set debugging on levels.no, and create an object using
+>>
+>>  ? x <- structure(1, class = "no")
+>>
+>> and call levels(x).? You should break to the code of levels.no.
+>>
+>> That is why the WRE manual says "First, a caveat: a function named
+>> gen.cl will be invoked by the generic gen for class cl, so do not name
+>> functions in this style unless they are intended to be methods."
+>>
+>> So probably the best solution (even if inconvenient) is to rename
+>> levels.no to something that doesn't look like an S3 method.
+>>
+>> Duncan Murdoch
+>>
+>> On 08/05/2023 5:50 a.m., Ulrike Groemping wrote:
+>>> Thank your for the solution attempt. However, using the keyword internal
+>>> does not solve the problem, the note is still there. Any other proposals
+>>> for properly documenting a function that looks like an S3 method, but
+>>> isn't?
+>>>
+>>> Best, Ulrike
+>>>
+>>> Am 05.05.2023 um 12:56 schrieb Iris Simmons:
+>>>> You can add
+>>>>
+>>>> \keyword{internal}
+>>>>
+>>>> to the Rd file. Your documentation won't show up the in the pdf
+>>>> manual, it won't show up in the package index, but you'll still be
+>>>> able to access the doc page with ?levels.no <http://levels.no> or
+>>>> help("levels.no <http://levels.no>").
+>>>>
+>>>> This is usually used in a package's deprecated and defunct doc pages,
+>>>> but you can use it anywhere.
+>>>>
+>>>> On Fri, May 5, 2023, 06:49 Ulrike Groemping
+>>>> <ulrike.groemping at bht-berlin.de> wrote:
+>>>>
+>>>>  ???? Dear package developeRs,
+>>>>
+>>>>  ???? I am working on fixing some notes regarding package DoE.base.
+>>>>  ???? One note refers to the function levels.no <http://levels.no> and
+>>>>  ???? complains that the
+>>>>  ???? function is not documented as a method for the generic function
+>>>>  ???? levels.
+>>>>  ???? Actually, it is not a method for the generic levels, but a
+>>>> standalone
+>>>>  ???? internal function that I like to have documented.
+>>>>
+>>>>  ???? Is there a way to document the function without renaming it and
+>>>>  ???? without
+>>>>  ???? triggering a note about method documentation?
+>>>>
+>>>>  ???? Best, Ulrike
+>>>>
+>>>>  ???? --
+>>>>  ???? ##############################################
+>>>>  ???? ## Prof. Ulrike Groemping
+>>>>  ???? ## FB II
+>>>>  ???? ## Berliner Hochschule f?r Technik (BHT)
+>>>>  ???? ##############################################
+>>>>  ???? ## prof.bht-berlin.de/groemping
+>>>> <http://prof.bht-berlin.de/groemping>
+>>>>  ???? ## Phone: +49(0)30 4504 5127
+>>>>  ???? ## Fax:? ?+49(0)30 4504 66 5127
+>>>>  ???? ## Home office: +49(0)30 394 04 863
+>>>>  ???? ##############################################
+>>>>
+>>>>  ???? ______________________________________________
+>>>>  ???? R-package-devel at r-project.org mailing list
+>>>>  ???? https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+
+
+From u|r|ke@groemp|ng @end|ng |rom bht-ber||n@de  Mon May  8 18:10:22 2023
+From: u|r|ke@groemp|ng @end|ng |rom bht-ber||n@de (Ulrike Groemping)
+Date: Mon, 8 May 2023 18:10:22 +0200
+Subject: [R-pkg-devel] Unfortunate function name generic.something
+In-Reply-To: <fac43d8b-aab8-636f-37ca-03b2ba36023e@gmail.com>
+References: <37f4055e-8a32-d053-3e19-3a8c8b9a082f@bht-berlin.de>
+ <CADNULg-AbELpZ7qmYmhK_PzMOuZwfpJC_tXFR-k8HqouC__smA@mail.gmail.com>
+ <e40e8129-4559-93d6-ef03-2a399ce51c6a@bht-berlin.de>
+ <60113484-624e-0d69-cf8b-d142cfdc484a@gmail.com>
+ <16b3d9a8-6f54-b753-aed2-ec91b3d354d7@bht-berlin.de>
+ <fac43d8b-aab8-636f-37ca-03b2ba36023e@gmail.com>
+Message-ID: <74183109-3f1f-35ae-c7cb-684d2eca5f52@bht-berlin.de>
+
+Am 08.05.2023 um 15:48 schrieb Duncan Murdoch:
+> On 08/05/2023 8:28 a.m., Ulrike Groemping wrote:
+>> Thanks, Duncan. I appreciate the view that levels.no acts as an S3
+>> method for the generic levels, if an object of class "no" is handed to
+>> it. However, as the function is not intended as an S3 method, it does
+>> not make sense to document it as such. As the function is internal only,
+>> which makes the scenario that it causes trouble extremely unlikely, I
+>> will simply comment out the usage line for the function in order to get
+>> rid of the note but keep the usage visible. I hope that this is OK.
+>
+> I think that should solve the warning issue, and it's better than 
+> documenting it as an S3 method when it's not intended to be one.
+>
+> I don't know how likely it is to cause trouble.? You do call levels(), 
+> but I don't know if you ever call it on objects that weren't created 
+> internally.? If so, then there's the possibility that one of them will 
+> have that "no" class for a completely unrelated reason, and then there 
+> will be trouble.
+>
+> Duncan Murdoch
+It solved the documentation warning issue, but another issue followed 
+suit (found in the submission pretests only):
+
+"Mismatches for apparent methods not registered:
+levels:
+   function(x)
+levels.no:
+   function(xx)"
+
+I now changed the argument of levels.no to x, registered the method (as 
+I was under the impression that not registering it would trigger the 
+next complaint; of course, registering it might make it more likely to 
+be mis-used). For preventing unnoticed problems, I made the function 
+throw a meaningful error message ("DoE.base:::levels.no is not a method 
+for the generic base::levels") in the (hopefully unlikely) case that it 
+is handed an object of class "no" by someone who wants to use a levels 
+method on that object. This version now passed the pretest checks.
+
+Ulrike Groemping
+
+>
+>>
+>> Best, Ulrike
+>>
+>> Am 08.05.2023 um 13:58 schrieb Duncan Murdoch:
+>>> There really isn't such a thing as "a function that looks like an S3
+>>> method, but isn't".? If it looks like an S3 method, then in the proper
+>>> circumstances, it will be called as one.
+>>>
+>>> In your case the function name is levels.no, and it isn't exported.
+>>> So if you happen to have an object with a class inheriting from "no",
+>>> and you call levels() on it, levels.no might be called.
+>>>
+>>> This will only affect users of your package indirectly.? If they have
+>>> objects inheriting from "no" and call levels() on them, levels.no will
+>>> not be called.? But if they pass such an object to one of your package
+>>> functions, and that function calls levels() on it, they could end up
+>>> calling levels.no().? It all depends on what other classes that object
+>>> inherits from.
+>>>
+>>> You can test this yourself.? Set debugging on any one of your
+>>> functions, then call it in the normal way.? Then while still in the
+>>> debugger set debugging on levels.no, and create an object using
+>>>
+>>> ?? x <- structure(1, class = "no")
+>>>
+>>> and call levels(x).? You should break to the code of levels.no.
+>>>
+>>> That is why the WRE manual says "First, a caveat: a function named
+>>> gen.cl will be invoked by the generic gen for class cl, so do not name
+>>> functions in this style unless they are intended to be methods."
+>>>
+>>> So probably the best solution (even if inconvenient) is to rename
+>>> levels.no to something that doesn't look like an S3 method.
+>>>
+>>> Duncan Murdoch
+>>>
+>>> On 08/05/2023 5:50 a.m., Ulrike Groemping wrote:
+>>>> Thank your for the solution attempt. However, using the keyword 
+>>>> internal
+>>>> does not solve the problem, the note is still there. Any other 
+>>>> proposals
+>>>> for properly documenting a function that looks like an S3 method, but
+>>>> isn't?
+>>>>
+>>>> Best, Ulrike
+>>>>
+>>>> Am 05.05.2023 um 12:56 schrieb Iris Simmons:
+>>>>> You can add
+>>>>>
+>>>>> \keyword{internal}
+>>>>>
+>>>>> to the Rd file. Your documentation won't show up the in the pdf
+>>>>> manual, it won't show up in the package index, but you'll still be
+>>>>> able to access the doc page with ?levels.no <http://levels.no> or
+>>>>> help("levels.no <http://levels.no>").
+>>>>>
+>>>>> This is usually used in a package's deprecated and defunct doc pages,
+>>>>> but you can use it anywhere.
+>>>>>
+>>>>> On Fri, May 5, 2023, 06:49 Ulrike Groemping
+>>>>> <ulrike.groemping at bht-berlin.de> wrote:
+>>>>>
+>>>>> ????? Dear package developeRs,
+>>>>>
+>>>>> ????? I am working on fixing some notes regarding package DoE.base.
+>>>>> ????? One note refers to the function levels.no <http://levels.no> 
+>>>>> and
+>>>>> ????? complains that the
+>>>>> ????? function is not documented as a method for the generic function
+>>>>> ????? levels.
+>>>>> ????? Actually, it is not a method for the generic levels, but a
+>>>>> standalone
+>>>>> ????? internal function that I like to have documented.
+>>>>>
+>>>>> ????? Is there a way to document the function without renaming it and
+>>>>> ????? without
+>>>>> ????? triggering a note about method documentation?
+>>>>>
+>>>>> ????? Best, Ulrike
+>>>>>
+>>>>> ????? --
+>>>>> ????? ##############################################
+>>>>> ????? ## Prof. Ulrike Groemping
+>>>>> ????? ## FB II
+>>>>> ????? ## Berliner Hochschule f?r Technik (BHT)
+>>>>> ????? ##############################################
+>>>>> ????? ## prof.bht-berlin.de/groemping
+>>>>> <http://prof.bht-berlin.de/groemping>
+>>>>> ????? ## Phone: +49(0)30 4504 5127
+>>>>> ????? ## Fax:? ?+49(0)30 4504 66 5127
+>>>>> ????? ## Home office: +49(0)30 394 04 863
+>>>>> ????? ##############################################
+>>>>>
+>>>>> ????? ______________________________________________
+>>>>> ????? R-package-devel at r-project.org mailing list
+>>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>>
+>>>>
+>>>> ______________________________________________
+>>>> R-package-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>
+>
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon May  8 18:29:23 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 8 May 2023 12:29:23 -0400
+Subject: [R-pkg-devel] Unfortunate function name generic.something
+In-Reply-To: <74183109-3f1f-35ae-c7cb-684d2eca5f52@bht-berlin.de>
+References: <37f4055e-8a32-d053-3e19-3a8c8b9a082f@bht-berlin.de>
+ <CADNULg-AbELpZ7qmYmhK_PzMOuZwfpJC_tXFR-k8HqouC__smA@mail.gmail.com>
+ <e40e8129-4559-93d6-ef03-2a399ce51c6a@bht-berlin.de>
+ <60113484-624e-0d69-cf8b-d142cfdc484a@gmail.com>
+ <16b3d9a8-6f54-b753-aed2-ec91b3d354d7@bht-berlin.de>
+ <fac43d8b-aab8-636f-37ca-03b2ba36023e@gmail.com>
+ <74183109-3f1f-35ae-c7cb-684d2eca5f52@bht-berlin.de>
+Message-ID: <47ab689d-a511-e6bc-80b9-78b6ff884b71@gmail.com>
+
+On 08/05/2023 12:10 p.m., Ulrike Groemping wrote:
+> Am 08.05.2023 um 15:48 schrieb Duncan Murdoch:
+>> On 08/05/2023 8:28 a.m., Ulrike Groemping wrote:
+>>> Thanks, Duncan. I appreciate the view that levels.no acts as an S3
+>>> method for the generic levels, if an object of class "no" is handed to
+>>> it. However, as the function is not intended as an S3 method, it does
+>>> not make sense to document it as such. As the function is internal only,
+>>> which makes the scenario that it causes trouble extremely unlikely, I
+>>> will simply comment out the usage line for the function in order to get
+>>> rid of the note but keep the usage visible. I hope that this is OK.
+>>
+>> I think that should solve the warning issue, and it's better than
+>> documenting it as an S3 method when it's not intended to be one.
+>>
+>> I don't know how likely it is to cause trouble.? You do call levels(),
+>> but I don't know if you ever call it on objects that weren't created
+>> internally.? If so, then there's the possibility that one of them will
+>> have that "no" class for a completely unrelated reason, and then there
+>> will be trouble.
+>>
+>> Duncan Murdoch
+> It solved the documentation warning issue, but another issue followed
+> suit (found in the submission pretests only):
+> 
+> "Mismatches for apparent methods not registered:
+> levels:
+>     function(x)
+> levels.no:
+>     function(xx)"
+> 
+> I now changed the argument of levels.no to x, registered the method (as
+> I was under the impression that not registering it would trigger the
+> next complaint; of course, registering it might make it more likely to
+> be mis-used). For preventing unnoticed problems, I made the function
+> throw a meaningful error message ("DoE.base:::levels.no is not a method
+> for the generic base::levels") in the (hopefully unlikely) case that it
+> is handed an object of class "no" by someone who wants to use a levels
+> method on that object. This version now passed the pretest checks.
+
+I think that registering it as an S3 method makes the potential problem 
+worse, because it makes it much more visible.  That's assuming you now 
+have something like
+
+   S3method(levels, no)
+
+in your NAMESPACE file, so every use of levels() by the user or in any 
+package could potentially call levels.no if your package is loaded.
+
+Duncan Murdoch
+
+
+> 
+> Ulrike Groemping
+> 
+>>
+>>>
+>>> Best, Ulrike
+>>>
+>>> Am 08.05.2023 um 13:58 schrieb Duncan Murdoch:
+>>>> There really isn't such a thing as "a function that looks like an S3
+>>>> method, but isn't".? If it looks like an S3 method, then in the proper
+>>>> circumstances, it will be called as one.
+>>>>
+>>>> In your case the function name is levels.no, and it isn't exported.
+>>>> So if you happen to have an object with a class inheriting from "no",
+>>>> and you call levels() on it, levels.no might be called.
+>>>>
+>>>> This will only affect users of your package indirectly.? If they have
+>>>> objects inheriting from "no" and call levels() on them, levels.no will
+>>>> not be called.? But if they pass such an object to one of your package
+>>>> functions, and that function calls levels() on it, they could end up
+>>>> calling levels.no().? It all depends on what other classes that object
+>>>> inherits from.
+>>>>
+>>>> You can test this yourself.? Set debugging on any one of your
+>>>> functions, then call it in the normal way.? Then while still in the
+>>>> debugger set debugging on levels.no, and create an object using
+>>>>
+>>>>  ?? x <- structure(1, class = "no")
+>>>>
+>>>> and call levels(x).? You should break to the code of levels.no.
+>>>>
+>>>> That is why the WRE manual says "First, a caveat: a function named
+>>>> gen.cl will be invoked by the generic gen for class cl, so do not name
+>>>> functions in this style unless they are intended to be methods."
+>>>>
+>>>> So probably the best solution (even if inconvenient) is to rename
+>>>> levels.no to something that doesn't look like an S3 method.
+>>>>
+>>>> Duncan Murdoch
+>>>>
+>>>> On 08/05/2023 5:50 a.m., Ulrike Groemping wrote:
+>>>>> Thank your for the solution attempt. However, using the keyword
+>>>>> internal
+>>>>> does not solve the problem, the note is still there. Any other
+>>>>> proposals
+>>>>> for properly documenting a function that looks like an S3 method, but
+>>>>> isn't?
+>>>>>
+>>>>> Best, Ulrike
+>>>>>
+>>>>> Am 05.05.2023 um 12:56 schrieb Iris Simmons:
+>>>>>> You can add
+>>>>>>
+>>>>>> \keyword{internal}
+>>>>>>
+>>>>>> to the Rd file. Your documentation won't show up the in the pdf
+>>>>>> manual, it won't show up in the package index, but you'll still be
+>>>>>> able to access the doc page with ?levels.no <http://levels.no> or
+>>>>>> help("levels.no <http://levels.no>").
+>>>>>>
+>>>>>> This is usually used in a package's deprecated and defunct doc pages,
+>>>>>> but you can use it anywhere.
+>>>>>>
+>>>>>> On Fri, May 5, 2023, 06:49 Ulrike Groemping
+>>>>>> <ulrike.groemping at bht-berlin.de> wrote:
+>>>>>>
+>>>>>>  ????? Dear package developeRs,
+>>>>>>
+>>>>>>  ????? I am working on fixing some notes regarding package DoE.base.
+>>>>>>  ????? One note refers to the function levels.no <http://levels.no>
+>>>>>> and
+>>>>>>  ????? complains that the
+>>>>>>  ????? function is not documented as a method for the generic function
+>>>>>>  ????? levels.
+>>>>>>  ????? Actually, it is not a method for the generic levels, but a
+>>>>>> standalone
+>>>>>>  ????? internal function that I like to have documented.
+>>>>>>
+>>>>>>  ????? Is there a way to document the function without renaming it and
+>>>>>>  ????? without
+>>>>>>  ????? triggering a note about method documentation?
+>>>>>>
+>>>>>>  ????? Best, Ulrike
+>>>>>>
+>>>>>>  ????? --
+>>>>>>  ????? ##############################################
+>>>>>>  ????? ## Prof. Ulrike Groemping
+>>>>>>  ????? ## FB II
+>>>>>>  ????? ## Berliner Hochschule f?r Technik (BHT)
+>>>>>>  ????? ##############################################
+>>>>>>  ????? ## prof.bht-berlin.de/groemping
+>>>>>> <http://prof.bht-berlin.de/groemping>
+>>>>>>  ????? ## Phone: +49(0)30 4504 5127
+>>>>>>  ????? ## Fax:? ?+49(0)30 4504 66 5127
+>>>>>>  ????? ## Home office: +49(0)30 394 04 863
+>>>>>>  ????? ##############################################
+>>>>>>
+>>>>>>  ????? ______________________________________________
+>>>>>>  ????? R-package-devel at r-project.org mailing list
+>>>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>>>
+>>>>>
+>>>>> ______________________________________________
+>>>>> R-package-devel at r-project.org mailing list
+>>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>
+>>
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Tue May  9 00:58:43 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Tue, 9 May 2023 10:58:43 +1200
+Subject: [R-pkg-devel] Unfortunate function name generic.something
+In-Reply-To: <60113484-624e-0d69-cf8b-d142cfdc484a@gmail.com>
+References: <37f4055e-8a32-d053-3e19-3a8c8b9a082f@bht-berlin.de>
+ <CADNULg-AbELpZ7qmYmhK_PzMOuZwfpJC_tXFR-k8HqouC__smA@mail.gmail.com>
+ <e40e8129-4559-93d6-ef03-2a399ce51c6a@bht-berlin.de>
+ <60113484-624e-0d69-cf8b-d142cfdc484a@gmail.com>
+Message-ID: <7D81077A-93CA-4134-97AA-C336B27EC300@R-project.org>
+
+
+
+> On 8/05/2023, at 11:58 PM, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+> 
+> There really isn't such a thing as "a function that looks like an S3 method, but isn't".  If it looks like an S3 method, then in the proper circumstances, it will be called as one.
+> 
+
+
+I disagree - that was the case in old versions, but not anymore. The whole point of introducing namespaces and method registration was to make it clear when a function is a method and when it is a function. If you export a function it won't be treated as a method:
+
+In a package NAMESPACE:
+export(foo.cls)
+package R code: foo.cls <- function(x) "foo.cls"
+
+in R:
+> cls=structure(1,class="cls")
+> foo=function(x) UseMethod("foo")
+> foo(cls)
+Error in UseMethod("foo") : 
+  no applicable method for 'foo' applied to an object of class "cls"
+> foo.cls(cls)
+[1] "foo.cls"
+
+So R knows very well what is a method and what is a function. If you wanted it to be a method, you have to use S3method(foo, cls) and that **is** different from export(foo.cls) - quite deliberately so.
+
+Cheers,
+Simon
+
+
+> In your case the function name is levels.no, and it isn't exported.  So if you happen to have an object with a class inheriting from "no", and you call levels() on it, levels.no might be called.
+> 
+> This will only affect users of your package indirectly.  If they have objects inheriting from "no" and call levels() on them, levels.no will not be called.  But if they pass such an object to one of your package functions, and that function calls levels() on it, they could end up calling levels.no().  It all depends on what other classes that object inherits from.
+> 
+> You can test this yourself.  Set debugging on any one of your functions, then call it in the normal way.  Then while still in the debugger set debugging on levels.no, and create an object using
+> 
+>  x <- structure(1, class = "no")
+> 
+> and call levels(x).  You should break to the code of levels.no.
+> 
+> That is why the WRE manual says "First, a caveat: a function named gen.cl will be invoked by the generic gen for class cl, so do not name functions in this style unless they are intended to be methods."
+> 
+> So probably the best solution (even if inconvenient) is to rename levels.no to something that doesn't look like an S3 method.
+> 
+> Duncan Murdoch
+> 
+> On 08/05/2023 5:50 a.m., Ulrike Groemping wrote:
+>> Thank your for the solution attempt. However, using the keyword internal
+>> does not solve the problem, the note is still there. Any other proposals
+>> for properly documenting a function that looks like an S3 method, but isn't?
+>> Best, Ulrike
+>> Am 05.05.2023 um 12:56 schrieb Iris Simmons:
+>>> You can add
+>>> 
+>>> \keyword{internal}
+>>> 
+>>> to the Rd file. Your documentation won't show up the in the pdf
+>>> manual, it won't show up in the package index, but you'll still be
+>>> able to access the doc page with ?levels.no <http://levels.no> or
+>>> help("levels.no <http://levels.no>").
+>>> 
+>>> This is usually used in a package's deprecated and defunct doc pages,
+>>> but you can use it anywhere.
+>>> 
+>>> On Fri, May 5, 2023, 06:49 Ulrike Groemping
+>>> <ulrike.groemping at bht-berlin.de> wrote:
+>>> 
+>>>     Dear package developeRs,
+>>> 
+>>>     I am working on fixing some notes regarding package DoE.base.
+>>>     One note refers to the function levels.no <http://levels.no> and
+>>>     complains that the
+>>>     function is not documented as a method for the generic function
+>>>     levels.
+>>>     Actually, it is not a method for the generic levels, but a standalone
+>>>     internal function that I like to have documented.
+>>> 
+>>>     Is there a way to document the function without renaming it and
+>>>     without
+>>>     triggering a note about method documentation?
+>>> 
+>>>     Best, Ulrike
+>>> 
+>>>     --
+>>>     ##############################################
+>>>     ## Prof. Ulrike Groemping
+>>>     ## FB II
+>>>     ## Berliner Hochschule f?r Technik (BHT)
+>>>     ##############################################
+>>>     ## prof.bht-berlin.de/groemping <http://prof.bht-berlin.de/groemping>
+>>>     ## Phone: +49(0)30 4504 5127
+>>>     ## Fax:   +49(0)30 4504 66 5127
+>>>     ## Home office: +49(0)30 394 04 863
+>>>     ##############################################
+>>> 
+>>>     ______________________________________________
+>>>     R-package-devel at r-project.org mailing list
+>>>     https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>> 
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue May  9 01:23:00 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 8 May 2023 19:23:00 -0400
+Subject: [R-pkg-devel] Unfortunate function name generic.something
+In-Reply-To: <7D81077A-93CA-4134-97AA-C336B27EC300@R-project.org>
+References: <37f4055e-8a32-d053-3e19-3a8c8b9a082f@bht-berlin.de>
+ <CADNULg-AbELpZ7qmYmhK_PzMOuZwfpJC_tXFR-k8HqouC__smA@mail.gmail.com>
+ <e40e8129-4559-93d6-ef03-2a399ce51c6a@bht-berlin.de>
+ <60113484-624e-0d69-cf8b-d142cfdc484a@gmail.com>
+ <7D81077A-93CA-4134-97AA-C336B27EC300@R-project.org>
+Message-ID: <d816507e-c043-403a-d029-85babaabd086@gmail.com>
+
+On 08/05/2023 6:58 p.m., Simon Urbanek wrote:
+> 
+> 
+>> On 8/05/2023, at 11:58 PM, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>>
+>> There really isn't such a thing as "a function that looks like an S3 method, but isn't".  If it looks like an S3 method, then in the proper circumstances, it will be called as one.
+>>
+> 
+> 
+> I disagree - that was the case in old versions, but not anymore. The whole point of introducing namespaces and method registration was to make it clear when a function is a method and when it is a function. If you export a function it won't be treated as a method:
+> 
+> In a package NAMESPACE:
+> export(foo.cls)
+> package R code: foo.cls <- function(x) "foo.cls"
+> 
+> in R:
+>> cls=structure(1,class="cls")
+>> foo=function(x) UseMethod("foo")
+>> foo(cls)
+> Error in UseMethod("foo") :
+>    no applicable method for 'foo' applied to an object of class "cls"
+>> foo.cls(cls)
+> [1] "foo.cls"
+> 
+> So R knows very well what is a method and what is a function. If you wanted it to be a method, you have to use S3method(foo, cls) and that **is** different from export(foo.cls) - quite deliberately so.
+
+That is true for package users, but it's not true within the package.  I 
+just tested this code in a package:
+
+   levels.no <- function(xx, ...) {
+     stop("not a method")
+   }
+
+   f <- function() {
+     x <- structure(1, class = "no")
+     levels(x)
+   }
+
+Both levels.no and f were exported.  If I attach the package and call 
+f(), I get the error
+
+   > library(testpkg)
+   > f()
+   Error in levels.no(x) : not a method
+
+because levels.no is being treated as a method when levels() is called 
+in the package.
+
+If I create an x like that outside of the package and call levels(x) 
+there, I get NULL, because levels.no is not being treated as a method in 
+that context.
+
+As far as I know, there is no possible way to have a function in a 
+package that is called "levels.no" and not being treated as a method 
+within the package.  I don't think there's any way to declare "this is 
+not a method", other than naming it differently.
+
+Duncan
+
+> 
+> Cheers,
+> Simon
+> 
+> 
+>> In your case the function name is levels.no, and it isn't exported.  So if you happen to have an object with a class inheriting from "no", and you call levels() on it, levels.no might be called.
+>>
+>> This will only affect users of your package indirectly.  If they have objects inheriting from "no" and call levels() on them, levels.no will not be called.  But if they pass such an object to one of your package functions, and that function calls levels() on it, they could end up calling levels.no().  It all depends on what other classes that object inherits from.
+>>
+>> You can test this yourself.  Set debugging on any one of your functions, then call it in the normal way.  Then while still in the debugger set debugging on levels.no, and create an object using
+>>
+>>   x <- structure(1, class = "no")
+>>
+>> and call levels(x).  You should break to the code of levels.no.
+>>
+>> That is why the WRE manual says "First, a caveat: a function named gen.cl will be invoked by the generic gen for class cl, so do not name functions in this style unless they are intended to be methods."
+>>
+>> So probably the best solution (even if inconvenient) is to rename levels.no to something that doesn't look like an S3 method.
+>>
+>> Duncan Murdoch
+>>
+>> On 08/05/2023 5:50 a.m., Ulrike Groemping wrote:
+>>> Thank your for the solution attempt. However, using the keyword internal
+>>> does not solve the problem, the note is still there. Any other proposals
+>>> for properly documenting a function that looks like an S3 method, but isn't?
+>>> Best, Ulrike
+>>> Am 05.05.2023 um 12:56 schrieb Iris Simmons:
+>>>> You can add
+>>>>
+>>>> \keyword{internal}
+>>>>
+>>>> to the Rd file. Your documentation won't show up the in the pdf
+>>>> manual, it won't show up in the package index, but you'll still be
+>>>> able to access the doc page with ?levels.no <http://levels.no> or
+>>>> help("levels.no <http://levels.no>").
+>>>>
+>>>> This is usually used in a package's deprecated and defunct doc pages,
+>>>> but you can use it anywhere.
+>>>>
+>>>> On Fri, May 5, 2023, 06:49 Ulrike Groemping
+>>>> <ulrike.groemping at bht-berlin.de> wrote:
+>>>>
+>>>>      Dear package developeRs,
+>>>>
+>>>>      I am working on fixing some notes regarding package DoE.base.
+>>>>      One note refers to the function levels.no <http://levels.no> and
+>>>>      complains that the
+>>>>      function is not documented as a method for the generic function
+>>>>      levels.
+>>>>      Actually, it is not a method for the generic levels, but a standalone
+>>>>      internal function that I like to have documented.
+>>>>
+>>>>      Is there a way to document the function without renaming it and
+>>>>      without
+>>>>      triggering a note about method documentation?
+>>>>
+>>>>      Best, Ulrike
+>>>>
+>>>>      --
+>>>>      ##############################################
+>>>>      ## Prof. Ulrike Groemping
+>>>>      ## FB II
+>>>>      ## Berliner Hochschule f?r Technik (BHT)
+>>>>      ##############################################
+>>>>      ## prof.bht-berlin.de/groemping <http://prof.bht-berlin.de/groemping>
+>>>>      ## Phone: +49(0)30 4504 5127
+>>>>      ## Fax:   +49(0)30 4504 66 5127
+>>>>      ## Home office: +49(0)30 394 04 863
+>>>>      ##############################################
+>>>>
+>>>>      ______________________________________________
+>>>>      R-package-devel at r-project.org mailing list
+>>>>      https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue May  9 01:53:24 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 8 May 2023 19:53:24 -0400
+Subject: [R-pkg-devel] Unfortunate function name generic.something
+In-Reply-To: <d816507e-c043-403a-d029-85babaabd086@gmail.com>
+References: <37f4055e-8a32-d053-3e19-3a8c8b9a082f@bht-berlin.de>
+ <CADNULg-AbELpZ7qmYmhK_PzMOuZwfpJC_tXFR-k8HqouC__smA@mail.gmail.com>
+ <e40e8129-4559-93d6-ef03-2a399ce51c6a@bht-berlin.de>
+ <60113484-624e-0d69-cf8b-d142cfdc484a@gmail.com>
+ <7D81077A-93CA-4134-97AA-C336B27EC300@R-project.org>
+ <d816507e-c043-403a-d029-85babaabd086@gmail.com>
+Message-ID: <a4f1834e-a8c7-676c-0442-5ebb2c3ab5f0@gmail.com>
+
+If anyone wants to try my demo, they can install the test package using
+
+   remotes::install_github("dmurdoch/testpkg")
+
+and see the demonstration by running
+
+   library(testpkg)
+   example(f)
+
+Duncan Murdoch
+
+On 08/05/2023 7:23 p.m., Duncan Murdoch wrote:
+> On 08/05/2023 6:58 p.m., Simon Urbanek wrote:
+>>
+>>
+>>> On 8/05/2023, at 11:58 PM, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>>>
+>>> There really isn't such a thing as "a function that looks like an S3 method, but isn't".  If it looks like an S3 method, then in the proper circumstances, it will be called as one.
+>>>
+>>
+>>
+>> I disagree - that was the case in old versions, but not anymore. The whole point of introducing namespaces and method registration was to make it clear when a function is a method and when it is a function. If you export a function it won't be treated as a method:
+>>
+>> In a package NAMESPACE:
+>> export(foo.cls)
+>> package R code: foo.cls <- function(x) "foo.cls"
+>>
+>> in R:
+>>> cls=structure(1,class="cls")
+>>> foo=function(x) UseMethod("foo")
+>>> foo(cls)
+>> Error in UseMethod("foo") :
+>>     no applicable method for 'foo' applied to an object of class "cls"
+>>> foo.cls(cls)
+>> [1] "foo.cls"
+>>
+>> So R knows very well what is a method and what is a function. If you wanted it to be a method, you have to use S3method(foo, cls) and that **is** different from export(foo.cls) - quite deliberately so.
+> 
+> That is true for package users, but it's not true within the package.  I
+> just tested this code in a package:
+> 
+>     levels.no <- function(xx, ...) {
+>       stop("not a method")
+>     }
+> 
+>     f <- function() {
+>       x <- structure(1, class = "no")
+>       levels(x)
+>     }
+> 
+> Both levels.no and f were exported.  If I attach the package and call
+> f(), I get the error
+> 
+>     > library(testpkg)
+>     > f()
+>     Error in levels.no(x) : not a method
+> 
+> because levels.no is being treated as a method when levels() is called
+> in the package.
+> 
+> If I create an x like that outside of the package and call levels(x)
+> there, I get NULL, because levels.no is not being treated as a method in
+> that context.
+> 
+> As far as I know, there is no possible way to have a function in a
+> package that is called "levels.no" and not being treated as a method
+> within the package.  I don't think there's any way to declare "this is
+> not a method", other than naming it differently.
+> 
+> Duncan
+> 
+>>
+>> Cheers,
+>> Simon
+>>
+>>
+>>> In your case the function name is levels.no, and it isn't exported.  So if you happen to have an object with a class inheriting from "no", and you call levels() on it, levels.no might be called.
+>>>
+>>> This will only affect users of your package indirectly.  If they have objects inheriting from "no" and call levels() on them, levels.no will not be called.  But if they pass such an object to one of your package functions, and that function calls levels() on it, they could end up calling levels.no().  It all depends on what other classes that object inherits from.
+>>>
+>>> You can test this yourself.  Set debugging on any one of your functions, then call it in the normal way.  Then while still in the debugger set debugging on levels.no, and create an object using
+>>>
+>>>    x <- structure(1, class = "no")
+>>>
+>>> and call levels(x).  You should break to the code of levels.no.
+>>>
+>>> That is why the WRE manual says "First, a caveat: a function named gen.cl will be invoked by the generic gen for class cl, so do not name functions in this style unless they are intended to be methods."
+>>>
+>>> So probably the best solution (even if inconvenient) is to rename levels.no to something that doesn't look like an S3 method.
+>>>
+>>> Duncan Murdoch
+>>>
+>>> On 08/05/2023 5:50 a.m., Ulrike Groemping wrote:
+>>>> Thank your for the solution attempt. However, using the keyword internal
+>>>> does not solve the problem, the note is still there. Any other proposals
+>>>> for properly documenting a function that looks like an S3 method, but isn't?
+>>>> Best, Ulrike
+>>>> Am 05.05.2023 um 12:56 schrieb Iris Simmons:
+>>>>> You can add
+>>>>>
+>>>>> \keyword{internal}
+>>>>>
+>>>>> to the Rd file. Your documentation won't show up the in the pdf
+>>>>> manual, it won't show up in the package index, but you'll still be
+>>>>> able to access the doc page with ?levels.no <http://levels.no> or
+>>>>> help("levels.no <http://levels.no>").
+>>>>>
+>>>>> This is usually used in a package's deprecated and defunct doc pages,
+>>>>> but you can use it anywhere.
+>>>>>
+>>>>> On Fri, May 5, 2023, 06:49 Ulrike Groemping
+>>>>> <ulrike.groemping at bht-berlin.de> wrote:
+>>>>>
+>>>>>       Dear package developeRs,
+>>>>>
+>>>>>       I am working on fixing some notes regarding package DoE.base.
+>>>>>       One note refers to the function levels.no <http://levels.no> and
+>>>>>       complains that the
+>>>>>       function is not documented as a method for the generic function
+>>>>>       levels.
+>>>>>       Actually, it is not a method for the generic levels, but a standalone
+>>>>>       internal function that I like to have documented.
+>>>>>
+>>>>>       Is there a way to document the function without renaming it and
+>>>>>       without
+>>>>>       triggering a note about method documentation?
+>>>>>
+>>>>>       Best, Ulrike
+>>>>>
+>>>>>       --
+>>>>>       ##############################################
+>>>>>       ## Prof. Ulrike Groemping
+>>>>>       ## FB II
+>>>>>       ## Berliner Hochschule f?r Technik (BHT)
+>>>>>       ##############################################
+>>>>>       ## prof.bht-berlin.de/groemping <http://prof.bht-berlin.de/groemping>
+>>>>>       ## Phone: +49(0)30 4504 5127
+>>>>>       ## Fax:   +49(0)30 4504 66 5127
+>>>>>       ## Home office: +49(0)30 394 04 863
+>>>>>       ##############################################
+>>>>>
+>>>>>       ______________________________________________
+>>>>>       R-package-devel at r-project.org mailing list
+>>>>>       https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>>
+>>>> ______________________________________________
+>>>> R-package-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>
+>>
+>
+
+
