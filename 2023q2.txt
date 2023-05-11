@@ -10397,3 +10397,639 @@ Simon
 > 
 
 
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed May 10 08:56:33 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 10 May 2023 02:56:33 -0400
+Subject: [R-pkg-devel] Unfortunate function name generic.something
+In-Reply-To: <9878B90C-A3CD-431C-A73E-615A53A0CB0C@R-project.org>
+References: <37f4055e-8a32-d053-3e19-3a8c8b9a082f@bht-berlin.de>
+ <CADNULg-AbELpZ7qmYmhK_PzMOuZwfpJC_tXFR-k8HqouC__smA@mail.gmail.com>
+ <e40e8129-4559-93d6-ef03-2a399ce51c6a@bht-berlin.de>
+ <60113484-624e-0d69-cf8b-d142cfdc484a@gmail.com>
+ <7D81077A-93CA-4134-97AA-C336B27EC300@R-project.org>
+ <d816507e-c043-403a-d029-85babaabd086@gmail.com>
+ <9878B90C-A3CD-431C-A73E-615A53A0CB0C@R-project.org>
+Message-ID: <126d9133-6612-183e-1fe6-a91d775c5e47@gmail.com>
+
+On 09/05/2023 5:05 p.m., Simon Urbanek wrote:
+> Duncan,
+> 
+> you're right that any functions in the call environment are always treated as methods (even before consulting method registrations). That is a special case - I presume for compatibility with the world before namespaces so that, e.g., you don't have to register methods in the global environment when working interactively. I wonder if that is something that packages could choose to opt out of for safety since they are already relying on method registration (and that would also in theory improve performance).
+> 
+> One interesting related issue is that in the current implementation of the method registration there is no concept of "private" methods (which is what the above rule effectively provides) since methods get registered with the generic, so they are either visible to everyone or not at all. If one would really want to support this, it would require a kind of "local" registration and then replacing the name-based search up the call chain with local registration search - but probably again at the cost of performance.
+
+One possible implementation of this would be to register methods with an 
+imported copy of the generic.
+
+Duncan
+
+> 
+> Cheers,
+> Simon
+> 
+> 
+>> On May 9, 2023, at 11:23 AM, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>>
+>> On 08/05/2023 6:58 p.m., Simon Urbanek wrote:
+>>>> On 8/05/2023, at 11:58 PM, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>>>>
+>>>> There really isn't such a thing as "a function that looks like an S3 method, but isn't".  If it looks like an S3 method, then in the proper circumstances, it will be called as one.
+>>>>
+>>> I disagree - that was the case in old versions, but not anymore. The whole point of introducing namespaces and method registration was to make it clear when a function is a method and when it is a function. If you export a function it won't be treated as a method:
+>>> In a package NAMESPACE:
+>>> export(foo.cls)
+>>> package R code: foo.cls <- function(x) "foo.cls"
+>>> in R:
+>>>> cls=structure(1,class="cls")
+>>>> foo=function(x) UseMethod("foo")
+>>>> foo(cls)
+>>> Error in UseMethod("foo") :
+>>>    no applicable method for 'foo' applied to an object of class "cls"
+>>>> foo.cls(cls)
+>>> [1] "foo.cls"
+>>> So R knows very well what is a method and what is a function. If you wanted it to be a method, you have to use S3method(foo, cls) and that **is** different from export(foo.cls) - quite deliberately so.
+>>
+>> That is true for package users, but it's not true within the package.  I just tested this code in a package:
+>>
+>>   levels.no <- function(xx, ...) {
+>>     stop("not a method")
+>>   }
+>>
+>>   f <- function() {
+>>     x <- structure(1, class = "no")
+>>     levels(x)
+>>   }
+>>
+>> Both levels.no and f were exported.  If I attach the package and call f(), I get the error
+>>
+>>   > library(testpkg)
+>>   > f()
+>>   Error in levels.no(x) : not a method
+>>
+>> because levels.no is being treated as a method when levels() is called in the package.
+>>
+>> If I create an x like that outside of the package and call levels(x) there, I get NULL, because levels.no is not being treated as a method in that context.
+>>
+>> As far as I know, there is no possible way to have a function in a package that is called "levels.no" and not being treated as a method within the package.  I don't think there's any way to declare "this is not a method", other than naming it differently.
+>>
+>> Duncan
+>>
+>>> Cheers,
+>>> Simon
+>>>> In your case the function name is levels.no, and it isn't exported.  So if you happen to have an object with a class inheriting from "no", and you call levels() on it, levels.no might be called.
+>>>>
+>>>> This will only affect users of your package indirectly.  If they have objects inheriting from "no" and call levels() on them, levels.no will not be called.  But if they pass such an object to one of your package functions, and that function calls levels() on it, they could end up calling levels.no().  It all depends on what other classes that object inherits from.
+>>>>
+>>>> You can test this yourself.  Set debugging on any one of your functions, then call it in the normal way.  Then while still in the debugger set debugging on levels.no, and create an object using
+>>>>
+>>>>   x <- structure(1, class = "no")
+>>>>
+>>>> and call levels(x).  You should break to the code of levels.no.
+>>>>
+>>>> That is why the WRE manual says "First, a caveat: a function named gen.cl will be invoked by the generic gen for class cl, so do not name functions in this style unless they are intended to be methods."
+>>>>
+>>>> So probably the best solution (even if inconvenient) is to rename levels.no to something that doesn't look like an S3 method.
+>>>>
+>>>> Duncan Murdoch
+>>>>
+>>>> On 08/05/2023 5:50 a.m., Ulrike Groemping wrote:
+>>>>> Thank your for the solution attempt. However, using the keyword internal
+>>>>> does not solve the problem, the note is still there. Any other proposals
+>>>>> for properly documenting a function that looks like an S3 method, but isn't?
+>>>>> Best, Ulrike
+>>>>> Am 05.05.2023 um 12:56 schrieb Iris Simmons:
+>>>>>> You can add
+>>>>>>
+>>>>>> \keyword{internal}
+>>>>>>
+>>>>>> to the Rd file. Your documentation won't show up the in the pdf
+>>>>>> manual, it won't show up in the package index, but you'll still be
+>>>>>> able to access the doc page with ?levels.no <http://levels.no> or
+>>>>>> help("levels.no <http://levels.no>").
+>>>>>>
+>>>>>> This is usually used in a package's deprecated and defunct doc pages,
+>>>>>> but you can use it anywhere.
+>>>>>>
+>>>>>> On Fri, May 5, 2023, 06:49 Ulrike Groemping
+>>>>>> <ulrike.groemping at bht-berlin.de> wrote:
+>>>>>>
+>>>>>>      Dear package developeRs,
+>>>>>>
+>>>>>>      I am working on fixing some notes regarding package DoE.base.
+>>>>>>      One note refers to the function levels.no <http://levels.no> and
+>>>>>>      complains that the
+>>>>>>      function is not documented as a method for the generic function
+>>>>>>      levels.
+>>>>>>      Actually, it is not a method for the generic levels, but a standalone
+>>>>>>      internal function that I like to have documented.
+>>>>>>
+>>>>>>      Is there a way to document the function without renaming it and
+>>>>>>      without
+>>>>>>      triggering a note about method documentation?
+>>>>>>
+>>>>>>      Best, Ulrike
+>>>>>>
+>>>>>>      --
+>>>>>>      ##############################################
+>>>>>>      ## Prof. Ulrike Groemping
+>>>>>>      ## FB II
+>>>>>>      ## Berliner Hochschule f?r Technik (BHT)
+>>>>>>      ##############################################
+>>>>>>      ## prof.bht-berlin.de/groemping <http://prof.bht-berlin.de/groemping>
+>>>>>>      ## Phone: +49(0)30 4504 5127
+>>>>>>      ## Fax:   +49(0)30 4504 66 5127
+>>>>>>      ## Home office: +49(0)30 394 04 863
+>>>>>>      ##############################################
+>>>>>>
+>>>>>>      ______________________________________________
+>>>>>>      R-package-devel at r-project.org mailing list
+>>>>>>      https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>>>
+>>>>> ______________________________________________
+>>>>> R-package-devel at r-project.org mailing list
+>>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>
+>>>> ______________________________________________
+>>>> R-package-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>
+>>
+>
+
+
+From edd @end|ng |rom deb|@n@org  Wed May 10 14:01:37 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 10 May 2023 07:01:37 -0500
+Subject: [R-pkg-devel] Please install cmake on macOS builders
+Message-ID: <25691.34721.521790.758811@rob.eddelbuettel.com>
+
+
+Simon,
+
+Explicitly declaring
+
+    SystemRequirements: cmake
+
+appears to be insufficient to get a build on the (otherwise lovely to have)
+'macOS builder', and leads to failure on (at least) 'r-oldrel-macos-x86_64'.
+
+Would it be possible to actually have cmake installed?
+
+These daus cmake is for better or worse becoming a standard, and I rely on it
+for one (new) package to correctly configure a library. It would be nice to
+be able to rely on it on macOS too.
+
+Thanks,  Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Wed May 10 21:31:29 2023
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Wed, 10 May 2023 21:31:29 +0200
+Subject: [R-pkg-devel] Please install cmake on macOS builders
+In-Reply-To: <25691.34721.521790.758811@rob.eddelbuettel.com>
+References: <25691.34721.521790.758811@rob.eddelbuettel.com>
+Message-ID: <25691.61713.694694.136591@stat.math.ethz.ch>
+
+>>>>> Dirk Eddelbuettel 
+>>>>>     on Wed, 10 May 2023 07:01:37 -0500 writes:
+
+    > Simon,
+
+    > Explicitly declaring
+
+    > SystemRequirements: cmake
+
+    > appears to be insufficient to get a build on the (otherwise lovely to have)
+    > 'macOS builder', and leads to failure on (at least) 'r-oldrel-macos-x86_64'.
+
+    > Would it be possible to actually have cmake installed?
+
+    > These daus cmake is for better or worse becoming a standard, and I rely on it
+    > for one (new) package to correctly configure a library. It would be nice to
+    > be able to rely on it on macOS too.
+
+Somewhat 'ditto' from here {about wanting 'cmake' to become +/-
+standard tool for R packages use, *not* at all related to macOS} :
+
+The SuiteSparse C library on parts of which our Matrix package
+builds extensively  has also switched their setup to use  cmake
+instead of make ... and this was actually one reason we have not
+yet updated to the latest versions of SuiteSparse for the Matrix
+package.
+
+As Matrix is formally recommended, I would even be happy if
+'cmake' became a +/- required OS tool for R ...
+
+Martin
+
+    > Thanks,  Dirk
+
+    > -- 
+    > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+--
+Martin Maechler
+ETH Zurich  and  R Core team
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Wed May 10 22:35:44 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Thu, 11 May 2023 08:35:44 +1200
+Subject: [R-pkg-devel] Please install cmake on macOS builders
+In-Reply-To: <25691.34721.521790.758811@rob.eddelbuettel.com>
+References: <25691.34721.521790.758811@rob.eddelbuettel.com>
+Message-ID: <8B55E8A3-C847-4D66-85DE-06AF970C89DC@R-project.org>
+
+Dirk,
+
+can you be more specific, please? I suspect that it may be rather an issue in your package. All build machines have the official cmake releases installed and there are many packages that use it successfully. Here is the report on the currently installed versions. If you require more recent version, let me know.
+
+high-sierra-x86_64$ /Applications/CMake.app/Contents/bin/cmake --version | head -n1
+cmake version 3.17.3
+
+big-sur-arm64$ /Applications/CMake.app/Contents/bin/cmake --version | head -n1
+cmake version 3.19.4
+
+mac-builder-arm64$ /Applications/CMake.app/Contents/bin/cmake --version | head -n1
+cmake version 3.21.2
+
+big-sur-x86_64$ /Applications/CMake.app/Contents/bin/cmake --version | head -n1
+cmake version 3.26.0
+
+Cheers,
+Simon
+
+
+> On May 11, 2023, at 12:01 AM, Dirk Eddelbuettel <edd at debian.org> wrote:
+> 
+> 
+> Simon,
+> 
+> Explicitly declaring
+> 
+>    SystemRequirements: cmake
+> 
+> appears to be insufficient to get a build on the (otherwise lovely to have)
+> 'macOS builder', and leads to failure on (at least) 'r-oldrel-macos-x86_64'.
+> 
+> Would it be possible to actually have cmake installed?
+> 
+> These daus cmake is for better or worse becoming a standard, and I rely on it
+> for one (new) package to correctly configure a library. It would be nice to
+> be able to rely on it on macOS too.
+> 
+> Thanks,  Dirk
+> 
+> -- 
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> 
+
+
+From r@c@rtwr|ght @end|ng |rom gm@||@com  Wed May 10 22:45:26 2023
+From: r@c@rtwr|ght @end|ng |rom gm@||@com (Reed A. Cartwright)
+Date: Wed, 10 May 2023 13:45:26 -0700
+Subject: [R-pkg-devel] Please install cmake on macOS builders
+In-Reply-To: <8B55E8A3-C847-4D66-85DE-06AF970C89DC@R-project.org>
+References: <25691.34721.521790.758811@rob.eddelbuettel.com>
+ <8B55E8A3-C847-4D66-85DE-06AF970C89DC@R-project.org>
+Message-ID: <CALOkxuwv4V7i4pZjF7yf=P8sS1QoFE-aa39x1iBDDA19hJSt7g@mail.gmail.com>
+
+I use the following logic in my configure script to detect cmake on the
+MacOS builders:
+
+https://github.com/reedacartwright/rbedrock/blob/master/configure#L39-L49
+
+I can't remember which package I borrowed this logic from. But it would be
+nice if "Writing R Extensions" would expand their cmake section to cover
+scenarios like this one.
+
+While I would love to have something like CMake be better integrated into
+CRAN, I've been using Meson (https://mesonbuild.com/) for a while and like
+it better than CMake.
+
+On Wed, May 10, 2023 at 1:36?PM Simon Urbanek <simon.urbanek at r-project.org>
+wrote:
+
+> Dirk,
+>
+> can you be more specific, please? I suspect that it may be rather an issue
+> in your package. All build machines have the official cmake releases
+> installed and there are many packages that use it successfully. Here is the
+> report on the currently installed versions. If you require more recent
+> version, let me know.
+>
+> high-sierra-x86_64$ /Applications/CMake.app/Contents/bin/cmake --version |
+> head -n1
+> cmake version 3.17.3
+>
+> big-sur-arm64$ /Applications/CMake.app/Contents/bin/cmake --version | head
+> -n1
+> cmake version 3.19.4
+>
+> mac-builder-arm64$ /Applications/CMake.app/Contents/bin/cmake --version |
+> head -n1
+> cmake version 3.21.2
+>
+> big-sur-x86_64$ /Applications/CMake.app/Contents/bin/cmake --version |
+> head -n1
+> cmake version 3.26.0
+>
+> Cheers,
+> Simon
+>
+>
+> > On May 11, 2023, at 12:01 AM, Dirk Eddelbuettel <edd at debian.org> wrote:
+> >
+> >
+> > Simon,
+> >
+> > Explicitly declaring
+> >
+> >    SystemRequirements: cmake
+> >
+> > appears to be insufficient to get a build on the (otherwise lovely to
+> have)
+> > 'macOS builder', and leads to failure on (at least)
+> 'r-oldrel-macos-x86_64'.
+> >
+> > Would it be possible to actually have cmake installed?
+> >
+> > These daus cmake is for better or worse becoming a standard, and I rely
+> on it
+> > for one (new) package to correctly configure a library. It would be nice
+> to
+> > be able to rely on it on macOS too.
+> >
+> > Thanks,  Dirk
+> >
+> > --
+> > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> >
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+>
+> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!IKRxdwAv5BmarQ!ZDzGKYSqloADeChMhl8e4QHq-S3hUWkUGBtFZOu3doH2FLaAb8quWzpo_Tbdn_aWQQY8VByJNGkqqGRXVa1gFD_cRjF7$
+>
+
+	[[alternative HTML version deleted]]
+
+
+From r@c@rtwr|ght @end|ng |rom gm@||@com  Wed May 10 22:51:34 2023
+From: r@c@rtwr|ght @end|ng |rom gm@||@com (Reed A. Cartwright)
+Date: Wed, 10 May 2023 13:51:34 -0700
+Subject: [R-pkg-devel] Please install cmake on macOS builders
+In-Reply-To: <CALOkxuwv4V7i4pZjF7yf=P8sS1QoFE-aa39x1iBDDA19hJSt7g@mail.gmail.com>
+References: <25691.34721.521790.758811@rob.eddelbuettel.com>
+ <8B55E8A3-C847-4D66-85DE-06AF970C89DC@R-project.org>
+ <CALOkxuwv4V7i4pZjF7yf=P8sS1QoFE-aa39x1iBDDA19hJSt7g@mail.gmail.com>
+Message-ID: <CALOkxuw6LSqxOkCTrEZgPATAD3OojGgFNTrMHeABYqN_UzSSZw@mail.gmail.com>
+
+> But it would be nice if "Writing R Extensions" would expand their cmake
+section to cover scenarios like this one.
+
+Now that I double check, I see that it is mentioned at the end of the CMake
+section. So I guess, the only way to improve the section would be to
+include a link to a complete example script that includes all the bells and
+whistles needed to get CMake running with R.
+
+On Wed, May 10, 2023 at 1:45?PM Reed A. Cartwright <racartwright at gmail.com>
+wrote:
+
+> I use the following logic in my configure script to detect cmake on the
+> MacOS builders:
+>
+> https://github.com/reedacartwright/rbedrock/blob/master/configure#L39-L49
+>
+> I can't remember which package I borrowed this logic from. But it would be
+> nice if "Writing R Extensions" would expand their cmake section to cover
+> scenarios like this one.
+>
+> While I would love to have something like CMake be better integrated into
+> CRAN, I've been using Meson (https://mesonbuild.com/) for a while and
+> like it better than CMake.
+>
+> On Wed, May 10, 2023 at 1:36?PM Simon Urbanek <simon.urbanek at r-project.org>
+> wrote:
+>
+>> Dirk,
+>>
+>> can you be more specific, please? I suspect that it may be rather an
+>> issue in your package. All build machines have the official cmake releases
+>> installed and there are many packages that use it successfully. Here is the
+>> report on the currently installed versions. If you require more recent
+>> version, let me know.
+>>
+>> high-sierra-x86_64$ /Applications/CMake.app/Contents/bin/cmake --version
+>> | head -n1
+>> cmake version 3.17.3
+>>
+>> big-sur-arm64$ /Applications/CMake.app/Contents/bin/cmake --version |
+>> head -n1
+>> cmake version 3.19.4
+>>
+>> mac-builder-arm64$ /Applications/CMake.app/Contents/bin/cmake --version |
+>> head -n1
+>> cmake version 3.21.2
+>>
+>> big-sur-x86_64$ /Applications/CMake.app/Contents/bin/cmake --version |
+>> head -n1
+>> cmake version 3.26.0
+>>
+>> Cheers,
+>> Simon
+>>
+>>
+>> > On May 11, 2023, at 12:01 AM, Dirk Eddelbuettel <edd at debian.org> wrote:
+>> >
+>> >
+>> > Simon,
+>> >
+>> > Explicitly declaring
+>> >
+>> >    SystemRequirements: cmake
+>> >
+>> > appears to be insufficient to get a build on the (otherwise lovely to
+>> have)
+>> > 'macOS builder', and leads to failure on (at least)
+>> 'r-oldrel-macos-x86_64'.
+>> >
+>> > Would it be possible to actually have cmake installed?
+>> >
+>> > These daus cmake is for better or worse becoming a standard, and I rely
+>> on it
+>> > for one (new) package to correctly configure a library. It would be
+>> nice to
+>> > be able to rely on it on macOS too.
+>> >
+>> > Thanks,  Dirk
+>> >
+>> > --
+>> > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>> >
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>>
+>> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!IKRxdwAv5BmarQ!ZDzGKYSqloADeChMhl8e4QHq-S3hUWkUGBtFZOu3doH2FLaAb8quWzpo_Tbdn_aWQQY8VByJNGkqqGRXVa1gFD_cRjF7$
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Wed May 10 22:59:22 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 10 May 2023 15:59:22 -0500
+Subject: [R-pkg-devel] Please install cmake on macOS builders
+In-Reply-To: <8B55E8A3-C847-4D66-85DE-06AF970C89DC@R-project.org>
+References: <25691.34721.521790.758811@rob.eddelbuettel.com>
+ <8B55E8A3-C847-4D66-85DE-06AF970C89DC@R-project.org>
+Message-ID: <25692.1450.305458.556360@rob.eddelbuettel.com>
+
+
+Simon,
+
+On 11 May 2023 at 08:35, Simon Urbanek wrote:
+| Dirk,
+| 
+| can you be more specific, please? I suspect that it may be rather an issue in your package. All build machines have the official cmake releases installed and there are many packages that use it successfully. Here is the report on the currently installed versions. If you require more recent version, let me know.
+| 
+| high-sierra-x86_64$ /Applications/CMake.app/Contents/bin/cmake --version | head -n1
+| cmake version 3.17.3
+| 
+| big-sur-arm64$ /Applications/CMake.app/Contents/bin/cmake --version | head -n1
+| cmake version 3.19.4
+| 
+| mac-builder-arm64$ /Applications/CMake.app/Contents/bin/cmake --version | head -n1
+| cmake version 3.21.2
+| 
+| big-sur-x86_64$ /Applications/CMake.app/Contents/bin/cmake --version | head -n1
+| cmake version 3.26.0
+
+edd at rob:/tmp/lib/big-sur-arm64/results/4.3/crc32c.Rcheck$ cat 00install.out 
+* installing *source* package ?crc32c? ...
+** using staged installation
+** libs
+using C compiler: ?Apple clang version 14.0.3 (clang-1403.0.22.14.1)?
+using C++ compiler: ?Apple clang version 14.0.3 (clang-1403.0.22.14.1)?
+using SDK: ?MacOSX11.3.sdk?
+mkdir crc32c/build && \
+                cd crc32c/build && \
+                cmake .. && \
+                make all && \
+                cp -v libcrc32c.a .. && \
+                rm -rf *
+/bin/sh: cmake: command not found
+make: *** [crc32c/libcrc32c.a] Error 127
+ERROR: compilation failed for package ?crc32c?
+* removing ?/Volumes/PkgBuild/work/1683752001-f31a3e60d7ec0840/packages/big-sur-arm64/results/4.3/crc32c.Rcheck/crc32c?
+edd at rob:/tmp/lib/big-sur-arm64/results/4.3/crc32c.Rcheck$ 
+
+That's from the downloaded 'results.tar.bz2' you offer.  Top-level URL is
+
+  https://mac.r-project.org/macbuilder/results/1683752001-f31a3e60d7ec0840/
+
+Most of my shell understanding is based on the understanding that calling
+something as 'cmake' should work if a 'cmake' is installed. Yet:
+
+  /bin/sh: cmake: command not found
+
+seems to point more at your system than at me.  I don't do any $PATH setting
+or resetting. Does something else get in the way? macOS has surprised me
+before so maybe you can offer a hint.
+
+Hth, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From edd @end|ng |rom deb|@n@org  Wed May 10 23:02:12 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 10 May 2023 16:02:12 -0500
+Subject: [R-pkg-devel] Please install cmake on macOS builders
+In-Reply-To: <CALOkxuwv4V7i4pZjF7yf=P8sS1QoFE-aa39x1iBDDA19hJSt7g@mail.gmail.com>
+References: <25691.34721.521790.758811@rob.eddelbuettel.com>
+ <8B55E8A3-C847-4D66-85DE-06AF970C89DC@R-project.org>
+ <CALOkxuwv4V7i4pZjF7yf=P8sS1QoFE-aa39x1iBDDA19hJSt7g@mail.gmail.com>
+Message-ID: <25692.1620.353469.332696@rob.eddelbuettel.com>
+
+
+On 10 May 2023 at 13:45, Reed A. Cartwright wrote:
+| I use the following logic in my configure script to detect cmake on the MacOS
+| builders:
+| 
+| https://github.com/reedacartwright/rbedrock/blob/master/configure#L39-L49
+
+Nice. That was entirely undocumented.  What a dance.  It should help.
+ 
+| I can't remember which package I borrowed this logic from. But it would be nice
+| if "Writing R Extensions" would expand their cmake section to cover scenarios
+| like this one.
+
+Yep.
+ 
+| While I would love to have something like CMake be better integrated into CRAN,
+| I've been using Meson (https://mesonbuild.com/) for a while and like it better
+| than CMake.
+
+"The thing about 15 standards is ..." paraphrasing xkcd. Use of cmake often
+comes with a library these days so your or my preference is sadly mostly
+irrelevant in the matter :-/
+
+Thanks for the snippet though. I shall try that. Adding it to WRE would
+indeed be a good idea.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From edd @end|ng |rom deb|@n@org  Wed May 10 23:40:01 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 10 May 2023 16:40:01 -0500
+Subject: [R-pkg-devel] Please install cmake on macOS builders
+In-Reply-To: <25692.1620.353469.332696@rob.eddelbuettel.com>
+References: <25691.34721.521790.758811@rob.eddelbuettel.com>
+ <8B55E8A3-C847-4D66-85DE-06AF970C89DC@R-project.org>
+ <CALOkxuwv4V7i4pZjF7yf=P8sS1QoFE-aa39x1iBDDA19hJSt7g@mail.gmail.com>
+ <25692.1620.353469.332696@rob.eddelbuettel.com>
+Message-ID: <25692.3889.328338.759429@rob.eddelbuettel.com>
+
+
+On 10 May 2023 at 16:02, Dirk Eddelbuettel wrote:
+| 
+| On 10 May 2023 at 13:45, Reed A. Cartwright wrote:
+| | I use the following logic in my configure script to detect cmake on the MacOS
+| | builders:
+| | 
+| | https://github.com/reedacartwright/rbedrock/blob/master/configure#L39-L49
+| 
+| Nice. That was entirely undocumented.  What a dance.  It should help.
+
+It did. I had (minimal) logic in src/Makevars to make a static lib via cmake;
+I now moved that up into a new script configure where I used your snippet to
+find cmake "even if I find myself surrounded by macOS". And with that things
+work. So thanks for the help.
+
+We can discuss at length if providing something in a path you cannot know ex
+ante know comprises "providing" something -- but I guess Simon was right that
+his machine had cmake. Only that I didn't know where it was. Ah well.
+
+But that is unplugged now, as is a mistake I had made in the CMakeLists.txt
+adaptation for a static-only build. Which only gcc-13 found so all good for
+another upload soon.
+
+Thanks again!
+
+Cheers, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
