@@ -11033,3 +11033,614 @@ Cheers, Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From ru@@e||-|enth @end|ng |rom u|ow@@edu  Thu May 11 04:49:43 2023
+From: ru@@e||-|enth @end|ng |rom u|ow@@edu (Lenth, Russell V)
+Date: Thu, 11 May 2023 02:49:43 +0000
+Subject: [R-pkg-devel] Unneeded S3 method registration
+Message-ID: <DM6PR04MB4474A688663F3BDEE76D2553F1749@DM6PR04MB4474.namprd04.prod.outlook.com>
+
+Dear R package developers
+
+My emmeans package failed preliminary checks when I submitted an update today, apparently due to a recent change in requirements on method registration. The message I got was:
+
+* checking S3 generic/method consistency ... NOTE
+Apparent methods for exported generics not registered:
+  emm_basis.Gam emm_basis.MCMCglmm emm_basis.averaging
+  emm_basis.betareg emm_basis.brmsfit emm_basis.carbayes emm_basis.clm
+  emm_basis.clmm emm_basis.coxme emm_basis.coxph emm_basis.default
+  emm_basis.gam emm_basis.gamlss emm_basis.gamm emm_basis.gee
+  emm_basis.geeglm emm_basis.geese emm_basis.gls emm_basis.gnls
+  emm_basis.hurdle emm_basis.lqm emm_basis.lqmm emm_basis.mblogit
+  emm_basis.mcmc emm_basis.mcmc.list emm_basis.mira emm_basis.mmer
+  emm_basis.multinom emm_basis.nlme emm_basis.nls emm_basis.polr
+  emm_basis.qdrg emm_basis.rms emm_basis.rq emm_basis.rqs
+  emm_basis.stanreg emm_basis.survreg emm_basis.svyolr
+  emm_basis.zeroinfl recover_data.MCMCglmm recover_data.averaging
+  recover_data.betareg recover_data.brmsfit recover_data.carbayes
+  recover_data.clm recover_data.clmm recover_data.coxme
+  recover_data.coxph recover_data.default recover_data.gam
+  recover_data.gamlss recover_data.gamm recover_data.gee
+  recover_data.geeglm recover_data.geese recover_data.gls
+  recover_data.gnls recover_data.hurdle recover_data.lqm
+  recover_data.lqmm recover_data.manova recover_data.mblogit
+  recover_data.mcmc recover_data.mcmc.list recover_data.mira
+  recover_data.mmer recover_data.multinom recover_data.nlme
+  recover_data.nls recover_data.polr recover_data.qdrg recover_data.rms
+  recover_data.rq recover_data.rqs recover_data.stanreg
+  recover_data.survreg recover_data.svyglm recover_data.svyolr
+  recover_data.zeroinfl
+See section 'Registering S3 methods' in the 'Writing R Extensions'
+manual.
+
+I guess my question is "why does this matter?" There are many, many functions mentioned here, but they are all methods for emm_basis and recover_data. Both generics are in the emmeans namespace, as are all these functions.
+
+The section on registering S3 methods explains:
+
+> The standard method for S3-style UseMethod dispatching might fail to locate methods defined in a package that is imported but not attached to the search path. To ensure that these methods are available the packages defining the methods should ensure that the generics are imported and register the methods using S3method directives...
+
+But clearly all those methods flagged in the messages will be found in the same namespace as the generics -- emm_basis and recover_data -- so not being able to find them is not an issue. Moreover, emm_basis() and recover_data() are not meant to be called directly by a user, or even by code in another package. They are only meant to be called within the function emmeans::ref_grid(), and the existence of those generics and methods is simply a mechanism for being able to support a lot of different model classes.
+
+Obviously, I could add a whole lot of S3method() directives to the NAMESPACE file, but it just seems wasteful to export all those methods when they are never needed outside the emmeans namespace.
+
+Am I missing something?
+
+Thanks
+
+Russ Lenth
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Thu May 11 09:02:33 2023
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Thu, 11 May 2023 09:02:33 +0200
+Subject: [R-pkg-devel] Please install cmake on macOS builders
+In-Reply-To: <25691.61713.694694.136591@stat.math.ethz.ch>
+References: <25691.34721.521790.758811@rob.eddelbuettel.com>
+ <25691.61713.694694.136591@stat.math.ethz.ch>
+Message-ID: <25692.37641.759470.866071@stat.math.ethz.ch>
+
+>>>>> Martin Maechler 
+>>>>>     on Wed, 10 May 2023 21:31:29 +0200 writes:
+
+  >>>>> Dirk Eddelbuettel 
+  >>>>>     on Wed, 10 May 2023 07:01:37 -0500 writes:
+
+	>> Simon,
+
+	>> Explicitly declaring
+
+	>> SystemRequirements: cmake
+
+	>> appears to be insufficient to get a build on the
+	>> (otherwise lovely to have) 'macOS builder', and leads to
+	>> failure on (at least) 'r-oldrel-macos-x86_64'.
+
+	>> Would it be possible to actually have cmake installed?
+
+	>> These daus cmake is for better or worse becoming a
+	>> standard, and I rely on it for one (new) package to
+	>> correctly configure a library. It would be nice to be
+	>> able to rely on it on macOS too.
+
+    > Somewhat 'ditto' from here {about wanting 'cmake' to
+    > become +/- standard tool for R packages use, *not* at all
+    > related to macOS} :
+
+    > The SuiteSparse C library on parts of which our Matrix
+    > package builds extensively has also switched their setup
+    > to use cmake instead of make ... and this was actually one
+    > reason we have not yet updated to the latest versions of
+    > SuiteSparse for the Matrix package.
+
+    > As Matrix is formally recommended, I would even be happy
+    > if 'cmake' became a +/- required OS tool for R ...
+
+I've been told in private that the above "be happy if"
+may *not* be a good idea,
+or rather even close to impossible as   cmake  seems to not fit
+well, at all, with the quite sophisticated
+    autoconf -> configure -> make
+setup we have with building R + recommended packages
+cross-platform compatibly as well as possible.
+
+Martin
+
+
+--
+Martin Maechler ETH Zurich and R Core team
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu May 11 10:58:17 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 11 May 2023 04:58:17 -0400
+Subject: [R-pkg-devel] Unneeded S3 method registration
+In-Reply-To: <DM6PR04MB4474A688663F3BDEE76D2553F1749@DM6PR04MB4474.namprd04.prod.outlook.com>
+References: <DM6PR04MB4474A688663F3BDEE76D2553F1749@DM6PR04MB4474.namprd04.prod.outlook.com>
+Message-ID: <944b549e-158f-f864-7072-e021823e65d2@gmail.com>
+
+The problem is that there's no way to declare that an internal function 
+should or shouldn't be treated as an S3 method, other than by declaring 
+it as one in NAMESPACE and exporting it.  If you read the thread 
+"Unfortunate function name generic.something?" that started last week, 
+you'll see the opposing problem to yours:  a local function named 
+levels.no that isn't intended to be an S3 method, but will be treated as 
+one in some circumstances.
+
+You do export emm_basis and recover_data, so those generics are 
+available to users.  And you do declare some of the methods, e.g. in 
+emmeans 1.8.5, users can see methods for some classes:
+
+ > methods("emm_basis")
+[1] emm_basis.aovlist* emm_basis.lm*      emm_basis.lme* 
+emm_basis.merMod*  emm_basis.mlm*
+
+As the message below says, you don't declare emm_basis.Gam to be a 
+method, which means that a user with a Gam object who calls emm_basis 
+will get the default method instead, whereas when code in your package 
+calls it, they'll get the Gam method.
+
+You say users should never call emm_basis directly, but package 
+developers should provide methods for it.  At a minimum that's going to 
+make debugging those packages much more confusing.  And if they have a 
+class which inherits from Gam and want to call the inherited method, 
+they won't get it.
+
+So I think in this case the NOTE is something you should fix.
+
+Duncan Murdoch
+
+On 10/05/2023 10:49 p.m., Lenth, Russell V wrote:
+> Dear R package developers
+> 
+> My emmeans package failed preliminary checks when I submitted an update today, apparently due to a recent change in requirements on method registration. The message I got was:
+> 
+> * checking S3 generic/method consistency ... NOTE
+> Apparent methods for exported generics not registered:
+>    emm_basis.Gam emm_basis.MCMCglmm emm_basis.averaging
+>    emm_basis.betareg emm_basis.brmsfit emm_basis.carbayes emm_basis.clm
+>    emm_basis.clmm emm_basis.coxme emm_basis.coxph emm_basis.default
+>    emm_basis.gam emm_basis.gamlss emm_basis.gamm emm_basis.gee
+>    emm_basis.geeglm emm_basis.geese emm_basis.gls emm_basis.gnls
+>    emm_basis.hurdle emm_basis.lqm emm_basis.lqmm emm_basis.mblogit
+>    emm_basis.mcmc emm_basis.mcmc.list emm_basis.mira emm_basis.mmer
+>    emm_basis.multinom emm_basis.nlme emm_basis.nls emm_basis.polr
+>    emm_basis.qdrg emm_basis.rms emm_basis.rq emm_basis.rqs
+>    emm_basis.stanreg emm_basis.survreg emm_basis.svyolr
+>    emm_basis.zeroinfl recover_data.MCMCglmm recover_data.averaging
+>    recover_data.betareg recover_data.brmsfit recover_data.carbayes
+>    recover_data.clm recover_data.clmm recover_data.coxme
+>    recover_data.coxph recover_data.default recover_data.gam
+>    recover_data.gamlss recover_data.gamm recover_data.gee
+>    recover_data.geeglm recover_data.geese recover_data.gls
+>    recover_data.gnls recover_data.hurdle recover_data.lqm
+>    recover_data.lqmm recover_data.manova recover_data.mblogit
+>    recover_data.mcmc recover_data.mcmc.list recover_data.mira
+>    recover_data.mmer recover_data.multinom recover_data.nlme
+>    recover_data.nls recover_data.polr recover_data.qdrg recover_data.rms
+>    recover_data.rq recover_data.rqs recover_data.stanreg
+>    recover_data.survreg recover_data.svyglm recover_data.svyolr
+>    recover_data.zeroinfl
+> See section 'Registering S3 methods' in the 'Writing R Extensions'
+> manual.
+> 
+> I guess my question is "why does this matter?" There are many, many functions mentioned here, but they are all methods for emm_basis and recover_data. Both generics are in the emmeans namespace, as are all these functions.
+> 
+> The section on registering S3 methods explains:
+> 
+>> The standard method for S3-style UseMethod dispatching might fail to locate methods defined in a package that is imported but not attached to the search path. To ensure that these methods are available the packages defining the methods should ensure that the generics are imported and register the methods using S3method directives...
+> 
+> But clearly all those methods flagged in the messages will be found in the same namespace as the generics -- emm_basis and recover_data -- so not being able to find them is not an issue. Moreover, emm_basis() and recover_data() are not meant to be called directly by a user, or even by code in another package. They are only meant to be called within the function emmeans::ref_grid(), and the existence of those generics and methods is simply a mechanism for being able to support a lot of different model classes.
+> 
+> Obviously, I could add a whole lot of S3method() directives to the NAMESPACE file, but it just seems wasteful to export all those methods when they are never needed outside the emmeans namespace.
+> 
+> Am I missing something?
+> 
+> Thanks
+> 
+> Russ Lenth
+> 
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From edd @end|ng |rom deb|@n@org  Thu May 11 13:16:19 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 11 May 2023 06:16:19 -0500
+Subject: [R-pkg-devel] Please install cmake on macOS builders
+In-Reply-To: <25692.37641.759470.866071@stat.math.ethz.ch>
+References: <25691.34721.521790.758811@rob.eddelbuettel.com>
+ <25691.61713.694694.136591@stat.math.ethz.ch>
+ <25692.37641.759470.866071@stat.math.ethz.ch>
+Message-ID: <25692.52867.527375.152408@rob.eddelbuettel.com>
+
+
+On 11 May 2023 at 09:02, Martin Maechler wrote:
+| I've been told in private that the above "be happy if"
+| may *not* be a good idea,
+| or rather even close to impossible as   cmake  seems to not fit
+| well, at all, with the quite sophisticated
+|     autoconf -> configure -> make
+| setup we have with building R + recommended packages
+| cross-platform compatibly as well as possible.
+
+Yes, my bad -- it _is_ indeed in Writing R Extensions (albeit with an
+actual error, see below) so I now use what it recommended (in the form
+pointed out by Reed though) so for me it is
+
+    sh -> make -> cmake
+
+but could be autoconf too.
+
+I presume the macOS systems needs it for cross-compilation or other dances.
+Still annoying as hell.  A simple default may be better but I do not know any
+of the dragons running around inside macOS.
+
+Dirk
+
+
+Appendix: Actual Error in Writing R Extensions.
+
+Section 1.2.6 ends on these lines (r-release, and r-devel) I am quoting in full
+
+    One way to work around this is for the package?s ?configure? script to
+    include
+         if test -z "$CMAKE"; then CMAKE="`which cmake`"; fi
+         if test -z "$CMAKE"; then CMAKE=/Applications/CMake.app/Contents/bin/cmake; fi
+         if test -f "$CMAKE"; then echo "no 'cmake' command found"; exit 1; fi
+    and for the second approach to substitute ?CMAKE? into ?src//Makevars?.
+
+The final 'test -f' has to be negated. Demo:
+
+    edd at rob:/tmp$ cat foo.sh 
+    ##!/bin/sh
+    if test -z "$CMAKE"; then CMAKE="`which cmake`"; fi
+    if test -z "$CMAKE"; then CMAKE=/Applications/CMake.app/Contents/bin/cmake; fi
+    if test -f "$CMAKE"; then echo "no 'cmake' command found"; exit 1; fi
+    echo "** using $CMAKE"
+    edd at rob:/tmp$ ./foo.sh 
+    no 'cmake' command found
+    edd at rob:/tmp$ which cmake
+    /usr/bin/cmake
+    edd at rob:/tmp$ 
+
+If I change foo.sh to use '! test -f' all is well
+
+    edd at rob:/tmp$ be foo.sh    # be is an alias for emacsclient in tty mode
+    edd at rob:/tmp$ ./foo.sh 
+    ** using /usr/bin/cmake
+    edd at rob:/tmp$ 
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From no@h@gre||er @end|ng |rom gm@||@com  Thu May 11 20:11:56 2023
+From: no@h@gre||er @end|ng |rom gm@||@com (Noah Greifer)
+Date: Thu, 11 May 2023 14:11:56 -0400
+Subject: [R-pkg-devel] Inconsistent functionality of c++ code in MatchIt
+Message-ID: <CAPhhD8=o8dZZFBH7FeLe0gWSdBz=b+JNKj+7+tosjqxDGJX+HQ@mail.gmail.com>
+
+Hello,
+
+I'm the mainter of the package *MatchIt*, which uses *Rcpp* to implement
+nearest neighbor matching. One way to customize nearest neighbor
+matching is to add a caliper, which is the largest distance two units can
+be from each other before they are not allowed to be matched. I've had some
+users complain recently that the caliper is not working for them, i.e.,
+even after specifying a caliper, units are being matched who are
+farther apart then the caliper width. I have been unable to replicate this
+problem on my Mac; the caliper always works as intended.
+
+One user noted that even when using the same package version, the
+performance varied across two machines: one obeyed the caliper and one
+didn't. I thought this might be related to the version of R installed, as
+for some users updating R fixed the issue, but for others it didn't. I'm
+kind of at a loss.
+
+I have a suspicion that the problem is related to the function abs() in the
+C++ functions find_right() and find_left() that I wrote to perform the
+matching, which are in nn_match_vec.cpp
+<https://github.com/kosukeimai/MatchIt/blob/master/src/nn_matchC_vec.cpp>.
+I have had problems with abs() before (seemingly related to a namespace
+conflict between std and Rcpp). In this case, abs() is used in the
+following way:
+
+if (abs(distance[ii] - distance[k]) > caliper_dist) {
+    //if closest is outside caliper, break; none can be found
+    break;
+ }
+
+Here, distance is a NumericVector, and ii and k are ints. My expectation is
+that this would dispatch to std::abs() with a double as its input. It's
+possible something is going wrong there. I'm wondering if this has to do
+with recent changes to R's C++ engine or compilers.
+
+If you want to run code to test whether the caliper is working correctly on
+your machine, you can run the following code:
+
+install.packages("MatchIt")
+data("lalonde", package = "MatchIt")
+m <- MatchIt::matchit(treat ~ age + educ + race + re74,
+                      data = lalonde, caliper = .01)
+summary(m)$nn
+
+If the caliper is working correctly, you should see a small matrix that has
+the row
+
+Matched            88      88
+
+If not, you would see the row
+
+Matched           185     185
+
+The GitHub issue of people complaining about this is here
+<https://github.com/kosukeimai/MatchIt/issues/163> along with their
+explanations about versions of *MatchIt* and R. The package code is also
+there.
+
+Any thoughts or insights about this would really help! Thank you so much!
+
+Noah
+
+	[[alternative HTML version deleted]]
+
+
+From r@c@rtwr|ght @end|ng |rom gm@||@com  Thu May 11 20:15:50 2023
+From: r@c@rtwr|ght @end|ng |rom gm@||@com (Reed A. Cartwright)
+Date: Thu, 11 May 2023 11:15:50 -0700
+Subject: [R-pkg-devel] Please install cmake on macOS builders
+In-Reply-To: <25692.52867.527375.152408@rob.eddelbuettel.com>
+References: <25691.34721.521790.758811@rob.eddelbuettel.com>
+ <25691.61713.694694.136591@stat.math.ethz.ch>
+ <25692.37641.759470.866071@stat.math.ethz.ch>
+ <25692.52867.527375.152408@rob.eddelbuettel.com>
+Message-ID: <CALOkxuym-etr-B_bv1bd+KjuUKo2ApVYgfa4fKG5hp5ZusonfA@mail.gmail.com>
+
+Dirk,
+
+I'm curious why you chose to call cmake from make instead of from
+configure. I've always seen cmake as part of the configure step of package
+building.
+
+Thanks,
+Reed
+
+
+On Thu, May 11, 2023, 04:17 Dirk Eddelbuettel <edd at debian.org> wrote:
+
+>
+> On 11 May 2023 at 09:02, Martin Maechler wrote:
+> | I've been told in private that the above "be happy if"
+> | may *not* be a good idea,
+> | or rather even close to impossible as   cmake  seems to not fit
+> | well, at all, with the quite sophisticated
+> |     autoconf -> configure -> make
+> | setup we have with building R + recommended packages
+> | cross-platform compatibly as well as possible.
+>
+> Yes, my bad -- it _is_ indeed in Writing R Extensions (albeit with an
+> actual error, see below) so I now use what it recommended (in the form
+> pointed out by Reed though) so for me it is
+>
+>     sh -> make -> cmake
+>
+> but could be autoconf too.
+>
+> I presume the macOS systems needs it for cross-compilation or other dances.
+> Still annoying as hell.  A simple default may be better but I do not know
+> any
+> of the dragons running around inside macOS.
+>
+> Dirk
+>
+>
+> Appendix: Actual Error in Writing R Extensions.
+>
+> Section 1.2.6 ends on these lines (r-release, and r-devel) I am quoting in
+> full
+>
+>     One way to work around this is for the package?s ?configure? script to
+>     include
+>          if test -z "$CMAKE"; then CMAKE="`which cmake`"; fi
+>          if test -z "$CMAKE"; then
+> CMAKE=/Applications/CMake.app/Contents/bin/cmake; fi
+>          if test -f "$CMAKE"; then echo "no 'cmake' command found"; exit
+> 1; fi
+>     and for the second approach to substitute ?CMAKE? into ?src//Makevars?.
+>
+> The final 'test -f' has to be negated. Demo:
+>
+>     edd at rob:/tmp$ cat foo.sh
+>     ##!/bin/sh
+>     if test -z "$CMAKE"; then CMAKE="`which cmake`"; fi
+>     if test -z "$CMAKE"; then
+> CMAKE=/Applications/CMake.app/Contents/bin/cmake; fi
+>     if test -f "$CMAKE"; then echo "no 'cmake' command found"; exit 1; fi
+>     echo "** using $CMAKE"
+>     edd at rob:/tmp$ ./foo.sh
+>     no 'cmake' command found
+>     edd at rob:/tmp$ which cmake
+>     /usr/bin/cmake
+>     edd at rob:/tmp$
+>
+> If I change foo.sh to use '! test -f' all is well
+>
+>     edd at rob:/tmp$ be foo.sh    # be is an alias for emacsclient in tty
+> mode
+>     edd at rob:/tmp$ ./foo.sh
+>     ** using /usr/bin/cmake
+>     edd at rob:/tmp$
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+>
+> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!IKRxdwAv5BmarQ!cx5EOr8qi2w5dP-kdo90tRXU4I7VjWDeD19I3UQxXe1hCHor7wP-FBUn5gzg8PFkdlerFTrGD0uL$
+>
+
+	[[alternative HTML version deleted]]
+
+
+From w||||@mwdun|@p @end|ng |rom gm@||@com  Thu May 11 20:49:55 2023
+From: w||||@mwdun|@p @end|ng |rom gm@||@com (Bill Dunlap)
+Date: Thu, 11 May 2023 11:49:55 -0700
+Subject: [R-pkg-devel] Inconsistent functionality of c++ code in MatchIt
+In-Reply-To: <CAPhhD8=o8dZZFBH7FeLe0gWSdBz=b+JNKj+7+tosjqxDGJX+HQ@mail.gmail.com>
+References: <CAPhhD8=o8dZZFBH7FeLe0gWSdBz=b+JNKj+7+tosjqxDGJX+HQ@mail.gmail.com>
+Message-ID: <CAHqSRuRJR4-vB4k5=Tgp+93d1p9ifxZzKgS-Gs2c4z7Chryq5Q@mail.gmail.com>
+
+I see the problem when I compile the C++ code on Ubuntu 20.04 and the
+latest R-devel with
+   C++ compiler: ?g++ (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
+If I change all the unadorned 'abs' calls in src/nn_matchC_vec.cpp with the
+prefix 'std::' the problem goes away.
+
+-Bill
+
+
+On Thu, May 11, 2023 at 11:12?AM Noah Greifer <noah.greifer at gmail.com>
+wrote:
+
+> Hello,
+>
+> I'm the mainter of the package *MatchIt*, which uses *Rcpp* to implement
+> nearest neighbor matching. One way to customize nearest neighbor
+> matching is to add a caliper, which is the largest distance two units can
+> be from each other before they are not allowed to be matched. I've had some
+> users complain recently that the caliper is not working for them, i.e.,
+> even after specifying a caliper, units are being matched who are
+> farther apart then the caliper width. I have been unable to replicate this
+> problem on my Mac; the caliper always works as intended.
+>
+> One user noted that even when using the same package version, the
+> performance varied across two machines: one obeyed the caliper and one
+> didn't. I thought this might be related to the version of R installed, as
+> for some users updating R fixed the issue, but for others it didn't. I'm
+> kind of at a loss.
+>
+> I have a suspicion that the problem is related to the function abs() in the
+> C++ functions find_right() and find_left() that I wrote to perform the
+> matching, which are in nn_match_vec.cpp
+> <https://github.com/kosukeimai/MatchIt/blob/master/src/nn_matchC_vec.cpp>.
+> I have had problems with abs() before (seemingly related to a namespace
+> conflict between std and Rcpp). In this case, abs() is used in the
+> following way:
+>
+> if (abs(distance[ii] - distance[k]) > caliper_dist) {
+>     //if closest is outside caliper, break; none can be found
+>     break;
+>  }
+>
+> Here, distance is a NumericVector, and ii and k are ints. My expectation is
+> that this would dispatch to std::abs() with a double as its input. It's
+> possible something is going wrong there. I'm wondering if this has to do
+> with recent changes to R's C++ engine or compilers.
+>
+> If you want to run code to test whether the caliper is working correctly on
+> your machine, you can run the following code:
+>
+> install.packages("MatchIt")
+> data("lalonde", package = "MatchIt")
+> m <- MatchIt::matchit(treat ~ age + educ + race + re74,
+>                       data = lalonde, caliper = .01)
+> summary(m)$nn
+>
+> If the caliper is working correctly, you should see a small matrix that has
+> the row
+>
+> Matched            88      88
+>
+> If not, you would see the row
+>
+> Matched           185     185
+>
+> The GitHub issue of people complaining about this is here
+> <https://github.com/kosukeimai/MatchIt/issues/163> along with their
+> explanations about versions of *MatchIt* and R. The package code is also
+> there.
+>
+> Any thoughts or insights about this would really help! Thank you so much!
+>
+> Noah
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From no@h@gre||er @end|ng |rom gm@||@com  Thu May 11 21:29:51 2023
+From: no@h@gre||er @end|ng |rom gm@||@com (Noah Greifer)
+Date: Thu, 11 May 2023 15:29:51 -0400
+Subject: [R-pkg-devel] Inconsistent functionality of c++ code in MatchIt
+In-Reply-To: <CAHqSRuRJR4-vB4k5=Tgp+93d1p9ifxZzKgS-Gs2c4z7Chryq5Q@mail.gmail.com>
+References: <CAPhhD8=o8dZZFBH7FeLe0gWSdBz=b+JNKj+7+tosjqxDGJX+HQ@mail.gmail.com>
+ <CAHqSRuRJR4-vB4k5=Tgp+93d1p9ifxZzKgS-Gs2c4z7Chryq5Q@mail.gmail.com>
+Message-ID: <CAPhhD8nu1e=MwcDYc8hb4_BjqX5+9O-AqOoKhRQBhCKUzBfrCg@mail.gmail.com>
+
+I want to thank Bill and everyone that reached out to me individually. It
+looks like Bill's solution is the right one, as he was able to replicate
+and fix the problem. I am still a bit confused on why this would occur on
+some OSs and not others (probably due to different compilers), but I think
+the solution is just writing explicit, robust code that should always work.
+Thank you!
+
+Noah
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Thu May 11 22:36:42 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 11 May 2023 15:36:42 -0500
+Subject: [R-pkg-devel] Please install cmake on macOS builders
+In-Reply-To: <CALOkxuym-etr-B_bv1bd+KjuUKo2ApVYgfa4fKG5hp5ZusonfA@mail.gmail.com>
+References: <25691.34721.521790.758811@rob.eddelbuettel.com>
+ <25691.61713.694694.136591@stat.math.ethz.ch>
+ <25692.37641.759470.866071@stat.math.ethz.ch>
+ <25692.52867.527375.152408@rob.eddelbuettel.com>
+ <CALOkxuym-etr-B_bv1bd+KjuUKo2ApVYgfa4fKG5hp5ZusonfA@mail.gmail.com>
+Message-ID: <25693.20954.566598.812151@rob.eddelbuettel.com>
+
+
+Hi Reed,
+
+On 11 May 2023 at 11:15, Reed A. Cartwright wrote:
+| I'm curious why you chose to call cmake from make instead of from configure.
+| I've always seen cmake as part of the configure step of package building.
+
+Great question! Couple of small answers: i) This started as a 'proof of
+concept' that aimed to be small so getting by without requiring `configure`
+seemed worth a try, ii) I had seen another src/Makevars invoking compilation
+of a static library in a similar (albeit non-cmake) way and iii) as we now
+know about section 1.2.6 (or soon 1.2.9) 'Using cmake' has it that way too.
+
+Otherwise I quite like having `configure` and I frequently use it -- made
+from 'genuine' configire.in via `autoconf`, or as scripts in shell or other
+languages.
+
+Cheers, Dirk
+
+PS My repaired package is now on CRAN. I managed to bungle the static library
+build (by not telling `cmake` to use position independent code), bungled
+macOS but not telling myself where `cmake` could live, and in fixing that
+bungled Windows by forgetting to add `src/Makevars.win` fallback. Yay me.
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
