@@ -11644,3 +11644,278 @@ bungled Windows by forgetting to add `src/Makevars.win` fallback. Yay me.
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From @|mon@urb@nek @end|ng |rom R-project@org  Fri May 12 05:51:21 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Fri, 12 May 2023 15:51:21 +1200
+Subject: [R-pkg-devel] Please install cmake on macOS builders
+In-Reply-To: <25693.20954.566598.812151@rob.eddelbuettel.com>
+References: <25691.34721.521790.758811@rob.eddelbuettel.com>
+ <25691.61713.694694.136591@stat.math.ethz.ch>
+ <25692.37641.759470.866071@stat.math.ethz.ch>
+ <25692.52867.527375.152408@rob.eddelbuettel.com>
+ <CALOkxuym-etr-B_bv1bd+KjuUKo2ApVYgfa4fKG5hp5ZusonfA@mail.gmail.com>
+ <25693.20954.566598.812151@rob.eddelbuettel.com>
+Message-ID: <3DA9BC4C-BDE8-4416-A5EC-39D1C9C5D086@R-project.org>
+
+I think it would be quite useful to have some community repository of code snippets dealing with such situations. R-exts gives advice and pieces of code which are useful, but they are not complete solutions and situations like Dirk's example are not that uncommon. (E.g., I recall some of the spatial packages copy/pasting code from each other for quote some time - which works, but is error prone if changes need to be made).
+
+If one has to rely on a 3rd party library and one wants to fall back to source compilation when it is not available, it is a quite complex task, because one has to match the library's build system to R's and the package build rules as well. There are many ways where this can go wrong - Dirk mentioned some of them - and ideally not every package developer in that situation should be going through the pain of learning all the details the hard way.
+
+Of course there are other packages as an example, but for someone not familiar with the details it's hard to see which ones do it right, and which ones don't - we don't always catch all the bad cases on CRAN.
+
+I don't have a specific proposal, but if there was a GitHub repo or wiki or something to try to distill the useful bits from existing packages, I'd be happy to review it and give advice based on my experience from that macOS binary maintenance if that's useful.
+
+Cheers,
+Simon
+
+
+> On May 12, 2023, at 8:36 AM, Dirk Eddelbuettel <edd at debian.org> wrote:
+> 
+> 
+> Hi Reed,
+> 
+> On 11 May 2023 at 11:15, Reed A. Cartwright wrote:
+> | I'm curious why you chose to call cmake from make instead of from configure.
+> | I've always seen cmake as part of the configure step of package building.
+> 
+> Great question! Couple of small answers: i) This started as a 'proof of
+> concept' that aimed to be small so getting by without requiring `configure`
+> seemed worth a try, ii) I had seen another src/Makevars invoking compilation
+> of a static library in a similar (albeit non-cmake) way and iii) as we now
+> know about section 1.2.6 (or soon 1.2.9) 'Using cmake' has it that way too.
+> 
+> Otherwise I quite like having `configure` and I frequently use it -- made
+> from 'genuine' configire.in via `autoconf`, or as scripts in shell or other
+> languages.
+> 
+> Cheers, Dirk
+> 
+> PS My repaired package is now on CRAN. I managed to bungle the static library
+> build (by not telling `cmake` to use position independent code), bungled
+> macOS but not telling myself where `cmake` could live, and in fixing that
+> bungled Windows by forgetting to add `src/Makevars.win` fallback. Yay me.
+> 
+> -- 
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From |uc@r @end|ng |rom |edor@project@org  Fri May 12 09:47:46 2023
+From: |uc@r @end|ng |rom |edor@project@org (=?UTF-8?Q?I=C3=B1aki_Ucar?=)
+Date: Fri, 12 May 2023 09:47:46 +0200
+Subject: [R-pkg-devel] Please install cmake on macOS builders
+In-Reply-To: <3DA9BC4C-BDE8-4416-A5EC-39D1C9C5D086@R-project.org>
+References: <25691.34721.521790.758811@rob.eddelbuettel.com>
+ <25691.61713.694694.136591@stat.math.ethz.ch>
+ <25692.37641.759470.866071@stat.math.ethz.ch>
+ <25692.52867.527375.152408@rob.eddelbuettel.com>
+ <CALOkxuym-etr-B_bv1bd+KjuUKo2ApVYgfa4fKG5hp5ZusonfA@mail.gmail.com>
+ <25693.20954.566598.812151@rob.eddelbuettel.com>
+ <3DA9BC4C-BDE8-4416-A5EC-39D1C9C5D086@R-project.org>
+Message-ID: <CALEXWq3a9=QGXBdnhnyS0Y7USzbhU1igrb6H394L1qNaCt3+7g@mail.gmail.com>
+
+El vie., 12 may. 2023 5:58, Simon Urbanek <simon.urbanek at r-project.org>
+escribi?:
+
+> I think it would be quite useful to have some community repository of code
+> snippets dealing with such situations. R-exts gives advice and pieces of
+> code which are useful, but they are not complete solutions and situations
+> like Dirk's example are not that uncommon. (E.g., I recall some of the
+> spatial packages copy/pasting code from each other for quote some time -
+> which works, but is error prone if changes need to be made).
+>
+
+This seems like a nice project for https://github.com/r-devel :)
+
+I?aki
+
+
+
+> If one has to rely on a 3rd party library and one wants to fall back to
+> source compilation when it is not available, it is a quite complex task,
+> because one has to match the library's build system to R's and the package
+> build rules as well. There are many ways where this can go wrong - Dirk
+> mentioned some of them - and ideally not every package developer in that
+> situation should be going through the pain of learning all the details the
+> hard way.
+>
+> Of course there are other packages as an example, but for someone not
+> familiar with the details it's hard to see which ones do it right, and
+> which ones don't - we don't always catch all the bad cases on CRAN.
+>
+> I don't have a specific proposal, but if there was a GitHub repo or wiki
+> or something to try to distill the useful bits from existing packages, I'd
+> be happy to review it and give advice based on my experience from that
+> macOS binary maintenance if that's useful.
+>
+> Cheers,
+> Simon
+>
+>
+> > On May 12, 2023, at 8:36 AM, Dirk Eddelbuettel <edd at debian.org> wrote:
+> >
+> >
+> > Hi Reed,
+> >
+> > On 11 May 2023 at 11:15, Reed A. Cartwright wrote:
+> > | I'm curious why you chose to call cmake from make instead of from
+> configure.
+> > | I've always seen cmake as part of the configure step of package
+> building.
+> >
+> > Great question! Couple of small answers: i) This started as a 'proof of
+> > concept' that aimed to be small so getting by without requiring
+> `configure`
+> > seemed worth a try, ii) I had seen another src/Makevars invoking
+> compilation
+> > of a static library in a similar (albeit non-cmake) way and iii) as we
+> now
+> > know about section 1.2.6 (or soon 1.2.9) 'Using cmake' has it that way
+> too.
+> >
+> > Otherwise I quite like having `configure` and I frequently use it -- made
+> > from 'genuine' configire.in via `autoconf`, or as scripts in shell or
+> other
+> > languages.
+> >
+> > Cheers, Dirk
+> >
+> > PS My repaired package is now on CRAN. I managed to bungle the static
+> library
+> > build (by not telling `cmake` to use position independent code), bungled
+> > macOS but not telling myself where `cmake` could live, and in fixing that
+> > bungled Windows by forgetting to add `src/Makevars.win` fallback. Yay me.
+> >
+> > --
+> > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From t|m@t@y|or @end|ng |rom h|ddene|eph@nt@@co@uk  Fri May 12 10:07:51 2023
+From: t|m@t@y|or @end|ng |rom h|ddene|eph@nt@@co@uk (Tim Taylor)
+Date: Fri, 12 May 2023 09:07:51 +0100
+Subject: [R-pkg-devel] Please install cmake on macOS builders
+In-Reply-To: <CALEXWq3a9=QGXBdnhnyS0Y7USzbhU1igrb6H394L1qNaCt3+7g@mail.gmail.com>
+References: <25691.34721.521790.758811@rob.eddelbuettel.com>
+ <25691.61713.694694.136591@stat.math.ethz.ch>
+ <25692.37641.759470.866071@stat.math.ethz.ch>
+ <25692.52867.527375.152408@rob.eddelbuettel.com>
+ <CALOkxuym-etr-B_bv1bd+KjuUKo2ApVYgfa4fKG5hp5ZusonfA@mail.gmail.com>
+ <25693.20954.566598.812151@rob.eddelbuettel.com>
+ <3DA9BC4C-BDE8-4416-A5EC-39D1C9C5D086@R-project.org>
+ <CALEXWq3a9=QGXBdnhnyS0Y7USzbhU1igrb6H394L1qNaCt3+7g@mail.gmail.com>
+Message-ID: <4092f44a-9fc6-b60e-e920-01a6a06568b4@hiddenelephants.co.uk>
+
+On 12/05/2023 08:47, I?aki Ucar wrote:
+> El vie., 12 may. 2023 5:58, Simon Urbanek <simon.urbanek at r-project.org>
+> escribi?:
+>
+>> I think it would be quite useful to have some community repository of code
+>> snippets dealing with such situations. R-exts gives advice and pieces of
+>> code which are useful, but they are not complete solutions and situations
+>> like Dirk's example are not that uncommon. (E.g., I recall some of the
+>> spatial packages copy/pasting code from each other for quote some time -
+>> which works, but is error prone if changes need to be made).
+>>
+> This seems like a nice project for https://github.com/r-devel :)
+>
+> I?aki
+
+I've also flagged in the #core-documentation channel of the R 
+Contributors Slack (https://contributor.r-project.org/slack). It may (or 
+may not) be something that they would like to look at during the 
+upcoming R Project Sprint. I know Jeroen previously provided some 
+guidance for rust (https://github.com/r-rust/faq) after a similar call 
+from Simon last year. Centralising some of this community provided 
+guidance under https://github.com/r-devel seems like it could be useful, 
+especially when there is an offer of review from R-Core.
+
+Tim
+
+>
+>> If one has to rely on a 3rd party library and one wants to fall back to
+>> source compilation when it is not available, it is a quite complex task,
+>> because one has to match the library's build system to R's and the package
+>> build rules as well. There are many ways where this can go wrong - Dirk
+>> mentioned some of them - and ideally not every package developer in that
+>> situation should be going through the pain of learning all the details the
+>> hard way.
+>>
+>> Of course there are other packages as an example, but for someone not
+>> familiar with the details it's hard to see which ones do it right, and
+>> which ones don't - we don't always catch all the bad cases on CRAN.
+>>
+>> I don't have a specific proposal, but if there was a GitHub repo or wiki
+>> or something to try to distill the useful bits from existing packages, I'd
+>> be happy to review it and give advice based on my experience from that
+>> macOS binary maintenance if that's useful.
+>>
+>> Cheers,
+>> Simon
+>>
+>>
+>>> On May 12, 2023, at 8:36 AM, Dirk Eddelbuettel <edd at debian.org> wrote:
+>>>
+>>>
+>>> Hi Reed,
+>>>
+>>> On 11 May 2023 at 11:15, Reed A. Cartwright wrote:
+>>> | I'm curious why you chose to call cmake from make instead of from
+>> configure.
+>>> | I've always seen cmake as part of the configure step of package
+>> building.
+>>> Great question! Couple of small answers: i) This started as a 'proof of
+>>> concept' that aimed to be small so getting by without requiring
+>> `configure`
+>>> seemed worth a try, ii) I had seen another src/Makevars invoking
+>> compilation
+>>> of a static library in a similar (albeit non-cmake) way and iii) as we
+>> now
+>>> know about section 1.2.6 (or soon 1.2.9) 'Using cmake' has it that way
+>> too.
+>>> Otherwise I quite like having `configure` and I frequently use it -- made
+>>> from 'genuine' configire.in via `autoconf`, or as scripts in shell or
+>> other
+>>> languages.
+>>>
+>>> Cheers, Dirk
+>>>
+>>> PS My repaired package is now on CRAN. I managed to bungle the static
+>> library
+>>> build (by not telling `cmake` to use position independent code), bungled
+>>> macOS but not telling myself where `cmake` could live, and in fixing that
+>>> bungled Windows by forgetting to add `src/Makevars.win` fallback. Yay me.
+>>>
+>>> --
+>>> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
