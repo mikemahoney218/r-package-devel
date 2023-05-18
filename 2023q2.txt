@@ -14295,3 +14295,373 @@ On Tue, May 16, 2023 at 7:11 PM Dirk Eddelbuettel <edd at debian.org> wrote:
 	[[alternative HTML version deleted]]
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed May 17 09:42:49 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 17 May 2023 10:42:49 +0300
+Subject: [R-pkg-devel] Problems with devtools::build() in R
+In-Reply-To: <CAMVrHdCMw8RRtyLEvOL9_Ax5iOQRq8+wvZ36s=oC1mo2YYnzSA@mail.gmail.com>
+References: <CAMVrHdAmXtVerKnByS_YLNNK7OvCCW-7RxN8kPubrL12HYsFNw@mail.gmail.com>
+ <9cf00a51-5fdf-22dc-5871-6d92541b29f7@gmail.com>
+ <25699.47429.283944.809261@rob.eddelbuettel.com>
+ <CAMVrHdC+u4040EZXd=BrNe5SLL8K95qs_oqeYTs3vZujj-TgFw@mail.gmail.com>
+ <25700.3512.492932.539725@rob.eddelbuettel.com>
+ <CAMVrHdCMw8RRtyLEvOL9_Ax5iOQRq8+wvZ36s=oC1mo2YYnzSA@mail.gmail.com>
+Message-ID: <20230517104249.49664426@Tarkus>
+
+Can you build a Fortran program? I.e., does the following work?
+
+cat >hello.f90 <<EOF
+program hello
+ print *, 'Hello world'
+end program
+EOF
+gfortran -o hello hello.f90 && ./hello
+
+Does `which gfortran` confirm that it's the executable you expect it to
+be?
+
+What does `gfortran -print-search-dirs` say about the locations for its
+files? (Where does -lgfortran actually live?)
+
+What does your file.path(R.home('etc'), 'Makeconf') say about the
+library paths?
+
+(Using `R CMD build` to build the package doesn't help either, right? If
+yes, a faster way of reproducing the problem would be to run the
+following command:
+
+PKG_CPPFLAGS=-I/Library/Frameworks/R.framework/Versions/4.2-arm64/Resources/library/Rcpp/include \
+ R CMD SHLIB *cpp
+
+...in the src directory of your package, instead of waiting for R CMD
+build to try to install the resulting source package and fail.)
+
+-- 
+Best regards,
+Ivan
+
+
+From ph||||p@j@rrett1 @end|ng |rom gm@||@com  Wed May 17 17:05:46 2023
+From: ph||||p@j@rrett1 @end|ng |rom gm@||@com (Jarrett Phillips)
+Date: Wed, 17 May 2023 11:05:46 -0400
+Subject: [R-pkg-devel] Problems with devtools::build() in R
+In-Reply-To: <20230517104249.49664426@Tarkus>
+References: <CAMVrHdAmXtVerKnByS_YLNNK7OvCCW-7RxN8kPubrL12HYsFNw@mail.gmail.com>
+ <9cf00a51-5fdf-22dc-5871-6d92541b29f7@gmail.com>
+ <25699.47429.283944.809261@rob.eddelbuettel.com>
+ <CAMVrHdC+u4040EZXd=BrNe5SLL8K95qs_oqeYTs3vZujj-TgFw@mail.gmail.com>
+ <25700.3512.492932.539725@rob.eddelbuettel.com>
+ <CAMVrHdCMw8RRtyLEvOL9_Ax5iOQRq8+wvZ36s=oC1mo2YYnzSA@mail.gmail.com>
+ <20230517104249.49664426@Tarkus>
+Message-ID: <CAMVrHdBu9M61H0R3hSS+HOpHttEPcYRKZBBDOG=Dgb5W6J2MRw@mail.gmail.com>
+
+Hi Ivan,
+
+Yes, I can build a Fortran program successfully.
+
+cat >hello.f90 <<EOF
+program hello
+ print *, 'Hello world'
+end program
+EOF
+gfortran -o hello hello.f90 && ./hello
+
+returns Hello world as expected.
+
+`which gfortran`  returns
+
+/usr/local/bin/gfortran
+
+
+
+`gfortran -print-search-dirs` returns
+
+
+install: /usr/local/gfortran/lib/gcc/aarch64-apple-darwin22/12.2.0/
+
+programs:
+=/usr/local/gfortran/libexec/gcc/aarch64-apple-darwin22/12.2.0/:/usr/local/gfortran/libexec/gcc/aarch64-apple-darwin22/12.2.0/:/usr/local/gfortran/libexec/gcc/aarch64-apple-darwin22/:/usr/local/gfortran/lib/gcc/aarch64-apple-darwin22/12.2.0/:/usr/local/gfortran/lib/gcc/aarch64-apple-darwin22/:/usr/local/gfortran/lib/gcc/aarch64-apple-darwin22/12.2.0/../../../../aarch64-apple-darwin22/bin/aarch64-apple-darwin22/12.2.0/:/usr/local/gfortran/lib/gcc/aarch64-apple-darwin22/12.2.0/../../../../aarch64-apple-darwin22/bin/
+
+libraries:
+=/usr/local/gfortran/lib/gcc/aarch64-apple-darwin22/12.2.0/:/usr/local/gfortran/lib/gcc/aarch64-apple-darwin22/12.2.0/../../../../aarch64-apple-darwin22/lib/aarch64-apple-darwin22/12.2.0/:/usr/local/gfortran/lib/gcc/aarch64-apple-darwin22/12.2.0/../../../../aarch64-apple-darwin22/lib/:/usr/local/gfortran/lib/gcc/aarch64-apple-darwin22/12.2.0/../../../aarch64-apple-darwin22/12.2.0/:/usr/local/gfortran/lib/gcc/aarch64-apple-darwin22/12.2.0/../../../
+
+
+
+file.path(R.home('etc'), 'Makeconf') in R returns
+
+
+[1] "/Library/Frameworks/R.framework/Resources/etc/Makeconf"
+
+Finally, yes, R CMD build fails for me bith through the Mac Terminal and
+via devtools::build().
+
+
+Cheers,
+
+Jarrett
+
+On Wed, May 17, 2023 at 3:42?AM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+
+> Can you build a Fortran program? I.e., does the following work?
+>
+> cat >hello.f90 <<EOF
+> program hello
+>  print *, 'Hello world'
+> end program
+> EOF
+> gfortran -o hello hello.f90 && ./hello
+>
+> Does `which gfortran` confirm that it's the executable you expect it to
+> be?
+>
+> What does `gfortran -print-search-dirs` say about the locations for its
+> files? (Where does -lgfortran actually live?)
+>
+> What does your file.path(R.home('etc'), 'Makeconf') say about the
+> library paths?
+>
+> (Using `R CMD build` to build the package doesn't help either, right? If
+> yes, a faster way of reproducing the problem would be to run the
+> following command:
+>
+> PKG_CPPFLAGS=-I/Library/Frameworks/R.framework/Versions/4.2-arm64/Resources/library/Rcpp/include
+> \
+>  R CMD SHLIB *cpp
+>
+> ...in the src directory of your package, instead of waiting for R CMD
+> build to try to install the resulting source package and fail.)
+>
+> --
+> Best regards,
+> Ivan
+>
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed May 17 17:41:14 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 17 May 2023 18:41:14 +0300
+Subject: [R-pkg-devel] Problems with devtools::build() in R
+In-Reply-To: <CAMVrHdBu9M61H0R3hSS+HOpHttEPcYRKZBBDOG=Dgb5W6J2MRw@mail.gmail.com>
+References: <CAMVrHdAmXtVerKnByS_YLNNK7OvCCW-7RxN8kPubrL12HYsFNw@mail.gmail.com>
+ <9cf00a51-5fdf-22dc-5871-6d92541b29f7@gmail.com>
+ <25699.47429.283944.809261@rob.eddelbuettel.com>
+ <CAMVrHdC+u4040EZXd=BrNe5SLL8K95qs_oqeYTs3vZujj-TgFw@mail.gmail.com>
+ <25700.3512.492932.539725@rob.eddelbuettel.com>
+ <CAMVrHdCMw8RRtyLEvOL9_Ax5iOQRq8+wvZ36s=oC1mo2YYnzSA@mail.gmail.com>
+ <20230517104249.49664426@Tarkus>
+ <CAMVrHdBu9M61H0R3hSS+HOpHttEPcYRKZBBDOG=Dgb5W6J2MRw@mail.gmail.com>
+Message-ID: <20230517184114.508c9aae@arachnoid>
+
+? Wed, 17 May 2023 11:05:46 -0400
+Jarrett Phillips <phillipsjarrett1 at gmail.com> ?????:
+
+> `which gfortran`  returns
+>
+> /usr/local/bin/gfortran
+
+I think you ran the other gfortran. Is there a gfortran installation in
+/opt/gfortran?
+
+> libraries:
+> =/usr/local/gfortran/lib/gcc/aarch64-apple-darwin22/12.2.0/:/usr/local/gfortran/lib/gcc/aarch64-apple-darwin22/12.2.0/../../../../aarch64-apple-darwin22/lib/aarch64-apple-darwin22/12.2.0/:/usr/local/gfortran/lib/gcc/aarch64-apple-darwin22/12.2.0/../../../../aarch64-apple-darwin22/lib/:/usr/local/gfortran/lib/gcc/aarch64-apple-darwin22/12.2.0/../../../aarch64-apple-darwin22/12.2.0/:/usr/local/gfortran/lib/gcc/aarch64-apple-darwin22/12.2.0/../../../
+
+> "/Library/Frameworks/R.framework/Resources/etc/Makeconf"
+
+If you open this file, the flags
+-L/opt/R/arm64/gfortran/lib/gcc/aarch64-apple-darwin20.6.0/12.0.1
+-L/opt/R/arm64/gfortran/lib must be present in there somewhere. (Or
+maybe it's in ~/.R/Makevars, but you would've remembered creating it
+yourself.)
+
+What if you replace the paths with the ones returned by gfortran,
+namely, -L/usr/local/gfortran/lib/gcc/aarch64-apple-darwin22/12.2.0
+-L/usr/local/gfortran/lib? (Even better, with the paths returned by
+/opt/gfortran/bin/gfortran -print-search-dirs, assuming this command
+works.) While you're at it, fix other Fortran-related paths like the
+path to the compiler. I still suspect you may end up having problems
+because your R was built with a different version of gfortran, but I
+don't know a better way of moving forward.
+
+I'm going on general POSIX-like knowledge since I lack a Mac to test
+things on. Maybe R-SIG-Mac will have better advice for you.
+
+-- 
+Best regards,
+Ivan
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Thu May 18 01:39:19 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Thu, 18 May 2023 11:39:19 +1200
+Subject: [R-pkg-devel] Are the CRAN macOS builders down?
+In-Reply-To: <25700.2526.782757.844657@rob.eddelbuettel.com>
+References: <25699.44793.290700.450955@rob.eddelbuettel.com>
+ <7CE417A7-DDD0-4FBD-B1D0-5FEDBCDDDB4A@R-project.org>
+ <25699.59921.420546.724694@rob.eddelbuettel.com>
+ <06F39006-7BC9-4E25-8398-08B19AA526D9@R-project.org>
+ <25700.2526.782757.844657@rob.eddelbuettel.com>
+Message-ID: <D7567EA8-E706-4060-8130-D7A2A0611931@R-project.org>
+
+Everything should be catched up by now
+https://mac.r-project.org/reports/status.html
+
+FWIW the macOS builds are simply run off published CRAN, so that's why the the sequence is upload -> incoming-tests -> CRAN-src -> check+build -> macos-master -> CRAN-bin where each step may involve cron jobs which is why the total time from upload to published binary can take a bit of time.
+
+Cheers,
+Simon
+
+
+
+> On 17/05/2023, at 10:55 AM, Dirk Eddelbuettel <edd at debian.org> wrote:
+> 
+> 
+> On 17 May 2023 at 10:39, Simon Urbanek wrote:
+> | Dirk,
+> | 
+> | thanks, ok, now I get what you meant. This has nothing to do with CRAN uploads (which are handled in Vienna) this was about specific macOS builds. The arm64 Big Sur build machine had apparently issues. I have re-started the arm64 builds so they should catch up in a few hours.
+> 
+> Thanks but as I noted _all other non-arm64 macOS machines are also lagging_
+> and now for about five days -- which is why wrote the email.
+> 
+> But good to know you are on it now!
+> 
+> Dirk
+> 
+> | 
+> | Thanks,
+> | Simon
+> | 
+> | 
+> | > On 17/05/2023, at 8:39 AM, Dirk Eddelbuettel <edd at debian.org> wrote:
+> | > 
+> | > 
+> | > Simon:
+> | > 
+> | > On 17 May 2023 at 07:57, Simon Urbanek wrote:
+> | > | builds are immediate, so it is a matter of seconds for most packages. I don't see any issues on the Mac Builder server.
+> | > | If you have a problem, please be more specific and include the check link returned at submission.
+> | > 
+> | > I was talking about _CRAN uploads_. To be as specific as you asked:
+> | > 
+> | > - crc32c on CRAN since May 11, all systems apart from macOS built but all
+> | >   macOS builds missing
+> | >   https://cran.r-project.org/web/checks/check_results_crc32c.html
+> | > 
+> | > - RcppSimdJson on CRAN since May 14, six linux + windows builds made, two
+> | >   linux builds and all macOS missing
+> | >   https://cran.r-project.org/web/checks/check_results_RcppSimdJson.html
+> | > 
+> | > So no builds on macOS for either of my uploads to CRAN. Can you comment?
+> | > 
+> | > Dirk
+> | > 
+> | > | Cheers,
+> | > | Simon
+> | > |  
+> | > | 
+> | > | > On 17/05/2023, at 4:27 AM, Dirk Eddelbuettel <edd at debian.org> wrote:
+> | > | > 
+> | > | > 
+> | > | > Simon,
+> | > | > 
+> | > | > As a follow-up to the cmake questions (and me now knowing I have to tell R
+> | > | > where cmake is on macOS), I uploaded a new package last Thursday. It has long
+> | > | > built everywhere on CRAN, but not on macOS.  Ditto for another package update
+> | > | > from Sunday (RcppSimdJson) which also has not been touched.
+> | > | > 
+> | > | > Should I adjust my expectations that this can take a week or longer on macOS,
+> | > | > or did a few builds fall off the wagon?
+> | > | > 
+> | > | > Thanks as always for looking after that architecture.
+> | > | > 
+> | > | > Best,  Dirk
+> | > | > 
+> | > | > -- 
+> | > | > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> | > | > 
+> | > | 
+> | > 
+> | > -- 
+> | > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> | > 
+> | 
+> 
+> -- 
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> 
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Thu May 18 01:49:37 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Thu, 18 May 2023 11:49:37 +1200
+Subject: [R-pkg-devel] Problems with devtools::build() in R
+In-Reply-To: <20230517184114.508c9aae@arachnoid>
+References: <CAMVrHdAmXtVerKnByS_YLNNK7OvCCW-7RxN8kPubrL12HYsFNw@mail.gmail.com>
+ <9cf00a51-5fdf-22dc-5871-6d92541b29f7@gmail.com>
+ <25699.47429.283944.809261@rob.eddelbuettel.com>
+ <CAMVrHdC+u4040EZXd=BrNe5SLL8K95qs_oqeYTs3vZujj-TgFw@mail.gmail.com>
+ <25700.3512.492932.539725@rob.eddelbuettel.com>
+ <CAMVrHdCMw8RRtyLEvOL9_Ax5iOQRq8+wvZ36s=oC1mo2YYnzSA@mail.gmail.com>
+ <20230517104249.49664426@Tarkus>
+ <CAMVrHdBu9M61H0R3hSS+HOpHttEPcYRKZBBDOG=Dgb5W6J2MRw@mail.gmail.com>
+ <20230517184114.508c9aae@arachnoid>
+Message-ID: <5E780ACC-2BF0-406B-94A6-13DF6237D477@R-project.org>
+
+This thread went way off the rails and was cross-posted so the solution is on R-SIG-Mac.
+
+It was simply wrong Fortran with wrong R - installing latest R and Fortran (from CRAN or https://mac.r-project.org/tools/) is the easiest way to solve the problem.
+
+Note that R binaries and tools go together so if in doubt, just go to CRAN and follow the instructions.
+
+Cheers,
+Simon
+
+
+
+> On 18/05/2023, at 3:41 AM, Ivan Krylov <krylov.r00t at gmail.com> wrote:
+> 
+> ? Wed, 17 May 2023 11:05:46 -0400
+> Jarrett Phillips <phillipsjarrett1 at gmail.com> ?????:
+> 
+>> `which gfortran`  returns
+>> 
+>> /usr/local/bin/gfortran
+> 
+> I think you ran the other gfortran. Is there a gfortran installation in
+> /opt/gfortran?
+> 
+>> libraries:
+>> =/usr/local/gfortran/lib/gcc/aarch64-apple-darwin22/12.2.0/:/usr/local/gfortran/lib/gcc/aarch64-apple-darwin22/12.2.0/../../../../aarch64-apple-darwin22/lib/aarch64-apple-darwin22/12.2.0/:/usr/local/gfortran/lib/gcc/aarch64-apple-darwin22/12.2.0/../../../../aarch64-apple-darwin22/lib/:/usr/local/gfortran/lib/gcc/aarch64-apple-darwin22/12.2.0/../../../aarch64-apple-darwin22/12.2.0/:/usr/local/gfortran/lib/gcc/aarch64-apple-darwin22/12.2.0/../../../
+> 
+>> "/Library/Frameworks/R.framework/Resources/etc/Makeconf"
+> 
+> If you open this file, the flags
+> -L/opt/R/arm64/gfortran/lib/gcc/aarch64-apple-darwin20.6.0/12.0.1
+> -L/opt/R/arm64/gfortran/lib must be present in there somewhere. (Or
+> maybe it's in ~/.R/Makevars, but you would've remembered creating it
+> yourself.)
+> 
+> What if you replace the paths with the ones returned by gfortran,
+> namely, -L/usr/local/gfortran/lib/gcc/aarch64-apple-darwin22/12.2.0
+> -L/usr/local/gfortran/lib? (Even better, with the paths returned by
+> /opt/gfortran/bin/gfortran -print-search-dirs, assuming this command
+> works.) While you're at it, fix other Fortran-related paths like the
+> path to the compiler. I still suspect you may end up having problems
+> because your R was built with a different version of gfortran, but I
+> don't know a better way of moving forward.
+> 
+> I'm going on general POSIX-like knowledge since I lack a Mac to test
+> things on. Maybe R-SIG-Mac will have better advice for you.
+> 
+> -- 
+> Best regards,
+> Ivan
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
