@@ -15495,3 +15495,1107 @@ Simon
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From |@pe|n @end|ng |rom |@nc@@ter@@c@uk  Mon May 22 13:07:21 2023
+From: |@pe|n @end|ng |rom |@nc@@ter@@c@uk (Pein, Florian)
+Date: Mon, 22 May 2023 11:07:21 +0000
+Subject: [R-pkg-devel] [External] Re:   Test fails on M1 Mac on CRAN,
+ but not on macOS builder
+In-Reply-To: <545B0C22-D4A1-4B5F-9703-CC4BD07E79E1@R-project.org>
+References: <LO2P265MB3833ADEB527FD0BCD6CD5974CD7C9@LO2P265MB3833.GBRP265.PROD.OUTLOOK.COM>
+ <545B0C22-D4A1-4B5F-9703-CC4BD07E79E1@R-project.org>
+Message-ID: <LO2P265MB3833E1778036399166D64EA9CD439@LO2P265MB3833.GBRP265.PROD.OUTLOOK.COM>
+
+Dear Duncan and Simon,
+thank you both very much for you help.
+
+I can make the test more informative and also break it down into substeps. But I am unsure whether CRAN policies allow to use their system for such testing steps. I rather think not. Though I must say that I still do not know how to otherwise fix the error. Can anyone, ideally a CRAN maintainer, confirm that this is okay?
+
+Regarding the tolerance, the test compares to small integers. In this specific situation both sides are 5L on my local system. The tolerance is there to ensure that
+ncol(compareStat) * testalpha is not something like 4.999999999 due to floating point approximations and we end up with 4L when as.integer() is applied. This is not happening in the concrete example, since ncol(compareStat) * testalpha = 5.67. I am very sure that the error is on the left hand side and compare is larger than 5.
+
+In fact, tol in
+rejected[, i] <- teststat[i, ] > ret[i] + tol
+may need to be larger, since teststat contains quite large values. I think there is a realistic chance that a floating point error occurs at this point. But once again, I do not want to send a random guess to CRAN when I cannot test whether this has fixed the problem or not. I have tested the old code with --disable-long-double and compiler flags such as -ffloat-store and -fexcess-precision=standard and it works. I do not know to what degree this ensures that it works on all systems.
+
+Many thanks and best wishes,
+Florian
+
+________________________________
+From: Simon Urbanek <simon.urbanek at R-project.org>
+Sent: 22 May 2023 00:25
+To: Pein, Florian <f.pein at lancaster.ac.uk>
+Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: [External] Re: [R-pkg-devel] Test fails on M1 Mac on CRAN, but not on macOS builder
+
+This email originated outside the University. Check before clicking links or attachments.
+
+Florian,
+
+looking at the notes for 2.1-4 it says the tolerance has the wrong sign, i.e. you're adding it to the value on both sides of the interval (instead of subtracting for the lower bound). In your latest version the tolerances get added everywhere so that makes even less sense to me, but then I don't know what you actually intended to be completely honest. All I say, simply make sure you get the logic for the tolerance intervals right.
+
+Cheers,
+Simon
+
+
+> On 19/05/2023, at 9:49 PM, Pein, Florian <f.pein at lancaster.ac.uk> wrote:
+>
+> Dear everyone,
+> my R package stepR (https://eur02.safelinks.protection.outlook.com/?url=https%3A%2F%2Fcran.r-project.org%2Fweb%2Fpackages%2FstepR%2F&data=05%7C01%7Cpein%40live.lancs.ac.uk%7C6cc9896064a34616d3c108db5a52aa15%7C9c9bcd11977a4e9ca9a0bc734090164a%7C0%7C0%7C638203083314419558%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=J1MeMbuYtFfl6Qc6N142pgiychUS1I5Tdc%2Bz005lsLc%3D&reserved=0<https://cran.r-project.org/web/packages/stepR/>) fails the CRAN package checks on M1 Mac, but the error does not occur on the macOS builder (https://eur02.safelinks.protection.outlook.com/?url=https%3A%2F%2Fmac.r-project.org%2Fmacbuilder%2Fsubmit.html&data=05%7C01%7Cpein%40live.lancs.ac.uk%7C6cc9896064a34616d3c108db5a52aa15%7C9c9bcd11977a4e9ca9a0bc734090164a%7C0%7C0%7C638203083314419558%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=BRu4Nser4a1YggooWKHc%2BFewcIRbL3d08%2BeO8Ovv7N0%3D&reserved=0<https://mac.r-project.org/macbuilder/submit.html>). So, I am unable to reproduce the error and hence unable to fix it (starring at the code did not help either).
+>
+> The relevant part is
+>
+> * checking tests ...
+>  Running ??testthat.R?? [35s/35s]
+> [36s/36s] ERROR
+> Running the tests in ??tests/testthat.R?? failed.
+>
+>> test_check("stepR")
+>  [ FAIL 1 | WARN 0 | SKIP 23 | PASS 22741 ]
+>
+>  ???? Failed tests ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+>  ?w?w Failure ('test-critVal.R:2463:3'): family 'hsmuce' works ?w?w?w?w?w?w?w?w?w?w?w?w?w?w?w?w?w?w?w?w
+>  compare <= as.integer(ncol(compareStat) * testalpha + tolerance) is not TRUE
+>
+>  `actual`:   FALSE
+>  `expected`: TRUE
+>  sqrt
+>  Backtrace:
+>      ?g
+>   1. ?|?wstepR (local) testVector(...) at test-critVal.R:2463:2
+>   2.   ?|?wtestthat::expect_true(...) at test-critVal.R:50:2
+>
+>  [ FAIL 1 | WARN 0 | SKIP 23 | PASS 22741 ]
+>  Error: Test failures
+>  Execution halted
+>
+>
+> Has anyone an idea how to tackle this problem?
+>
+> The test code is long (a full version is available on CRAN). The following is the code part that I think is relevant (once again I cannot reproduce the error, so I am also unable to give a minimal reproducible example, I can only guess one):
+>
+> library(stepR)
+> library(testthat)
+>
+> testn <- 1024L
+> teststat <- monteCarloSimulation(n = 1024L, r = 100L, family = "hsmuce") # essentially a matrix with values generated by rnorm()
+> testalpha <- 0.0567
+> tolerance <- 1e-12
+>
+> ret <- critVal(n = 1024L, penalty = "sqrt", output = "vector", family = "hsmuce", alpha = testalpha, stat = teststat)
+>
+> statVec <- as.numeric(teststat)
+> tol <- min(min(diff(sort(statVec[is.finite(statVec)]))) / 2, 1e-12) # different to the CRAN version to be robust to two values very close to each other
+> rejected <- matrix(FALSE, ncol(teststat), nrow(teststat))
+> compare <- integer(ncol(teststat))
+>
+> for (i in 1:nrow(teststat)) {
+>  rejected[, i] <- teststat[i, ] > ret[i] + tol
+> }
+>
+> for (i in 1:ncol(teststat)) {
+>  compare[i] <- max(rejected[i, ])
+> }
+> compare <- sum(compare)
+> expect_true(compare <= as.integer(ncol(teststat) * testalpha + tolerance), info = "sqrt")
+>
+> # version with an additional tolerance (suggested when the test failed on CRAN, but it does not help either)
+> # both sides are small intgers, so it should not be needed
+> expect_true(as.integer(compare + tolerance) <= as.integer(ncol(teststat) * testalpha + tolerance) + 0.5, info = "sqrt")
+>
+>
+> I am not sure how to approach this problem, so any suggestions are very much welcomed.
+> Many thanks and best wishes,
+> Florian Pein
+> (Lancaster university)
+>
+>
+>       [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://eur02.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-package-devel&data=05%7C01%7Cpein%40live.lancs.ac.uk%7C6cc9896064a34616d3c108db5a52aa15%7C9c9bcd11977a4e9ca9a0bc734090164a%7C0%7C0%7C638203083314419558%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=%2BvR2s9hArL7SXRBV67ABwDHLS%2BhI9cRtdig7IlLftpo%3D&reserved=0<https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+
+
+	[[alternative HTML version deleted]]
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Mon May 22 19:01:41 2023
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Mon, 22 May 2023 12:01:41 -0500
+Subject: [R-pkg-devel] help fixing CRAN package sos
+In-Reply-To: <1ee5ad35-6dba-e1fd-33cd-5225bbb55968@statistik.tu-dortmund.de>
+References: <4f12e1d0-1d20-c15e-7359-8443d70a8727@stats.ox.ac.uk>
+ <c9c45d96-12e4-c92b-8aab-dcea498a5afe@effectivedefense.org>
+ <f7976d1e-8c14-d599-1810-a069d0f4b482@statistik.tu-dortmund.de>
+ <ad1056cb-397d-3927-3018-a3669c983d78@effectivedefense.org>
+ <1ee5ad35-6dba-e1fd-33cd-5225bbb55968@statistik.tu-dortmund.de>
+Message-ID: <9617d4e0-5d82-2508-a300-7126b1b78650@effectivedefense.org>
+
+Hi, Uwe et al.:
+
+
+	  Uwe suggests I postprocess output with gsub("_", "\\\\_", output). 
+It's not clear to me where I should apply this.  The "WARN" flags the 
+sos vignette sos.Rnw, but the offending code refers to pspline_checker, 
+which is not in the version of the vignette available on CRAN.[1] The 
+text of sos.Rnw is available on GitHub.[2] I am not eager to change the 
+code in the package, because it could break something else that's 
+currently working.
+
+
+	  Suggestions?
+	  Thanks,
+	  Spencer Graves
+
+
+[1]
+
+
+https://cran.r-project.org/web/packages/sos/vignettes/sos.pdf
+
+
+[2]
+
+
+https://github.com/sbgraves237/sos/blob/master/vignettes/sos.Rnw
+
+
+On 5/16/23 7:41 AM, Uwe Ligges wrote:
+> 
+> 
+> On 16.05.2023 14:02, Spencer Graves wrote:
+>>
+>>
+>> On 5/16/23 6:06 AM, Uwe Ligges wrote:
+>>>
+>>>
+>>> On 16.05.2023 01:46, Spencer Graves wrote:
+>>>> Hello, All:
+>>>>
+>>>>
+>>>> ?????? The sos package is failing some CRAN checks, complaining:[1]
+>>>>
+>>>>
+>>>> LaTeX errors:
+>>>> ! Missing $ inserted.
+>>>> <inserted text>
+>>>> ???????????????? $
+>>>> l.303 {\tt pspline_
+>>>> ??????????????????? checker} in the
+>>>
+>>>
+>>> I can only guess this is part of the response you got from some sos 
+>>> request? I cannot reproduce it currently.
+>>>
+>>> So check:
+>>> Does your package pass check if some function names including an 
+>>> underscore in the name is returned from an sos request?
+>>
+>>
+>> Hi, Uwe et al.:
+>>
+>>
+>> ?????? Thanks, Uwe, for your reply.
+>>
+>>
+>> ?????? It's complaining about something in a vignette that has been 
+>> part of the package since it appeared in The R Journal in Volume 1/2 
+>> in 2009.? I received an email from Prof. Ripley complaining that it 
+>> reported problems ("WARN") on some of the CRAN checks.? When I asked, 
+>> Prof. Ripley reply's reply included:
+>>
+>>
+>> ?>>????? l.303 {\tt pspline_
+>> ?>>?????? checker} in the
+>> ?>>????? ! ==> Fatal error occurred, no output PDF file produced!
+>> ?>>
+>> ?>> Underlines need to be escaped in LaTeX.? And as your results 
+>> depend on
+>> ?>> Internet downloads,
+>> ?>>
+>> ?>> "Packages which use Internet resources should fail gracefully with an
+>> ?>> informative message if the resource is not available or has changed
+>> ?>> (and not give a check warning nor error)."
+>> ?>>
+>> ?>> applies: you need to anticipate that the results might include
+>> ?>> underlines.
+>>
+>>
+>> ?????? I don't know how to detect, let alone fix the "Underlines" that 
+>> "need to be escaped in LaTeX."
+> 
+> If you receive an output, postprocess it via
+> 
+> gsub("_", "\\\\_", output)
+> 
+> 
+> 
+>>
+>>
+>> ?????? Regarding the other issue that "Packages which use Internet 
+>> resources should fail gracefully with an informative message if the 
+>> resource is not available or has changed (and not give a check warning 
+>> nor error)", I assume I should wrap in "try" all tests in *.Rd files 
+>> that access the Internet and make sure that they don't fail "R CMD 
+>> check" if the Internet is not available.
+> 
+> Yes.
+> 
+> Best,
+> Uwe Ligges
+> 
+> 
+>>
+>> ?????? Comments?
+>> ?????? Thanks again,
+>> ?????? Spencer Graves
+>>
+>>
+>> p.s.? Yesterday I remember I got "WARN" on three of six CRAN checks 
+>> against r-devel on different platforms and NOTE on four of the seven 
+>> other CRAN checks.? Today I see "WARN" on only two.? If I just wait, 
+>> these "WARN" problems may go away by themselves.? However, Prof. 
+>> Ripley gave me other problems to fix, and I want to support our kind, 
+>> smart and generous English professor.
+>>
+>>>
+>>> Best,
+>>> Uwe Ligges
+>>>
+>>>
+>>>
+>>>
+>>>
+>>>
+>>>> ! Emergency stop.
+>>>> <inserted text>
+>>>> ???????????????? $
+>>>> l.303 {\tt pspline_
+>>>> ??????????????????? checker} in the
+>>>> ! ==> Fatal error occurred, no output PDF file produced!
+>>>> --- failed re-building 'sos.Rnw'
+>>>>
+>>>>
+>>>> ?????? I can NOT replicate these locally nor with GitHub action, and 
+>>>> I failed to find 'psp' in 'sos.Rnw'.[2]? This raises two issue:
+>>>>
+>>>>
+>>>> OBVIOUS:? What can I do to fix this error, or at least to understand 
+>>>> it better?
+>>>>
+>>>>
+>>>> SUBTLE:? How can I configure "github action", so it can replicate 
+>>>> the errors reported on CRAN?
+>>>>
+>>>>
+>>>> ?????? Thanks,
+>>>> ?????? Spencer
+>>>>
+>>>>
+>>>> [1]
+>>>>
+>>>>
+>>>> https://cran.r-project.org
+>>>>
+>>>>
+>>>> [2]
+>>>>
+>>>>
+>>>> https://github.com/sbgraves237/sos
+>>>>
+>>>>
+>>>> -------- Forwarded Message --------
+>>>> Subject: Re: CRAN package sos
+>>>> Date: Sun, 14 May 2023 14:46:06 +0100
+>>>> From: Prof Brian Ripley <ripley at stats.ox.ac.uk>
+>>>> Reply-To: CRAN <CRAN at r-project.org>
+>>>> To: Spencer Graves <spencer.graves at prodsyse.com>
+>>>> CC: CRAN at R-project.org
+>>>>
+>>>> <snip>
+>>>>
+>>>>
+>>>> On 12/05/2023 13:03, Spencer Graves wrote:
+>>>>> Hello, All:
+>>>>
+>>>> You have just spammed my personal email address, contrary to the 
+>>>> CRAN policy and done so deliberately and/or recklessly, overriding 
+>>>> the Reply-To header.
+>>>>
+>>>>> ?????? Is MASS being withdrawn along with multiple other packages 
+>>>>> (mgcv, survival, boot, lattice)?
+>>>>
+>>>> Not so.? And that was a failure to do your own homework as you 
+>>>> should have looked on CRAN to see that they are still available.
+>>>>
+>>>> Further
+>>>>
+>>>> options(repos=c(CRAN="http://cran.cnr.berkeley.edu"))
+>>>>
+>>>> does not respect the user's choice of repository: that seems to make 
+>>>> re-making it unreasonably slow.? On my very fast MacBook Pro
+>>>>
+>>>> * checking re-building of vignette outputs ...^R
+>>>> ??[26s/265s] OK
+>>>>
+>>>> so it is waiting 90% of the time.
+>>>>
+>>>>
+>>>>> ?????? That's responsible for 3 of the 4 'warnings' listed there. 
+>>>>> The warning for r-devel-linux-x86_64-fedora-gcc says "LaTeX errors:
+>>>>> ! Missing $ inserted ... Fatal error occurred, no output PDF file 
+>>>>> produced! ... Vignette re-building failed."
+>>>>>
+>>>>>
+>>>>> ?????? These all sound to me like operating system errors.? If 
+>>>>> there's something here I should do, I could use help in 
+>>>>> understanding what.
+>>>>
+>>>> Do read the message -- it is a LaTeX error in the LaTeX code your 
+>>>> package's vignettes generates.
+>>>>
+>>>> ??? LaTeX errors:
+>>>> ???? ! Missing $ inserted.
+>>>> ???? <inserted text>
+>>>> ????? $
+>>>> ???? l.303 {\tt pspline_
+>>>> ????? checker} in the
+>>>> ???? ! Emergency stop.
+>>>> ???? <inserted text>
+>>>> ????? $
+>>>> ???? l.303 {\tt pspline_
+>>>> ????? checker} in the
+>>>> ???? ! ==> Fatal error occurred, no output PDF file produced!
+>>>>
+>>>> Underlines need to be escaped in LaTeX.? And as your results depend 
+>>>> on Internet downloads,
+>>>>
+>>>> "Packages which use Internet resources should fail gracefully with 
+>>>> an informative message if the resource is not available or has 
+>>>> changed (and not give a check warning nor error)."
+>>>>
+>>>> applies: you need to anticipate that the results might include 
+>>>> underlines.
+>>>>
+>>>>>
+>>>>>
+>>>>> ?????? Thanks,
+>>>>> ?????? Spencer Graves
+>>>>> m:? 1-408-655-4567
+>>>>>
+>>>>>
+>>>>> On 5/12/23 1:38 AM, Prof Brian Ripley wrote:
+>>>>>> Dear maintainer,
+>>>>>>
+>>>>>> Please see the problems shown on
+>>>>>> <https://cran.r-project.org/web/checks/check_results_sos.html>.
+>>>>>>
+>>>>>> Please correct before 2023-05-26 to safely retain your package on 
+>>>>>> CRAN.
+>>>>>>
+>>>>>> The CRAN Team
+>>>>
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Mon May 22 19:38:51 2023
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Mon, 22 May 2023 12:38:51 -0500
+Subject: [R-pkg-devel] help fixing CRAN package sos-now fails on GitHub
+In-Reply-To: <1ee5ad35-6dba-e1fd-33cd-5225bbb55968@statistik.tu-dortmund.de>
+References: <4f12e1d0-1d20-c15e-7359-8443d70a8727@stats.ox.ac.uk>
+ <c9c45d96-12e4-c92b-8aab-dcea498a5afe@effectivedefense.org>
+ <f7976d1e-8c14-d599-1810-a069d0f4b482@statistik.tu-dortmund.de>
+ <ad1056cb-397d-3927-3018-a3669c983d78@effectivedefense.org>
+ <1ee5ad35-6dba-e1fd-33cd-5225bbb55968@statistik.tu-dortmund.de>
+Message-ID: <740e9a86-be5e-343e-8e15-f86991a62e45@effectivedefense.org>
+
+Hi, Uwe et al.:
+
+
+	  The sos vignette sos.Rnw now fails on GitHub, complaining of a LaTeX 
+error in "{\tt pspline_ checker}".  I don't find it in the code for 
+sos.Rnw.  It may be triggered by a response to an internet search that's 
+different from before.
+
+
+https://github.com/sbgraves237/sos
+
+
+	  Uwe suggests I postprocess output with gsub("_", "\\\\_", output). 
+It's not clear to me where I should apply this.  I am not eager to 
+change the code in the package, because it could break something else 
+that's currently working.
+
+
+	  Suggestions?
+	  Thanks
+	  Spencer Graves
+
+
+On 5/16/23 7:41 AM, Uwe Ligges wrote:
+> 
+> 
+> On 16.05.2023 14:02, Spencer Graves wrote:
+>>
+>>
+>> On 5/16/23 6:06 AM, Uwe Ligges wrote:
+>>>
+>>>
+>>> On 16.05.2023 01:46, Spencer Graves wrote:
+>>>> Hello, All:
+>>>>
+>>>>
+>>>> ?????? The sos package is failing some CRAN checks, complaining:[1]
+>>>>
+>>>>
+>>>> LaTeX errors:
+>>>> ! Missing $ inserted.
+>>>> <inserted text>
+>>>> ???????????????? $
+>>>> l.303 {\tt pspline_
+>>>> ??????????????????? checker} in the
+>>>
+>>>
+>>> I can only guess this is part of the response you got from some sos 
+>>> request? I cannot reproduce it currently.
+>>>
+>>> So check:
+>>> Does your package pass check if some function names including an 
+>>> underscore in the name is returned from an sos request?
+>>
+>>
+>> Hi, Uwe et al.:
+>>
+>>
+>> ?????? Thanks, Uwe, for your reply.
+>>
+>>
+>> ?????? It's complaining about something in a vignette that has been 
+>> part of the package since it appeared in The R Journal in Volume 1/2 
+>> in 2009.? I received an email from Prof. Ripley complaining that it 
+>> reported problems ("WARN") on some of the CRAN checks.? When I asked, 
+>> Prof. Ripley reply's reply included:
+>>
+>>
+>> ?>>????? l.303 {\tt pspline_
+>> ?>>?????? checker} in the
+>> ?>>????? ! ==> Fatal error occurred, no output PDF file produced!
+>> ?>>
+>> ?>> Underlines need to be escaped in LaTeX.? And as your results 
+>> depend on
+>> ?>> Internet downloads,
+>> ?>>
+>> ?>> "Packages which use Internet resources should fail gracefully with an
+>> ?>> informative message if the resource is not available or has changed
+>> ?>> (and not give a check warning nor error)."
+>> ?>>
+>> ?>> applies: you need to anticipate that the results might include
+>> ?>> underlines.
+>>
+>>
+>> ?????? I don't know how to detect, let alone fix the "Underlines" that 
+>> "need to be escaped in LaTeX."
+> 
+> If you receive an output, postprocess it via
+> 
+> gsub("_", "\\\\_", output)
+> 
+> 
+> 
+>>
+>>
+>> ?????? Regarding the other issue that "Packages which use Internet 
+>> resources should fail gracefully with an informative message if the 
+>> resource is not available or has changed (and not give a check warning 
+>> nor error)", I assume I should wrap in "try" all tests in *.Rd files 
+>> that access the Internet and make sure that they don't fail "R CMD 
+>> check" if the Internet is not available.
+> 
+> Yes.
+> 
+> Best,
+> Uwe Ligges
+> 
+> 
+>>
+>> ?????? Comments?
+>> ?????? Thanks again,
+>> ?????? Spencer Graves
+>>
+>>
+>> p.s.? Yesterday I remember I got "WARN" on three of six CRAN checks 
+>> against r-devel on different platforms and NOTE on four of the seven 
+>> other CRAN checks.? Today I see "WARN" on only two.? If I just wait, 
+>> these "WARN" problems may go away by themselves.? However, Prof. 
+>> Ripley gave me other problems to fix, and I want to support our kind, 
+>> smart and generous English professor.
+>>
+>>>
+>>> Best,
+>>> Uwe Ligges
+>>>
+>>>
+>>>
+>>>
+>>>
+>>>
+>>>> ! Emergency stop.
+>>>> <inserted text>
+>>>> ???????????????? $
+>>>> l.303 {\tt pspline_
+>>>> ??????????????????? checker} in the
+>>>> ! ==> Fatal error occurred, no output PDF file produced!
+>>>> --- failed re-building 'sos.Rnw'
+>>>>
+>>>>
+>>>> ?????? I can NOT replicate these locally nor with GitHub action, and 
+>>>> I failed to find 'psp' in 'sos.Rnw'.[2]? This raises two issue:
+>>>>
+>>>>
+>>>> OBVIOUS:? What can I do to fix this error, or at least to understand 
+>>>> it better?
+>>>>
+>>>>
+>>>> SUBTLE:? How can I configure "github action", so it can replicate 
+>>>> the errors reported on CRAN?
+>>>>
+>>>>
+>>>> ?????? Thanks,
+>>>> ?????? Spencer
+>>>>
+>>>>
+>>>> [1]
+>>>>
+>>>>
+>>>> https://cran.r-project.org
+>>>>
+>>>>
+>>>> [2]
+>>>>
+>>>>
+>>>> https://github.com/sbgraves237/sos
+>>>>
+>>>>
+>>>> -------- Forwarded Message --------
+>>>> Subject: Re: CRAN package sos
+>>>> Date: Sun, 14 May 2023 14:46:06 +0100
+>>>> From: Prof Brian Ripley <ripley at stats.ox.ac.uk>
+>>>> Reply-To: CRAN <CRAN at r-project.org>
+>>>> To: Spencer Graves <spencer.graves at prodsyse.com>
+>>>> CC: CRAN at R-project.org
+>>>>
+>>>> <snip>
+>>>>
+>>>>
+>>>> On 12/05/2023 13:03, Spencer Graves wrote:
+>>>>> Hello, All:
+>>>>
+>>>> You have just spammed my personal email address, contrary to the 
+>>>> CRAN policy and done so deliberately and/or recklessly, overriding 
+>>>> the Reply-To header.
+>>>>
+>>>>> ?????? Is MASS being withdrawn along with multiple other packages 
+>>>>> (mgcv, survival, boot, lattice)?
+>>>>
+>>>> Not so.? And that was a failure to do your own homework as you 
+>>>> should have looked on CRAN to see that they are still available.
+>>>>
+>>>> Further
+>>>>
+>>>> options(repos=c(CRAN="http://cran.cnr.berkeley.edu"))
+>>>>
+>>>> does not respect the user's choice of repository: that seems to make 
+>>>> re-making it unreasonably slow.? On my very fast MacBook Pro
+>>>>
+>>>> * checking re-building of vignette outputs ...^R
+>>>> ??[26s/265s] OK
+>>>>
+>>>> so it is waiting 90% of the time.
+>>>>
+>>>>
+>>>>> ?????? That's responsible for 3 of the 4 'warnings' listed there. 
+>>>>> The warning for r-devel-linux-x86_64-fedora-gcc says "LaTeX errors:
+>>>>> ! Missing $ inserted ... Fatal error occurred, no output PDF file 
+>>>>> produced! ... Vignette re-building failed."
+>>>>>
+>>>>>
+>>>>> ?????? These all sound to me like operating system errors.? If 
+>>>>> there's something here I should do, I could use help in 
+>>>>> understanding what.
+>>>>
+>>>> Do read the message -- it is a LaTeX error in the LaTeX code your 
+>>>> package's vignettes generates.
+>>>>
+>>>> ??? LaTeX errors:
+>>>> ???? ! Missing $ inserted.
+>>>> ???? <inserted text>
+>>>> ????? $
+>>>> ???? l.303 {\tt pspline_
+>>>> ????? checker} in the
+>>>> ???? ! Emergency stop.
+>>>> ???? <inserted text>
+>>>> ????? $
+>>>> ???? l.303 {\tt pspline_
+>>>> ????? checker} in the
+>>>> ???? ! ==> Fatal error occurred, no output PDF file produced!
+>>>>
+>>>> Underlines need to be escaped in LaTeX.? And as your results depend 
+>>>> on Internet downloads,
+>>>>
+>>>> "Packages which use Internet resources should fail gracefully with 
+>>>> an informative message if the resource is not available or has 
+>>>> changed (and not give a check warning nor error)."
+>>>>
+>>>> applies: you need to anticipate that the results might include 
+>>>> underlines.
+>>>>
+>>>>>
+>>>>>
+>>>>> ?????? Thanks,
+>>>>> ?????? Spencer Graves
+>>>>> m:? 1-408-655-4567
+>>>>>
+>>>>>
+>>>>> On 5/12/23 1:38 AM, Prof Brian Ripley wrote:
+>>>>>> Dear maintainer,
+>>>>>>
+>>>>>> Please see the problems shown on
+>>>>>> <https://cran.r-project.org/web/checks/check_results_sos.html>.
+>>>>>>
+>>>>>> Please correct before 2023-05-26 to safely retain your package on 
+>>>>>> CRAN.
+>>>>>>
+>>>>>> The CRAN Team
+>>>>
+
+
+From vdor|e @end|ng |rom gm@||@com  Mon May 22 20:25:57 2023
+From: vdor|e @end|ng |rom gm@||@com (Vincent Dorie)
+Date: Mon, 22 May 2023 14:25:57 -0400
+Subject: [R-pkg-devel] help fixing CRAN package sos-now fails on GitHub
+In-Reply-To: <740e9a86-be5e-343e-8e15-f86991a62e45@effectivedefense.org>
+References: <4f12e1d0-1d20-c15e-7359-8443d70a8727@stats.ox.ac.uk>
+ <c9c45d96-12e4-c92b-8aab-dcea498a5afe@effectivedefense.org>
+ <f7976d1e-8c14-d599-1810-a069d0f4b482@statistik.tu-dortmund.de>
+ <ad1056cb-397d-3927-3018-a3669c983d78@effectivedefense.org>
+ <1ee5ad35-6dba-e1fd-33cd-5225bbb55968@statistik.tu-dortmund.de>
+ <740e9a86-be5e-343e-8e15-f86991a62e45@effectivedefense.org>
+Message-ID: <CA+++UwTpAukehOkc+VHWF4RVg3tiVrfOmL-o2DhieR-0i8H5+w@mail.gmail.com>
+
+A simple fix might be to redefine findFn in the global environment of the
+vignette, have it explicitly call sos::findFn, and return a result
+sanitized for LaTeX output. According to this:
+https://stackoverflow.com/questions/32865384/function-to-sanitize-strings-for-latex-compilation
+it looks like there are a couple of options for that.
+
+On Mon, May 22, 2023 at 1:39?PM Spencer Graves <
+spencer.graves at effectivedefense.org> wrote:
+
+> Hi, Uwe et al.:
+>
+>
+>           The sos vignette sos.Rnw now fails on GitHub, complaining of a
+> LaTeX
+> error in "{\tt pspline_ checker}".  I don't find it in the code for
+> sos.Rnw.  It may be triggered by a response to an internet search that's
+> different from before.
+>
+>
+> https://github.com/sbgraves237/sos
+>
+>
+>           Uwe suggests I postprocess output with gsub("_", "\\\\_",
+> output).
+> It's not clear to me where I should apply this.  I am not eager to
+> change the code in the package, because it could break something else
+> that's currently working.
+>
+>
+>           Suggestions?
+>           Thanks
+>           Spencer Graves
+>
+>
+> On 5/16/23 7:41 AM, Uwe Ligges wrote:
+> >
+> >
+> > On 16.05.2023 14:02, Spencer Graves wrote:
+> >>
+> >>
+> >> On 5/16/23 6:06 AM, Uwe Ligges wrote:
+> >>>
+> >>>
+> >>> On 16.05.2023 01:46, Spencer Graves wrote:
+> >>>> Hello, All:
+> >>>>
+> >>>>
+> >>>>        The sos package is failing some CRAN checks, complaining:[1]
+> >>>>
+> >>>>
+> >>>> LaTeX errors:
+> >>>> ! Missing $ inserted.
+> >>>> <inserted text>
+> >>>>                  $
+> >>>> l.303 {\tt pspline_
+> >>>>                     checker} in the
+> >>>
+> >>>
+> >>> I can only guess this is part of the response you got from some sos
+> >>> request? I cannot reproduce it currently.
+> >>>
+> >>> So check:
+> >>> Does your package pass check if some function names including an
+> >>> underscore in the name is returned from an sos request?
+> >>
+> >>
+> >> Hi, Uwe et al.:
+> >>
+> >>
+> >>        Thanks, Uwe, for your reply.
+> >>
+> >>
+> >>        It's complaining about something in a vignette that has been
+> >> part of the package since it appeared in The R Journal in Volume 1/2
+> >> in 2009.  I received an email from Prof. Ripley complaining that it
+> >> reported problems ("WARN") on some of the CRAN checks.  When I asked,
+> >> Prof. Ripley reply's reply included:
+> >>
+> >>
+> >>  >>      l.303 {\tt pspline_
+> >>  >>       checker} in the
+> >>  >>      ! ==> Fatal error occurred, no output PDF file produced!
+> >>  >>
+> >>  >> Underlines need to be escaped in LaTeX.  And as your results
+> >> depend on
+> >>  >> Internet downloads,
+> >>  >>
+> >>  >> "Packages which use Internet resources should fail gracefully with
+> an
+> >>  >> informative message if the resource is not available or has changed
+> >>  >> (and not give a check warning nor error)."
+> >>  >>
+> >>  >> applies: you need to anticipate that the results might include
+> >>  >> underlines.
+> >>
+> >>
+> >>        I don't know how to detect, let alone fix the "Underlines" that
+> >> "need to be escaped in LaTeX."
+> >
+> > If you receive an output, postprocess it via
+> >
+> > gsub("_", "\\\\_", output)
+> >
+> >
+> >
+> >>
+> >>
+> >>        Regarding the other issue that "Packages which use Internet
+> >> resources should fail gracefully with an informative message if the
+> >> resource is not available or has changed (and not give a check warning
+> >> nor error)", I assume I should wrap in "try" all tests in *.Rd files
+> >> that access the Internet and make sure that they don't fail "R CMD
+> >> check" if the Internet is not available.
+> >
+> > Yes.
+> >
+> > Best,
+> > Uwe Ligges
+> >
+> >
+> >>
+> >>        Comments?
+> >>        Thanks again,
+> >>        Spencer Graves
+> >>
+> >>
+> >> p.s.  Yesterday I remember I got "WARN" on three of six CRAN checks
+> >> against r-devel on different platforms and NOTE on four of the seven
+> >> other CRAN checks.  Today I see "WARN" on only two.  If I just wait,
+> >> these "WARN" problems may go away by themselves.  However, Prof.
+> >> Ripley gave me other problems to fix, and I want to support our kind,
+> >> smart and generous English professor.
+> >>
+> >>>
+> >>> Best,
+> >>> Uwe Ligges
+> >>>
+> >>>
+> >>>
+> >>>
+> >>>
+> >>>
+> >>>> ! Emergency stop.
+> >>>> <inserted text>
+> >>>>                  $
+> >>>> l.303 {\tt pspline_
+> >>>>                     checker} in the
+> >>>> ! ==> Fatal error occurred, no output PDF file produced!
+> >>>> --- failed re-building 'sos.Rnw'
+> >>>>
+> >>>>
+> >>>>        I can NOT replicate these locally nor with GitHub action, and
+> >>>> I failed to find 'psp' in 'sos.Rnw'.[2]  This raises two issue:
+> >>>>
+> >>>>
+> >>>> OBVIOUS:  What can I do to fix this error, or at least to understand
+> >>>> it better?
+> >>>>
+> >>>>
+> >>>> SUBTLE:  How can I configure "github action", so it can replicate
+> >>>> the errors reported on CRAN?
+> >>>>
+> >>>>
+> >>>>        Thanks,
+> >>>>        Spencer
+> >>>>
+> >>>>
+> >>>> [1]
+> >>>>
+> >>>>
+> >>>> https://cran.r-project.org
+> >>>>
+> >>>>
+> >>>> [2]
+> >>>>
+> >>>>
+> >>>> https://github.com/sbgraves237/sos
+> >>>>
+> >>>>
+> >>>> -------- Forwarded Message --------
+> >>>> Subject: Re: CRAN package sos
+> >>>> Date: Sun, 14 May 2023 14:46:06 +0100
+> >>>> From: Prof Brian Ripley <ripley at stats.ox.ac.uk>
+> >>>> Reply-To: CRAN <CRAN at r-project.org>
+> >>>> To: Spencer Graves <spencer.graves at prodsyse.com>
+> >>>> CC: CRAN at R-project.org
+> >>>>
+> >>>> <snip>
+> >>>>
+> >>>>
+> >>>> On 12/05/2023 13:03, Spencer Graves wrote:
+> >>>>> Hello, All:
+> >>>>
+> >>>> You have just spammed my personal email address, contrary to the
+> >>>> CRAN policy and done so deliberately and/or recklessly, overriding
+> >>>> the Reply-To header.
+> >>>>
+> >>>>>        Is MASS being withdrawn along with multiple other packages
+> >>>>> (mgcv, survival, boot, lattice)?
+> >>>>
+> >>>> Not so.  And that was a failure to do your own homework as you
+> >>>> should have looked on CRAN to see that they are still available.
+> >>>>
+> >>>> Further
+> >>>>
+> >>>> options(repos=c(CRAN="http://cran.cnr.berkeley.edu"))
+> >>>>
+> >>>> does not respect the user's choice of repository: that seems to make
+> >>>> re-making it unreasonably slow.  On my very fast MacBook Pro
+> >>>>
+> >>>> * checking re-building of vignette outputs ...^R
+> >>>>   [26s/265s] OK
+> >>>>
+> >>>> so it is waiting 90% of the time.
+> >>>>
+> >>>>
+> >>>>>        That's responsible for 3 of the 4 'warnings' listed there.
+> >>>>> The warning for r-devel-linux-x86_64-fedora-gcc says "LaTeX errors:
+> >>>>> ! Missing $ inserted ... Fatal error occurred, no output PDF file
+> >>>>> produced! ... Vignette re-building failed."
+> >>>>>
+> >>>>>
+> >>>>>        These all sound to me like operating system errors.  If
+> >>>>> there's something here I should do, I could use help in
+> >>>>> understanding what.
+> >>>>
+> >>>> Do read the message -- it is a LaTeX error in the LaTeX code your
+> >>>> package's vignettes generates.
+> >>>>
+> >>>>     LaTeX errors:
+> >>>>      ! Missing $ inserted.
+> >>>>      <inserted text>
+> >>>>       $
+> >>>>      l.303 {\tt pspline_
+> >>>>       checker} in the
+> >>>>      ! Emergency stop.
+> >>>>      <inserted text>
+> >>>>       $
+> >>>>      l.303 {\tt pspline_
+> >>>>       checker} in the
+> >>>>      ! ==> Fatal error occurred, no output PDF file produced!
+> >>>>
+> >>>> Underlines need to be escaped in LaTeX.  And as your results depend
+> >>>> on Internet downloads,
+> >>>>
+> >>>> "Packages which use Internet resources should fail gracefully with
+> >>>> an informative message if the resource is not available or has
+> >>>> changed (and not give a check warning nor error)."
+> >>>>
+> >>>> applies: you need to anticipate that the results might include
+> >>>> underlines.
+> >>>>
+> >>>>>
+> >>>>>
+> >>>>>        Thanks,
+> >>>>>        Spencer Graves
+> >>>>> m:  1-408-655-4567
+> >>>>>
+> >>>>>
+> >>>>> On 5/12/23 1:38 AM, Prof Brian Ripley wrote:
+> >>>>>> Dear maintainer,
+> >>>>>>
+> >>>>>> Please see the problems shown on
+> >>>>>> <https://cran.r-project.org/web/checks/check_results_sos.html>.
+> >>>>>>
+> >>>>>> Please correct before 2023-05-26 to safely retain your package on
+> >>>>>> CRAN.
+> >>>>>>
+> >>>>>> The CRAN Team
+> >>>>
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Mon May 22 21:07:19 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Mon, 22 May 2023 22:07:19 +0300
+Subject: [R-pkg-devel] help fixing CRAN package sos-now fails on GitHub
+In-Reply-To: <740e9a86-be5e-343e-8e15-f86991a62e45@effectivedefense.org>
+References: <4f12e1d0-1d20-c15e-7359-8443d70a8727@stats.ox.ac.uk>
+ <c9c45d96-12e4-c92b-8aab-dcea498a5afe@effectivedefense.org>
+ <f7976d1e-8c14-d599-1810-a069d0f4b482@statistik.tu-dortmund.de>
+ <ad1056cb-397d-3927-3018-a3669c983d78@effectivedefense.org>
+ <1ee5ad35-6dba-e1fd-33cd-5225bbb55968@statistik.tu-dortmund.de>
+ <740e9a86-be5e-343e-8e15-f86991a62e45@effectivedefense.org>
+Message-ID: <20230522220719.27c1ecfe@Tarkus>
+
+I fed your vignette to R CMD Sweave, and here's the relevant fragment
+from the resulting *.tex file:
+
+> This returned a {\tt "findFn"} object identifying 405 help pages.
+> When this was run while preparing this manuscript, the sixth row was
+> {\tt pspline_checker} in the \pkg{JOPS} package, which has a {\tt
+> Score} of 47. (On another day, the results could be different,
+> because CRAN changes over time.)  This was the sixth row in this
+> table, because it is in the \pkg{JOPS} package, which had a total of
+> 54 help pages matching the search term, but this was the only one
+> whose name matched the {\tt pattern} passed to {\tt grepFn}.
+
+This corresponds to the following part of the vignette:
+
+> This returned a {\tt "findFn"} object identifying \Sexpr{nrow(g)}
+> help pages.
+> When this was
+> run while preparing this manuscript, the sixth row was
+> {\tt \Sexpr{gFunc6}} in the
+> \pkg{\Sexpr{gPac6}} package, which has a {\tt Score} of
+> \Sexpr{gScore6}.
+
+So, you need to escape the underscores in gFunc6. Probably not gPac6
+because underscores are not allowed in package names.
+
+-- 
+Best regards,
+Ivan
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon May 22 21:38:10 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 22 May 2023 15:38:10 -0400
+Subject: [R-pkg-devel] help fixing CRAN package sos-now fails on GitHub
+In-Reply-To: <20230522220719.27c1ecfe@Tarkus>
+References: <4f12e1d0-1d20-c15e-7359-8443d70a8727@stats.ox.ac.uk>
+ <c9c45d96-12e4-c92b-8aab-dcea498a5afe@effectivedefense.org>
+ <f7976d1e-8c14-d599-1810-a069d0f4b482@statistik.tu-dortmund.de>
+ <ad1056cb-397d-3927-3018-a3669c983d78@effectivedefense.org>
+ <1ee5ad35-6dba-e1fd-33cd-5225bbb55968@statistik.tu-dortmund.de>
+ <740e9a86-be5e-343e-8e15-f86991a62e45@effectivedefense.org>
+ <20230522220719.27c1ecfe@Tarkus>
+Message-ID: <12d24c34-8a19-59a7-5031-12a7bb9f532d@gmail.com>
+
+On 22/05/2023 3:07 p.m., Ivan Krylov wrote:
+> I fed your vignette to R CMD Sweave, and here's the relevant fragment
+> from the resulting *.tex file:
+> 
+>> This returned a {\tt "findFn"} object identifying 405 help pages.
+>> When this was run while preparing this manuscript, the sixth row was
+>> {\tt pspline_checker} in the \pkg{JOPS} package, which has a {\tt
+>> Score} of 47. (On another day, the results could be different,
+>> because CRAN changes over time.)  This was the sixth row in this
+>> table, because it is in the \pkg{JOPS} package, which had a total of
+>> 54 help pages matching the search term, but this was the only one
+>> whose name matched the {\tt pattern} passed to {\tt grepFn}.
+> 
+> This corresponds to the following part of the vignette:
+> 
+>> This returned a {\tt "findFn"} object identifying \Sexpr{nrow(g)}
+>> help pages.
+>> When this was
+>> run while preparing this manuscript, the sixth row was
+>> {\tt \Sexpr{gFunc6}} in the
+>> \pkg{\Sexpr{gPac6}} package, which has a {\tt Score} of
+>> \Sexpr{gScore6}.
+> 
+> So, you need to escape the underscores in gFunc6. Probably not gPac6
+> because underscores are not allowed in package names.
+> 
+
+Nice find.  Just in case Spencer has trouble with escaping the escapes, 
+I think he should change
+
+   "{\tt \Sexpr{gFunc6}}"
+
+to
+
+   "{\tt \Sexpr{sub("_", "\\\\_", gFunc6)}}
+
+Even better would be to write a little function "sanitizeForLatex" that 
+did this and any other necessary changes, and call that.
+
+Duncan Murdoch
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Mon May 22 22:46:46 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Tue, 23 May 2023 08:46:46 +1200
+Subject: [R-pkg-devel] [External]   Test fails on M1 Mac on CRAN,
+ but not on macOS builder
+In-Reply-To: <LO2P265MB3833E1778036399166D64EA9CD439@LO2P265MB3833.GBRP265.PROD.OUTLOOK.COM>
+References: <LO2P265MB3833ADEB527FD0BCD6CD5974CD7C9@LO2P265MB3833.GBRP265.PROD.OUTLOOK.COM>
+ <545B0C22-D4A1-4B5F-9703-CC4BD07E79E1@R-project.org>
+ <LO2P265MB3833E1778036399166D64EA9CD439@LO2P265MB3833.GBRP265.PROD.OUTLOOK.COM>
+Message-ID: <17342DCC-AB7B-437C-B9C3-630C195D6965@R-project.org>
+
+Florian,
+
+ok, understood. It works for me on both M1 build machines, so can't really help. I'd simply submit the new version on CRAN. Of course it would help if the tests were more informative such as actually showing the values involved on failure so you could at least have an idea from the output.
+
+Cheers
+Simon
+
+
+
+> On May 22, 2023, at 11:07 PM, Pein, Florian <f.pein at lancaster.ac.uk> wrote:
+> 
+> Dear Duncan and Simon,
+> thank you both very much for you help.
+> 
+> I can make the test more informative and also break it down into substeps. But I am unsure whether CRAN policies allow to use their system for such testing steps. I rather think not. Though I must say that I still do not know how to otherwise fix the error. Can anyone, ideally a CRAN maintainer, confirm that this is okay?
+> 
+> Regarding the tolerance, the test compares to small integers. In this specific situation both sides are 5L on my local system. The tolerance is there to ensure that 
+> ncol(compareStat) * testalpha is not something like 4.999999999 due to floating point approximations and we end up with 4L when as.integer() is applied. This is not happening in the concrete example, since ncol(compareStat) * testalpha = 5.67. I am very sure that the error is on the left hand side and compare is larger than 5. 
+> 
+> In fact, tol in
+> rejected[, i] <- teststat[i, ] > ret[i] + tol
+> may need to be larger, since teststat contains quite large values. I think there is a realistic chance that a floating point error occurs at this point. But once again, I do not want to send a random guess to CRAN when I cannot test whether this has fixed the problem or not. I have tested the old code with --disable-long-double and compiler flags such as -ffloat-store and -fexcess-precision=standard and it works. I do not know to what degree this ensures that it works on all systems.
+> 
+> Many thanks and best wishes,
+> Florian
+> 
+
+
