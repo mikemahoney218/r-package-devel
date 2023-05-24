@@ -16599,3 +16599,433 @@ Simon
 > 
 
 
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Tue May 23 12:53:56 2023
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Tue, 23 May 2023 12:53:56 +0200
+Subject: [R-pkg-devel] help fixing CRAN package sos-now fails on GitHub
+In-Reply-To: <12d24c34-8a19-59a7-5031-12a7bb9f532d@gmail.com>
+References: <4f12e1d0-1d20-c15e-7359-8443d70a8727@stats.ox.ac.uk>
+ <c9c45d96-12e4-c92b-8aab-dcea498a5afe@effectivedefense.org>
+ <f7976d1e-8c14-d599-1810-a069d0f4b482@statistik.tu-dortmund.de>
+ <ad1056cb-397d-3927-3018-a3669c983d78@effectivedefense.org>
+ <1ee5ad35-6dba-e1fd-33cd-5225bbb55968@statistik.tu-dortmund.de>
+ <740e9a86-be5e-343e-8e15-f86991a62e45@effectivedefense.org>
+ <20230522220719.27c1ecfe@Tarkus>
+ <12d24c34-8a19-59a7-5031-12a7bb9f532d@gmail.com>
+Message-ID: <25708.39748.129638.609799@stat.math.ethz.ch>
+
+>>>>> Duncan Murdoch 
+>>>>>     on Mon, 22 May 2023 15:38:10 -0400 writes:
+
+    > On 22/05/2023 3:07 p.m., Ivan Krylov wrote:
+    >> I fed your vignette to R CMD Sweave, and here's the
+    >> relevant fragment from the resulting *.tex file:
+    >> 
+    >>> This returned a {\tt "findFn"} object identifying 405
+    >>> help pages.  When this was run while preparing this
+    >>> manuscript, the sixth row was {\tt pspline_checker} in
+    >>> the \pkg{JOPS} package, which has a {\tt Score} of
+    >>> 47. (On another day, the results could be different,
+    >>> because CRAN changes over time.)  This was the sixth row
+    >>> in this table, because it is in the \pkg{JOPS} package,
+    >>> which had a total of 54 help pages matching the search
+    >>> term, but this was the only one whose name matched the
+    >>> {\tt pattern} passed to {\tt grepFn}.
+    >> 
+    >> This corresponds to the following part of the vignette:
+    >> 
+    >>> This returned a {\tt "findFn"} object identifying
+    >>> \Sexpr{nrow(g)} help pages.  When this was run while
+    >>> preparing this manuscript, the sixth row was {\tt
+    >>> \Sexpr{gFunc6}} in the \pkg{\Sexpr{gPac6}} package,
+    >>> which has a {\tt Score} of \Sexpr{gScore6}.
+    >> 
+    >> So, you need to escape the underscores in
+    >> gFunc6. Probably not gPac6 because underscores are not
+    >> allowed in package names.
+    >> 
+
+    > Nice find.  Just in case Spencer has trouble with escaping
+    > the escapes, I think he should change
+
+    >    "{\tt \Sexpr{gFunc6}}"
+
+    > to
+
+    >    "{\tt \Sexpr{sub("_", "\\\\_", gFunc6)}}
+
+    > Even better would be to write a little function
+    > "sanitizeForLatex" that did this and any other necessary
+    > changes, and call that.
+
+Yes, indeed (2 x).
+
+If I grep the base R package sources, I find three occurrences
+of something like the above:
+
+grep --color -nH --null -e 'sub *(.*\\\\_' */R/*.R
+
+ tools/R/Rd2latex.R:295:        x <- fsub("\\_", "_", x)
+ tools/R/Rd2latex.R:303:        x <- fsub("\\_", ".Rul.", x)
+ tools/R/Rd.R:681:    txt <- gsub("\\_", "_", txt, fixed=TRUE)
+
+all of which do the transformation in the other direction
+(because *.Rd in those cases already *is* LaTeX-alike, and needs
+ to convert for non-LaTeX use).
+
+Note that the last one gives a hint to be more general --- gsub()
+also working a.g. for 'parse_me_not' ---
+*and* possibly faster (fixed=TRUE)  leading to
+
+     "{\tt \Sexpr{gsub("_", "\\\\_", gFunc6, fixed=TRUE)}}
+
+Martin
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue May 23 13:24:23 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 23 May 2023 07:24:23 -0400
+Subject: [R-pkg-devel] help fixing CRAN package sos-now fails on GitHub
+In-Reply-To: <25708.39748.129638.609799@stat.math.ethz.ch>
+References: <4f12e1d0-1d20-c15e-7359-8443d70a8727@stats.ox.ac.uk>
+ <c9c45d96-12e4-c92b-8aab-dcea498a5afe@effectivedefense.org>
+ <f7976d1e-8c14-d599-1810-a069d0f4b482@statistik.tu-dortmund.de>
+ <ad1056cb-397d-3927-3018-a3669c983d78@effectivedefense.org>
+ <1ee5ad35-6dba-e1fd-33cd-5225bbb55968@statistik.tu-dortmund.de>
+ <740e9a86-be5e-343e-8e15-f86991a62e45@effectivedefense.org>
+ <20230522220719.27c1ecfe@Tarkus>
+ <12d24c34-8a19-59a7-5031-12a7bb9f532d@gmail.com>
+ <25708.39748.129638.609799@stat.math.ethz.ch>
+Message-ID: <d451d911-5f71-a17a-e80b-60d26e70b8cf@gmail.com>
+
+On 23/05/2023 6:53 a.m., Martin Maechler wrote:
+>>>>>> Duncan Murdoch
+>>>>>>      on Mon, 22 May 2023 15:38:10 -0400 writes:
+> 
+>      > On 22/05/2023 3:07 p.m., Ivan Krylov wrote:
+>      >> I fed your vignette to R CMD Sweave, and here's the
+>      >> relevant fragment from the resulting *.tex file:
+>      >>
+>      >>> This returned a {\tt "findFn"} object identifying 405
+>      >>> help pages.  When this was run while preparing this
+>      >>> manuscript, the sixth row was {\tt pspline_checker} in
+>      >>> the \pkg{JOPS} package, which has a {\tt Score} of
+>      >>> 47. (On another day, the results could be different,
+>      >>> because CRAN changes over time.)  This was the sixth row
+>      >>> in this table, because it is in the \pkg{JOPS} package,
+>      >>> which had a total of 54 help pages matching the search
+>      >>> term, but this was the only one whose name matched the
+>      >>> {\tt pattern} passed to {\tt grepFn}.
+>      >>
+>      >> This corresponds to the following part of the vignette:
+>      >>
+>      >>> This returned a {\tt "findFn"} object identifying
+>      >>> \Sexpr{nrow(g)} help pages.  When this was run while
+>      >>> preparing this manuscript, the sixth row was {\tt
+>      >>> \Sexpr{gFunc6}} in the \pkg{\Sexpr{gPac6}} package,
+>      >>> which has a {\tt Score} of \Sexpr{gScore6}.
+>      >>
+>      >> So, you need to escape the underscores in
+>      >> gFunc6. Probably not gPac6 because underscores are not
+>      >> allowed in package names.
+>      >>
+> 
+>      > Nice find.  Just in case Spencer has trouble with escaping
+>      > the escapes, I think he should change
+> 
+>      >    "{\tt \Sexpr{gFunc6}}"
+> 
+>      > to
+> 
+>      >    "{\tt \Sexpr{sub("_", "\\\\_", gFunc6)}}
+> 
+>      > Even better would be to write a little function
+>      > "sanitizeForLatex" that did this and any other necessary
+>      > changes, and call that.
+> 
+> Yes, indeed (2 x).
+> 
+> If I grep the base R package sources, I find three occurrences
+> of something like the above:
+> 
+> grep --color -nH --null -e 'sub *(.*\\\\_' */R/*.R
+> 
+>   tools/R/Rd2latex.R:295:        x <- fsub("\\_", "_", x)
+>   tools/R/Rd2latex.R:303:        x <- fsub("\\_", ".Rul.", x)
+>   tools/R/Rd.R:681:    txt <- gsub("\\_", "_", txt, fixed=TRUE)
+> 
+> all of which do the transformation in the other direction
+> (because *.Rd in those cases already *is* LaTeX-alike, and needs
+>   to convert for non-LaTeX use).
+> 
+> Note that the last one gives a hint to be more general --- gsub()
+> also working a.g. for 'parse_me_not' ---
+> *and* possibly faster (fixed=TRUE)  leading to
+> 
+>       "{\tt \Sexpr{gsub("_", "\\\\_", gFunc6, fixed=TRUE)}}
+> 
+> Martin
+
+Yes, a good idea to use gsub and fixed = TRUE.
+
+There are some changes in the other direction as well in that file (Rd 
+format is very complicated).  I think the characters it handles are \, 
+&, $, %, _, #, {, }, ^, ~, occurring near line 145.  Only _ is allowed 
+in a "syntactic" name, but others might turn up when trying to display 
+other code.
+
+Duncan
+
+
+From jo@o@@@nto@ @end|ng |rom epe@gov@br  Tue May 23 19:32:21 2023
+From: jo@o@@@nto@ @end|ng |rom epe@gov@br (=?iso-8859-1?Q?Jo=E3o_Pedro_de_Almeida_dos_Santos?=)
+Date: Tue, 23 May 2023 17:32:21 +0000
+Subject: [R-pkg-devel] Question about notes
+Message-ID: <CP6P284MB155815922F135A3EE9F1FEF7D5409@CP6P284MB1558.BRAP284.PROD.OUTLOOK.COM>
+
+I'm checking a package in RHub via RStudio (devtools::check_rhub()) and I'm receiving the following note:
+
+checking for non-standard things in the check directory ... NOTE
+  Found the following files/directories:
+    ''NULL''
+
+  I am unable to find this NULL file/directory anywhere, even with the ls() command in RStudio. I even deleted my local repo and re-cloned it, but this note persists.
+
+What can I do to solve this?
+
+Thanks in advance,
+Jo?o Santos.
+
+________________________________
+Esta mensagem e eventuais anexos podem conter informa??es privilegiadas, confidenciais e/ou protegidas por sigilo legal e por direitos autorais. A divulga??o, distribui??o, reprodu??o ou qualquer forma de utiliza??o do teor deste documento depende de autoriza??o do emissor, sujeitando-se o infrator ?s san??es legais. O emissor desta mensagem utiliza este recurso no exerc?cio do seu trabalho ou em raz?o dele, eximindo-se o empregador de qualquer responsabilidade por utiliza??o indevida ou pessoal. Caso esta comunica??o tenha sido recebida por engano, por favor avisar imediatamente ao emissor respondendo esta mensagem. Este ambiente est? sujeito a monitora??o.
+This message and any of its attachments may contain information that is privileged, confidential and/or protected by legal secrecy and copyright laws, being the violator subject to legal prosecution. The dissemination, distribution, reproduction or any use of the content of this document may be done upon written authorization of the issuer. The sender uses this electronic mailing system in the course of his/her work or on its account, being the employer exempted from any responsibility for inappropriate or personal use. If this communication has been received in error, please immediately notify the sender by replying this message. This environment is subject to monitoring.
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue May 23 20:28:15 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 23 May 2023 21:28:15 +0300
+Subject: [R-pkg-devel] Question about notes
+In-Reply-To: <CP6P284MB155815922F135A3EE9F1FEF7D5409@CP6P284MB1558.BRAP284.PROD.OUTLOOK.COM>
+References: <CP6P284MB155815922F135A3EE9F1FEF7D5409@CP6P284MB1558.BRAP284.PROD.OUTLOOK.COM>
+Message-ID: <20230523212815.5d6e4825@Tarkus>
+
+On Tue, 23 May 2023 17:32:21 +0000
+Jo?o Pedro de Almeida dos Santos <joao.santos at epe.gov.br> wrote:
+
+> checking for non-standard things in the check directory ... NOTE
+>   Found the following files/directories:
+>     ''NULL''
+> 
+>   I am unable to find this NULL file/directory anywhere
+
+The code inside your tests or examples may be creating a file named
+like this.
+
+If you show us the code, we may be able to find it.
+
+Can you reproduce this by running R CMD check --as-cran PACKAGE.tar.gz
+locally?
+
+-- 
+Best regards,
+Ivan
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Tue May 23 22:51:42 2023
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Tue, 23 May 2023 15:51:42 -0500
+Subject: [R-pkg-devel] help fixing CRAN package sos-now fails on GitHub
+In-Reply-To: <12d24c34-8a19-59a7-5031-12a7bb9f532d@gmail.com>
+References: <4f12e1d0-1d20-c15e-7359-8443d70a8727@stats.ox.ac.uk>
+ <c9c45d96-12e4-c92b-8aab-dcea498a5afe@effectivedefense.org>
+ <f7976d1e-8c14-d599-1810-a069d0f4b482@statistik.tu-dortmund.de>
+ <ad1056cb-397d-3927-3018-a3669c983d78@effectivedefense.org>
+ <1ee5ad35-6dba-e1fd-33cd-5225bbb55968@statistik.tu-dortmund.de>
+ <740e9a86-be5e-343e-8e15-f86991a62e45@effectivedefense.org>
+ <20230522220719.27c1ecfe@Tarkus>
+ <12d24c34-8a19-59a7-5031-12a7bb9f532d@gmail.com>
+Message-ID: <8a4f654a-551b-d766-ddb9-f31069e651f3@effectivedefense.org>
+
+
+
+On 5/22/23 2:38 PM, Duncan Murdoch wrote:
+> On 22/05/2023 3:07 p.m., Ivan Krylov wrote:
+>> I fed your vignette to R CMD Sweave, and here's the relevant fragment
+>> from the resulting *.tex file:
+>>
+>>> This returned a {\tt "findFn"} object identifying 405 help pages.
+>>> When this was run while preparing this manuscript, the sixth row was
+>>> {\tt pspline_checker} in the \pkg{JOPS} package, which has a {\tt
+>>> Score} of 47. (On another day, the results could be different,
+>>> because CRAN changes over time.)? This was the sixth row in this
+>>> table, because it is in the \pkg{JOPS} package, which had a total of
+>>> 54 help pages matching the search term, but this was the only one
+>>> whose name matched the {\tt pattern} passed to {\tt grepFn}.
+>>
+>> This corresponds to the following part of the vignette:
+>>
+>>> This returned a {\tt "findFn"} object identifying \Sexpr{nrow(g)}
+>>> help pages.
+>>> When this was
+>>> run while preparing this manuscript, the sixth row was
+>>> {\tt \Sexpr{gFunc6}} in the
+>>> \pkg{\Sexpr{gPac6}} package, which has a {\tt Score} of
+>>> \Sexpr{gScore6}.
+>>
+>> So, you need to escape the underscores in gFunc6. Probably not gPac6
+>> because underscores are not allowed in package names.
+>>
+> 
+> Nice find.? Just in case Spencer has trouble with escaping the escapes, 
+> I think he should change
+> 
+>  ? "{\tt \Sexpr{gFunc6}}"
+> 
+> to
+> 
+>  ? "{\tt \Sexpr{sub("_", "\\\\_", gFunc6)}}
+
+
+CLOSE:  That didn't work, but the following did:
+
+
+{\tt \Sexpr{gsub("_", "\\\\\\\\_", gFunc6)}}
+
+> 
+> Even better would be to write a little function "sanitizeForLatex" that 
+> did this and any other necessary changes, and call that.
+
+
+	  That would doubtless be better, but I don't know enough to do that, 
+and the above worked.
+
+
+	  Thanks very much to Duncan, Ivan, Vincent and Uwe, who contributed to 
+this thread and the resolution of this problem.
+
+
+	  Spencer Graves
+
+> 
+> Duncan Murdoch
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Tue May 23 22:59:21 2023
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Tue, 23 May 2023 15:59:21 -0500
+Subject: [R-pkg-devel] masked from 'package:utils':,, ?
+Message-ID: <9151f089-582d-6670-5f37-a60d5561caf7@effectivedefense.org>
+
+
+
+
+Hello, All:
+
+
+	  CRAN checks for sos on 8 of the 13 platforms complain about the 
+following:
+
+
+The following object is masked from 'package:utils':
+
+     ?
+
+
+	  This is code that Duncan Murdoch contributed to this package around 
+2009.  I have no idea how to fix this.  It's only a NOTE, so CRAN would 
+probably accept it.  However, I felt a need to ask about this before I 
+submitted the package to CRAN without asking this group for suggestions.
+
+
+	  What do you think?
+	  Thanks,
+	  Spencer Graves
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Tue May 23 23:00:44 2023
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Tue, 23 May 2023 16:00:44 -0500
+Subject: [R-pkg-devel] masked from 'package:utils':,, ?-2
+Message-ID: <98ec3ed8-3593-e1db-493f-f944d1ff4293@effectivedefense.org>
+
+
+
+
+Hello, All:
+
+
+	  CRAN checks for sos on 8 of the 13 platforms complain about the 
+following:[1]
+
+
+The following object is masked from 'package:utils':
+
+     ?
+
+
+	  This is code that Duncan Murdoch contributed to this package around 
+2009.  I have no idea how to fix this.  It's only a NOTE, so CRAN would 
+probably accept it.  However, I felt a need to ask about this before I 
+submitted the package to CRAN without asking this group for suggestions.
+
+
+	  What do you think?
+	  Thanks,
+	  Spencer Graves
+
+
+[1]
+
+
+https://cran.r-project.org/web/checks/check_results_sos.html
+
+
+From bbo|ker @end|ng |rom gm@||@com  Wed May 24 01:10:57 2023
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Tue, 23 May 2023 19:10:57 -0400
+Subject: [R-pkg-devel] masked from 'package:utils':,, ?
+In-Reply-To: <9151f089-582d-6670-5f37-a60d5561caf7@effectivedefense.org>
+References: <9151f089-582d-6670-5f37-a60d5561caf7@effectivedefense.org>
+Message-ID: <9405304f-0c36-b38f-a06a-9bb609e842c2@gmail.com>
+
+ ?? This is harmless and should be accepted by CRAN (if masking existing 
+functions were illegal half of the tidyverse would be banned ...).? It's 
+there because it needs to be defined in order to enable the ??? alias 
+for findFn().? sos:::"?" (and experimentation) show that use of a single 
+? is passed through to the original 'utils' version.
+
+
+On 2023-05-23 4:59 p.m., Spencer Graves wrote:
+>
+>
+>
+> Hello, All:
+>
+>
+> ????? CRAN checks for sos on 8 of the 13 platforms complain about the 
+> following:
+>
+>
+> The following object is masked from 'package:utils':
+>
+> ??? ?
+>
+>
+> ????? This is code that Duncan Murdoch contributed to this package 
+> around 2009.? I have no idea how to fix this.? It's only a NOTE, so 
+> CRAN would probably accept it.? However, I felt a need to ask about 
+> this before I submitted the package to CRAN without asking this group 
+> for suggestions.
+>
+>
+> ????? What do you think?
+> ????? Thanks,
+> ????? Spencer Graves
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
