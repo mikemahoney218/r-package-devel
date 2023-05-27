@@ -17062,3 +17062,67 @@ this email.
 	[[alternative HTML version deleted]]
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri May 26 11:27:08 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 26 May 2023 12:27:08 +0300
+Subject: [R-pkg-devel] Linking Problem on MacOS
+In-Reply-To: <VI1P192MB028525396FA83CC49C94F71FFB469@VI1P192MB0285.EURP192.PROD.OUTLOOK.COM>
+References: <VI1P192MB028525396FA83CC49C94F71FFB469@VI1P192MB0285.EURP192.PROD.OUTLOOK.COM>
+Message-ID: <20230526122708.13adf8a1@parabola>
+
+? Thu, 25 May 2023 11:57:07 +0000
+Sameh Abdulah <sameh.abdulah at kaust.edu.sa> ?????:
+
+> We are developing an R-C++ package that relies on several libraries,
+> including Rcpp
+
+Thankfully, using the Rcpp package in your own packages is a
+well-documented, reliable process.
+
+By the way, can we see the code?
+
+> blas, lapack
+
+These are required by R, so the easiest way to continue in a
+CRAN-compatible manner would be to link to the copies used by R by
+including $(BLAS_LIBS) and $(LAPACK_LIBS) in the PKG_LIBS of your
+src/Makevars.
+
+> blaspp, and lapackpp.
+
+I don't see them packaged for Debian, MXE, or among Simon Urbanek?s
+?recipes?, so you might have to bundle the source code for these
+together with your package. There seems to be an option to build both
+of these as static libraries, obviating the need to bother with dynamic
+library paths.
+
+> If any other necessary libraries are not found, they will be
+> automatically downloaded and linked with our library during the
+> package compilation process.
+
+If you intend to submit the package to CRAN, make sure to follow the
+policies, specifically, those regarding external dependencies:
+
+https://cran.r-project.org/web/packages/policies.html
+https://cran.r-project.org/web/packages/external_libs.html
+
+> When we link to MKL or any other required library found on the system
+> using the DYLD_LIBRARY_PATH environment variable, the package can be
+> compiled, linked, and built successfully during the R CMD INSTALL
+> process. However, during the final step of "checking if the package
+> can be loaded from temporary location," a new process is spawned to
+> load the package.
+
+Does this mean that the correct DYLD_LIBRARY_PATH has to be set every
+time the user wants to use the package? If the MKL installation path is
+static, can you set the rpath for the package shared object instead? It
+can be relative to the executable (or the parent shared library) path
+too. Here's a relatively detailed writeup describing rpath as an
+alternative to DYLD_LIBRARY_PATH on systems with SIP enabled:
+https://www.joyfulbikeshedding.com/blog/2021-01-13-alternative-to-macos-dyld-library-path.html
+
+-- 
+Best regards,
+Ivan
+
+
