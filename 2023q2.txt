@@ -17171,3 +17171,103 @@ John
 	[[alternative HTML version deleted]]
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Jun  2 09:16:43 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 2 Jun 2023 10:16:43 +0300
+Subject: [R-pkg-devel] Missing ggPMX causing failure for nlmixr2rpt
+In-Reply-To: <CANAiAiVvSATdO-Zec3KyZNmMHZbY6J=KfkvdeKdgHVSW=Nstpw@mail.gmail.com>
+References: <CANAiAiVvSATdO-Zec3KyZNmMHZbY6J=KfkvdeKdgHVSW=Nstpw@mail.gmail.com>
+Message-ID: <20230602101643.16ebd3ac@Tarkus>
+
+On Thu, 1 Jun 2023 17:48:49 -0700
+John Harrold <john.m.harrold at gmail.com> wrote:
+
+> Am I reading that correctly that ggPMX not being found is the cause
+> of my issues?
+
+Your package got flagged by the additional test, "noSuggests", where
+only the packages you have a hard dependency upon are available:
+https://www.stats.ox.ac.uk/pub/bdr/noSuggests/README.txt
+
+By default, install.packages() does not install the packages listed in
+Suggests:, so it's important for your package to work even if all
+packages listed there are not available. See WRE 1.1.3.1
+<https://cran.r-project.org/doc/manuals/R-exts.html#Suggested-packages>
+for information on how to add checks into your documentation examples /
+tests / vignettes.
+
+If ggPMX is vitally important for your package to work, move it to
+Imports:, and you won't have to alter all your tests.
+
+-- 
+Best regards,
+Ivan
+
+
+From ||u|@@rev|||@ @end|ng |rom gm@||@com  Fri Jun  2 09:18:11 2023
+From: ||u|@@rev|||@ @end|ng |rom gm@||@com (=?UTF-8?Q?Llu=C3=ADs_Revilla?=)
+Date: Fri, 2 Jun 2023 09:18:11 +0200
+Subject: [R-pkg-devel] Missing ggPMX causing failure for nlmixr2rpt
+In-Reply-To: <CANAiAiVvSATdO-Zec3KyZNmMHZbY6J=KfkvdeKdgHVSW=Nstpw@mail.gmail.com>
+References: <CANAiAiVvSATdO-Zec3KyZNmMHZbY6J=KfkvdeKdgHVSW=Nstpw@mail.gmail.com>
+Message-ID: <CAN+W6_s+EaoRfFFJvc-CbBGsLgf23iG4sHbnvYXbp+ELt8xqXQ@mail.gmail.com>
+
+Dear John,
+
+I think the problem is that the package ggPMX is suggested, but
+nlmixr2rpt isn't prepared for when it isn't available.
+In such cases, a package shouldn't fail the checks.
+
+>From the CRAN policies https://cran.r-project.org/web/packages/policies.html :
+"A package listed in ?Suggests? or ?Enhances? should be used
+conditionally in examples or tests if it cannot straightforwardly be
+installed on the major R platforms. (?Writing R Extensions? recommends
+that they are always used conditionally.)"
+
+Among other things in the file test-rptnlmixr.R you load several
+suggested packages without checking if they are available.
+You should only run those tests and examples that need those packages
+if they are available.
+Checking via:  if (requireNamespace("ggPMX", verbose = FALSE) could be enough
+
+There's also an example that seems to be failing, I didn't understand
+the reason behind it but it might be related.
+
+Best,
+
+Llu?s
+
+
+On Fri, 2 Jun 2023 at 02:49, John Harrold <john.m.harrold at gmail.com> wrote:
+>
+> Hello,
+>
+> I recently got a "Dear Maintainer" email from Brian Ripley. It was
+> concerning the nlmixr2rpt package I maintain:
+>
+> https://cran.r-project.org/web/checks/check_results_nlmixr2rpt.html
+>
+> It looks like there is an error on r-release-linux-x86_64 that is causing
+> it. If I'm reading that correctly there is a problem finding ggPMX on that
+> flavor. If I look at the check results for ggPMX it seems to be building
+> fine there:
+>
+> https://cran.r-project.org/web/checks/check_results_ggPMX.html
+>
+> Am I reading that correctly that ggPMX not being found is the cause of my
+> issues? If that's the case and it seems to be present now, can I just wait
+> and let CRAN machines find it? Or should I just resubmit with those pieces
+> removed from the version I submit to CRAN?
+>
+> --
+> Thank you,
+> John
+> :wq
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
