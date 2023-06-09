@@ -17528,3 +17528,259 @@ Best,  Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From yut@n|@|n| @end|ng |rom gm@||@com  Thu Jun  8 11:06:46 2023
+From: yut@n|@|n| @end|ng |rom gm@||@com (Hiroaki Yutani)
+Date: Thu, 8 Jun 2023 18:06:46 +0900
+Subject: [R-pkg-devel] Rust 1.70 and build failures on Windows
+Message-ID: <CALyqOb_1dmd5m=FTYGOHwq+qJYcoYzQq3zSPym+rgZFNCsa7Qg@mail.gmail.com>
+
+Hi,
+
+This is a quick notice for developers of R packages using Rust.
+
+Rust 1.70 was released on June 1st, 2023 [1]. If you use Rust in your R
+package,
+you'll probably start to see an error and a warning on the final linking
+step of
+Windows builds.
+
+## Error
+
+The first thing you'll notice is that linking fails with errors like this
+one:
+
+    ...snip...\std\src\sys\windows/handle.rs:290: undefined reference to
+`NtWriteFile'
+
+This is because Rust 1.70 started to use several Windows APIs defined in
+NTDLL.DLL [2]. So, this can be easily fixed by adding `-ltdll` to
+`PKG_LIBS`.
+
+    PKG_LIBS = ...snip... -lntdll
+
+
+## Warning
+
+This one is a bit tricky, After modifying `PKG_LIBS`, your build should
+succeed,
+but you might or might not see a lot of warnings like this one:
+
+    Warning: corrupt .drectve at end of def file
+
+This is because Rust 1.70 upgraded LLVM to version 16, and LLVM generates a
+binary containing directives that only the very latest version (2.40) of GNU
+linker can understand [3]. What's fortunate is that the latest Rtools43 uses
+binutils 2.40, so this warning won't happen if you target only R >= 4.3.
+However, the following cases might be a problem:
+
+    1. On R < 4.3
+    2. On R >= 4.3 with outdated Rtools43 (currently, it's the case on
+GitHub Actions [4])
+
+Unfortunately, it seems there's no option to suppress this warning, so
+there's
+no way to save `R CMD check` from failing if you run it with `--as-cran`. In
+other words, if you are a maintainer of some R package on CRAN, you might
+need
+to consider giving up your package on oldrel when the CRAN Windows server
+upgrades
+Rust (I heard the current installed version is 1.69, but I'm not sure).
+
+For non-CRAN packages, I think you can ignore the warnings. The directive
+is to
+reduce the number of exported symbols in order to prevent overflow [5], so
+it
+should be fine if it doesn't overflow in actual. But, I'm not an expert
+here,
+so please decide at your own risk.
+
+Hope this helps.
+
+Best,
+Yutani
+
+[1]: https://blog.rust-lang.org/2023/06/01/Rust-1.70.0.html
+[2]: https://en.wikipedia.org/wiki/Microsoft_Windows_library_files#NTDLL.DLL
+[3]: https://github.com/rust-lang/rust/issues/112368#issuecomment-1581917714
+[4]: https://github.com/r-lib/actions/issues/734
+[5]:
+https://github.com/llvm/llvm-project/commit/c5b3de6745c37dd991430b9b88ff97c35b6fc455
+
+	[[alternative HTML version deleted]]
+
+
+From yut@n|@|n| @end|ng |rom gm@||@com  Thu Jun  8 12:14:51 2023
+From: yut@n|@|n| @end|ng |rom gm@||@com (Hiroaki Yutani)
+Date: Thu, 8 Jun 2023 19:14:51 +0900
+Subject: [R-pkg-devel] Rust 1.70 and build failures on Windows
+In-Reply-To: <CALyqOb_1dmd5m=FTYGOHwq+qJYcoYzQq3zSPym+rgZFNCsa7Qg@mail.gmail.com>
+References: <CALyqOb_1dmd5m=FTYGOHwq+qJYcoYzQq3zSPym+rgZFNCsa7Qg@mail.gmail.com>
+Message-ID: <CALyqOb8+MaZRfxFTcff+r0tXR3bPhdWwFFmynFtb0hYhhHT=wA@mail.gmail.com>
+
+Correction: GitHub Actions already uses the latest version of Rtools43, so
+it should be no problem. I sincerely apologize to those who got confused
+and the maintainer of r-lib/actions for spreading the wrong information.
+
+Best,
+Yutani
+
+2023?6?8?(?) 18:06 Hiroaki Yutani <yutani.ini at gmail.com>:
+
+> Hi,
+>
+> This is a quick notice for developers of R packages using Rust.
+>
+> Rust 1.70 was released on June 1st, 2023 [1]. If you use Rust in your R
+> package,
+> you'll probably start to see an error and a warning on the final linking
+> step of
+> Windows builds.
+>
+> ## Error
+>
+> The first thing you'll notice is that linking fails with errors like this
+> one:
+>
+>     ...snip...\std\src\sys\windows/handle.rs:290: undefined reference to
+> `NtWriteFile'
+>
+> This is because Rust 1.70 started to use several Windows APIs defined in
+> NTDLL.DLL [2]. So, this can be easily fixed by adding `-ltdll` to
+> `PKG_LIBS`.
+>
+>     PKG_LIBS = ...snip... -lntdll
+>
+>
+> ## Warning
+>
+> This one is a bit tricky, After modifying `PKG_LIBS`, your build should
+> succeed,
+> but you might or might not see a lot of warnings like this one:
+>
+>     Warning: corrupt .drectve at end of def file
+>
+> This is because Rust 1.70 upgraded LLVM to version 16, and LLVM generates a
+> binary containing directives that only the very latest version (2.40) of
+> GNU
+> linker can understand [3]. What's fortunate is that the latest Rtools43
+> uses
+> binutils 2.40, so this warning won't happen if you target only R >= 4.3.
+> However, the following cases might be a problem:
+>
+>     1. On R < 4.3
+>     2. On R >= 4.3 with outdated Rtools43 (currently, it's the case on
+> GitHub Actions [4])
+>
+> Unfortunately, it seems there's no option to suppress this warning, so
+> there's
+> no way to save `R CMD check` from failing if you run it with `--as-cran`.
+> In
+> other words, if you are a maintainer of some R package on CRAN, you might
+> need
+> to consider giving up your package on oldrel when the CRAN Windows server
+> upgrades
+> Rust (I heard the current installed version is 1.69, but I'm not sure).
+>
+> For non-CRAN packages, I think you can ignore the warnings. The directive
+> is to
+> reduce the number of exported symbols in order to prevent overflow [5], so
+> it
+> should be fine if it doesn't overflow in actual. But, I'm not an expert
+> here,
+> so please decide at your own risk.
+>
+> Hope this helps.
+>
+> Best,
+> Yutani
+>
+> [1]: https://blog.rust-lang.org/2023/06/01/Rust-1.70.0.html
+> [2]:
+> https://en.wikipedia.org/wiki/Microsoft_Windows_library_files#NTDLL.DLL
+> [3]:
+> https://github.com/rust-lang/rust/issues/112368#issuecomment-1581917714
+> [4]: https://github.com/r-lib/actions/issues/734
+> [5]:
+> https://github.com/llvm/llvm-project/commit/c5b3de6745c37dd991430b9b88ff97c35b6fc455
+>
+
+	[[alternative HTML version deleted]]
+
+
+From pik@pp@@devei m@iii@g oii gm@ii@com  Thu Jun  8 14:34:03 2023
+From: pik@pp@@devei m@iii@g oii gm@ii@com (pik@pp@@devei m@iii@g oii gm@ii@com)
+Date: Thu, 8 Jun 2023 14:34:03 +0200
+Subject: [R-pkg-devel] R CMD check: checking for detritus in the temp
+ directory
+Message-ID: <002801d99a05$82a29f70$87e7de50$@gmail.com>
+
+Dear all,
+
+ 
+
+I am checking a package with DESCRIPTION dependencies:
+
+ 
+
+Depends:
+
+    R (>= 4.1.0)
+
+Imports:
+
+    keras,
+
+    R6,
+
+    reticulate,
+
+    tensorflow
+
+ 
+
+I am getting a note:
+
+ 
+
+? checking for detritus in the temp directory ... NOTE
+
+  Found the following files/directories:
+
+    ?__autograph_generated_file3jcyufy7.py?
+
+    ?__autograph_generated_file4blbq_bi.py?
+
+    ?__autograph_generated_file6dur53sj.py?
+
+    ?__autograph_generated_filerj3ohibl.py? ?__pycache__?
+
+ 
+
+I have found these previous discussions, but they seem different from my case.
+
+ 
+
+https://stat.ethz.ch/pipermail/r-package-devel/2020q3/005698.html
+
+https://stat.ethz.ch/pipermail/r-package-devel/2021q1/006477.html
+
+https://stat.ethz.ch/pipermail/r-package-devel/2019q4/004626.html
+
+https://stat.ethz.ch/pipermail/r-package-devel/2020q4/006161.html
+
+ 
+
+I think the temp files are from tensorflow. There is a vignette in the package that constructs a keras
+
+Model. Is it possible to avoid the check NOTE in my package?
+
+ 
+
+Kind Regards,
+
+Pantelis
+
+
+	[[alternative HTML version deleted]]
+
+
