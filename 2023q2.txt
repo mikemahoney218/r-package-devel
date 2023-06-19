@@ -17990,3 +17990,86 @@ Explanation of the issue for posterity: the issue is caused by Xcode 14 which ge
 > 
 
 
+From @ndre@@@b|@ette @end|ng |rom un|-due@de  Sun Jun 18 12:18:19 2023
+From: @ndre@@@b|@ette @end|ng |rom un|-due@de (=?utf-8?Q?Andreas_Bl=C3=A4tte?=)
+Date: Sun, 18 Jun 2023 12:18:19 +0200
+Subject: [R-pkg-devel] clang linker error: Symbol not found:
+ _objc_msgSend$UTF8String
+In-Reply-To: <9C999C51-5EC7-46C9-823D-712342ED3349@R-project.org>
+References: <9C999C51-5EC7-46C9-823D-712342ED3349@R-project.org>
+Message-ID: <F80F2120-F3B0-41E2-8B65-BA37F0156A7A@uni-due.de>
+
+Dear Simon, thanks a lot for your explanation, effort and great work! Andreas
+
+> Am 18.06.2023 um 00:29 schrieb Simon Urbanek <simon.urbanek at r-project.org>:
+> 
+> ?Andreas,
+> 
+> that is actually not your problem - the stubs are generated in glib, so your package can do nothing about it, your compile flags won't change it. The only way to fix it is on my end, the proper way is to upgrade to Xcode 14 for the package builds, but that requires some changes to the build machine, so I'll do it on Monday when I'm at work, so hold on tight in the meantime.
+> 
+> Cheers,
+> Simon
+> 
+> Explanation of the issue for posterity: the issue is caused by Xcode 14 which generates those stubs[1], but can also handle them. However, older Xcode versions cannot. We are using macOS 11 target and SDK to ensure compatibility with older macOS versions, but apparently Xcode 14 assumes that the linking will still happen with Xcode 14 even if libraries are compiled for older targets. Therefore the proper fix is to make sure that packages are also linked with Xcode 14. Another work-around would be to compile glib with -fno-objc-msgsend-selector-stubs so it would also work with older Xcode, but it's more future-proof to just upgrade Xcode.
+> 
+> [1] https://github.com/llvm/llvm-project/issues/56034
+> 
+> 
+>> On Jun 17, 2023, at 7:07 PM, Andreas Bl?tte <andreas.blaette at uni-due.de> wrote:
+>> 
+>> Dear colleagues,
+>> 
+>> 
+>> 
+>> after submitting a release of my package RcppCWB (no problems with test servers), CRAN check results reported ERRORS on the macOS check systems: https://cran.r-project.org/web/checks/check_results_RcppCWB.html
+>> 
+>> 
+>> 
+>> The core is that when test loading the package, you get the error: Symbol not found: _objc_msgSend$UTF8String
+>> 
+>> 
+>> 
+>> Picking up a solution discussed here (disable objc_msgSend stubs in clang), I modified the configure script of my package to pass the flag ?-fno-objc-msgsend-selector-stubs? to the linker, which I thought would solve the problem.
+>> 
+>> 
+>> 
+>> However: The CRAN Debian system for incoming R packages uses clang 15, which does not accept this flag any more, resulting in an error.
+>> 
+>> 
+>> 
+>> Certainly, I could refine my configure script to address a very specific scenario on CRAN macOS systems, i.e. making usage of the flag conditional on a specific clang version. But I am not sure whether this is the way to go. It would feel like a hack I would like to avoid.
+>> 
+>> 
+>> 
+>> Has anybody encountered this error? Is there a best practice or a recomended solution? I would be very glad to get your advice!
+>> 
+>> 
+>> 
+>> Kind regards
+>> 
+>> Andreas
+>> 
+>> 
+>> 
+>> --
+>> 
+>> Prof. Dr. Andreas Blaette
+>> 
+>> Professor of Public Policy
+>> 
+>> University of Duisburg-Essen
+>> 
+>> 
+>> 
+>> 
+>> 
+>> 
+>>    [[alternative HTML version deleted]]
+>> 
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>> 
+> 
+
+
