@@ -19136,3 +19136,401 @@ Uwe Ligges
 > Helmut
 
 
+From @|mon@urb@nek @end|ng |rom R-project@org  Sat Jun 24 06:51:44 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Sat, 24 Jun 2023 16:51:44 +1200
+Subject: [R-pkg-devel] 
+ =?utf-8?q?NOTE_about_missing_package_=E2=80=98emme?=
+ =?utf-8?q?ans=E2=80=99_on_macos-x86=5F64?=
+In-Reply-To: <c5431852-75c5-875b-ffc3-14e14fd3e3f2@statistik.tu-dortmund.de>
+References: <c7939d0d-56c1-5ffd-6adb-086beff6e4e3@bebac.at>
+ <c5431852-75c5-875b-ffc3-14e14fd3e3f2@statistik.tu-dortmund.de>
+Message-ID: <643019E1-F450-4C17-8AD8-790C0E179364@R-project.org>
+
+
+
+> On Jun 24, 2023, at 12:19 AM, Uwe Ligges <ligges at statistik.tu-dortmund.de> wrote:
+> 
+> 
+> 
+> On 23.06.2023 11:27, Helmut Sch?tz wrote:
+>> Dear all,
+>> since a while (January?) we face NOTEs in package checks (https://cran.r-project.org/web/checks/check_results_PowerTOST.html):
+>> Version: 1.5-4
+>> Check: package dependencies
+>> Result: NOTE
+>>     Package suggested but not available for checking: ?emmeans?
+>> Flavor: r-release-macos-x86_64
+>> Version: 1.5-4
+>> Check: Rd cross-references
+>> Result: NOTE
+>>     Package unavailable to check Rd xrefs: ?emmeans?
+>> Flavor: r-release-macos-x86_64
+>> First I thought that ?emmeans? is not available for macos-x86_64 on CRAN.
+>> However, ?emmeans? itself passed all checks (https://cran.r-project.org/web/checks/check_results_emmeans.html).
+>> Since we want to submit v1.5-5 of PowerTOST soon, any ideas?
+> 
+> Please go ahead. Simon rarely updates the check results, so I guess this was a coincidence at the time and never got updated. I'd ignore this one.
+> 
+
+Correct, packages are only re-checked if they failed the check before. Once a package passes the checks the results are not re-run, because it would take way too long given how many packages we have (re-running all takes 2-3 days).
+
+If you don't intend to update your package and want such NOTEs to disappear, send me an email and I can run it by hand (I did now for PowerTOST and the NOTE is gone).
+
+Cheers,
+Simon
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Sat Jun 24 07:08:23 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Sat, 24 Jun 2023 17:08:23 +1200
+Subject: [R-pkg-devel] Convention or standards for using header library
+ (e.g. Eigen)
+In-Reply-To: <CAHG+78zaXyQW5viZqzzsYOBxA+658sVO6OjV4C8TMQbq+P2Sdw@mail.gmail.com>
+References: <CAHG+78zaXyQW5viZqzzsYOBxA+658sVO6OjV4C8TMQbq+P2Sdw@mail.gmail.com>
+Message-ID: <C237D105-5E4B-4237-B7B9-E9499A185BD0@R-project.org>
+
+Stephen,
+
+If you want to give the system version a shot, I would simply look for pkg-config, add the supplied CPPFLAGS to the package R flags if present and then test (regardless of pkg-config) with AC_CHECK_HEADER (see standard R-exts autoconf rules for packages). If that fails then use your included copy by adding the corresponding -I flag pointing to your supplied copy. You should not download anything as there is no expectation that the user has any internet access as the time of the installation so if you want to provide a fall-back, it should be in the sources of your package. That said, there is nothing wrong with ignoring the system version especially in this header-only case since you can then rely on the correct version which you tested - you can still allow the user to provide an option to override that behavior if desired. 
+
+Cheers,
+Simon
+
+
+
+> On Jun 23, 2023, at 10:08 PM, Stephen Wade <stephematician at gmail.com> wrote:
+> 
+> I recently submitted a package to CRAN which downloaded Eigen via Makevars
+> and Makevars.win. My Makevars.ucrt was empty as I noted that Eigen3 is
+> installed by default (however, this doesn't ensure that a version of Eigen
+> compatible/tested with the package is available).
+> 
+> The source is currently on github:
+> https://github.com/stephematician/literanger
+> 
+> Here is the Makevars
+> 
+> $ more src/Makevars
+> # downloads eigen3 to extlibs/ and sets include location
+> PKG_CPPFLAGS = -I../src -I../extlibs/
+> .PHONY: all clean extlibs
+> all: extlibs $(SHLIB)
+> extlibs:
+>         "${R_HOME}/bin${R_ARCH_BIN}/Rscript" "../tools/extlibs.R"
+> clean:
+>         rm -f $(SHLIB) $(OBJECTS)
+> 
+> The details of `extlibs.R` are fairly mundane, it downloads a release from
+> gitlab and unzips it to `extlibs`.
+> 
+> CRAN gave me this feedback:
+> 
+>> Why do you download eigen here rather than using the system version of
+>> Eigen if available?
+>> 
+>> We asked you to do that for Windows as you did in Makevars.ucrt. For
+>> Unix-like OS you should only fall back (if at all) to some download if
+>> the system Eigen is unavailable.
+> 
+> The problem is I'm not sure what a minimum standard to 'searching' for a
+> system version of Eigen looks like. I also note that packages like
+> RcppEigen simply bundle the Eigen headers within the package (and its
+> repository) which will certainly ignore any system headers.
+> 
+> I would like a solution that would keep CRAN happy, i.e. i need to meet
+> some standard for searching for the compiler flags, checking the version of
+> the system headers, and then falling through to download release if the
+> system headers fail.
+> 
+> 1.  For each platform (Unix, Windows, OS-X) what tool(s) should be invoked
+> to check for compiler flags for a header-only library like Eigen? e.g.
+> pkg-config, pkgconf? others?
+> 2.  What is a reasonable approach for the possible package names for Eigen
+> (e.g. typically libeigen3-dev on Debian, and eigen3 on arch, homebrew,
+> others)? Is this enough?
+> 3.  If pkg-config/pkgconf (or others) are unavailable, what is a reasonable
+> standard for checking if the library can be built with some reasonable
+> guess for the compiler flags (probably empty) - I assume I would need to
+> try to compile a test program (within Makevars)?
+> 4.  Following on from 3... would a package need to check (again via a test
+> program) that the _system_ headers have the correct version (e.g. some
+> static assert on EIGEN_WORLD_VERSION), and if that fails _then_ download
+> the release from gitlab?
+> 
+> Any and all advice would be appreciated.
+> 
+> Kind regards,
+> -Stephen Wade
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From he|mut@@chuetz @end|ng |rom beb@c@@t  Sat Jun 24 10:05:58 2023
+From: he|mut@@chuetz @end|ng |rom beb@c@@t (=?UTF-8?Q?Helmut_Sch=c3=bctz?=)
+Date: Sat, 24 Jun 2023 10:05:58 +0200
+Subject: [R-pkg-devel] 
+ =?utf-8?q?NOTE_about_missing_package_=E2=80=98emme?=
+ =?utf-8?q?ans=E2=80=99_on_macos-x86=5F64?=
+In-Reply-To: <643019E1-F450-4C17-8AD8-790C0E179364@R-project.org>
+References: <c7939d0d-56c1-5ffd-6adb-086beff6e4e3@bebac.at>
+ <c5431852-75c5-875b-ffc3-14e14fd3e3f2@statistik.tu-dortmund.de>
+ <643019E1-F450-4C17-8AD8-790C0E179364@R-project.org>
+Message-ID: <6f4d1045-2a70-5205-adf7-2706756f334f@bebac.at>
+
+Hi Simon,
+
+THX for the clarification and additional work I have caused.
+
+Helmut
+
+Simon Urbanek wrote on 2023-06-24 06:51:
+>
+>> On Jun 24, 2023, at 12:19 AM, Uwe Ligges <ligges at statistik.tu-dortmund.de> wrote:
+>>
+>>
+>>
+>> On 23.06.2023 11:27, Helmut Sch?tz wrote:
+>>> Dear all,
+>>> since a while (January?) we face NOTEs in package checks (https://cran.r-project.org/web/checks/check_results_PowerTOST.html):
+>>> Version: 1.5-4
+>>> Check: package dependencies
+>>> Result: NOTE
+>>>      Package suggested but not available for checking: ?emmeans?
+>>> Flavor: r-release-macos-x86_64
+>>> Version: 1.5-4
+>>> Check: Rd cross-references
+>>> Result: NOTE
+>>>      Package unavailable to check Rd xrefs: ?emmeans?
+>>> Flavor: r-release-macos-x86_64
+>>> First I thought that ?emmeans? is not available for macos-x86_64 on CRAN.
+>>> However, ?emmeans? itself passed all checks (https://cran.r-project.org/web/checks/check_results_emmeans.html).
+>>> Since we want to submit v1.5-5 of PowerTOST soon, any ideas?
+>> Please go ahead. Simon rarely updates the check results, so I guess this was a coincidence at the time and never got updated. I'd ignore this one.
+>>
+> Correct, packages are only re-checked if they failed the check before. Once a package passes the checks the results are not re-run, because it would take way too long given how many packages we have (re-running all takes 2-3 days).
+>
+> If you don't intend to update your package and want such NOTEs to disappear, send me an email and I can run it by hand (I did now for PowerTOST and the NOTE is gone).
+>
+> Cheers,
+> Simon
+
+-- 
+Ing. Helmut Sch?tz
+BEBAC ? Consultancy Services for
+Bioequivalence and Bioavailability Studies
+Neubaugasse 36/11
+1070 Vienna, Austria
+E helmut.schuetz at bebac.at <mailto:helmut.schuetz at bebac.at>
+helmut.schuetz at meduniwien.ac.at <mailto:helmut.schuetz at meduniwien.ac.at>
+W https://bebac.at <https://bebac.at/>
+
+
+From @tephem@t|c|@n @end|ng |rom gm@||@com  Sat Jun 24 13:35:18 2023
+From: @tephem@t|c|@n @end|ng |rom gm@||@com (Stephen Wade)
+Date: Sat, 24 Jun 2023 21:35:18 +1000
+Subject: [R-pkg-devel] Convention or standards for using header library
+ (e.g. Eigen)
+In-Reply-To: <C237D105-5E4B-4237-B7B9-E9499A185BD0@R-project.org>
+References: <CAHG+78zaXyQW5viZqzzsYOBxA+658sVO6OjV4C8TMQbq+P2Sdw@mail.gmail.com>
+ <C237D105-5E4B-4237-B7B9-E9499A185BD0@R-project.org>
+Message-ID: <CAHG+78wN9D9L4BK_S1nrhjd-SHM_GYRHWFnuSYcbhKi4YxBPYw@mail.gmail.com>
+
+Doesnt seem like the system package is worth it. Should the convention
+simply be to bundle the headers in the package then? What about package
+size - is there some limit to the size of included libraries/headers to
+consider for CRAN?
+
+On Sat, 24 June 2023, 15:08 Simon Urbanek, <simon.urbanek at r-project.org>
+wrote:
+
+> Stephen,
+>
+> If you want to give the system version a shot, I would simply look for
+> pkg-config, add the supplied CPPFLAGS to the package R flags if present and
+> then test (regardless of pkg-config) with AC_CHECK_HEADER (see standard
+> R-exts autoconf rules for packages). If that fails then use your included
+> copy by adding the corresponding -I flag pointing to your supplied copy.
+> You should not download anything as there is no expectation that the user
+> has any internet access as the time of the installation so if you want to
+> provide a fall-back, it should be in the sources of your package. That
+> said, there is nothing wrong with ignoring the system version especially in
+> this header-only case since you can then rely on the correct version which
+> you tested - you can still allow the user to provide an option to override
+> that behavior if desired.
+>
+> Cheers,
+> Simon
+>
+>
+>
+> > On Jun 23, 2023, at 10:08 PM, Stephen Wade <stephematician at gmail.com>
+> wrote:
+> >
+> > I recently submitted a package to CRAN which downloaded Eigen via
+> Makevars
+> > and Makevars.win. My Makevars.ucrt was empty as I noted that Eigen3 is
+> > installed by default (however, this doesn't ensure that a version of
+> Eigen
+> > compatible/tested with the package is available).
+> >
+> > The source is currently on github:
+> > https://github.com/stephematician/literanger
+> >
+> > Here is the Makevars
+> >
+> > $ more src/Makevars
+> > # downloads eigen3 to extlibs/ and sets include location
+> > PKG_CPPFLAGS = -I../src -I../extlibs/
+> > .PHONY: all clean extlibs
+> > all: extlibs $(SHLIB)
+> > extlibs:
+> >         "${R_HOME}/bin${R_ARCH_BIN}/Rscript" "../tools/extlibs.R"
+> > clean:
+> >         rm -f $(SHLIB) $(OBJECTS)
+> >
+> > The details of `extlibs.R` are fairly mundane, it downloads a release
+> from
+> > gitlab and unzips it to `extlibs`.
+> >
+> > CRAN gave me this feedback:
+> >
+> >> Why do you download eigen here rather than using the system version of
+> >> Eigen if available?
+> >>
+> >> We asked you to do that for Windows as you did in Makevars.ucrt. For
+> >> Unix-like OS you should only fall back (if at all) to some download if
+> >> the system Eigen is unavailable.
+> >
+> > The problem is I'm not sure what a minimum standard to 'searching' for a
+> > system version of Eigen looks like. I also note that packages like
+> > RcppEigen simply bundle the Eigen headers within the package (and its
+> > repository) which will certainly ignore any system headers.
+> >
+> > I would like a solution that would keep CRAN happy, i.e. i need to meet
+> > some standard for searching for the compiler flags, checking the version
+> of
+> > the system headers, and then falling through to download release if the
+> > system headers fail.
+> >
+> > 1.  For each platform (Unix, Windows, OS-X) what tool(s) should be
+> invoked
+> > to check for compiler flags for a header-only library like Eigen? e.g.
+> > pkg-config, pkgconf? others?
+> > 2.  What is a reasonable approach for the possible package names for
+> Eigen
+> > (e.g. typically libeigen3-dev on Debian, and eigen3 on arch, homebrew,
+> > others)? Is this enough?
+> > 3.  If pkg-config/pkgconf (or others) are unavailable, what is a
+> reasonable
+> > standard for checking if the library can be built with some reasonable
+> > guess for the compiler flags (probably empty) - I assume I would need to
+> > try to compile a test program (within Makevars)?
+> > 4.  Following on from 3... would a package need to check (again via a
+> test
+> > program) that the _system_ headers have the correct version (e.g. some
+> > static assert on EIGEN_WORLD_VERSION), and if that fails _then_ download
+> > the release from gitlab?
+> >
+> > Any and all advice would be appreciated.
+> >
+> > Kind regards,
+> > -Stephen Wade
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Sat Jun 24 19:44:40 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Sat, 24 Jun 2023 12:44:40 -0500
+Subject: [R-pkg-devel] Convention or standards for using header library
+ (e.g. Eigen)
+In-Reply-To: <CAHG+78wN9D9L4BK_S1nrhjd-SHM_GYRHWFnuSYcbhKi4YxBPYw@mail.gmail.com>
+References: <CAHG+78zaXyQW5viZqzzsYOBxA+658sVO6OjV4C8TMQbq+P2Sdw@mail.gmail.com>
+ <C237D105-5E4B-4237-B7B9-E9499A185BD0@R-project.org>
+ <CAHG+78wN9D9L4BK_S1nrhjd-SHM_GYRHWFnuSYcbhKi4YxBPYw@mail.gmail.com>
+Message-ID: <25751.11144.188517.997088@rob.eddelbuettel.com>
+
+
+On 24 June 2023 at 21:35, Stephen Wade wrote:
+| Doesnt seem like the system package is worth it. Should the convention
+| simply be to bundle the headers in the package then? What about package
+| size - is there some limit to the size of included libraries/headers to
+| consider for CRAN?
+
+Here is one (drastic) example:
+
+  $ du -csh /usr/local/lib/R/site-library/BH
+  156M    /usr/local/lib/R/site-library/BH
+  156M    total
+  $ 
+
+Note that the package was smaller when it started (in 2013). (Note that the
+last time I checked its size, the largest (not just headers) package I know
+of on CRAN still was about twice as large still.)
+
+Anyway: as you are starting to see, this is a somewhat complex problem.
+Header packages are one approach. _Writing R Extensions_ mentions pure header
+packages and name-checks my packages BH, RcppArmadillo and RcppEigen in
+Section 1.1.3. I once wrote a short paper on this [1] (also a vignette [2])
+where I more or less recommend header packages because compiled ones are so
+much harder.  Recognise for example that a) no cross-OS way to check for
+packages exists (though pkg-config comes close), b) no general package
+managers exist, c) configure and cmake come close (but cmake is also an added
+system requirement; and configure is a no-show on Windows) and d) even within
+a given OS and release you may have very different versions. Lastly also: e)
+some packages (RcppEigen is an example) have patches the system library would
+not have applied (!!).
+
+So to me a simplified view is that just as R "abstracts away" POSIX so that
+we can always say e.g. 'dir.exists(path)' no matter where R runs, having a
+package with headers ensure we get a consistent _and reliable_ compilation
+experience from client packages. This matters.
+
+Now, there are clearly downsides. With my Debian maintainer hat on, I have to
+defend including Armadillo withon RcppArmadillo because the distro has it too
+(but then version skew ie d) above and ease of use and consistency etc
+dominate so we continue to ship RcppArmadillo).  At the same time, at CRAN we
+have needless duplications. For example, my RcppCCTZ package was the first to
+offer the nice (Google made but not a Google 'product') CCTZ library for R
+use (starting in 2015). But when I last checked a year or so ago, four other
+packages now included redundant extra copies. Also happens with Eigen. Not
+great.
+
+On the other side, packages with full (included or not) libraries work too,
+but they are more effort to portably provide them, to explain to users where
+to get them and keep them current and so.  It is hard (or even impossible)
+for R to fill in as a _general system_ package manager across all OSs and
+deployments.  There is a new kid on this block [3] we are starting to use at
+work, and which may help in time across the platforms that R uses. To be
+seen...
+
+So to sum up: I think header packages are great, and I maintain a few, both
+large and small in size.  I would encourage you to try them. For RcppEigen,
+you can just use LinkingTo: to gets its headers.  Some 400+ packages rely on
+it. (And its over 1000 for Armadillo now, and over 300 for BH.)
+
+Hth,  Dirk
+
+[1] https://arxiv.org/abs/1911.06416
+[2] https://cran.r-project.org/web/packages/Rcpp/vignettes/Rcpp-libraries.pdf
+[3] https://vcpkg.io/en/
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
