@@ -20665,3 +20665,554 @@ Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From @rii@mstei@ m@iii@g oii gm@ii@com  Tue Jun 27 03:23:29 2023
+From: @rii@mstei@ m@iii@g oii gm@ii@com (@rii@mstei@ m@iii@g oii gm@ii@com)
+Date: Mon, 26 Jun 2023 18:23:29 -0700
+Subject: [R-pkg-devel] Package broke with R 4.3.0
+Message-ID: <CAEO2ku+zYoBbZhVrFrPFKAkOr70DA1RP_JAuhh4=zjinMubRBg@mail.gmail.com>
+
+It appears that my R package choroplethr broke due to this change in R
+4.3.0:
+
+CHANGES IN R 4.3.0:
+
+SIGNIFICANT USER-VISIBLE CHANGES:
+
+Calling && or || with LHS or (if evaluated) RHS of length greater than one
+is now always an error, with a report of the form
+
+'length = 4' in coercion to 'logical(1)'
+Environment variable R_CHECK_LENGTH_1_LOGIC2 no longer has any effect.
+
+The specific line which broke is this:
+https://github.com/arilamstein/choroplethr/blob/master/R/usa.R#L24
+
+The bug can be reproduced like this:
+
+zoom = c("arizona", "arkansas", "louisiana", "minnesota", "mississippi",
+      "montana", "new mexico", "north dakota", "oklahoma", "pennsylvania",
+      "tennessee", "virginia", "california", "delaware", "west virginia",
+      "wisconsin", "wyoming", "alabama", "alaska", "florida", "idaho",
+      "kansas", "maryland", "colorado", "new jersey", "north carolina",
+      "south carolina", "washington", "vermont", "utah", "iowa",
+"kentucky",
+      "maine", "massachusetts", "connecticut", "michigan", "missouri",
+      "nebraska", "nevada", "new hampshire", "new york", "ohio", "oregon",
+      "rhode island", "south dakota", "district of columbia", "texas",
+      "georgia", "hawaii", "illinois", "indiana")
+
+if (zoom == "alaska" || zoom == "hawaii") {}
+Error in zoom == "alaska" || zoom == "hawaii" :
+  'length = 51' in coercion to 'logical(1)'
+
+I have two questions:
+
+1. Can someone explain why this change was introduced to the language?
+2. Can someone tell me if there is a preferred, idiomatic way to rewrite my
+code?
+
+I came up with two solutions that work. The first checks whether zoom is of
+length 1:
+
+if ((length(zoom) == 1) && (zoom %in% c("alaska", "hawaii"))) { }
+
+The second keeps the vector recycling, but then uses all to coerce the
+vector to be a single value. In retrospect, I think I likely assumed that
+this is what R < 4.3.0 was doing when the code worked. (But I wrote this
+code many years ago, so I can't be sure!):
+
+if (all(zoom == "alaska") || all(zoom == "hawaii")) {}
+
+Thanks in advance.
+
+Ari
+
+	[[alternative HTML version deleted]]
+
+
+From |uc@r @end|ng |rom |edor@project@org  Tue Jun 27 16:50:17 2023
+From: |uc@r @end|ng |rom |edor@project@org (=?UTF-8?Q?I=C3=B1aki_Ucar?=)
+Date: Tue, 27 Jun 2023 16:50:17 +0200
+Subject: [R-pkg-devel] Package broke with R 4.3.0
+In-Reply-To: <CAEO2ku+zYoBbZhVrFrPFKAkOr70DA1RP_JAuhh4=zjinMubRBg@mail.gmail.com>
+References: <CAEO2ku+zYoBbZhVrFrPFKAkOr70DA1RP_JAuhh4=zjinMubRBg@mail.gmail.com>
+Message-ID: <CALEXWq3fx12g1a7pOWSoy=eRXi-iM1rLk+4vOVxKNrosggxkjg@mail.gmail.com>
+
+On Tue, 27 Jun 2023 at 16:31, <arilamstein at gmail.com> wrote:
+>
+> It appears that my R package choroplethr broke due to this change in R
+> 4.3.0:
+>
+> CHANGES IN R 4.3.0:
+>
+> SIGNIFICANT USER-VISIBLE CHANGES:
+>
+> Calling && or || with LHS or (if evaluated) RHS of length greater than one
+> is now always an error, with a report of the form
+>
+> 'length = 4' in coercion to 'logical(1)'
+> Environment variable R_CHECK_LENGTH_1_LOGIC2 no longer has any effect.
+>
+> The specific line which broke is this:
+> https://github.com/arilamstein/choroplethr/blob/master/R/usa.R#L24
+>
+> The bug can be reproduced like this:
+>
+> zoom = c("arizona", "arkansas", "louisiana", "minnesota", "mississippi",
+>       "montana", "new mexico", "north dakota", "oklahoma", "pennsylvania",
+>       "tennessee", "virginia", "california", "delaware", "west virginia",
+>       "wisconsin", "wyoming", "alabama", "alaska", "florida", "idaho",
+>       "kansas", "maryland", "colorado", "new jersey", "north carolina",
+>       "south carolina", "washington", "vermont", "utah", "iowa",
+> "kentucky",
+>       "maine", "massachusetts", "connecticut", "michigan", "missouri",
+>       "nebraska", "nevada", "new hampshire", "new york", "ohio", "oregon",
+>       "rhode island", "south dakota", "district of columbia", "texas",
+>       "georgia", "hawaii", "illinois", "indiana")
+>
+> if (zoom == "alaska" || zoom == "hawaii") {}
+> Error in zoom == "alaska" || zoom == "hawaii" :
+>   'length = 51' in coercion to 'logical(1)'
+>
+> I have two questions:
+>
+> 1. Can someone explain why this change was introduced to the language?
+
+This was incorrect code before, and should be fixed; this didn't
+change. The change is that now it always triggers an error.
+
+> 2. Can someone tell me if there is a preferred, idiomatic way to rewrite my
+> code?
+
+Option 1:
+if (identical(zoom, "alaska") || identical(zoom, "hawaii")) {}
+
+Option 2:
+if (isTRUE(zoom == "alaska") || isTRUE(zoom == "hawaii")) {}
+
+> I came up with two solutions that work. The first checks whether zoom is of
+> length 1:
+>
+> if ((length(zoom) == 1) && (zoom %in% c("alaska", "hawaii"))) { }
+
+This works too.
+
+> The second keeps the vector recycling, but then uses all to coerce the
+> vector to be a single value. In retrospect, I think I likely assumed that
+> this is what R < 4.3.0 was doing when the code worked. (But I wrote this
+> code many years ago, so I can't be sure!):
+
+Before R 4.3.0, there was a warning, and the string was compared with
+the first value only.
+
+I?aki
+
+
+> if (all(zoom == "alaska") || all(zoom == "hawaii")) {}
+>
+> Thanks in advance.
+>
+> Ari
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+
+-- 
+I?aki ?car
+
+
+From gb @end|ng |rom eh@r@@e  Tue Jun 27 17:17:15 2023
+From: gb @end|ng |rom eh@r@@e (=?utf-8?Q?G=C3=B6ran_Brostr=C3=B6m?=)
+Date: Tue, 27 Jun 2023 17:17:15 +0200
+Subject: [R-pkg-devel] Package broke with R 4.3.0
+In-Reply-To: <CAEO2ku+zYoBbZhVrFrPFKAkOr70DA1RP_JAuhh4=zjinMubRBg@mail.gmail.com>
+References: <CAEO2ku+zYoBbZhVrFrPFKAkOr70DA1RP_JAuhh4=zjinMubRBg@mail.gmail.com>
+Message-ID: <FD87183A-EDDE-49AD-B437-32FD419BF361@ehar.se>
+
+If(zoom %in% c(?alaska?,  ?hawaii?)?
+
+G?ran
+
+> 27 juni 2023 kl. 16:32 skrev arilamstein at gmail.com:
+> 
+> ?It appears that my R package choroplethr broke due to this change in R
+> 4.3.0:
+> 
+> CHANGES IN R 4.3.0:
+> 
+> SIGNIFICANT USER-VISIBLE CHANGES:
+> 
+> Calling && or || with LHS or (if evaluated) RHS of length greater than one
+> is now always an error, with a report of the form
+> 
+> 'length = 4' in coercion to 'logical(1)'
+> Environment variable R_CHECK_LENGTH_1_LOGIC2 no longer has any effect.
+> 
+> The specific line which broke is this:
+> https://github.com/arilamstein/choroplethr/blob/master/R/usa.R#L24
+> 
+> The bug can be reproduced like this:
+> 
+> zoom = c("arizona", "arkansas", "louisiana", "minnesota", "mississippi",
+>      "montana", "new mexico", "north dakota", "oklahoma", "pennsylvania",
+>      "tennessee", "virginia", "california", "delaware", "west virginia",
+>      "wisconsin", "wyoming", "alabama", "alaska", "florida", "idaho",
+>      "kansas", "maryland", "colorado", "new jersey", "north carolina",
+>      "south carolina", "washington", "vermont", "utah", "iowa",
+> "kentucky",
+>      "maine", "massachusetts", "connecticut", "michigan", "missouri",
+>      "nebraska", "nevada", "new hampshire", "new york", "ohio", "oregon",
+>      "rhode island", "south dakota", "district of columbia", "texas",
+>      "georgia", "hawaii", "illinois", "indiana")
+> 
+> if (zoom == "alaska" || zoom == "hawaii") {}
+> Error in zoom == "alaska" || zoom == "hawaii" :
+>  'length = 51' in coercion to 'logical(1)'
+> 
+> I have two questions:
+> 
+> 1. Can someone explain why this change was introduced to the language?
+> 2. Can someone tell me if there is a preferred, idiomatic way to rewrite my
+> code?
+> 
+> I came up with two solutions that work. The first checks whether zoom is of
+> length 1:
+> 
+> if ((length(zoom) == 1) && (zoom %in% c("alaska", "hawaii"))) { }
+> 
+> The second keeps the vector recycling, but then uses all to coerce the
+> vector to be a single value. In retrospect, I think I likely assumed that
+> this is what R < 4.3.0 was doing when the code worked. (But I wrote this
+> code many years ago, so I can't be sure!):
+> 
+> if (all(zoom == "alaska") || all(zoom == "hawaii")) {}
+> 
+> Thanks in advance.
+> 
+> Ari
+> 
+>    [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From gb @end|ng |rom eh@r@@e  Tue Jun 27 18:11:09 2023
+From: gb @end|ng |rom eh@r@@e (=?UTF-8?Q?G=c3=b6ran_Brostr=c3=b6m?=)
+Date: Tue, 27 Jun 2023 18:11:09 +0200
+Subject: [R-pkg-devel] Package broke with R 4.3.0
+In-Reply-To: <FD87183A-EDDE-49AD-B437-32FD419BF361@ehar.se>
+References: <CAEO2ku+zYoBbZhVrFrPFKAkOr70DA1RP_JAuhh4=zjinMubRBg@mail.gmail.com>
+ <FD87183A-EDDE-49AD-B437-32FD419BF361@ehar.se>
+Message-ID: <2876ac62-5f5f-9cbf-940e-03cd0f09d417@ehar.se>
+
+
+
+Den 2023-06-27 kl. 17:17, skrev G?ran Brostr?m:
+> If(zoom %in% c(?alaska?,  ?hawaii?)?
+
+Wrong, maybe
+
+if (("alaska" %in% zoom) || ("hawaii" %in% zoom)){}
+
+
+> 
+> G?ran
+> 
+>> 27 juni 2023 kl. 16:32 skrev arilamstein at gmail.com:
+>>
+>> ?It appears that my R package choroplethr broke due to this change in R
+>> 4.3.0:
+>>
+>> CHANGES IN R 4.3.0:
+>>
+>> SIGNIFICANT USER-VISIBLE CHANGES:
+>>
+>> Calling && or || with LHS or (if evaluated) RHS of length greater than one
+>> is now always an error, with a report of the form
+>>
+>> 'length = 4' in coercion to 'logical(1)'
+>> Environment variable R_CHECK_LENGTH_1_LOGIC2 no longer has any effect.
+>>
+>> The specific line which broke is this:
+>> https://github.com/arilamstein/choroplethr/blob/master/R/usa.R#L24
+>>
+>> The bug can be reproduced like this:
+>>
+>> zoom = c("arizona", "arkansas", "louisiana", "minnesota", "mississippi",
+>>       "montana", "new mexico", "north dakota", "oklahoma", "pennsylvania",
+>>       "tennessee", "virginia", "california", "delaware", "west virginia",
+>>       "wisconsin", "wyoming", "alabama", "alaska", "florida", "idaho",
+>>       "kansas", "maryland", "colorado", "new jersey", "north carolina",
+>>       "south carolina", "washington", "vermont", "utah", "iowa",
+>> "kentucky",
+>>       "maine", "massachusetts", "connecticut", "michigan", "missouri",
+>>       "nebraska", "nevada", "new hampshire", "new york", "ohio", "oregon",
+>>       "rhode island", "south dakota", "district of columbia", "texas",
+>>       "georgia", "hawaii", "illinois", "indiana")
+>>
+>> if (zoom == "alaska" || zoom == "hawaii") {}
+>> Error in zoom == "alaska" || zoom == "hawaii" :
+>>   'length = 51' in coercion to 'logical(1)'
+>>
+>> I have two questions:
+>>
+>> 1. Can someone explain why this change was introduced to the language?
+>> 2. Can someone tell me if there is a preferred, idiomatic way to rewrite my
+>> code?
+>>
+>> I came up with two solutions that work. The first checks whether zoom is of
+>> length 1:
+>>
+>> if ((length(zoom) == 1) && (zoom %in% c("alaska", "hawaii"))) { }
+>>
+>> The second keeps the vector recycling, but then uses all to coerce the
+>> vector to be a single value. In retrospect, I think I likely assumed that
+>> this is what R < 4.3.0 was doing when the code worked. (But I wrote this
+>> code many years ago, so I can't be sure!):
+>>
+>> if (all(zoom == "alaska") || all(zoom == "hawaii")) {}
+>>
+>> Thanks in advance.
+>>
+>> Ari
+>>
+>>     [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Tue Jun 27 18:44:31 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Tue, 27 Jun 2023 09:44:31 -0700
+Subject: [R-pkg-devel] Package broke with R 4.3.0
+In-Reply-To: <2876ac62-5f5f-9cbf-940e-03cd0f09d417@ehar.se>
+References: <CAEO2ku+zYoBbZhVrFrPFKAkOr70DA1RP_JAuhh4=zjinMubRBg@mail.gmail.com>
+ <FD87183A-EDDE-49AD-B437-32FD419BF361@ehar.se>
+ <2876ac62-5f5f-9cbf-940e-03cd0f09d417@ehar.se>
+Message-ID: <A660B995-6FE1-4D3E-812A-78D5714B42C1@dcn.davis.ca.us>
+
+if (any(c( "alaska", "hawaii") %in% zoom)){}
+
+On June 27, 2023 9:11:09 AM PDT, "G?ran Brostr?m" <gb at ehar.se> wrote:
+>
+>
+>Den 2023-06-27 kl. 17:17, skrev G?ran Brostr?m:
+>> If(zoom %in% c(?alaska?,  ?hawaii?)?
+>
+>Wrong, maybe
+>
+>if (("alaska" %in% zoom) || ("hawaii" %in% zoom)){}
+>
+>
+>> 
+>> G?ran
+>> 
+>>> 27 juni 2023 kl. 16:32 skrev arilamstein at gmail.com:
+>>> 
+>>> ?It appears that my R package choroplethr broke due to this change in R
+>>> 4.3.0:
+>>> 
+>>> CHANGES IN R 4.3.0:
+>>> 
+>>> SIGNIFICANT USER-VISIBLE CHANGES:
+>>> 
+>>> Calling && or || with LHS or (if evaluated) RHS of length greater than one
+>>> is now always an error, with a report of the form
+>>> 
+>>> 'length = 4' in coercion to 'logical(1)'
+>>> Environment variable R_CHECK_LENGTH_1_LOGIC2 no longer has any effect.
+>>> 
+>>> The specific line which broke is this:
+>>> https://github.com/arilamstein/choroplethr/blob/master/R/usa.R#L24
+>>> 
+>>> The bug can be reproduced like this:
+>>> 
+>>> zoom = c("arizona", "arkansas", "louisiana", "minnesota", "mississippi",
+>>>       "montana", "new mexico", "north dakota", "oklahoma", "pennsylvania",
+>>>       "tennessee", "virginia", "california", "delaware", "west virginia",
+>>>       "wisconsin", "wyoming", "alabama", "alaska", "florida", "idaho",
+>>>       "kansas", "maryland", "colorado", "new jersey", "north carolina",
+>>>       "south carolina", "washington", "vermont", "utah", "iowa",
+>>> "kentucky",
+>>>       "maine", "massachusetts", "connecticut", "michigan", "missouri",
+>>>       "nebraska", "nevada", "new hampshire", "new york", "ohio", "oregon",
+>>>       "rhode island", "south dakota", "district of columbia", "texas",
+>>>       "georgia", "hawaii", "illinois", "indiana")
+>>> 
+>>> if (zoom == "alaska" || zoom == "hawaii") {}
+>>> Error in zoom == "alaska" || zoom == "hawaii" :
+>>>   'length = 51' in coercion to 'logical(1)'
+>>> 
+>>> I have two questions:
+>>> 
+>>> 1. Can someone explain why this change was introduced to the language?
+>>> 2. Can someone tell me if there is a preferred, idiomatic way to rewrite my
+>>> code?
+>>> 
+>>> I came up with two solutions that work. The first checks whether zoom is of
+>>> length 1:
+>>> 
+>>> if ((length(zoom) == 1) && (zoom %in% c("alaska", "hawaii"))) { }
+>>> 
+>>> The second keeps the vector recycling, but then uses all to coerce the
+>>> vector to be a single value. In retrospect, I think I likely assumed that
+>>> this is what R < 4.3.0 was doing when the code worked. (But I wrote this
+>>> code many years ago, so I can't be sure!):
+>>> 
+>>> if (all(zoom == "alaska") || all(zoom == "hawaii")) {}
+>>> 
+>>> Thanks in advance.
+>>> 
+>>> Ari
+>>> 
+>>>     [[alternative HTML version deleted]]
+>>> 
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>> 
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+>______________________________________________
+>R-package-devel at r-project.org mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From |uc@r @end|ng |rom |edor@project@org  Tue Jun 27 18:55:04 2023
+From: |uc@r @end|ng |rom |edor@project@org (=?UTF-8?Q?I=C3=B1aki_Ucar?=)
+Date: Tue, 27 Jun 2023 18:55:04 +0200
+Subject: [R-pkg-devel] Package broke with R 4.3.0
+In-Reply-To: <A660B995-6FE1-4D3E-812A-78D5714B42C1@dcn.davis.ca.us>
+References: <CAEO2ku+zYoBbZhVrFrPFKAkOr70DA1RP_JAuhh4=zjinMubRBg@mail.gmail.com>
+ <FD87183A-EDDE-49AD-B437-32FD419BF361@ehar.se>
+ <2876ac62-5f5f-9cbf-940e-03cd0f09d417@ehar.se>
+ <A660B995-6FE1-4D3E-812A-78D5714B42C1@dcn.davis.ca.us>
+Message-ID: <CALEXWq0tpi6O=vCoXqT15f5A5yGo7VikDpKsD-5vhDASvzzo_Q@mail.gmail.com>
+
+On Tue, 27 Jun 2023 at 18:45, Jeff Newmiller <jdnewmil at dcn.davis.ca.us> wrote:
+>
+> if (any(c( "alaska", "hawaii") %in% zoom)){}
+
+Note that this changes behavior. If e.g. zoom is c("something",
+"alaska"), the code above returns TRUE. Previous behavior was FALSE
+(with a warning).
+
+I?aki
+
+> On June 27, 2023 9:11:09 AM PDT, "G?ran Brostr?m" <gb at ehar.se> wrote:
+> >
+> >
+> >Den 2023-06-27 kl. 17:17, skrev G?ran Brostr?m:
+> >> If(zoom %in% c(?alaska?,  ?hawaii?)?
+> >
+> >Wrong, maybe
+> >
+> >if (("alaska" %in% zoom) || ("hawaii" %in% zoom)){}
+> >
+> >
+> >>
+> >> G?ran
+> >>
+> >>> 27 juni 2023 kl. 16:32 skrev arilamstein at gmail.com:
+> >>>
+> >>> ?It appears that my R package choroplethr broke due to this change in R
+> >>> 4.3.0:
+> >>>
+> >>> CHANGES IN R 4.3.0:
+> >>>
+> >>> SIGNIFICANT USER-VISIBLE CHANGES:
+> >>>
+> >>> Calling && or || with LHS or (if evaluated) RHS of length greater than one
+> >>> is now always an error, with a report of the form
+> >>>
+> >>> 'length = 4' in coercion to 'logical(1)'
+> >>> Environment variable R_CHECK_LENGTH_1_LOGIC2 no longer has any effect.
+> >>>
+> >>> The specific line which broke is this:
+> >>> https://github.com/arilamstein/choroplethr/blob/master/R/usa.R#L24
+> >>>
+> >>> The bug can be reproduced like this:
+> >>>
+> >>> zoom = c("arizona", "arkansas", "louisiana", "minnesota", "mississippi",
+> >>>       "montana", "new mexico", "north dakota", "oklahoma", "pennsylvania",
+> >>>       "tennessee", "virginia", "california", "delaware", "west virginia",
+> >>>       "wisconsin", "wyoming", "alabama", "alaska", "florida", "idaho",
+> >>>       "kansas", "maryland", "colorado", "new jersey", "north carolina",
+> >>>       "south carolina", "washington", "vermont", "utah", "iowa",
+> >>> "kentucky",
+> >>>       "maine", "massachusetts", "connecticut", "michigan", "missouri",
+> >>>       "nebraska", "nevada", "new hampshire", "new york", "ohio", "oregon",
+> >>>       "rhode island", "south dakota", "district of columbia", "texas",
+> >>>       "georgia", "hawaii", "illinois", "indiana")
+> >>>
+> >>> if (zoom == "alaska" || zoom == "hawaii") {}
+> >>> Error in zoom == "alaska" || zoom == "hawaii" :
+> >>>   'length = 51' in coercion to 'logical(1)'
+> >>>
+> >>> I have two questions:
+> >>>
+> >>> 1. Can someone explain why this change was introduced to the language?
+> >>> 2. Can someone tell me if there is a preferred, idiomatic way to rewrite my
+> >>> code?
+> >>>
+> >>> I came up with two solutions that work. The first checks whether zoom is of
+> >>> length 1:
+> >>>
+> >>> if ((length(zoom) == 1) && (zoom %in% c("alaska", "hawaii"))) { }
+> >>>
+> >>> The second keeps the vector recycling, but then uses all to coerce the
+> >>> vector to be a single value. In retrospect, I think I likely assumed that
+> >>> this is what R < 4.3.0 was doing when the code worked. (But I wrote this
+> >>> code many years ago, so I can't be sure!):
+> >>>
+> >>> if (all(zoom == "alaska") || all(zoom == "hawaii")) {}
+> >>>
+> >>> Thanks in advance.
+> >>>
+> >>> Ari
+> >>>
+> >>>     [[alternative HTML version deleted]]
+> >>>
+> >>> ______________________________________________
+> >>> R-package-devel at r-project.org mailing list
+> >>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >>
+> >> ______________________________________________
+> >> R-package-devel at r-project.org mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >
+> >______________________________________________
+> >R-package-devel at r-project.org mailing list
+> >https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+> --
+> Sent from my phone. Please excuse my brevity.
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+
+-- 
+I?aki ?car
+
+
