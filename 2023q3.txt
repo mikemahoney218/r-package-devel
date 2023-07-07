@@ -819,3 +819,1194 @@ This release uses Xcode 14.2/14.3 and GNU Fortran 12.2. If you wish to compile R
 > 
 
 
+From v|ncentv@nhee@ @end|ng |rom gm@||@com  Thu Jul  6 09:54:20 2023
+From: v|ncentv@nhee@ @end|ng |rom gm@||@com (Vincent van Hees)
+Date: Thu, 6 Jul 2023 09:54:20 +0200
+Subject: [R-pkg-devel] Warning 'as.data.frame.POSIXct()' is deprecated
+Message-ID: <CALnEB16CAR28kTtkvVcEOQj3Tmyc_rwCjckwexnQsA3_ZkFPCg@mail.gmail.com>
+
+Dear all,
+
+I see the following warning in my package test results:
+
+```
+Warning
+Direct call of 'as.data.frame.POSIXct()' is deprecated.  Use
+'as.data.frame.vector()' or 'as.data.frame()' instead
+```
+
+The warning is not always there and I struggle to make it reproducible. I
+have encountered it in both Ubuntu 22.04 and in Windows 11, in both R 4.3.0
+and 4.3.1, in both RStudio and in an GitHub Actions environment (example
+<https://github.com/wadpac/GGIR/actions/runs/5463862340/jobs/9945096566>).
+The warning gives the impression that I am doing something that R no longer
+supports. However, I am not using the command as.data.frame.POSIXct()
+anywhere directly in my code.
+
+When I dive into the code where the warnings occur I see patterns like:
+
+```
+now = Sys.time()
+df = data.frame (time = seq(now, now + 10, by =1),  B  = 1:11)
+```
+
+(this is a simplification of for example:
+https://github.com/wadpac/GGIR/blob/master/tests/testthat/test_read.myacc.csv.R
+)
+
+Does this mean I am discouraged from putting a vector with POSIXct values
+in a data.frame?
+If yes, what would be the recommended work around?
+
+I have been trying to find documentation or online discussions about this
+warning but no luck so far. I see R NEWS
+<https://cran.r-project.org/doc/manuals/r-release/NEWS.html> mentions
+updates to POSIXct related objects several times in the past year but those
+seem to be different issues.
+
+Best,
+
+Vincent
+
+	[[alternative HTML version deleted]]
+
+
+From t|m@t@y|or @end|ng |rom h|ddene|eph@nt@@co@uk  Thu Jul  6 10:26:06 2023
+From: t|m@t@y|or @end|ng |rom h|ddene|eph@nt@@co@uk (Tim Taylor)
+Date: Thu, 6 Jul 2023 09:26:06 +0100
+Subject: [R-pkg-devel] Warning 'as.data.frame.POSIXct()' is deprecated
+In-Reply-To: <CALnEB16CAR28kTtkvVcEOQj3Tmyc_rwCjckwexnQsA3_ZkFPCg@mail.gmail.com>
+References: <CALnEB16CAR28kTtkvVcEOQj3Tmyc_rwCjckwexnQsA3_ZkFPCg@mail.gmail.com>
+Message-ID: <1e8bc3aa-1614-3cd4-f0db-01735c152e7f@hiddenelephants.co.uk>
+
+This *may* be an issue in lapply.? Let's see what others day. Reprex below
+
+Sys.setenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_" = TRUE)
+dat <- Sys.Date()
+as.data.frame(dat)
+#>????????? dat
+#> 1 2023-07-06
+lapply(dat, as.data.frame)
+#> Warning: Direct call of 'as.data.frame.Date()' is deprecated.? Use
+#> 'as.data.frame.vector()' or 'as.data.frame()' instead
+#> [[1]]
+#>?????? X[[i]]
+#> 1 2023-07-06
+
+Tim
+
+On 06/07/2023 08:54, Vincent van Hees wrote:
+> Dear all,
+>
+> I see the following warning in my package test results:
+>
+> ```
+> Warning
+> Direct call of 'as.data.frame.POSIXct()' is deprecated.  Use
+> 'as.data.frame.vector()' or 'as.data.frame()' instead
+> ```
+>
+> The warning is not always there and I struggle to make it reproducible. I
+> have encountered it in both Ubuntu 22.04 and in Windows 11, in both R 4.3.0
+> and 4.3.1, in both RStudio and in an GitHub Actions environment (example
+> <https://github.com/wadpac/GGIR/actions/runs/5463862340/jobs/9945096566>).
+> The warning gives the impression that I am doing something that R no longer
+> supports. However, I am not using the command as.data.frame.POSIXct()
+> anywhere directly in my code.
+>
+> When I dive into the code where the warnings occur I see patterns like:
+>
+> ```
+> now = Sys.time()
+> df = data.frame (time = seq(now, now + 10, by =1),  B  = 1:11)
+> ```
+>
+> (this is a simplification of for example:
+> https://github.com/wadpac/GGIR/blob/master/tests/testthat/test_read.myacc.csv.R
+> )
+>
+> Does this mean I am discouraged from putting a vector with POSIXct values
+> in a data.frame?
+> If yes, what would be the recommended work around?
+>
+> I have been trying to find documentation or online discussions about this
+> warning but no luck so far. I see R NEWS
+> <https://cran.r-project.org/doc/manuals/r-release/NEWS.html> mentions
+> updates to POSIXct related objects several times in the past year but those
+> seem to be different issues.
+>
+> Best,
+>
+> Vincent
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From t|m@t@y|or @end|ng |rom h|ddene|eph@nt@@co@uk  Thu Jul  6 10:41:45 2023
+From: t|m@t@y|or @end|ng |rom h|ddene|eph@nt@@co@uk (Tim Taylor)
+Date: Thu, 6 Jul 2023 09:41:45 +0100
+Subject: [R-pkg-devel] Warning 'as.data.frame.POSIXct()' is deprecated
+In-Reply-To: <1e8bc3aa-1614-3cd4-f0db-01735c152e7f@hiddenelephants.co.uk>
+References: <CALnEB16CAR28kTtkvVcEOQj3Tmyc_rwCjckwexnQsA3_ZkFPCg@mail.gmail.com>
+ <1e8bc3aa-1614-3cd4-f0db-01735c152e7f@hiddenelephants.co.uk>
+Message-ID: <15178f56-0d28-e7fa-000f-959c00dd63ca@hiddenelephants.co.uk>
+
+Apologies - I've not had enough caffeine just yet. The reprex below 
+highlights the issue but I think the code which implemented the change 
+*may* need tweaking not lapply.
+
+Tim
+
+On 06/07/2023 09:26, Tim Taylor wrote:
+> This *may* be an issue in lapply.? Let's see what others day. Reprex 
+> below
+>
+> Sys.setenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_" = TRUE)
+> dat <- Sys.Date()
+> as.data.frame(dat)
+> #>????????? dat
+> #> 1 2023-07-06
+> lapply(dat, as.data.frame)
+> #> Warning: Direct call of 'as.data.frame.Date()' is deprecated.? Use
+> #> 'as.data.frame.vector()' or 'as.data.frame()' instead
+> #> [[1]]
+> #>?????? X[[i]]
+> #> 1 2023-07-06
+>
+> Tim
+>
+> On 06/07/2023 08:54, Vincent van Hees wrote:
+>> Dear all,
+>>
+>> I see the following warning in my package test results:
+>>
+>> ```
+>> Warning
+>> Direct call of 'as.data.frame.POSIXct()' is deprecated.? Use
+>> 'as.data.frame.vector()' or 'as.data.frame()' instead
+>> ```
+>>
+>> The warning is not always there and I struggle to make it 
+>> reproducible. I
+>> have encountered it in both Ubuntu 22.04 and in Windows 11, in both R 
+>> 4.3.0
+>> and 4.3.1, in both RStudio and in an GitHub Actions environment (example
+>> <https://github.com/wadpac/GGIR/actions/runs/5463862340/jobs/9945096566>). 
+>>
+>> The warning gives the impression that I am doing something that R no 
+>> longer
+>> supports. However, I am not using the command as.data.frame.POSIXct()
+>> anywhere directly in my code.
+>>
+>> When I dive into the code where the warnings occur I see patterns like:
+>>
+>> ```
+>> now = Sys.time()
+>> df = data.frame (time = seq(now, now + 10, by =1),? B? = 1:11)
+>> ```
+>>
+>> (this is a simplification of for example:
+>> https://github.com/wadpac/GGIR/blob/master/tests/testthat/test_read.myacc.csv.R 
+>>
+>> )
+>>
+>> Does this mean I am discouraged from putting a vector with POSIXct 
+>> values
+>> in a data.frame?
+>> If yes, what would be the recommended work around?
+>>
+>> I have been trying to find documentation or online discussions about 
+>> this
+>> warning but no luck so far. I see R NEWS
+>> <https://cran.r-project.org/doc/manuals/r-release/NEWS.html> mentions
+>> updates to POSIXct related objects several times in the past year but 
+>> those
+>> seem to be different issues.
+>>
+>> Best,
+>>
+>> Vincent
+>>
+>> ????[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From v|ncentv@nhee@ @end|ng |rom gm@||@com  Thu Jul  6 14:31:54 2023
+From: v|ncentv@nhee@ @end|ng |rom gm@||@com (Vincent van Hees)
+Date: Thu, 6 Jul 2023 14:31:54 +0200
+Subject: [R-pkg-devel] Warning 'as.data.frame.POSIXct()' is deprecated
+In-Reply-To: <15178f56-0d28-e7fa-000f-959c00dd63ca@hiddenelephants.co.uk>
+References: <CALnEB16CAR28kTtkvVcEOQj3Tmyc_rwCjckwexnQsA3_ZkFPCg@mail.gmail.com>
+ <1e8bc3aa-1614-3cd4-f0db-01735c152e7f@hiddenelephants.co.uk>
+ <15178f56-0d28-e7fa-000f-959c00dd63ca@hiddenelephants.co.uk>
+Message-ID: <CALnEB17VsNZC5U_usC+qxXgx4ngZFwGpO2W_Tg8L6WQ9rm83Qg@mail.gmail.com>
+
+Thanks, in that case the REPLEX for the issue may need to be:
+
+> remember = Sys.getenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_")
+> Sys.setenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_" = TRUE)
+> data.frame(time = Sys.time())
+                 time
+1 2023-07-06 14:29:37
+> data.frame(time = as.POSIXlt(Sys.time()))
+                 time
+1 2023-07-06 14:29:37
+Warning message:
+Direct call of 'as.data.frame.POSIXct()' is deprecated.  Use
+'as.data.frame.vector()' or 'as.data.frame()' instead
+> Sys.setenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_" = remember)
+
+Vincent
+
+On Thu, 6 Jul 2023 at 10:41, Tim Taylor <tim.taylor at hiddenelephants.co.uk>
+wrote:
+
+> Apologies - I've not had enough caffeine just yet. The reprex below
+> highlights the issue but I think the code which implemented the change
+> *may* need tweaking not lapply.
+>
+> Tim
+>
+> On 06/07/2023 09:26, Tim Taylor wrote:
+> > This *may* be an issue in lapply.  Let's see what others day. Reprex
+> > below
+> >
+> > Sys.setenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_" = TRUE)
+> > dat <- Sys.Date()
+> > as.data.frame(dat)
+> > #>          dat
+> > #> 1 2023-07-06
+> > lapply(dat, as.data.frame)
+> > #> Warning: Direct call of 'as.data.frame.Date()' is deprecated.  Use
+> > #> 'as.data.frame.vector()' or 'as.data.frame()' instead
+> > #> [[1]]
+> > #>       X[[i]]
+> > #> 1 2023-07-06
+> >
+> > Tim
+> >
+> > On 06/07/2023 08:54, Vincent van Hees wrote:
+> >> Dear all,
+> >>
+> >> I see the following warning in my package test results:
+> >>
+> >> ```
+> >> Warning
+> >> Direct call of 'as.data.frame.POSIXct()' is deprecated.  Use
+> >> 'as.data.frame.vector()' or 'as.data.frame()' instead
+> >> ```
+> >>
+> >> The warning is not always there and I struggle to make it
+> >> reproducible. I
+> >> have encountered it in both Ubuntu 22.04 and in Windows 11, in both R
+> >> 4.3.0
+> >> and 4.3.1, in both RStudio and in an GitHub Actions environment (example
+> >> <https://github.com/wadpac/GGIR/actions/runs/5463862340/jobs/9945096566>).
+>
+> >>
+> >> The warning gives the impression that I am doing something that R no
+> >> longer
+> >> supports. However, I am not using the command as.data.frame.POSIXct()
+> >> anywhere directly in my code.
+> >>
+> >> When I dive into the code where the warnings occur I see patterns like:
+> >>
+> >> ```
+> >> now = Sys.time()
+> >> df = data.frame (time = seq(now, now + 10, by =1),  B  = 1:11)
+> >> ```
+> >>
+> >> (this is a simplification of for example:
+> >>
+> https://github.com/wadpac/GGIR/blob/master/tests/testthat/test_read.myacc.csv.R
+> >>
+> >> )
+> >>
+> >> Does this mean I am discouraged from putting a vector with POSIXct
+> >> values
+> >> in a data.frame?
+> >> If yes, what would be the recommended work around?
+> >>
+> >> I have been trying to find documentation or online discussions about
+> >> this
+> >> warning but no luck so far. I see R NEWS
+> >> <https://cran.r-project.org/doc/manuals/r-release/NEWS.html> mentions
+> >> updates to POSIXct related objects several times in the past year but
+> >> those
+> >> seem to be different issues.
+> >>
+> >> Best,
+> >>
+> >> Vincent
+> >>
+> >>     [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-package-devel at r-project.org mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Thu Jul  6 15:14:31 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 6 Jul 2023 08:14:31 -0500
+Subject: [R-pkg-devel] Warning 'as.data.frame.POSIXct()' is deprecated
+In-Reply-To: <CALnEB17VsNZC5U_usC+qxXgx4ngZFwGpO2W_Tg8L6WQ9rm83Qg@mail.gmail.com>
+References: <CALnEB16CAR28kTtkvVcEOQj3Tmyc_rwCjckwexnQsA3_ZkFPCg@mail.gmail.com>
+ <1e8bc3aa-1614-3cd4-f0db-01735c152e7f@hiddenelephants.co.uk>
+ <15178f56-0d28-e7fa-000f-959c00dd63ca@hiddenelephants.co.uk>
+ <CALnEB17VsNZC5U_usC+qxXgx4ngZFwGpO2W_Tg8L6WQ9rm83Qg@mail.gmail.com>
+Message-ID: <25766.48695.704943.188152@rob.eddelbuettel.com>
+
+
+On 6 July 2023 at 14:31, Vincent van Hees wrote:
+| Thanks, in that case the REPLEX for the issue may need to be:
+| 
+| > remember = Sys.getenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_")
+| > Sys.setenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_" = TRUE)
+| > data.frame(time = Sys.time())
+|                  time
+| 1 2023-07-06 14:29:37
+| > data.frame(time = as.POSIXlt(Sys.time()))
+|                  time
+| 1 2023-07-06 14:29:37
+| Warning message:
+| Direct call of 'as.data.frame.POSIXct()' is deprecated.  Use
+| 'as.data.frame.vector()' or 'as.data.frame()' instead
+| > Sys.setenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_" = remember)
+
+Does _not_ happen in a plain R session.
+
+Does happen when `library(tidyverse)` is executed first. May come from
+`tibble` or `vectors`, I have a habit of not using those much. 
+
+Dirk
+ 
+| Vincent
+| 
+| On Thu, 6 Jul 2023 at 10:41, Tim Taylor <tim.taylor at hiddenelephants.co.uk>
+| wrote:
+| 
+| > Apologies - I've not had enough caffeine just yet. The reprex below
+| > highlights the issue but I think the code which implemented the change
+| > *may* need tweaking not lapply.
+| >
+| > Tim
+| >
+| > On 06/07/2023 09:26, Tim Taylor wrote:
+| > > This *may* be an issue in lapply.  Let's see what others day. Reprex
+| > > below
+| > >
+| > > Sys.setenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_" = TRUE)
+| > > dat <- Sys.Date()
+| > > as.data.frame(dat)
+| > > #>          dat
+| > > #> 1 2023-07-06
+| > > lapply(dat, as.data.frame)
+| > > #> Warning: Direct call of 'as.data.frame.Date()' is deprecated.  Use
+| > > #> 'as.data.frame.vector()' or 'as.data.frame()' instead
+| > > #> [[1]]
+| > > #>       X[[i]]
+| > > #> 1 2023-07-06
+| > >
+| > > Tim
+| > >
+| > > On 06/07/2023 08:54, Vincent van Hees wrote:
+| > >> Dear all,
+| > >>
+| > >> I see the following warning in my package test results:
+| > >>
+| > >> ```
+| > >> Warning
+| > >> Direct call of 'as.data.frame.POSIXct()' is deprecated.  Use
+| > >> 'as.data.frame.vector()' or 'as.data.frame()' instead
+| > >> ```
+| > >>
+| > >> The warning is not always there and I struggle to make it
+| > >> reproducible. I
+| > >> have encountered it in both Ubuntu 22.04 and in Windows 11, in both R
+| > >> 4.3.0
+| > >> and 4.3.1, in both RStudio and in an GitHub Actions environment (example
+| > >> <https://github.com/wadpac/GGIR/actions/runs/5463862340/jobs/9945096566>).
+| >
+| > >>
+| > >> The warning gives the impression that I am doing something that R no
+| > >> longer
+| > >> supports. However, I am not using the command as.data.frame.POSIXct()
+| > >> anywhere directly in my code.
+| > >>
+| > >> When I dive into the code where the warnings occur I see patterns like:
+| > >>
+| > >> ```
+| > >> now = Sys.time()
+| > >> df = data.frame (time = seq(now, now + 10, by =1),  B  = 1:11)
+| > >> ```
+| > >>
+| > >> (this is a simplification of for example:
+| > >>
+| > https://github.com/wadpac/GGIR/blob/master/tests/testthat/test_read.myacc.csv.R
+| > >>
+| > >> )
+| > >>
+| > >> Does this mean I am discouraged from putting a vector with POSIXct
+| > >> values
+| > >> in a data.frame?
+| > >> If yes, what would be the recommended work around?
+| > >>
+| > >> I have been trying to find documentation or online discussions about
+| > >> this
+| > >> warning but no luck so far. I see R NEWS
+| > >> <https://cran.r-project.org/doc/manuals/r-release/NEWS.html> mentions
+| > >> updates to POSIXct related objects several times in the past year but
+| > >> those
+| > >> seem to be different issues.
+| > >>
+| > >> Best,
+| > >>
+| > >> Vincent
+| > >>
+| > >>     [[alternative HTML version deleted]]
+| > >>
+| > >> ______________________________________________
+| > >> R-package-devel at r-project.org mailing list
+| > >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+| > >
+| > > ______________________________________________
+| > > R-package-devel at r-project.org mailing list
+| > > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+| >
+| 
+| 	[[alternative HTML version deleted]]
+| 
+| ______________________________________________
+| R-package-devel at r-project.org mailing list
+| https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From edd @end|ng |rom deb|@n@org  Thu Jul  6 15:22:24 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 6 Jul 2023 08:22:24 -0500
+Subject: [R-pkg-devel] Warning 'as.data.frame.POSIXct()' is deprecated
+In-Reply-To: <25766.48695.704943.188152@rob.eddelbuettel.com>
+References: <CALnEB16CAR28kTtkvVcEOQj3Tmyc_rwCjckwexnQsA3_ZkFPCg@mail.gmail.com>
+ <1e8bc3aa-1614-3cd4-f0db-01735c152e7f@hiddenelephants.co.uk>
+ <15178f56-0d28-e7fa-000f-959c00dd63ca@hiddenelephants.co.uk>
+ <CALnEB17VsNZC5U_usC+qxXgx4ngZFwGpO2W_Tg8L6WQ9rm83Qg@mail.gmail.com>
+ <25766.48695.704943.188152@rob.eddelbuettel.com>
+Message-ID: <25766.49168.981543.584124@rob.eddelbuettel.com>
+
+
+On 6 July 2023 at 08:14, Dirk Eddelbuettel wrote:
+| 
+| On 6 July 2023 at 14:31, Vincent van Hees wrote:
+| | Thanks, in that case the REPLEX for the issue may need to be:
+| | 
+| | > remember = Sys.getenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_")
+| | > Sys.setenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_" = TRUE)
+| | > data.frame(time = Sys.time())
+| |                  time
+| | 1 2023-07-06 14:29:37
+| | > data.frame(time = as.POSIXlt(Sys.time()))
+| |                  time
+| | 1 2023-07-06 14:29:37
+| | Warning message:
+| | Direct call of 'as.data.frame.POSIXct()' is deprecated.  Use
+| | 'as.data.frame.vector()' or 'as.data.frame()' instead
+| | > Sys.setenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_" = remember)
+| 
+| Does _not_ happen in a plain R session.
+| 
+| Does happen when `library(tidyverse)` is executed first. May come from
+| `tibble` or `vectors`, I have a habit of not using those much. 
+
+Err, no, wait. I may have confused myself here jumping between R-devel and
+R (release).  Please disregard, and apologies for the noise.
+
+In any event, assigning a POSIXlt (which is an 11-element list) to a single
+column is not a great idiom and we had the POSIXct conversion there for a
+while IIRC.
+
+But assigning a POSIXct to a column should always work, and I would be
+surprised to find a minimally complete reproducible example showing that it
+does not.  
+
+Dirk
+
+| Dirk
+|  
+| | Vincent
+| | 
+| | On Thu, 6 Jul 2023 at 10:41, Tim Taylor <tim.taylor at hiddenelephants.co.uk>
+| | wrote:
+| | 
+| | > Apologies - I've not had enough caffeine just yet. The reprex below
+| | > highlights the issue but I think the code which implemented the change
+| | > *may* need tweaking not lapply.
+| | >
+| | > Tim
+| | >
+| | > On 06/07/2023 09:26, Tim Taylor wrote:
+| | > > This *may* be an issue in lapply.  Let's see what others day. Reprex
+| | > > below
+| | > >
+| | > > Sys.setenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_" = TRUE)
+| | > > dat <- Sys.Date()
+| | > > as.data.frame(dat)
+| | > > #>          dat
+| | > > #> 1 2023-07-06
+| | > > lapply(dat, as.data.frame)
+| | > > #> Warning: Direct call of 'as.data.frame.Date()' is deprecated.  Use
+| | > > #> 'as.data.frame.vector()' or 'as.data.frame()' instead
+| | > > #> [[1]]
+| | > > #>       X[[i]]
+| | > > #> 1 2023-07-06
+| | > >
+| | > > Tim
+| | > >
+| | > > On 06/07/2023 08:54, Vincent van Hees wrote:
+| | > >> Dear all,
+| | > >>
+| | > >> I see the following warning in my package test results:
+| | > >>
+| | > >> ```
+| | > >> Warning
+| | > >> Direct call of 'as.data.frame.POSIXct()' is deprecated.  Use
+| | > >> 'as.data.frame.vector()' or 'as.data.frame()' instead
+| | > >> ```
+| | > >>
+| | > >> The warning is not always there and I struggle to make it
+| | > >> reproducible. I
+| | > >> have encountered it in both Ubuntu 22.04 and in Windows 11, in both R
+| | > >> 4.3.0
+| | > >> and 4.3.1, in both RStudio and in an GitHub Actions environment (example
+| | > >> <https://github.com/wadpac/GGIR/actions/runs/5463862340/jobs/9945096566>).
+| | >
+| | > >>
+| | > >> The warning gives the impression that I am doing something that R no
+| | > >> longer
+| | > >> supports. However, I am not using the command as.data.frame.POSIXct()
+| | > >> anywhere directly in my code.
+| | > >>
+| | > >> When I dive into the code where the warnings occur I see patterns like:
+| | > >>
+| | > >> ```
+| | > >> now = Sys.time()
+| | > >> df = data.frame (time = seq(now, now + 10, by =1),  B  = 1:11)
+| | > >> ```
+| | > >>
+| | > >> (this is a simplification of for example:
+| | > >>
+| | > https://github.com/wadpac/GGIR/blob/master/tests/testthat/test_read.myacc.csv.R
+| | > >>
+| | > >> )
+| | > >>
+| | > >> Does this mean I am discouraged from putting a vector with POSIXct
+| | > >> values
+| | > >> in a data.frame?
+| | > >> If yes, what would be the recommended work around?
+| | > >>
+| | > >> I have been trying to find documentation or online discussions about
+| | > >> this
+| | > >> warning but no luck so far. I see R NEWS
+| | > >> <https://cran.r-project.org/doc/manuals/r-release/NEWS.html> mentions
+| | > >> updates to POSIXct related objects several times in the past year but
+| | > >> those
+| | > >> seem to be different issues.
+| | > >>
+| | > >> Best,
+| | > >>
+| | > >> Vincent
+| | > >>
+| | > >>     [[alternative HTML version deleted]]
+| | > >>
+| | > >> ______________________________________________
+| | > >> R-package-devel at r-project.org mailing list
+| | > >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+| | > >
+| | > > ______________________________________________
+| | > > R-package-devel at r-project.org mailing list
+| | > > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+| | >
+| | 
+| | 	[[alternative HTML version deleted]]
+| | 
+| | ______________________________________________
+| | R-package-devel at r-project.org mailing list
+| | https://stat.ethz.ch/mailman/listinfo/r-package-devel
+| 
+| -- 
+| dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From e@ @end|ng |rom enr|co@chum@nn@net  Thu Jul  6 15:42:12 2023
+From: e@ @end|ng |rom enr|co@chum@nn@net (Enrico Schumann)
+Date: Thu, 06 Jul 2023 15:42:12 +0200
+Subject: [R-pkg-devel] Warning 'as.data.frame.POSIXct()' is deprecated
+In-Reply-To: <CALnEB17VsNZC5U_usC+qxXgx4ngZFwGpO2W_Tg8L6WQ9rm83Qg@mail.gmail.com>
+ (Vincent van Hees's message of "Thu, 6 Jul 2023 14:31:54 +0200")
+References: <CALnEB16CAR28kTtkvVcEOQj3Tmyc_rwCjckwexnQsA3_ZkFPCg@mail.gmail.com>
+ <1e8bc3aa-1614-3cd4-f0db-01735c152e7f@hiddenelephants.co.uk>
+ <15178f56-0d28-e7fa-000f-959c00dd63ca@hiddenelephants.co.uk>
+ <CALnEB17VsNZC5U_usC+qxXgx4ngZFwGpO2W_Tg8L6WQ9rm83Qg@mail.gmail.com>
+Message-ID: <87wmzdcg23.fsf@aldus>
+
+On Thu, 06 Jul 2023, Vincent van Hees writes:
+
+> Thanks, in that case the REPLEX for the issue may need to be:
+>
+>> remember = Sys.getenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_")
+>> Sys.setenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_" = TRUE)
+>> data.frame(time = Sys.time())
+>                  time
+> 1 2023-07-06 14:29:37
+>> data.frame(time = as.POSIXlt(Sys.time()))
+>                  time
+> 1 2023-07-06 14:29:37
+> Warning message:
+> Direct call of 'as.data.frame.POSIXct()' is deprecated.  Use
+> 'as.data.frame.vector()' or 'as.data.frame()' instead
+>> Sys.setenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_" = remember)
+
+
+I think it happens because
+
+    data.frame(<POSIXlt>)
+
+calls 'as.data.frame.POSIXlt' (per its S3-class), which
+in turn directly calls 'as.data.frame.POSIXct':
+
+    ## as.data.frame.POSIXlt
+    function (x, row.names = NULL, optional = FALSE, ...) 
+    {
+        value <- as.data.frame.POSIXct(as.POSIXct(x), row.names, 
+            optional, ...)
+        if (!optional) 
+            names(value) <- deparse1(substitute(x))
+        value
+    }
+    <environment: namespace:base>
+
+Kind regards
+    Enrico
+
+> Vincent
+>
+> On Thu, 6 Jul 2023 at 10:41, Tim Taylor <tim.taylor at hiddenelephants.co.uk>
+> wrote:
+>
+>> Apologies - I've not had enough caffeine just yet. The reprex below
+>> highlights the issue but I think the code which implemented the change
+>> *may* need tweaking not lapply.
+>>
+>> Tim
+>>
+>> On 06/07/2023 09:26, Tim Taylor wrote:
+>> > This *may* be an issue in lapply.  Let's see what others day. Reprex
+>> > below
+>> >
+>> > Sys.setenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_" = TRUE)
+>> > dat <- Sys.Date()
+>> > as.data.frame(dat)
+>> > #>          dat
+>> > #> 1 2023-07-06
+>> > lapply(dat, as.data.frame)
+>> > #> Warning: Direct call of 'as.data.frame.Date()' is deprecated.  Use
+>> > #> 'as.data.frame.vector()' or 'as.data.frame()' instead
+>> > #> [[1]]
+>> > #>       X[[i]]
+>> > #> 1 2023-07-06
+>> >
+>> > Tim
+>> >
+>> > On 06/07/2023 08:54, Vincent van Hees wrote:
+>> >> Dear all,
+>> >>
+>> >> I see the following warning in my package test results:
+>> >>
+>> >> ```
+>> >> Warning
+>> >> Direct call of 'as.data.frame.POSIXct()' is deprecated.  Use
+>> >> 'as.data.frame.vector()' or 'as.data.frame()' instead
+>> >> ```
+>> >>
+>> >> The warning is not always there and I struggle to make it
+>> >> reproducible. I
+>> >> have encountered it in both Ubuntu 22.04 and in Windows 11, in both R
+>> >> 4.3.0
+>> >> and 4.3.1, in both RStudio and in an GitHub Actions environment (example
+>> >> <https://github.com/wadpac/GGIR/actions/runs/5463862340/jobs/9945096566>).
+>>
+>> >>
+>> >> The warning gives the impression that I am doing something that R no
+>> >> longer
+>> >> supports. However, I am not using the command as.data.frame.POSIXct()
+>> >> anywhere directly in my code.
+>> >>
+>> >> When I dive into the code where the warnings occur I see patterns like:
+>> >>
+>> >> ```
+>> >> now = Sys.time()
+>> >> df = data.frame (time = seq(now, now + 10, by =1),  B  = 1:11)
+>> >> ```
+>> >>
+>> >> (this is a simplification of for example:
+>> >>
+>> https://github.com/wadpac/GGIR/blob/master/tests/testthat/test_read.myacc.csv.R
+>> >>
+>> >> )
+>> >>
+>> >> Does this mean I am discouraged from putting a vector with POSIXct
+>> >> values
+>> >> in a data.frame?
+>> >> If yes, what would be the recommended work around?
+>> >>
+>> >> I have been trying to find documentation or online discussions about
+>> >> this
+>> >> warning but no luck so far. I see R NEWS
+>> >> <https://cran.r-project.org/doc/manuals/r-release/NEWS.html> mentions
+>> >> updates to POSIXct related objects several times in the past year but
+>> >> those
+>> >> seem to be different issues.
+>> >>
+>> >> Best,
+>> >>
+>> >> Vincent
+>> >>
+>> >>     [[alternative HTML version deleted]]
+>> >>
+>> >> ______________________________________________
+>> >> R-package-devel at r-project.org mailing list
+>> >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>> >
+>> > ______________________________________________
+>> > R-package-devel at r-project.org mailing list
+>> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Enrico Schumann
+Lucerne, Switzerland
+http://enricoschumann.net
+
+
+From v|ncentv@nhee@ @end|ng |rom gm@||@com  Thu Jul  6 15:54:22 2023
+From: v|ncentv@nhee@ @end|ng |rom gm@||@com (Vincent van Hees)
+Date: Thu, 6 Jul 2023 15:54:22 +0200
+Subject: [R-pkg-devel] Warning 'as.data.frame.POSIXct()' is deprecated
+In-Reply-To: <25766.49168.981543.584124@rob.eddelbuettel.com>
+References: <CALnEB16CAR28kTtkvVcEOQj3Tmyc_rwCjckwexnQsA3_ZkFPCg@mail.gmail.com>
+ <1e8bc3aa-1614-3cd4-f0db-01735c152e7f@hiddenelephants.co.uk>
+ <15178f56-0d28-e7fa-000f-959c00dd63ca@hiddenelephants.co.uk>
+ <CALnEB17VsNZC5U_usC+qxXgx4ngZFwGpO2W_Tg8L6WQ9rm83Qg@mail.gmail.com>
+ <25766.48695.704943.188152@rob.eddelbuettel.com>
+ <25766.49168.981543.584124@rob.eddelbuettel.com>
+Message-ID: <CALnEB16wamBT7XFT_4ThGoDZ8byv8CVD5ZE2bzmVgiiDdGKjQA@mail.gmail.com>
+
+Thanks Dirk,
+My plan will then be to revise my package to avoid using POSIXlt when
+POSIXct is also sufficient, given that I am storing timestamps in
+data.frames a lot. In the few instances where POSIXlt may be necessary I
+will avoid storing them in a data.frame.
+Vincent
+
+On Thu, 6 Jul 2023 at 15:22, Dirk Eddelbuettel <edd at debian.org> wrote:
+
+>
+> On 6 July 2023 at 08:14, Dirk Eddelbuettel wrote:
+> |
+> | On 6 July 2023 at 14:31, Vincent van Hees wrote:
+> | | Thanks, in that case the REPLEX for the issue may need to be:
+> | |
+> | | > remember = Sys.getenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_")
+> | | > Sys.setenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_" = TRUE)
+> | | > data.frame(time = Sys.time())
+> | |                  time
+> | | 1 2023-07-06 14:29:37
+> | | > data.frame(time = as.POSIXlt(Sys.time()))
+> | |                  time
+> | | 1 2023-07-06 14:29:37
+> | | Warning message:
+> | | Direct call of 'as.data.frame.POSIXct()' is deprecated.  Use
+> | | 'as.data.frame.vector()' or 'as.data.frame()' instead
+> | | > Sys.setenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_" = remember)
+> |
+> | Does _not_ happen in a plain R session.
+> |
+> | Does happen when `library(tidyverse)` is executed first. May come from
+> | `tibble` or `vectors`, I have a habit of not using those much.
+>
+> Err, no, wait. I may have confused myself here jumping between R-devel and
+> R (release).  Please disregard, and apologies for the noise.
+>
+> In any event, assigning a POSIXlt (which is an 11-element list) to a single
+> column is not a great idiom and we had the POSIXct conversion there for a
+> while IIRC.
+>
+> But assigning a POSIXct to a column should always work, and I would be
+> surprised to find a minimally complete reproducible example showing that it
+> does not.
+>
+> Dirk
+>
+> | Dirk
+> |
+> | | Vincent
+> | |
+> | | On Thu, 6 Jul 2023 at 10:41, Tim Taylor <
+> tim.taylor at hiddenelephants.co.uk>
+> | | wrote:
+> | |
+> | | > Apologies - I've not had enough caffeine just yet. The reprex below
+> | | > highlights the issue but I think the code which implemented the
+> change
+> | | > *may* need tweaking not lapply.
+> | | >
+> | | > Tim
+> | | >
+> | | > On 06/07/2023 09:26, Tim Taylor wrote:
+> | | > > This *may* be an issue in lapply.  Let's see what others day.
+> Reprex
+> | | > > below
+> | | > >
+> | | > > Sys.setenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_" = TRUE)
+> | | > > dat <- Sys.Date()
+> | | > > as.data.frame(dat)
+> | | > > #>          dat
+> | | > > #> 1 2023-07-06
+> | | > > lapply(dat, as.data.frame)
+> | | > > #> Warning: Direct call of 'as.data.frame.Date()' is deprecated.
+> Use
+> | | > > #> 'as.data.frame.vector()' or 'as.data.frame()' instead
+> | | > > #> [[1]]
+> | | > > #>       X[[i]]
+> | | > > #> 1 2023-07-06
+> | | > >
+> | | > > Tim
+> | | > >
+> | | > > On 06/07/2023 08:54, Vincent van Hees wrote:
+> | | > >> Dear all,
+> | | > >>
+> | | > >> I see the following warning in my package test results:
+> | | > >>
+> | | > >> ```
+> | | > >> Warning
+> | | > >> Direct call of 'as.data.frame.POSIXct()' is deprecated.  Use
+> | | > >> 'as.data.frame.vector()' or 'as.data.frame()' instead
+> | | > >> ```
+> | | > >>
+> | | > >> The warning is not always there and I struggle to make it
+> | | > >> reproducible. I
+> | | > >> have encountered it in both Ubuntu 22.04 and in Windows 11, in
+> both R
+> | | > >> 4.3.0
+> | | > >> and 4.3.1, in both RStudio and in an GitHub Actions environment
+> (example
+> | | > >> <
+> https://github.com/wadpac/GGIR/actions/runs/5463862340/jobs/9945096566>).
+> | | >
+> | | > >>
+> | | > >> The warning gives the impression that I am doing something that R
+> no
+> | | > >> longer
+> | | > >> supports. However, I am not using the command
+> as.data.frame.POSIXct()
+> | | > >> anywhere directly in my code.
+> | | > >>
+> | | > >> When I dive into the code where the warnings occur I see patterns
+> like:
+> | | > >>
+> | | > >> ```
+> | | > >> now = Sys.time()
+> | | > >> df = data.frame (time = seq(now, now + 10, by =1),  B  = 1:11)
+> | | > >> ```
+> | | > >>
+> | | > >> (this is a simplification of for example:
+> | | > >>
+> | | >
+> https://github.com/wadpac/GGIR/blob/master/tests/testthat/test_read.myacc.csv.R
+> | | > >>
+> | | > >> )
+> | | > >>
+> | | > >> Does this mean I am discouraged from putting a vector with POSIXct
+> | | > >> values
+> | | > >> in a data.frame?
+> | | > >> If yes, what would be the recommended work around?
+> | | > >>
+> | | > >> I have been trying to find documentation or online discussions
+> about
+> | | > >> this
+> | | > >> warning but no luck so far. I see R NEWS
+> | | > >> <https://cran.r-project.org/doc/manuals/r-release/NEWS.html>
+> mentions
+> | | > >> updates to POSIXct related objects several times in the past year
+> but
+> | | > >> those
+> | | > >> seem to be different issues.
+> | | > >>
+> | | > >> Best,
+> | | > >>
+> | | > >> Vincent
+> | | > >>
+> | | > >>     [[alternative HTML version deleted]]
+> | | > >>
+> | | > >> ______________________________________________
+> | | > >> R-package-devel at r-project.org mailing list
+> | | > >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> | | > >
+> | | > > ______________________________________________
+> | | > > R-package-devel at r-project.org mailing list
+> | | > > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> | | >
+> | |
+> | |     [[alternative HTML version deleted]]
+> | |
+> | | ______________________________________________
+> | | R-package-devel at r-project.org mailing list
+> | | https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> |
+> | --
+> | dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+
+	[[alternative HTML version deleted]]
+
+
+From t|m@t@y|or @end|ng |rom h|ddene|eph@nt@@co@uk  Thu Jul  6 16:11:41 2023
+From: t|m@t@y|or @end|ng |rom h|ddene|eph@nt@@co@uk (Tim Taylor)
+Date: Thu, 6 Jul 2023 15:11:41 +0100
+Subject: [R-pkg-devel] Warning 'as.data.frame.POSIXct()' is deprecated
+In-Reply-To: <87wmzdcg23.fsf@aldus>
+References: <CALnEB16CAR28kTtkvVcEOQj3Tmyc_rwCjckwexnQsA3_ZkFPCg@mail.gmail.com>
+ <1e8bc3aa-1614-3cd4-f0db-01735c152e7f@hiddenelephants.co.uk>
+ <15178f56-0d28-e7fa-000f-959c00dd63ca@hiddenelephants.co.uk>
+ <CALnEB17VsNZC5U_usC+qxXgx4ngZFwGpO2W_Tg8L6WQ9rm83Qg@mail.gmail.com>
+ <87wmzdcg23.fsf@aldus>
+Message-ID: <4d7bc097-0ea9-96b2-81ea-36203a7f7310@hiddenelephants.co.uk>
+
+Ah yes ... and reading the as.data.frame help we see (emphasis mine):
+
+"... Direct calls to as.data.frame.<class>() are still possible (*base 
+package!*), for 12 atomic base classes, but will deprecated ..."
+
+So it does seem that a lot of these warnings are triggered by base R and 
+updating this code may be a work in progress.
+
+
+A little tangential (but related) to this though is still the fact that 
+we can trigger the warning with:
+
+lapply(Sys.Date(), as.data.frame)
+
+so I wonder if the code in base/R/zzz.R 
+(https://github.com/wch/r-source/blob/9f1940663f902174034a01197e55fd17c767213a/src/library/base/R/zzz.R#L664-L686) 
+does need tweaking?
+
+At this stage this is probably more a question for R-devel though.
+
+Tim
+
+
+On 06/07/2023 14:42, Enrico Schumann wrote:
+> On Thu, 06 Jul 2023, Vincent van Hees writes:
+>
+>> Thanks, in that case the REPLEX for the issue may need to be:
+>>
+>>> remember = Sys.getenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_")
+>>> Sys.setenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_" = TRUE)
+>>> data.frame(time = Sys.time())
+>>                   time
+>> 1 2023-07-06 14:29:37
+>>> data.frame(time = as.POSIXlt(Sys.time()))
+>>                   time
+>> 1 2023-07-06 14:29:37
+>> Warning message:
+>> Direct call of 'as.data.frame.POSIXct()' is deprecated.  Use
+>> 'as.data.frame.vector()' or 'as.data.frame()' instead
+>>> Sys.setenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_" = remember)
+>
+> I think it happens because
+>
+>      data.frame(<POSIXlt>)
+>
+> calls 'as.data.frame.POSIXlt' (per its S3-class), which
+> in turn directly calls 'as.data.frame.POSIXct':
+>
+>      ## as.data.frame.POSIXlt
+>      function (x, row.names = NULL, optional = FALSE, ...)
+>      {
+>          value <- as.data.frame.POSIXct(as.POSIXct(x), row.names,
+>              optional, ...)
+>          if (!optional)
+>              names(value) <- deparse1(substitute(x))
+>          value
+>      }
+>      <environment: namespace:base>
+>
+> Kind regards
+>      Enrico
+>
+>> Vincent
+>>
+>> On Thu, 6 Jul 2023 at 10:41, Tim Taylor <tim.taylor at hiddenelephants.co.uk>
+>> wrote:
+>>
+>>> Apologies - I've not had enough caffeine just yet. The reprex below
+>>> highlights the issue but I think the code which implemented the change
+>>> *may* need tweaking not lapply.
+>>>
+>>> Tim
+>>>
+>>> On 06/07/2023 09:26, Tim Taylor wrote:
+>>>> This *may* be an issue in lapply.  Let's see what others day. Reprex
+>>>> below
+>>>>
+>>>> Sys.setenv("_R_CHECK_AS_DATA_FRAME_EXPLICIT_METHOD_" = TRUE)
+>>>> dat <- Sys.Date()
+>>>> as.data.frame(dat)
+>>>> #>          dat
+>>>> #> 1 2023-07-06
+>>>> lapply(dat, as.data.frame)
+>>>> #> Warning: Direct call of 'as.data.frame.Date()' is deprecated.  Use
+>>>> #> 'as.data.frame.vector()' or 'as.data.frame()' instead
+>>>> #> [[1]]
+>>>> #>       X[[i]]
+>>>> #> 1 2023-07-06
+>>>>
+>>>> Tim
+>>>>
+>>>> On 06/07/2023 08:54, Vincent van Hees wrote:
+>>>>> Dear all,
+>>>>>
+>>>>> I see the following warning in my package test results:
+>>>>>
+>>>>> ```
+>>>>> Warning
+>>>>> Direct call of 'as.data.frame.POSIXct()' is deprecated.  Use
+>>>>> 'as.data.frame.vector()' or 'as.data.frame()' instead
+>>>>> ```
+>>>>>
+>>>>> The warning is not always there and I struggle to make it
+>>>>> reproducible. I
+>>>>> have encountered it in both Ubuntu 22.04 and in Windows 11, in both R
+>>>>> 4.3.0
+>>>>> and 4.3.1, in both RStudio and in an GitHub Actions environment (example
+>>>>> <https://github.com/wadpac/GGIR/actions/runs/5463862340/jobs/9945096566>).
+>>>>> The warning gives the impression that I am doing something that R no
+>>>>> longer
+>>>>> supports. However, I am not using the command as.data.frame.POSIXct()
+>>>>> anywhere directly in my code.
+>>>>>
+>>>>> When I dive into the code where the warnings occur I see patterns like:
+>>>>>
+>>>>> ```
+>>>>> now = Sys.time()
+>>>>> df = data.frame (time = seq(now, now + 10, by =1),  B  = 1:11)
+>>>>> ```
+>>>>>
+>>>>> (this is a simplification of for example:
+>>>>>
+>>> https://github.com/wadpac/GGIR/blob/master/tests/testthat/test_read.myacc.csv.R
+>>>>> )
+>>>>>
+>>>>> Does this mean I am discouraged from putting a vector with POSIXct
+>>>>> values
+>>>>> in a data.frame?
+>>>>> If yes, what would be the recommended work around?
+>>>>>
+>>>>> I have been trying to find documentation or online discussions about
+>>>>> this
+>>>>> warning but no luck so far. I see R NEWS
+>>>>> <https://cran.r-project.org/doc/manuals/r-release/NEWS.html> mentions
+>>>>> updates to POSIXct related objects several times in the past year but
+>>>>> those
+>>>>> seem to be different issues.
+>>>>>
+>>>>> Best,
+>>>>>
+>>>>> Vincent
+>>>>>
+>>>>>      [[alternative HTML version deleted]]
+>>>>>
+>>>>> ______________________________________________
+>>>>> R-package-devel at r-project.org mailing list
+>>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>> ______________________________________________
+>>>> R-package-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>> 	[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From dewey @end|ng |rom dunn|ngton@c@  Thu Jul  6 20:22:26 2023
+From: dewey @end|ng |rom dunn|ngton@c@ (Dewey Dunnington)
+Date: Thu, 06 Jul 2023 15:22:26 -0300
+Subject: [R-pkg-devel] Best practices for CRAN package using Go
+Message-ID: <399846c80a91ae21c96942890fc8d3b8@dunnington.ca>
+
+Hi all,
+
+I'm wondering if there is any precedent for using Go in a CRAN R 
+package. Go is a particularly good language for writing database drivers 
+for the Arrow Database Connectivity framework [1][2] and - importantly - 
+there are several active developers writing these drivers from which R 
+users might be able to benefit (notably, the Snowflake driver, for which 
+there isn't currently a readily-available R connector).
+
+I've wrapped two of these drivers for R that seem to build and install 
+on MacOS, Linux, and Windows [3][4]; however, I am not sure if the 
+pattern I used is suitable for CRAN or whether these packages will have 
+to be GitHub-only for the foreseeable future. The pattern is roughly the 
+same as for Rust (build a static library and link it), and the build 
+process has similar requirements (a `go` binary with which `go build` 
+can be run; the build process downloads dependencies as it goes just 
+like `cargo build`).
+
+Thanks in advance for any insight!
+
+Cheers,
+
+-dewey
+
+[1] https://arrow.apache.org/adbc
+[2] https://cran.r-project.org/package=adbcdrivermanager
+[3] 
+https://github.com/apache/arrow-adbc/tree/main/r/adbcflightsql#readme
+[4] 
+https://github.com/apache/arrow-adbc/tree/main/r/adbcsnowflake#readme
+
+
