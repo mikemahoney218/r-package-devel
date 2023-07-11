@@ -2060,3 +2060,360 @@ Martin Maechler
 ETH Zurich   and   R Core team
 
 
+From yut@n|@|n| @end|ng |rom gm@||@com  Mon Jul 10 10:24:37 2023
+From: yut@n|@|n| @end|ng |rom gm@||@com (Hiroaki Yutani)
+Date: Mon, 10 Jul 2023 17:24:37 +0900
+Subject: [R-pkg-devel] Is it a wrong assumption that ${R_HOME}/lib always
+ exists?
+Message-ID: <CALyqOb-9xoBMDg_Xd69Gmju1Fj8rqoRAA2344giXKPiKq=Nr-A@mail.gmail.com>
+
+Hi,
+
+My package, string2path, using Rust fails on the CRAN check of MKL [1],
+with an error that seems irrelevant to MKL. The error says:
+
+>   thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value:
+Os { code: 2, kind: NotFound, message: "No such file or directory" }',
+/data/gannet/ripley/R/packages/tests-MKL/string2path/src/rust/vendor/libR-sys/build.rs:637
+:40
+
+The line 637 of build.rs of libR-sys crate is here [2]:
+
+    r_paths.library.canonicalize().unwrap().display()
+
+Compared to the previous version, which didn't experience such a failure,
+.canonicalize() was added, and it seems this is the cause. This method
+normalizes the path expression like R's normalizePath(), and it fails
+because the path specified didn't exist.
+
+libR-sys assumes the path to R's shared libraries is `${R_HOME}/lib` on
+Unix-alike platforms. Is it possible that this path doesn't exist on the
+MKL server? Actually, it compiles fine on the other Linux platforms, so I'm
+wondering what's different there from the other servers.
+
+Best,
+Yutani
+
+[1]: https://cran.r-project.org/web/checks/check_results_string2path.html
+[2]: https://github.com/extendr/libR-sys/blob/v0.5.0/build.rs#L637C1-L637C58
+
+	[[alternative HTML version deleted]]
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Mon Jul 10 10:51:46 2023
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Mon, 10 Jul 2023 10:51:46 +0200
+Subject: [R-pkg-devel] 
+ Is it a wrong assumption that ${R_HOME}/lib always exists?
+In-Reply-To: <CALyqOb-9xoBMDg_Xd69Gmju1Fj8rqoRAA2344giXKPiKq=Nr-A@mail.gmail.com>
+References: <CALyqOb-9xoBMDg_Xd69Gmju1Fj8rqoRAA2344giXKPiKq=Nr-A@mail.gmail.com>
+Message-ID: <25771.50850.238743.106346@stat.math.ethz.ch>
+
+>>>>> Hiroaki Yutani 
+>>>>>     on Mon, 10 Jul 2023 17:24:37 +0900 writes:
+
+[...............]
+
+Short answer to your questsion (from the 'Subject') is :    NO !
+For an example, see below:
+
+    > libR-sys assumes the path to R's shared libraries is
+    > `${R_HOME}/lib` on Unix-alike platforms.
+
+In some configurations, R does not need *any* shared libraries,
+and there,  $R_HOME/lib  does *not* exist.
+
+E.g., I have one of my R-devel versions installed (on Fedora
+Linux) with
+
+        ../R/configure --with-blas=-lflexiblas 
+
+using the nice, currently Fedora/Redhat-only "flexiblas"
+approach, with which I can nicely switch the versions of BLAS
+and Lapack libraries that R works with from within R.
+
+As that version of R is not "shared", i.e., no libR.so , *and*
+gets both its BLAS and Lapack libraries from "external" (not
+from R), there's no need for a ./lib/  and so none is created.
+
+Martin Maechler
+ETH Zurich  and  R Core Team
+
+
+    > Is it possible
+    > that this path doesn't exist on the MKL server? 
+
+    > Actually, it compiles fine on the other Linux platforms,
+    > so I'm wondering what's different there from the other
+    > servers.
+
+
+    > Best, Yutani
+    > 	[[alternative HTML version deleted]]
+
+
+From yut@n|@|n| @end|ng |rom gm@||@com  Mon Jul 10 11:41:29 2023
+From: yut@n|@|n| @end|ng |rom gm@||@com (Hiroaki Yutani)
+Date: Mon, 10 Jul 2023 18:41:29 +0900
+Subject: [R-pkg-devel] 
+ Is it a wrong assumption that ${R_HOME}/lib always exists?
+In-Reply-To: <25771.50850.238743.106346@stat.math.ethz.ch>
+References: <CALyqOb-9xoBMDg_Xd69Gmju1Fj8rqoRAA2344giXKPiKq=Nr-A@mail.gmail.com>
+ <25771.50850.238743.106346@stat.math.ethz.ch>
+Message-ID: <CALyqOb8YQgfR1zDY68HHEwiRfR-50upVih6So-aSPy35mMHp7Q@mail.gmail.com>
+
+Thanks so much for the quick response. It answered everything!
+It was my mistake that I didn't consider these types of installations.
+I'll fix my package as soon as I can.
+
+Best,
+Yutani
+
+2023?7?10?(?) 17:51 Martin Maechler <maechler at stat.math.ethz.ch>:
+
+> >>>>> Hiroaki Yutani
+> >>>>>     on Mon, 10 Jul 2023 17:24:37 +0900 writes:
+>
+> [...............]
+>
+> Short answer to your questsion (from the 'Subject') is :    NO !
+> For an example, see below:
+>
+>     > libR-sys assumes the path to R's shared libraries is
+>     > `${R_HOME}/lib` on Unix-alike platforms.
+>
+> In some configurations, R does not need *any* shared libraries,
+> and there,  $R_HOME/lib  does *not* exist.
+>
+> E.g., I have one of my R-devel versions installed (on Fedora
+> Linux) with
+>
+>         ../R/configure --with-blas=-lflexiblas
+>
+> using the nice, currently Fedora/Redhat-only "flexiblas"
+> approach, with which I can nicely switch the versions of BLAS
+> and Lapack libraries that R works with from within R.
+>
+> As that version of R is not "shared", i.e., no libR.so , *and*
+> gets both its BLAS and Lapack libraries from "external" (not
+> from R), there's no need for a ./lib/  and so none is created.
+>
+> Martin Maechler
+> ETH Zurich  and  R Core Team
+>
+>
+>     > Is it possible
+>     > that this path doesn't exist on the MKL server?
+>
+>     > Actually, it compiles fine on the other Linux platforms,
+>     > so I'm wondering what's different there from the other
+>     > servers.
+>
+>
+>     > Best, Yutani
+>     >   [[alternative HTML version deleted]]
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Mon Jul 10 16:09:51 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Mon, 10 Jul 2023 17:09:51 +0300
+Subject: [R-pkg-devel] Best practices for CRAN package using Go
+In-Reply-To: <399846c80a91ae21c96942890fc8d3b8@dunnington.ca>
+References: <399846c80a91ae21c96942890fc8d3b8@dunnington.ca>
+Message-ID: <20230710170951.35efc274@arachnoid>
+
+? Thu, 06 Jul 2023 15:22:26 -0300
+Dewey Dunnington <dewey at dunnington.ca> ?????:
+
+> I've wrapped two of these drivers for R that seem to build and
+> install on MacOS, Linux, and Windows [3][4]; however, I am not sure
+> if the pattern I used is suitable for CRAN or whether these packages
+> will have to be GitHub-only for the foreseeable future.
+
+There are a few parts to following the CRAN policy [*] regarding
+external dependencies.
+
+I think (but don't know for sure) that your package will not be allowed
+to download Go by itself. The policy says: "Only as a last resort and
+with the agreement of the CRAN team should a package download
+pre-compiled software."
+
+An already installed Go should be able to "first look to see if [a
+dependency] is already installed and if so is of a suitable version"
+when installing the dependencies of the Go part of the code. The go.mod
+and go.sum files specify the exact versions and checksums of the
+dependencies, which satisfies the requirement for fixed dependency
+versions ("it is acceptable to download them as part of installation,
+but do ensure that the download is of a fixed version rather than the
+latest"), so your package seems to be fine in this respect.
+
+One more thing: when bootstrapping the source package, can you run go
+mod vendor [**] in order to bundle *all* the Go dependencies together
+with the package? Is the resulting directory prohibitively large? Would
+it satisfy the CRAN policy preference to "include the library sources
+in the package and compile them as part of package installation"
+without requiring Internet access? Unfortunately, I don't know enough
+about Go to answer these questions myself. I think that a small bundle
+of vendored Go code would be preferrable for CRAN but *not* preferrable
+for packaging in a GNU/Linux distro like Debian where dynamic linking
+(in the widest possible sense) is a strong preference.
+
+-- 
+Best regards,
+Ivan
+
+[*] https://cran.r-project.org/web/packages/policies.html
+
+[**] https://go.dev/ref/mod#vendoring
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Mon Jul 10 16:30:34 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Mon, 10 Jul 2023 17:30:34 +0300
+Subject: [R-pkg-devel] A replacement idiom for \value{\item{\var{...}}{}}
+Message-ID: <20230710173034.1c241295@arachnoid>
+
+Hello R-package-devel,
+
+I've got a function that returns a data.frame. The columns (and their
+names) of the return value are parametrised by the arguments of the
+function. See, for example, the following function:
+
+foo <- function(n = 10, out.M = c(2, 3, 5))
+ as.data.frame(setNames(
+  lapply(out.M, \(M) M * runif(n)),
+  paste0('fooval.', out.M)
+ ))
+
+If I call it as foo(out.M = 1), I get a data.frame containing a column
+named fooval.1. If I call it as foo(), I get columns fooval.2,
+fooval.3, and fooval.5 instead.
+
+I would like to document this relationship between the arguments and
+the output value like so:
+
+\arguments{
+ \item{out.M}{Return the foo vectors for every M value given here.}
+ % more arguments that behave in a similar manner
+}
+% ...
+\value{
+ A \code{data.frame} containing the following columns:
+
+ \item{fooval.\var{m}}{
+  The foo values, for every \var{m} in \code{out.M}.
+ }
+ % more parametrised output columns to follow
+}
+
+It turns out that \value{} description lists now escape their \item{}
+arguments, preventing me from using \var{} markup there, but only in
+plain text and HTML outputs. I think that the change occurred in the
+last year or so; old versions of R process markup in \item{} arguments
+even in \value{} description lists, but they have other Rd problems. I
+understand the motivation of the change: in \arguments{} and \value{}
+environments, it makes sense to typeset \item{} headings as \code{}.
+
+Should I try to fix Rd2latex (or at least file a ticket) to escape the
+\item{...} arguments in \value{} (but not \describe{}!) environments
+too?
+
+What would be a better Rd idiom for such function argument ? output
+component relationships?
+
+-- 
+Best regards,
+Ivan
+
+
+From @eb@meyer @end|ng |rom |@u@de  Mon Jul 10 20:08:23 2023
+From: @eb@meyer @end|ng |rom |@u@de (Sebastian Meyer)
+Date: Mon, 10 Jul 2023 20:08:23 +0200
+Subject: [R-pkg-devel] 
+ A replacement idiom for \value{\item{\var{...}}{}}
+In-Reply-To: <20230710173034.1c241295@arachnoid>
+References: <20230710173034.1c241295@arachnoid>
+Message-ID: <ca3da5f8-8b0f-6465-15d7-1c730e08ff0e@fau.de>
+
+Am 10.07.23 um 16:30 schrieb Ivan Krylov:
+> Hello R-package-devel,
+> 
+> I've got a function that returns a data.frame. The columns (and their
+> names) of the return value are parametrised by the arguments of the
+> function. See, for example, the following function:
+> 
+> foo <- function(n = 10, out.M = c(2, 3, 5))
+>   as.data.frame(setNames(
+>    lapply(out.M, \(M) M * runif(n)),
+>    paste0('fooval.', out.M)
+>   ))
+> 
+> If I call it as foo(out.M = 1), I get a data.frame containing a column
+> named fooval.1. If I call it as foo(), I get columns fooval.2,
+> fooval.3, and fooval.5 instead.
+> 
+> I would like to document this relationship between the arguments and
+> the output value like so:
+> 
+> \arguments{
+>   \item{out.M}{Return the foo vectors for every M value given here.}
+>   % more arguments that behave in a similar manner
+> }
+> % ...
+> \value{
+>   A \code{data.frame} containing the following columns:
+> 
+>   \item{fooval.\var{m}}{
+>    The foo values, for every \var{m} in \code{out.M}.
+>   }
+>   % more parametrised output columns to follow
+> }
+> 
+> It turns out that \value{} description lists now escape their \item{}
+> arguments, preventing me from using \var{} markup there, but only in
+> plain text and HTML outputs. I think that the change occurred in the
+> last year or so; old versions of R process markup in \item{} arguments
+> even in \value{} description lists, but they have other Rd problems. I
+> understand the motivation of the change: in \arguments{} and \value{}
+> environments, it makes sense to typeset \item{} headings as \code{}.
+
+Thank you for the report. AFAICS, this only affects HTML conversion in R 
+ >= 4.3.0. It is an "internally" known limitation (see corresponding 
+source code comment in Rd2HTML).
+
+OTOH, WRE does not clearly specify that \item labels in \arguments or 
+\value could actually contain any markup. That said, the referenced 
+"Parsing Rd files" document 
+(<https://developer.r-project.org/parseRd.pdf>) does tell us that 
+\item{}{} arguments are parsed as LaTeX-like text, \dots probably being 
+the most common example.
+
+> 
+> Should I try to fix Rd2latex (or at least file a ticket) to escape the
+> \item{...} arguments in \value{} (but not \describe{}!) environments
+> too?
+
+Yes, I think this belongs to "R-devel" and a problem report in Bugzilla 
+would be useful; the problem being that Rd markup in \item labels is 
+handled inconsistently by the Rd converters. It is currently unclear to 
+me, however, which one is at fault here. Your example at least provides 
+one (admittedly quiet special) use case for LaTeX-like content in an 
+\item label of the \value section.
+
+> 
+> What would be a better Rd idiom for such function argument ? output
+> component relationships?
+> 
+
+I think a workaround that currently works for your use case is to use 
+\code{fooval.\var{m}} as the label (i.e., wrapped inside \code).
+
+Best regards,
+
+	Sebastian Meyer
+
+
