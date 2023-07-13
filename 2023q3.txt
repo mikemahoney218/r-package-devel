@@ -2417,3 +2417,474 @@ Best regards,
 	Sebastian Meyer
 
 
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Wed Jul 12 09:40:20 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Wed, 12 Jul 2023 09:40:20 +0200
+Subject: [R-pkg-devel] issues with CRAN incoming submissions / summer break
+ announcement
+Message-ID: <7c654dd5-721a-cdb6-f432-94b9ddbae176@statistik.tu-dortmund.de>
+
+Dear developers,
+
+CRAN submissions are currently partly not possible due to some 
+infrastructure issues. Please so NOT contact us if you see "Unpacking 
+failed. Please make sure the tar.gz was created with R CMD build. [...]".
+
+In addition, processing the CRAN incoming queue of packages (CRAN 
+pretest) is currently delayed by 2 days.
+
+Both issues are known and CRAN sysadmins will work on the issues.
+
+
+Note that this year's CRAN submission summer break will be from Jul 21, 
+2023 to Aug 7, 2023.
+
+Best,
+Uwe Ligges
+for the CRAN team
+
+
+From ru@@e||@g@@|mond @end|ng |rom gm@||@com  Wed Jul 12 15:41:11 2023
+From: ru@@e||@g@@|mond @end|ng |rom gm@||@com (Russell Almond)
+Date: Wed, 12 Jul 2023 09:41:11 -0400
+Subject: [R-pkg-devel] Package Load fails to find 3rd Party DLL
+Message-ID: <7feb7697-be2f-7bf8-3e7c-4276a0cb69c8@gmail.com>
+
+I have an R package (RNetica available at 
+https://ralmond.r-universe.dev/RNetica and 
+https://github.com/ralmond/RNetica) which links to a 3rd party library 
+Netica.dll, so RNetica.dll (built from my C code) calls the 3rd party code.
+
+The config.win script downloads Netica.dll and moves it into the 
+libs/x64 directory, where it should get loaded when RNetica.dll is 
+loaded.? However this is not happening:
+
+Here is the relevant portion of the build log (build is on R-universe, 
+but I think it is the same script as CRAN):
+
+```
+
+cp 
+"/d/a/ralmond/ralmond/RNETIC~1.RCH/00_PKG~1/RNetica/src/Netica/Netica_API_5
+10/lib64/Netica.dll" 
+"D:/a/ralmond/ralmond/RNetica.Rcheck/00LOCK-RNetica/00new/R
+Netica/libs/x64"
+ ? cp 
+"/d/a/ralmond/ralmond/RNETIC~1.RCH/00_PKG~1/RNetica/src/Netica/Netica_API_5
+10/lib64/Netica.lib" 
+"D:/a/ralmond/ralmond/RNetica.Rcheck/00LOCK-RNetica/00new/R
+Netica/libs/x64"
+ ? C:\rtools43\x86_64-w64-mingw32.static.posix\bin\nm.exe: 'NeticaDLL': 
+No such f
+ile
+ ? gcc -shared -s -static-libgcc -o RNetica.dll tmp.def Cases.o 
+Continuous.o Edge
+s.o Experience.o Inference.o Networks.o Node.o Random.o Registration.o 
+Session.o
+ ?-L. 
+-LD:/a/ralmond/ralmond/RNetica.Rcheck/00LOCK-RNetica/00new/RNetica/libs/x64
+ ?-lNetica -LC:/rtools43/x86_64-w64-mingw32.static.posix/lib/x64 
+-LC:/rtools43/x8
+6_64-w64-mingw32.static.posix/lib -LC:/R/bin/x64 -lR
+ ? C:\rtools43\x86_64-w64-mingw32.static.posix\bin/ld.exe: internal 
+error: aborti
+ng at ../../binutils-2.40/ld/ldlang.c:527 in compare_section
+ ? C:\rtools43\x86_64-w64-mingw32.static.posix\bin/ld.exe: please report 
+this bug
+ ? collect2.exe: error: ld returned 1 exit status
+```
+
+A little bit of searching on the internet, indicates that Windows 
+sometimes reports Dll A not found when Dll A needs Dll B and it can't 
+find B.
+
+This used to work under older versions of R and the tool chain and I 
+don't think I've changed anything related to the C side of the code.
+
+1) Have the paths changed, so I no longer should be moving the (64 bit 
+version of the) 3rd party DLL to `libs/x64`?
+
+2) Is there something that has changed with the mingw tools (nm.exe and 
+ld.exe) which are changing things?
+
+3) Is there a change on how win32 and win64 variants are handled (I have 
+both 32 and 64 bit copies of the 3rd party DLL, I just need to move them 
+to the right places).
+
+Thanks for any enlightenment you can offer,
+
+ ??? --Russell Almond
+
+
+
+
+-- 
+Russell Almond
+https://ralmond.net/
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Wed Jul 12 16:00:14 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Wed, 12 Jul 2023 07:00:14 -0700
+Subject: [R-pkg-devel] Package Load fails to find 3rd Party DLL
+In-Reply-To: <7feb7697-be2f-7bf8-3e7c-4276a0cb69c8@gmail.com>
+References: <7feb7697-be2f-7bf8-3e7c-4276a0cb69c8@gmail.com>
+Message-ID: <02C6131C-2CD4-41FA-9B32-B0B74969F86E@dcn.davis.ca.us>
+
+Use of precompiled code is not allowed in CRAN. This looks like your package needs to be distributed elsewhere... e.g. via GitHub.
+
+On July 12, 2023 6:41:11 AM PDT, Russell Almond <russell.g.almond at gmail.com> wrote:
+>I have an R package (RNetica available at 
+>https://ralmond.r-universe.dev/RNetica and 
+>https://github.com/ralmond/RNetica) which links to a 3rd party library 
+>Netica.dll, so RNetica.dll (built from my C code) calls the 3rd party code.
+>
+>The config.win script downloads Netica.dll and moves it into the 
+>libs/x64 directory, where it should get loaded when RNetica.dll is 
+>loaded.? However this is not happening:
+>
+>Here is the relevant portion of the build log (build is on R-universe, 
+>but I think it is the same script as CRAN):
+>
+>```
+>
+>cp 
+>"/d/a/ralmond/ralmond/RNETIC~1.RCH/00_PKG~1/RNetica/src/Netica/Netica_API_5
+>10/lib64/Netica.dll" 
+>"D:/a/ralmond/ralmond/RNetica.Rcheck/00LOCK-RNetica/00new/R
+>Netica/libs/x64"
+> ? cp 
+>"/d/a/ralmond/ralmond/RNETIC~1.RCH/00_PKG~1/RNetica/src/Netica/Netica_API_5
+>10/lib64/Netica.lib" 
+>"D:/a/ralmond/ralmond/RNetica.Rcheck/00LOCK-RNetica/00new/R
+>Netica/libs/x64"
+> ? C:\rtools43\x86_64-w64-mingw32.static.posix\bin\nm.exe: 'NeticaDLL': 
+>No such f
+>ile
+> ? gcc -shared -s -static-libgcc -o RNetica.dll tmp.def Cases.o 
+>Continuous.o Edge
+>s.o Experience.o Inference.o Networks.o Node.o Random.o Registration.o 
+>Session.o
+> ?-L. 
+>-LD:/a/ralmond/ralmond/RNetica.Rcheck/00LOCK-RNetica/00new/RNetica/libs/x64
+> ?-lNetica -LC:/rtools43/x86_64-w64-mingw32.static.posix/lib/x64 
+>-LC:/rtools43/x8
+>6_64-w64-mingw32.static.posix/lib -LC:/R/bin/x64 -lR
+> ? C:\rtools43\x86_64-w64-mingw32.static.posix\bin/ld.exe: internal 
+>error: aborti
+>ng at ../../binutils-2.40/ld/ldlang.c:527 in compare_section
+> ? C:\rtools43\x86_64-w64-mingw32.static.posix\bin/ld.exe: please report 
+>this bug
+> ? collect2.exe: error: ld returned 1 exit status
+>```
+>
+>A little bit of searching on the internet, indicates that Windows 
+>sometimes reports Dll A not found when Dll A needs Dll B and it can't 
+>find B.
+>
+>This used to work under older versions of R and the tool chain and I 
+>don't think I've changed anything related to the C side of the code.
+>
+>1) Have the paths changed, so I no longer should be moving the (64 bit 
+>version of the) 3rd party DLL to `libs/x64`?
+>
+>2) Is there something that has changed with the mingw tools (nm.exe and 
+>ld.exe) which are changing things?
+>
+>3) Is there a change on how win32 and win64 variants are handled (I have 
+>both 32 and 64 bit copies of the 3rd party DLL, I just need to move them 
+>to the right places).
+>
+>Thanks for any enlightenment you can offer,
+>
+> ??? --Russell Almond
+>
+>
+>
+>
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From dewey @end|ng |rom dunn|ngton@c@  Wed Jul 12 16:36:30 2023
+From: dewey @end|ng |rom dunn|ngton@c@ (Dewey Dunnington)
+Date: Wed, 12 Jul 2023 11:36:30 -0300
+Subject: [R-pkg-devel] Best practices for CRAN package using Go
+In-Reply-To: <20230710170951.35efc274@arachnoid>
+References: <399846c80a91ae21c96942890fc8d3b8@dunnington.ca>
+ <20230710170951.35efc274@arachnoid>
+Message-ID: <d4522c8b37d7b8e1a3441a50c3988246@dunnington.ca>
+
+Thank you! It seems I needed the refresher on CRAN policy regarding 
+downloading sources: it seems like the go.sum/go.mod provide sufficient 
+checksumming to comply with the policy, as you noted (with `go mod 
+vendor` as a backup if this turns out to not be acceptable). Downloading 
+Go is probably out based on the advice for Rust that explicitly forbids 
+this.
+
+Cheers!
+
+-dewey
+
+On 2023-07-10 11:09, Ivan Krylov wrote:
+> ? Thu, 06 Jul 2023 15:22:26 -0300
+> Dewey Dunnington <dewey at dunnington.ca> ?????:
+> 
+>> I've wrapped two of these drivers for R that seem to build and
+>> install on MacOS, Linux, and Windows [3][4]; however, I am not sure
+>> if the pattern I used is suitable for CRAN or whether these packages
+>> will have to be GitHub-only for the foreseeable future.
+> 
+> There are a few parts to following the CRAN policy [*] regarding
+> external dependencies.
+> 
+> I think (but don't know for sure) that your package will not be allowed
+> to download Go by itself. The policy says: "Only as a last resort and
+> with the agreement of the CRAN team should a package download
+> pre-compiled software."
+> 
+> An already installed Go should be able to "first look to see if [a
+> dependency] is already installed and if so is of a suitable version"
+> when installing the dependencies of the Go part of the code. The go.mod
+> and go.sum files specify the exact versions and checksums of the
+> dependencies, which satisfies the requirement for fixed dependency
+> versions ("it is acceptable to download them as part of installation,
+> but do ensure that the download is of a fixed version rather than the
+> latest"), so your package seems to be fine in this respect.
+> 
+> One more thing: when bootstrapping the source package, can you run go
+> mod vendor [**] in order to bundle *all* the Go dependencies together
+> with the package? Is the resulting directory prohibitively large? Would
+> it satisfy the CRAN policy preference to "include the library sources
+> in the package and compile them as part of package installation"
+> without requiring Internet access? Unfortunately, I don't know enough
+> about Go to answer these questions myself. I think that a small bundle
+> of vendored Go code would be preferrable for CRAN but *not* preferrable
+> for packaging in a GNU/Linux distro like Debian where dynamic linking
+> (in the widest possible sense) is a strong preference.
+> 
+> --
+> Best regards,
+> Ivan
+> 
+> [*] https://cran.r-project.org/web/packages/policies.html
+> 
+> [**] https://go.dev/ref/mod#vendoring
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Jul 12 18:29:14 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 12 Jul 2023 19:29:14 +0300
+Subject: [R-pkg-devel] 
+ A replacement idiom for \value{\item{\var{...}}{}}
+In-Reply-To: <ca3da5f8-8b0f-6465-15d7-1c730e08ff0e@fau.de>
+References: <20230710173034.1c241295@arachnoid>
+ <ca3da5f8-8b0f-6465-15d7-1c730e08ff0e@fau.de>
+Message-ID: <20230712192914.589b233c@arachnoid>
+
+Dear Sebastian,
+
+Thank you for the advice!
+
+On Mon, 10 Jul 2023 20:08:23 +0200
+Sebastian Meyer <seb.meyer at fau.de> wrote:
+
+> I think a workaround that currently works for your use case is to use 
+> \code{fooval.\var{m}} as the label (i.e., wrapped inside \code).
+
+The workaround works well, but I think I agree that \item{fooval.<m>}{}
+is the the better option here. (I'm tempted, but I shouldn't use
+\item{\code{fooval.\var{<m>}}}, because \code{} arguments should be
+syntactically valid R.)
+
+I will also use \var{<m>} outside the \item headers, at least for now.
+
+-- 
+Best regards,
+Ivan
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Thu Jul 13 01:01:20 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Thu, 13 Jul 2023 11:01:20 +1200
+Subject: [R-pkg-devel] Best practices for CRAN package using Go
+In-Reply-To: <d4522c8b37d7b8e1a3441a50c3988246@dunnington.ca>
+References: <399846c80a91ae21c96942890fc8d3b8@dunnington.ca>
+ <20230710170951.35efc274@arachnoid>
+ <d4522c8b37d7b8e1a3441a50c3988246@dunnington.ca>
+Message-ID: <F85C4A1A-75FA-46C1-B2FC-1EF1E1F6E4F3@R-project.org>
+
+Dewey,
+
+you will definitely need to include all the necessary sources for your package. You may want to have a look at the "Using Rust"[1] document linked from the CRAN policy. I think Go is quite similar to Rust in that sense so you should use the same approach, i.e. checking for system and user installations (for go the official location is /usr/local/go/bin/go and it may not be on the PATH), declaring Go version dependency and making sure your package has included all module dependency sources (i.e. don't use install-time module resolution/download).
+
+If you need to include a large source tar ball that is not permissible on CRAN, I'd recommend using Zenodo.org since it is specifically designed to facilitate longevity and reproducibility (as opposed to Github or other transient storage that may disappear at any point).
+
+All that said, you may run into the same issues as Rust (errors and segfaults due to limited interoperability of compilers) so use with care and test well. External bindings like Rust or Go are only provided on "best effort" basis.
+
+Cheers,
+Simon
+
+[1] - https://cran.r-project.org/web/packages/using_rust.html
+
+PS: go is now available on the CRAN macOS builder machines and the Mac Builder (https://mac.r-project.org/macbuilder/submit.html).
+
+
+> On 13/07/2023, at 2:36 AM, Dewey Dunnington <dewey at dunnington.ca> wrote:
+> 
+> Thank you! It seems I needed the refresher on CRAN policy regarding downloading sources: it seems like the go.sum/go.mod provide sufficient checksumming to comply with the policy, as you noted (with `go mod vendor` as a backup if this turns out to not be acceptable). Downloading Go is probably out based on the advice for Rust that explicitly forbids this.
+> 
+> Cheers!
+> 
+> -dewey
+> 
+> On 2023-07-10 11:09, Ivan Krylov wrote:
+>> ? Thu, 06 Jul 2023 15:22:26 -0300
+>> Dewey Dunnington <dewey at dunnington.ca> ?????:
+>>> I've wrapped two of these drivers for R that seem to build and
+>>> install on MacOS, Linux, and Windows [3][4]; however, I am not sure
+>>> if the pattern I used is suitable for CRAN or whether these packages
+>>> will have to be GitHub-only for the foreseeable future.
+>> There are a few parts to following the CRAN policy [*] regarding
+>> external dependencies.
+>> I think (but don't know for sure) that your package will not be allowed
+>> to download Go by itself. The policy says: "Only as a last resort and
+>> with the agreement of the CRAN team should a package download
+>> pre-compiled software."
+>> An already installed Go should be able to "first look to see if [a
+>> dependency] is already installed and if so is of a suitable version"
+>> when installing the dependencies of the Go part of the code. The go.mod
+>> and go.sum files specify the exact versions and checksums of the
+>> dependencies, which satisfies the requirement for fixed dependency
+>> versions ("it is acceptable to download them as part of installation,
+>> but do ensure that the download is of a fixed version rather than the
+>> latest"), so your package seems to be fine in this respect.
+>> One more thing: when bootstrapping the source package, can you run go
+>> mod vendor [**] in order to bundle *all* the Go dependencies together
+>> with the package? Is the resulting directory prohibitively large? Would
+>> it satisfy the CRAN policy preference to "include the library sources
+>> in the package and compile them as part of package installation"
+>> without requiring Internet access? Unfortunately, I don't know enough
+>> about Go to answer these questions myself. I think that a small bundle
+>> of vendored Go code would be preferrable for CRAN but *not* preferrable
+>> for packaging in a GNU/Linux distro like Debian where dynamic linking
+>> (in the widest possible sense) is a strong preference.
+>> --
+>> Best regards,
+>> Ivan
+>> [*] https://cran.r-project.org/web/packages/policies.html
+>> [**] https://go.dev/ref/mod#vendoring
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From edd @end|ng |rom deb|@n@org  Thu Jul 13 02:02:57 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 12 Jul 2023 19:02:57 -0500
+Subject: [R-pkg-devel] macOS results not mirrored/updated at CRAN
+Message-ID: <25775.16177.937585.974774@rob.eddelbuettel.com>
+
+
+Simon,
+
+It looks like some result mirroring / pushing from your machines to CRAN fell
+over.  One of my packages, digest 0.6.33, arrived on CRAN about a week ago,
+is built almost everywhere (apart from macOS_release_x86_64 stuck at 0.6.32)
+but the result page still has nags from the 0.6.31 build for macOS release
+and one of the oldrel builds.
+
+Could you look into that?  And if it is "just" general issue at CRAN as per
+Uwe's email earlier I will happily wait.  But it has been in this frozen /
+partial update of results state for a few days now.
+
+Thanks,  Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From yut@n|@|n| @end|ng |rom gm@||@com  Thu Jul 13 02:37:41 2023
+From: yut@n|@|n| @end|ng |rom gm@||@com (Hiroaki Yutani)
+Date: Thu, 13 Jul 2023 09:37:41 +0900
+Subject: [R-pkg-devel] Feedback on "Using Rust in CRAN packages"
+Message-ID: <CALyqOb__9-M_rEJ20dz3T07aNKP9_BRG25jdQ248WJA0ShuFCA@mail.gmail.com>
+
+Hi,
+
+I'm glad to see CRAN now has its official policy about Rust [1]!
+It seems it probably needs some feedback from those who are familiar with
+the Rust workflow. I'm not an expert, but let me leave some quick feedback.
+This email is sent to the R-package-devel mailing list as well as to cran@~
+so that we can publicly discuss.
+
+It seems most of the concern is about how to make the build deterministic.
+In this regard, the policy should encourage including "Cargo.lock" file
+[2]. Cargo.lock is created on the first compile, and the resolved versions
+of dependencies are recorded. As long as this file exists, the dependency
+versions are locked to the ones in this file, except when the package
+author explicitly updates the versions.
+
+Cargo.lock also records the SHA256 checksums of the crates if they are from
+crates.io, Rust's official crate registry. If the checksums don't match,
+the build will fail with the following message:
+
+    error: checksum for `foo v0.1.2` changed between lock files
+
+    this could be indicative of a few possible errors:
+
+        * the lock file is corrupt
+        * a replacement source in use (e.g., a mirror) returned a different
+checksum
+        * the source itself may be corrupt in one way or another
+
+    unable to verify that `foo v0.1.2` is the same as when the lockfile was
+generated
+
+For dependencies from Git repositories, Cargo.lock records the commit
+hashes. So, the version of the source code (not the version of the crate)
+is uniquely determined. That said, unlike cargo.io, it's possible that the
+commit or the Git repository itself has disappeared at the time of
+building, which makes the build fail. So, it might be reasonable the CRAN
+policy prohibits the use of Git dependency unless the source code is
+bundled. I have no strong opinion here.
+
+Accordingly, I believe this sentence
+
+> In practice maintainers have found it nigh-impossible to meet these
+conditions whilst downloading as they have too little control.
+
+is not quite true. More specifically, these things
+
+> The standard way to download a Rust ?crate? is by its version number, and
+these have been changed without changing their number.
+> Downloading a ?crate? normally entails downloading its dependencies, and
+that is done without fixing their version numbers
+
+won't happen if the R package does include Cargo.lock because
+
+- if the crate is from crates.io, "the version can never be overwritten,
+and the code cannot be deleted" there [3]
+- if the crate is from a Git repository, the commit hash is unique in its
+nature. The version of the crate might be the same between commits, but a
+git dependency is specified by the commit hash, not the version of the
+crate.
+
+I'm keen to know what problems the CRAN maintainers have experienced that
+Cargo.lock cannot solve. I hope we can help somehow to improve the policy.
+
+Best,
+Yutani
+
+[1]: https://cran.r-project.org/web/packages/using_rust.html
+[2]: https://doc.rust-lang.org/cargo/guide/cargo-toml-vs-cargo-lock.html
+[3]: https://doc.rust-lang.org/cargo/reference/publishing.html
+
+	[[alternative HTML version deleted]]
+
+
