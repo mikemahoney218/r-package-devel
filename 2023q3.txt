@@ -4346,3 +4346,595 @@ Yutani
 	[[alternative HTML version deleted]]
 
 
+From yut@n|@|n| @end|ng |rom gm@||@com  Fri Jul 14 15:21:50 2023
+From: yut@n|@|n| @end|ng |rom gm@||@com (Hiroaki Yutani)
+Date: Fri, 14 Jul 2023 22:21:50 +0900
+Subject: [R-pkg-devel] Feedback on "Using Rust in CRAN packages"
+In-Reply-To: <CALyqOb9-uKX3P1xeic9yKxxHBOuiqjtbKeBD8S2AzQUfKMRzHA@mail.gmail.com>
+References: <CALyqOb__9-M_rEJ20dz3T07aNKP9_BRG25jdQ248WJA0ShuFCA@mail.gmail.com>
+ <389056FE-88DD-4A07-8FD1-63E0F286B3A8@R-project.org>
+ <CALyqOb8C24csrQHV+kVUhgL1=Lk0bFF=+dMBU-uG+TOiSFmfNg@mail.gmail.com>
+ <06675DF4-6655-4AB5-B636-1AE443A0B651@R-project.org>
+ <CABdHhvFTo4dWm-v0Hwuoba9uiKffVMZQNuAy+YM_RL3gWmbOHw@mail.gmail.com>
+ <6EAE6A61-F6DB-4747-8D00-07DA4A3AE39F@R-project.org>
+ <CALyqOb9-uKX3P1xeic9yKxxHBOuiqjtbKeBD8S2AzQUfKMRzHA@mail.gmail.com>
+Message-ID: <CALyqOb8pmTymO=5NkO7ZXnNjVLzovZapYfs1y7A64RZjuaQ7UA@mail.gmail.com>
+
+I just found the policy is updated and I now understand why GitHub matters
+in your opinion. Thanks for the clarification, I forgot this fact.
+
+>  CRAN does not regard github.com (which hosts the index of crates.io) as
+sufficiently reliable.
+
+The good news is that, as of Rust 1.68, Cargo supports the "sparse" index
+protocol [1][2]. In this case, the index is hosted at
+https://index.crates.io/, crates.io's own infrastructure. So, if I
+understand correctly, when all the CRAN servers have Cargo >=1.68
+installed, CRAN is ready to believe crates.io is reliable?
+
+Note that, at the time of writing this, the version on Debian testing is
+still 1.66 [3] and it's not updated very frequently (about once a year?),
+so it probably takes a while before the day.
+
+Best,
+Yutani
+
+
+[1]:
+https://blog.rust-lang.org/2023/03/09/Rust-1.68.0.html#cargos-sparse-protocol
+[2]:
+https://blog.rust-lang.org/inside-rust/2023/01/30/cargo-sparse-protocol.html
+[3]: https://packages.debian.org/testing/cargo (it seems 0.66 means 1.66)
+
+2023?7?14?(?) 9:58 Hiroaki Yutani <yutani.ini at gmail.com>:
+
+> Simin,
+>
+> Sorry that my question was not clear. Let me clarify.
+>
+> I think we all agree that "cargo vendor" is the primary option. Since
+> downloading without explicit permission is not allowed on CRAN in general,
+> it's reasonable. I'm happy that the instructions will describe it clearly.
+>
+> But, some R packages have too large dependencies to bundle. In this case,
+> downloading can be allowed with "the explicit permission of the CRAN team,"
+> if I understand correctly. For this, I think Cargo's downloading mechanism
+> satisfy this requirement if (1) all the dependencies are from crates.io
+> and (2) Cargo.lock exists:
+>
+> > download a specific version from a secure site and check that the
+> download is the expected code by some sort of checksum
+>
+> Because Cargo downloads specific versions recorded in Cargo.lock, verifies
+> the checksums, and crates.io is the "secure site" that we can rely on as
+> Hadley wrote.
+>
+> My question is, does CRAN allow Cargo to download the dependency sources
+> on CRAN? The policy says:
+>
+> > So downloading of Rust ?crates? will in future require the explicit
+> permission of the CRAN team
+>
+> To my eyes, this implies
+>
+> - CRAN currently allows Cargo's downloading of dependency Rust crates even
+> without the permission
+> - CRAN will keep allowing Cargo's downloading if the package author asks
+> the permission
+>
+> And, if CRAN doesn't allow it, I (and probably many Rust users) would like
+> to know why. As I described above, it should satisfy the requirement.
+>
+> >  please don't cross-post
+>
+> Sorry.
+>
+> > I thought cargo build --offline is not needed if the dependencies are
+> already vendored?
+>
+> Yes, you are right. --offline is not needed if vendering is properly
+> configured. But, this probably means you have to review the build
+> configurations in .cargo/config.toml or so, so I just thought it would be
+> easier for you to check if --offline is specified to the command. This
+> seems a bit off-topic, so please ignore.
+>
+> Best,
+> Yutani
+>
+>
+> 2023?7?14?(?) 9:06 Simon Urbanek <simon.urbanek at r-project.org>:
+>
+>>
+>>
+>> > On Jul 14, 2023, at 11:19 AM, Hadley Wickham <h.wickham at gmail.com>
+>> wrote:
+>> >
+>> >>> If CRAN cannot trust even the official one of Rust, why does CRAN
+>> have Rust at all?
+>> >>>
+>> >>
+>> >> I don't see the connection - if you downloaded something in the past
+>> it doesn't mean you will be able to do so in the future. And CRAN has Rust
+>> because it sounded like a good idea to allow packages to use it, but I can
+>> see that it opened a can of worms that we trying to tame here.
+>> >
+>> > Can you give a bit more detail about your concerns here? Obviously
+>> > crates.io isn't some random site on the internet, it's the official
+>> > repository of the Rust language, supported by the corresponding
+>> > foundation for the language. To me that makes it feel very much like
+>> > CRAN, where we can assume if you downloaded something in the past, you
+>> > can download something in the future.
+>> >
+>>
+>> I was just responding to Yutani's question why we downloaded the Rust
+>> compilers on CRAN at all. This has really nothing to do with the previous
+>> discussion which is why I did say "I don't see the connection". Also I
+>> wasn't talking about crates.io anywhere in my responses in this thread.
+>> The only thing I wanted to discuss here was that I think the existing Rust
+>> model  ("vendor" into the package sources) seems like a good one to apply
+>> to Go, but that got somehow hijacked...
+>>
+>> Cheers,
+>> Simon
+>>
+>>
+
+	[[alternative HTML version deleted]]
+
+
+From dewey @end|ng |rom dunn|ngton@c@  Fri Jul 14 16:36:11 2023
+From: dewey @end|ng |rom dunn|ngton@c@ (Dewey Dunnington)
+Date: Fri, 14 Jul 2023 11:36:11 -0300
+Subject: [R-pkg-devel] Best practices for CRAN package using Go
+In-Reply-To: <F85C4A1A-75FA-46C1-B2FC-1EF1E1F6E4F3@R-project.org>
+References: <399846c80a91ae21c96942890fc8d3b8@dunnington.ca>
+ <20230710170951.35efc274@arachnoid>
+ <d4522c8b37d7b8e1a3441a50c3988246@dunnington.ca>
+ <F85C4A1A-75FA-46C1-B2FC-1EF1E1F6E4F3@R-project.org>
+Message-ID: <6133281842fd9c9256c4cf5472734f7b@dunnington.ca>
+
+Simon,
+
+Thanks! I look forward to packaging the next ADBC driver release and 
+submitting.
+
+Cheers,
+
+-dewey
+
+On 2023-07-12 20:01, Simon Urbanek wrote:
+> Dewey,
+> 
+> you will definitely need to include all the necessary sources for your 
+> package. You may want to have a look at the "Using Rust"[1] document 
+> linked from the CRAN policy. I think Go is quite similar to Rust in 
+> that sense so you should use the same approach, i.e. checking for 
+> system and user installations (for go the official location is 
+> /usr/local/go/bin/go and it may not be on the PATH), declaring Go 
+> version dependency and making sure your package has included all module 
+> dependency sources (i.e. don't use install-time module 
+> resolution/download).
+> 
+> If you need to include a large source tar ball that is not permissible 
+> on CRAN, I'd recommend using Zenodo.org since it is specifically 
+> designed to facilitate longevity and reproducibility (as opposed to 
+> Github or other transient storage that may disappear at any point).
+> 
+> All that said, you may run into the same issues as Rust (errors and 
+> segfaults due to limited interoperability of compilers) so use with 
+> care and test well. External bindings like Rust or Go are only provided 
+> on "best effort" basis.
+> 
+> Cheers,
+> Simon
+> 
+> [1] - https://cran.r-project.org/web/packages/using_rust.html
+> 
+> PS: go is now available on the CRAN macOS builder machines and the Mac 
+> Builder (https://mac.r-project.org/macbuilder/submit.html).
+> 
+> 
+>> On 13/07/2023, at 2:36 AM, Dewey Dunnington <dewey at dunnington.ca> 
+>> wrote:
+>> 
+>> Thank you! It seems I needed the refresher on CRAN policy regarding 
+>> downloading sources: it seems like the go.sum/go.mod provide 
+>> sufficient checksumming to comply with the policy, as you noted (with 
+>> `go mod vendor` as a backup if this turns out to not be acceptable). 
+>> Downloading Go is probably out based on the advice for Rust that 
+>> explicitly forbids this.
+>> 
+>> Cheers!
+>> 
+>> -dewey
+>> 
+>> On 2023-07-10 11:09, Ivan Krylov wrote:
+>>> ? Thu, 06 Jul 2023 15:22:26 -0300
+>>> Dewey Dunnington <dewey at dunnington.ca> ?????:
+>>>> I've wrapped two of these drivers for R that seem to build and
+>>>> install on MacOS, Linux, and Windows [3][4]; however, I am not sure
+>>>> if the pattern I used is suitable for CRAN or whether these packages
+>>>> will have to be GitHub-only for the foreseeable future.
+>>> There are a few parts to following the CRAN policy [*] regarding
+>>> external dependencies.
+>>> I think (but don't know for sure) that your package will not be 
+>>> allowed
+>>> to download Go by itself. The policy says: "Only as a last resort and
+>>> with the agreement of the CRAN team should a package download
+>>> pre-compiled software."
+>>> An already installed Go should be able to "first look to see if [a
+>>> dependency] is already installed and if so is of a suitable version"
+>>> when installing the dependencies of the Go part of the code. The 
+>>> go.mod
+>>> and go.sum files specify the exact versions and checksums of the
+>>> dependencies, which satisfies the requirement for fixed dependency
+>>> versions ("it is acceptable to download them as part of installation,
+>>> but do ensure that the download is of a fixed version rather than the
+>>> latest"), so your package seems to be fine in this respect.
+>>> One more thing: when bootstrapping the source package, can you run go
+>>> mod vendor [**] in order to bundle *all* the Go dependencies together
+>>> with the package? Is the resulting directory prohibitively large? 
+>>> Would
+>>> it satisfy the CRAN policy preference to "include the library sources
+>>> in the package and compile them as part of package installation"
+>>> without requiring Internet access? Unfortunately, I don't know enough
+>>> about Go to answer these questions myself. I think that a small 
+>>> bundle
+>>> of vendored Go code would be preferrable for CRAN but *not* 
+>>> preferrable
+>>> for packaging in a GNU/Linux distro like Debian where dynamic linking
+>>> (in the widest possible sense) is a strong preference.
+>>> --
+>>> Best regards,
+>>> Ivan
+>>> [*] https://cran.r-project.org/web/packages/policies.html
+>>> [**] https://go.dev/ref/mod#vendoring
+>> 
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Jul 14 17:14:41 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 14 Jul 2023 18:14:41 +0300
+Subject: [R-pkg-devel] Package Load fails to find 3rd Party DLL
+In-Reply-To: <7feb7697-be2f-7bf8-3e7c-4276a0cb69c8@gmail.com>
+References: <7feb7697-be2f-7bf8-3e7c-4276a0cb69c8@gmail.com>
+Message-ID: <20230714181441.03c47c08@arachnoid>
+
+? Wed, 12 Jul 2023 09:41:11 -0400
+Russell Almond <russell.g.almond at gmail.com> ?????:
+
+>  ? C:\rtools43\x86_64-w64-mingw32.static.posix\bin\nm.exe:
+> 'NeticaDLL': No such file
+
+This is where the problem starts. You can retrace the steps that R
+takes when building and installing the package by running sh
+configure.win manually and then running something like
+R_PACKAGE_DIR="$(pwd)" R CMD SHLIB -n *.c in the src subdirectory of
+the package. That will in turn tell you the exact command lines to be
+run while building your package, including the following:
+
+ nm Cases.o Continuous.o Edges.o Experience.o Inference.o Networks.o \
+  Node.o Random.o Registration.o Session.o NeticaDLL \
+ | sed -n 's/^.* [BCDRT] / /p' \
+ | sed -e '/[.]refptr[.]/d' -e '/[.]weak[.]/d' \
+ | sed 's/[^ ][^ ]*/"&"/g' \
+ >> tmp.def;
+
+That "NeticaDLL" at the end of the list of object files doesn't belong
+there. I think it gets added because it's among the dependencies of the
+$(SHLIB) Make target. It would be best to make that target a real
+object file that nm.exe can process. Otherwise, you could also write
+your own .def file and skip its automatic generation.
+
+After nm fails, you get a crash in the linker (while parsing the
+resulting incomplete .def file?), which leaves your package without a
+shared library to use:
+
+> C:\rtools43\x86_64-w64-mingw32.static.posix\bin/ld.exe: internal
+> error: aborting at ../../binutils-2.40/ld/ldlang.c:527 in
+> compare_section
+> C:\rtools43\x86_64-w64-mingw32.static.posix\bin/ld.exe: please report
+> this bug
+
+There must be a way to streamline this process. Maybe put all the
+library-downloading and extraction code into a portable
+tools/configure.R (to be launched manually from the configure shell
+script), leaving src/Makevars only to compile your own code, link with
+Netica using PKG_LIBS, then copy the additional Netica DLL from a
+custom install.libs.R file?
+
+-- 
+Best regards,
+Ivan
+
+
+From ru@@e||@g@@|mond @end|ng |rom gm@||@com  Fri Jul 14 19:29:32 2023
+From: ru@@e||@g@@|mond @end|ng |rom gm@||@com (Russell Almond)
+Date: Fri, 14 Jul 2023 13:29:32 -0400
+Subject: [R-pkg-devel] Package Load fails to find 3rd Party DLL
+In-Reply-To: <20230714181441.03c47c08@arachnoid>
+References: <7feb7697-be2f-7bf8-3e7c-4276a0cb69c8@gmail.com>
+ <20230714181441.03c47c08@arachnoid>
+Message-ID: <06ea7d13-ab84-dc3b-2c5d-1acb574260b1@gmail.com>
+
+Thanks.? I know know the problem is in the Makevars.win; however, I'm 
+still confused.
+
+My `Makevars.win` had
+
+| .PHONY:?? all NeticaDLL clean
+
+| all: $(SHLIB)
+| $(SHLIB): NeticaDLL
+|
+| NeticaDLL:
+|? ? mkdir -p "$(INSTALL_LIB)"
+|? ? cp "${NETICA_LIB}/Netica.dll" "${INSTALL_LIB}"
+|??? cp "${NETICA_LIB}/Netica.lib" "${INSTALL_LIB}"
+
+[BTW, I tried change this to
+
+| all: NeticaDLL $(SHLIB)
+
+and got the same problem.]
+
+This looks very much like the `mylibs` example in 
+https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Using-Makevars
+
+So I'm confused.? Why is the Makevars -> Makefile conversion assuming 
+that all targets of $(SHLIB) (or all) are executable files, ignoring the 
+PHONY declaration?
+
+Also, does the example in the Writing R Extensions manual still work?
+
+ ??? --Russell
+
+
+
+On 7/14/23 11:14 AM, Ivan Krylov wrote:
+> ? Wed, 12 Jul 2023 09:41:11 -0400
+> Russell Almond<russell.g.almond at gmail.com>  ?????:
+>
+>>   ? C:\rtools43\x86_64-w64-mingw32.static.posix\bin\nm.exe:
+>> 'NeticaDLL': No such file
+> This is where the problem starts. You can retrace the steps that R
+> takes when building and installing the package by running sh
+> configure.win manually and then running something like
+> R_PACKAGE_DIR="$(pwd)" R CMD SHLIB -n *.c in the src subdirectory of
+> the package. That will in turn tell you the exact command lines to be
+> run while building your package, including the following:
+>
+>   nm Cases.o Continuous.o Edges.o Experience.o Inference.o Networks.o \
+>    Node.o Random.o Registration.o Session.o NeticaDLL \
+>   | sed -n 's/^.* [BCDRT] / /p' \
+>   | sed -e '/[.]refptr[.]/d' -e '/[.]weak[.]/d' \
+>   | sed 's/[^ ][^ ]*/"&"/g' \
+>   >> tmp.def;
+>
+> That "NeticaDLL" at the end of the list of object files doesn't belong
+> there. I think it gets added because it's among the dependencies of the
+> $(SHLIB) Make target. It would be best to make that target a real
+> object file that nm.exe can process. Otherwise, you could also write
+> your own .def file and skip its automatic generation.
+>
+> After nm fails, you get a crash in the linker (while parsing the
+> resulting incomplete .def file?), which leaves your package without a
+> shared library to use:
+>
+>> C:\rtools43\x86_64-w64-mingw32.static.posix\bin/ld.exe: internal
+>> error: aborting at ../../binutils-2.40/ld/ldlang.c:527 in
+>> compare_section
+>> C:\rtools43\x86_64-w64-mingw32.static.posix\bin/ld.exe: please report
+>> this bug
+> There must be a way to streamline this process. Maybe put all the
+> library-downloading and extraction code into a portable
+> tools/configure.R (to be launched manually from the configure shell
+> script), leaving src/Makevars only to compile your own code, link with
+> Netica using PKG_LIBS, then copy the additional Netica DLL from a
+> custom install.libs.R file?
+>
+-- 
+Russell Almond
+https://ralmond.net/
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Jul 14 21:25:51 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 14 Jul 2023 22:25:51 +0300
+Subject: [R-pkg-devel] Package Load fails to find 3rd Party DLL
+In-Reply-To: <06ea7d13-ab84-dc3b-2c5d-1acb574260b1@gmail.com>
+References: <7feb7697-be2f-7bf8-3e7c-4276a0cb69c8@gmail.com>
+ <20230714181441.03c47c08@arachnoid>
+ <06ea7d13-ab84-dc3b-2c5d-1acb574260b1@gmail.com>
+Message-ID: <20230714222551.10428ef8@Tarkus>
+
+On Fri, 14 Jul 2023 13:29:32 -0400
+Russell Almond <russell.g.almond at gmail.com> wrote:
+
+> So I'm confused.? Why is the Makevars -> Makefile conversion assuming 
+> that all targets of $(SHLIB) (or all) are executable files, ignoring
+> the PHONY declaration?
+
+The $(SHLIB) target is defined in ${R_HOME}/share/make/winshlib.mk. In
+particular, it says:
+
+ echo EXPORTS > tmp.def; \
+ $(NM) $^ | $(SED) -n $(SYMPAT) $(NM_FILTER) | \
+  $(SED) $(ADDQU) >> tmp.def; \
+
+Unfortunately for our case, the $^ automatic variable contains the
+names of all prerequisites of the $(SHLIB) target [*], including .PHONY
+ones. So as long as $(SHLIB) is declared to depend on NeticaDLL, this
+string will get mentioned here.
+
+Maybe it's a red herring. Maybe the message from nm about missing file
+has always been harmless, and what we're seeing here is a bug in the
+toolchain; perhaps ld.exe doesn't like something about Netica.lib so
+much that it crashes. I think that's less likely. If you run the
+commands manually but without mentioning NeticaDLL, do you get a DLL in
+the end?
+
+> Also, does the example in the Writing R Extensions manual still work?
+
+It should. At the very least, rgl uses the same approach without any
+apparent problems:
+https://github.com/dmurdoch/rgl/blob/master/src/Makevars.ucrt
+(But then it also provides rgl-win.def, which sidesteps the automatic
+.def generation, and then has $(OBJECTS), not $^, linked into $(SHLIB).
+You may have found a bug in winshlib.mk.)
+
+There's also a different idiom, where all: but not $(SHLIB): depends on
+the non-file target:
+https://github.com/eddelbuettel/rprotobuf/blob/master/src/Makevars.win
+(Not sure how the dependency resolution order is supposed to work in
+this case. If winshlib.mk declares that all: depends on $(SHLIB) and
+later Makevars declares that all: also depends on winlibs, why doesn't
+Make attempt to build $(SHLIB) first, with no regard for winlibs?)
+
+-- 
+Best regards,
+Ivan
+
+[*]
+https://www.gnu.org/software/make/manual/html_node/Automatic-Variables.html
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Sat Jul 15 00:33:40 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Sat, 15 Jul 2023 00:33:40 +0200
+Subject: [R-pkg-devel] 
+ issues with CRAN incoming submissions / summer break announcement
+In-Reply-To: <7c654dd5-721a-cdb6-f432-94b9ddbae176@statistik.tu-dortmund.de>
+References: <7c654dd5-721a-cdb6-f432-94b9ddbae176@statistik.tu-dortmund.de>
+Message-ID: <ac1a22d2-fd33-e9ef-2aac-8b1c05773bf5@statistik.tu-dortmund.de>
+
+
+
+On 12.07.2023 09:40, Uwe Ligges wrote:
+> Dear developers,
+> 
+> CRAN submissions are currently partly not possible due to some 
+> infrastructure issues. Please so NOT contact us if you see "Unpacking 
+> failed. Please make sure the tar.gz was created with R CMD build. [...]".
+> 
+> In addition, processing the CRAN incoming queue of packages (CRAN 
+> pretest) is currently delayed by 2 days.
+> 
+> Both issues are known and CRAN sysadmins will work on the issues.
+
+Both issues have been resolved.
+
+Best,
+Uwe Ligges
+
+
+> 
+> 
+> Note that this year's CRAN submission summer break will be from Jul 21, 
+> 2023 to Aug 7, 2023.
+> 
+> Best,
+> Uwe Ligges
+> for the CRAN team
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Sat Jul 15 01:08:08 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Sat, 15 Jul 2023 01:08:08 +0200
+Subject: [R-pkg-devel] 
+ issues with CRAN incoming submissions / summer break announcement
+In-Reply-To: <CADPubGSEALLrLABN7V5i5oh8OVF0OdfDS-u7F04G2krF9-gcig@mail.gmail.com>
+References: <7c654dd5-721a-cdb6-f432-94b9ddbae176@statistik.tu-dortmund.de>
+ <ac1a22d2-fd33-e9ef-2aac-8b1c05773bf5@statistik.tu-dortmund.de>
+ <CADPubGSEALLrLABN7V5i5oh8OVF0OdfDS-u7F04G2krF9-gcig@mail.gmail.com>
+Message-ID: <344dcfad-5d31-3840-b069-075860e2328f@statistik.tu-dortmund.de>
+
+I know, this has to be removed by the sysadmins in Vienna.
+
+Best,
+Uwe
+
+
+
+On 15.07.2023 01:05, James Lamb wrote:
+> Thank you as always, Uwe!
+> 
+> By the way, the warning is still up on the submission page at 
+> https://cran.r-project.org/submit.html 
+> <https://cran.r-project.org/submit.html>.
+> 
+> image.png
+> 
+> Just sharing in case you hadn't noticed that yet.
+> 
+> Cheers,
+> 
+> -James
+> 
+> On Fri, Jul 14, 2023 at 5:33?PM Uwe Ligges 
+> <ligges at statistik.tu-dortmund.de 
+> <mailto:ligges at statistik.tu-dortmund.de>> wrote:
+> 
+> 
+> 
+>     On 12.07.2023 09:40, Uwe Ligges wrote:
+>      > Dear developers,
+>      >
+>      > CRAN submissions are currently partly not possible due to some
+>      > infrastructure issues. Please so NOT contact us if you see
+>     "Unpacking
+>      > failed. Please make sure the tar.gz was created with R CMD build.
+>     [...]".
+>      >
+>      > In addition, processing the CRAN incoming queue of packages (CRAN
+>      > pretest) is currently delayed by 2 days.
+>      >
+>      > Both issues are known and CRAN sysadmins will work on the issues.
+> 
+>     Both issues have been resolved.
+> 
+>     Best,
+>     Uwe Ligges
+> 
+> 
+>      >
+>      >
+>      > Note that this year's CRAN submission summer break will be from
+>     Jul 21,
+>      > 2023 to Aug 7, 2023.
+>      >
+>      > Best,
+>      > Uwe Ligges
+>      > for the CRAN team
+>      >
+>      > ______________________________________________
+>      > R-package-devel at r-project.org
+>     <mailto:R-package-devel at r-project.org> mailing list
+>      > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>     <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+> 
+>     ______________________________________________
+>     R-package-devel at r-project.org <mailto:R-package-devel at r-project.org>
+>     mailing list
+>     https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>     <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+> 
+> 
+> 
+> -- 
+> James Lamb
+> GitHub <https://github.com/jameslamb>?| Twitter 
+> <https://twitter.com/_jameslamb> | LinkedIn 
+> <https://www.linkedin.com/in/jameslamb1/>
+
+
