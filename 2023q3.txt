@@ -5129,3 +5129,208 @@ Thanks.
 Jan
 
 
+From rodr|go@tob@rc@rr|zo @end|ng |rom uw@@edu@@u  Mon Jul 17 05:30:23 2023
+From: rodr|go@tob@rc@rr|zo @end|ng |rom uw@@edu@@u (Rodrigo Tobar Carrizo)
+Date: Mon, 17 Jul 2023 03:30:23 +0000
+Subject: [R-pkg-devel] Issue with CPU time > 2.5 times elapsed time
+In-Reply-To: <b59d150b-c90d-5731-980d-4b36e7443c52@dds.nl>
+References: <b59d150b-c90d-5731-980d-4b36e7443c52@dds.nl>
+Message-ID: <SYCPR01MB4047A284AFED3005D25E5323A93BA@SYCPR01MB4047.ausprd01.prod.outlook.com>
+
+Hi Jan,
+
+I faced a similar issue recently with the imager package, see https://stat.ethz.ch/pipermail/r-package-devel/2023q2/009042.html for the email thread on this list. In your case, it's probably data.tables creating more threads than what you think are being created, but you might want to double-check.
+
+It ultimately boils down to you having to constrain the number of threads your code and dependencies use during tests/vignettes/example runs. After guidance from Dirk, I painstakingly ended up doing exactly that for our package, see https://github.com/asgr/imager/compare/0ef8afd6249506bfec98c1250a0a2558149d88d9...47d59a942d04cef8bd7cb2d36be926d637e3df11
+
+Regards,
+
+Rodrigo
+
+________________________________
+Von: R-package-devel <r-package-devel-bounces at r-project.org> im Auftrag von Jan van der Laan <rhelp at eoos.dds.nl>
+Gesendet: Sonntag, 16. Juli 2023 19:30
+An: r-package-devel <r-package-devel at r-project.org>
+Betreff: [R-pkg-devel] Issue with CPU time > 2.5 times elapsed time
+
+
+I am trying to upload a new version of the reclin2 package, but it fails
+the pre-tests on Debian with the following message:
+
+ > * checking examples ... [14s/4s] NOTE
+ > Examples with CPU time > 2.5 times elapsed time
+ >                   user system elapsed ratio
+ > select_threshold 3.700  0.122   0.455 8.400
+ > select_n_to_m    4.228  0.180   0.623 7.075
+ > * checking for unstated dependencies in ?tests? ... OK
+
+See
+https://aus01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fwin-builder.r-project.org%2Fincoming_pretest%2Freclin2_0.3.1_20230716_124651%2FDebian%2F00check.log&data=05%7C01%7Crodrigo.tobarcarrizo%40uwa.edu.au%7Cd0dacf8919cc41c1eb7e08db85f01ec8%7C05894af0cb2846d8871674cdb46e2226%7C0%7C0%7C638251038592720229%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=pxDjGepeLXPXEYv4sKNsd1hHiXGaSDBM6BA%2FmJLsYrY%3D&reserved=0<https://win-builder.r-project.org/incoming_pretest/reclin2_0.3.1_20230716_124651/Debian/00check.log>
+for the complete output.
+
+I can't see why this happens and I can't seem to reproduce this on my
+machine. The examples do call makeCluster from parallel, but only start
+one thread. The code that is ran in the examples only call base-r
+functions and data.table functions. I can imagine data.table starting
+multiple threads. However the example consists only of 17 records; and
+data.table should not use more than two threads on that system anyway.
+So I don't see where the large difference between the two is coming
+from. Does anyone have a clue?
+
+The code is here: https://aus01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fgithub.com%2Fdjvanderlaan%2Freclin2&data=05%7C01%7Crodrigo.tobarcarrizo%40uwa.edu.au%7Cd0dacf8919cc41c1eb7e08db85f01ec8%7C05894af0cb2846d8871674cdb46e2226%7C0%7C0%7C638251038592720229%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=YgID3y0ersGkKJp0H5QzpfENtecPYHlPE97HloJoo%2FM%3D&reserved=0<https://github.com/djvanderlaan/reclin2> one of the
+examples that fails is here:
+https://aus01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fgithub.com%2Fdjvanderlaan%2Freclin2%2Fblob%2Fmaster%2FR%2Fselect_threshold.R%23L21&data=05%7C01%7Crodrigo.tobarcarrizo%40uwa.edu.au%7Cd0dacf8919cc41c1eb7e08db85f01ec8%7C05894af0cb2846d8871674cdb46e2226%7C0%7C0%7C638251038592720229%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=nLI1T7q5IBtfPmU8%2Buj0hJGcE1wMXTkACzEsO0KEntY%3D&reserved=0<https://github.com/djvanderlaan/reclin2/blob/master/R/select_threshold.R#L21>.
+
+
+Thanks.
+Jan
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://aus01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-package-devel&data=05%7C01%7Crodrigo.tobarcarrizo%40uwa.edu.au%7Cd0dacf8919cc41c1eb7e08db85f01ec8%7C05894af0cb2846d8871674cdb46e2226%7C0%7C0%7C638251038592720229%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=nQoVas1cmOUfDG0sh%2BXEyEjsDKYljaJXqy5tqRSzU%2BU%3D&reserved=0<https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Mon Jul 17 11:30:39 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Mon, 17 Jul 2023 12:30:39 +0300
+Subject: [R-pkg-devel] Package Load fails to find 3rd Party DLL
+In-Reply-To: <20230714222551.10428ef8@Tarkus>
+References: <7feb7697-be2f-7bf8-3e7c-4276a0cb69c8@gmail.com>
+ <20230714181441.03c47c08@arachnoid>
+ <06ea7d13-ab84-dc3b-2c5d-1acb574260b1@gmail.com>
+ <20230714222551.10428ef8@Tarkus>
+Message-ID: <20230717123039.64db63fa@arachnoid>
+
+? Fri, 14 Jul 2023 22:25:51 +0300
+Ivan Krylov <krylov.r00t at gmail.com> ?????:
+
+> Maybe it's a red herring. Maybe the message from nm about missing file
+> has always been harmless, and what we're seeing here is a bug in the
+> toolchain; perhaps ld.exe doesn't like something about Netica.lib so
+> much that it crashes. I think that's less likely. If you run the
+> commands manually but without mentioning NeticaDLL, do you get a DLL
+> in the end?
+
+Judging by your build logs, this could be a toolchain bug. If you set
+the *.lib file aside and only give the *.dll to the linker (using
+-l:Netica.dll if necessary), does it still fail? I know that GCC can
+link directly to *.dll files, without relying on import libraries.
+
+-- 
+Best regards,
+Ivan
+
+
+From ru@@e||@g@@|mond @end|ng |rom gm@||@com  Mon Jul 17 17:28:32 2023
+From: ru@@e||@g@@|mond @end|ng |rom gm@||@com (Russell Almond)
+Date: Mon, 17 Jul 2023 11:28:32 -0400
+Subject: [R-pkg-devel] Package Load fails to find 3rd Party DLL
+In-Reply-To: <20230717123039.64db63fa@arachnoid>
+References: <7feb7697-be2f-7bf8-3e7c-4276a0cb69c8@gmail.com>
+ <20230714181441.03c47c08@arachnoid>
+ <06ea7d13-ab84-dc3b-2c5d-1acb574260b1@gmail.com>
+ <20230714222551.10428ef8@Tarkus> <20230717123039.64db63fa@arachnoid>
+Message-ID: <58aed791-76f5-98bd-3d9a-d00c818f7af3@gmail.com>
+
+Thanks for the suggestion.  In previous versions of the build tools, I 
+know I needed the .lib files.
+
+I'm also not sure I'm copying the DLL files into the right directory, so 
+that maybe the linker isn't seeing it.  This always confuses me as the 
+location used to build and compile is (potentially) different from the 
+test location and the final build location, and I'm not sure of the best 
+way to refer to these directories in my script.  I'm thinking maybe I 
+need to copy the DLL into the src directory.
+
+Unfortunately, I don't have a windows box on which to easily test.  I'm 
+trying to get a virtualBox setup working so I can test more quickly.
+
+   --Russell
+
+
+On 7/17/23 5:30 AM, Ivan Krylov wrote:
+> ? Fri, 14 Jul 2023 22:25:51 +0300
+> Ivan Krylov <krylov.r00t at gmail.com> ?????:
+> 
+>> Maybe it's a red herring. Maybe the message from nm about missing file
+>> has always been harmless, and what we're seeing here is a bug in the
+>> toolchain; perhaps ld.exe doesn't like something about Netica.lib so
+>> much that it crashes. I think that's less likely. If you run the
+>> commands manually but without mentioning NeticaDLL, do you get a DLL
+>> in the end?
+> 
+> Judging by your build logs, this could be a toolchain bug. If you set
+> the *.lib file aside and only give the *.dll to the linker (using
+> -l:Netica.dll if necessary), does it still fail? I know that GCC can
+> link directly to *.dll files, without relying on import libraries.
+>
+
+
+From ru@@e||@g@@|mond @end|ng |rom gm@||@com  Mon Jul 17 20:42:36 2023
+From: ru@@e||@g@@|mond @end|ng |rom gm@||@com (Russell Almond)
+Date: Mon, 17 Jul 2023 14:42:36 -0400
+Subject: [R-pkg-devel] Package Load fails to find 3rd Party DLL
+In-Reply-To: <20230717123039.64db63fa@arachnoid>
+References: <7feb7697-be2f-7bf8-3e7c-4276a0cb69c8@gmail.com>
+ <20230714181441.03c47c08@arachnoid>
+ <06ea7d13-ab84-dc3b-2c5d-1acb574260b1@gmail.com>
+ <20230714222551.10428ef8@Tarkus> <20230717123039.64db63fa@arachnoid>
+Message-ID: <89f44a7f-78c0-0eaa-4f54-cd1f10272dc5@gmail.com>
+
+Okay,  I've changed my Makevars.win so that it has:
+
+PKG_LIBS = -L. -L${NETICA_LIB} -lNetica
+
+and
+
+all: NeticaDLL
+
+where ${NETICA_LIB} is set to the appropriate lib subdirectory of the 
+unpacked sources.  I'm no longer getting the nm.exe error, so it may be 
+a bug in ld.exe.
+
+
+| gcc -shared -s -static-libgcc -o RNetica.dll tmp.def Cases.o 
+Continuous.o Edges.o Experience.o Inference.o Networks.o Node.o Random.o 
+Registration.o Session.o -L. 
+-L/c/Users/ralmond/Projects/RNetica/src/Netica/Netica_API_510/lib64 
+-lNetica -LC:/rtools43/x86_64-w64-mingw32.static.posix/lib/x64 
+-LC:/rtools43/x86_64-w64-mingw32.static.posix/lib 
+-LC:/PROGRA~1/R/R-43~1.1/bin/x64 -lR
+| C:\rtools43\x86_64-w64-mingw32.static.posix\bin/ld.exe: internal 
+error: aborting at ../../binutils-2.40/ld/ldlang.c:527 in compare_section
+| C:\rtools43\x86_64-w64-mingw32.static.posix\bin/ld.exe: please report 
+this bug
+| collect2.exe: error: ld returned 1 exit status
+
+However, when I manually moved Netica.dll to the source directory, and 
+removed NETICA_LIB from the path, it compiled correctly.
+
+So, I'm guessing this is a bug in ld.exe, and in fact it is here:
+https://github.com/msys2/MINGW-packages/issues/15469
+
+So I'll see if I can try to fix my script to only copy the .dll and not 
+the .lib.
+	--Russell
+
+
+On 7/17/23 5:30 AM, Ivan Krylov wrote:
+> ? Fri, 14 Jul 2023 22:25:51 +0300
+> Ivan Krylov <krylov.r00t at gmail.com> ?????:
+> 
+>> Maybe it's a red herring. Maybe the message from nm about missing file
+>> has always been harmless, and what we're seeing here is a bug in the
+>> toolchain; perhaps ld.exe doesn't like something about Netica.lib so
+>> much that it crashes. I think that's less likely. If you run the
+>> commands manually but without mentioning NeticaDLL, do you get a DLL
+>> in the end?
+> 
+> Judging by your build logs, this could be a toolchain bug. If you set
+> the *.lib file aside and only give the *.dll to the linker (using
+> -l:Netica.dll if necessary), does it still fail? I know that GCC can
+> link directly to *.dll files, without relying on import libraries.
+>
+
+
