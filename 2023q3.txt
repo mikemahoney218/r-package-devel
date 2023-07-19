@@ -5334,3 +5334,601 @@ On 7/17/23 5:30 AM, Ivan Krylov wrote:
 >
 
 
+From john@m@h@rro|d @end|ng |rom gm@||@com  Tue Jul 18 16:37:40 2023
+From: john@m@h@rro|d @end|ng |rom gm@||@com (John Harrold)
+Date: Tue, 18 Jul 2023 07:37:40 -0700
+Subject: [R-pkg-devel] Check package without suggests
+Message-ID: <CANAiAiVZ-xP_1BO8O5QZStcs506ZnVJyw1eYFuPr=ZSpcNOXOA@mail.gmail.com>
+
+Howdy Folks,
+
+I recent had a package start failing because I wasn't checking properly in
+my tests to make sure my suggested packages were installed before running
+tests. I think this is something new running on CRAN where packages are
+tested with only the packages specified as Imports in the DESCRIPTION file
+are installed. It took me a bit of back and forth to get all of these
+issues worked out.  I was wondering if anyone has a good way to run R CMD
+check with only the imports installed?  A github action, or a
+specific platform on rhub?
+
+Thank you,
+
+John
+:wq
+
+	[[alternative HTML version deleted]]
+
+
+From @ergue|@@oko| @end|ng |rom gm@||@com  Tue Jul 18 16:58:37 2023
+From: @ergue|@@oko| @end|ng |rom gm@||@com (Serguei Sokol)
+Date: Tue, 18 Jul 2023 16:58:37 +0200
+Subject: [R-pkg-devel] Check package without suggests
+In-Reply-To: <CANAiAiVZ-xP_1BO8O5QZStcs506ZnVJyw1eYFuPr=ZSpcNOXOA@mail.gmail.com>
+References: <CANAiAiVZ-xP_1BO8O5QZStcs506ZnVJyw1eYFuPr=ZSpcNOXOA@mail.gmail.com>
+Message-ID: <2a6dda88-990c-ee7a-63b1-7ed49fa030fd@gmail.com>
+
+Is it possible that you have complicated the task unnecessarily?
+Normally, you can just do
+
+if (requireNamespace("<suggested_pkg>", quietly=TRUE)) {
+  # do the tests involving <suggested_pkg>
+}
+
+Wasn't that enough?
+
+Best,
+Serguei.
+
+
+Le 18/07/2023 ? 16:37, John Harrold a ?crit?:
+> Howdy Folks,
+> 
+> I recent had a package start failing because I wasn't checking properly in
+> my tests to make sure my suggested packages were installed before running
+> tests. I think this is something new running on CRAN where packages are
+> tested with only the packages specified as Imports in the DESCRIPTION file
+> are installed. It took me a bit of back and forth to get all of these
+> issues worked out.  I was wondering if anyone has a good way to run R CMD
+> check with only the imports installed?  A github action, or a
+> specific platform on rhub?
+> 
+> Thank you,
+> 
+> John
+> :wq
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Jul 18 17:03:01 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 18 Jul 2023 18:03:01 +0300
+Subject: [R-pkg-devel] Check package without suggests
+In-Reply-To: <CANAiAiVZ-xP_1BO8O5QZStcs506ZnVJyw1eYFuPr=ZSpcNOXOA@mail.gmail.com>
+References: <CANAiAiVZ-xP_1BO8O5QZStcs506ZnVJyw1eYFuPr=ZSpcNOXOA@mail.gmail.com>
+Message-ID: <20230718180301.6e4c841f@arachnoid>
+
+? Tue, 18 Jul 2023 07:37:40 -0700
+John Harrold <john.m.harrold at gmail.com> ?????:
+
+> I was wondering if anyone has a good way to run R CMD
+> check with only the imports installed?
+
+According to "R Internals", running R CMD check with the environment
+variable _R_CHECK_DEPENDS_ONLY_ set to "TRUE" will populate a temporary
+library with only the hard dependencies of the package (Depends and
+Imports) before running the tests.
+
+If this works, you should see a NOTE:
+
+* checking package dependencies ... NOTE
+Packages which this enhances but not available for checking: <...>
+
+(This NOTE also happens during the CRAN check but doesn't count against
+your package.)
+
+One caveat is that the library pointed to by the .Library variable is
+also available during the check. In a packaged R it's a system
+directory where non-base or recommended packages are not normally
+installed, so _R_CHECK_DEPENDS_ONLY_ works. If you're running a custom
+build of R with a writeable .Library (say, a copy of R-devel in your
+home directory), the packages end up being installed there by default
+and therefore available to the package being checked, despite
+_R_CHECK_DEPENDS_ONLY_=TRUE. For recommended packages, there exists a
+separate environment variable _R_CHECK_NO_RECOMMENDED_=TRUE, which
+makes R CMD check create fake recommended packages in the temporary
+library, which fail to load.
+
+-- 
+Best regards,
+Ivan
+
+
+From john@m@h@rro|d @end|ng |rom gm@||@com  Tue Jul 18 17:15:05 2023
+From: john@m@h@rro|d @end|ng |rom gm@||@com (John Harrold)
+Date: Tue, 18 Jul 2023 08:15:05 -0700
+Subject: [R-pkg-devel] Check package without suggests
+In-Reply-To: <2a6dda88-990c-ee7a-63b1-7ed49fa030fd@gmail.com>
+References: <CANAiAiVZ-xP_1BO8O5QZStcs506ZnVJyw1eYFuPr=ZSpcNOXOA@mail.gmail.com>
+ <2a6dda88-990c-ee7a-63b1-7ed49fa030fd@gmail.com>
+Message-ID: <CANAiAiVzjSEm46j0p7vtxP=iqHjgRHjs+LGYcSh9Fk+eOdiNDw@mail.gmail.com>
+
+I want to check my package to make sure I'm properly using suggested
+packages. I'm trying to catch mistakes where I forgot to do what you're
+suggesting.
+
+On Tue, Jul 18, 2023 at 7:58?AM Serguei Sokol <serguei.sokol at gmail.com>
+wrote:
+
+> Is it possible that you have complicated the task unnecessarily?
+> Normally, you can just do
+>
+> if (requireNamespace("<suggested_pkg>", quietly=TRUE)) {
+>   # do the tests involving <suggested_pkg>
+> }
+>
+> Wasn't that enough?
+>
+> Best,
+> Serguei.
+>
+>
+> Le 18/07/2023 ? 16:37, John Harrold a ?crit :
+> > Howdy Folks,
+> >
+> > I recent had a package start failing because I wasn't checking properly
+> in
+> > my tests to make sure my suggested packages were installed before running
+> > tests. I think this is something new running on CRAN where packages are
+> > tested with only the packages specified as Imports in the DESCRIPTION
+> file
+> > are installed. It took me a bit of back and forth to get all of these
+> > issues worked out.  I was wondering if anyone has a good way to run R CMD
+> > check with only the imports installed?  A github action, or a
+> > specific platform on rhub?
+> >
+> > Thank you,
+> >
+> > John
+> > :wq
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From w|||ge@rty @end|ng |rom gm@||@com  Tue Jul 18 16:52:32 2023
+From: w|||ge@rty @end|ng |rom gm@||@com (William Gearty)
+Date: Tue, 18 Jul 2023 10:52:32 -0400
+Subject: [R-pkg-devel] Check package without suggests
+In-Reply-To: <CANAiAiVZ-xP_1BO8O5QZStcs506ZnVJyw1eYFuPr=ZSpcNOXOA@mail.gmail.com>
+References: <CANAiAiVZ-xP_1BO8O5QZStcs506ZnVJyw1eYFuPr=ZSpcNOXOA@mail.gmail.com>
+Message-ID: <CADH2hDmUtXXXcXYXmub1dbTST+NyH6tPVW=y907ZEdgY1NykRA@mail.gmail.com>
+
+Hi John,
+
+You need to set the R CMD check environment variable
+_R_CHECK_FORCE_SUGGESTS_ to FALSE/0. You should be able to do this
+with the env_vars
+argument in rhub::check(). You can also achieve this with github actions by
+customizing your yaml file (example here:
+https://github.com/willgearty/deeptime/blob/master/.github/workflows/R-CMD-check.yaml#L57
+).
+
+Best,
+Will
+
+------------------------------
+*William Gearty*
+*Lerner-Gray Postdoctoral Research Fellow*
+Division of Paleontology
+American Museum of Natural History
+williamgearty.com
+
+
+
+On Tue, Jul 18, 2023 at 10:38?AM John Harrold <john.m.harrold at gmail.com>
+wrote:
+
+> Howdy Folks,
+>
+> I recent had a package start failing because I wasn't checking properly in
+> my tests to make sure my suggested packages were installed before running
+> tests. I think this is something new running on CRAN where packages are
+> tested with only the packages specified as Imports in the DESCRIPTION file
+> are installed. It took me a bit of back and forth to get all of these
+> issues worked out.  I was wondering if anyone has a good way to run R CMD
+> check with only the imports installed?  A github action, or a
+> specific platform on rhub?
+>
+> Thank you,
+>
+> John
+> :wq
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From g@br|e|@b|@|n @end|ng |rom @p@gov@br  Tue Jul 18 18:37:46 2023
+From: g@br|e|@b|@|n @end|ng |rom @p@gov@br (Gabriel Constantino Blain)
+Date: Tue, 18 Jul 2023 16:37:46 +0000
+Subject: [R-pkg-devel] Package PowerSDI NOTES
+Message-ID: <CPYP284MB15437A8686D73F4501F312DBA738A@CPYP284MB1543.BRAP284.PROD.OUTLOOK.COM>
+
+Dears,
+I submitted my R package to CRAN.
+However, it didn't pass the CRAN checks because of 2 notes:
+Note 1:
+Flavor: r-devel-linux-x86_64-debian-gcc, r-devel-windows-x86_64
+Check: CRAN incoming feasibility, Result: NOTE
+  Maintainer: 'Gabriel Constantino Blain <gabriel.blain at sp.gov.br>'
+  New submission
+    Possibly misspelled words in DESCRIPTION:
+    EP (14:45)
+    NASAPOWER (11:18)
+    OperatSDI (12:9)
+    PowerSDI (7:18, 13:9)
+    SPEI (3:31, 7:50, 10:20)
+    SPI (3:23, 7:42, 10:12)
+    ScientSDI (9:19)
+    evapotranspitation (13:44)
+    subperiods (15:76)
+Note 2:
+Flavor: r-devel-windows-x86_64
+Check: examples, Result: NOTE
+  Examples with CPU (user + system) or elapsed time > 10s
+             user system elapsed
+  ScientSDI 82.71   0.75   88.00
+  Reference 29.75   0.05   29.80
+  Accuracy  10.02   1.11   11.12
+Flavor: r-devel-linux-x86_64-debian-gcc
+Check: examples, Result: NOTE
+  Examples with CPU (user + system) or elapsed time > 5s
+              user system elapsed
+  ScientSDI 52.674  0.176  57.765
+  Reference 20.749  0.148  20.898
+  Accuracy   6.001  0.024   6.024
+
+Regarding note 1, not all the words are misspelled,
+EP, SPI and SPEI are acronyms
+OperatSDI and ScientSDI are functions of my package
+PowerSDI is the name of my package's name
+ NASAPOWER is the project's name.
+
+Regarding note 2, I don't know what's wrong. Is it related to the time to run the examples (>5s)? If is it so, it is not an error. There are so many calculations that it does take some time to do it.
+
+The package is available at https://github.com/gabrielblain/PowerSDI
+I really appreciate any help you can provide.
+Best regards
+Gabriel
+
+	[[alternative HTML version deleted]]
+
+
+From @vr@h@m@@d|er @end|ng |rom gm@||@com  Tue Jul 18 20:24:45 2023
+From: @vr@h@m@@d|er @end|ng |rom gm@||@com (Avraham Adler)
+Date: Tue, 18 Jul 2023 21:24:45 +0300
+Subject: [R-pkg-devel] Package PowerSDI NOTES
+In-Reply-To: <CPYP284MB15437A8686D73F4501F312DBA738A@CPYP284MB1543.BRAP284.PROD.OUTLOOK.COM>
+References: <CPYP284MB15437A8686D73F4501F312DBA738A@CPYP284MB1543.BRAP284.PROD.OUTLOOK.COM>
+Message-ID: <A40C34DD-C140-4C26-9833-107EBBD5E493@gmail.com>
+
+Hello, Gabriel. 
+
+CRAN policy is to rarely, if ever, allow long-running examples. It would be best if you could give an example of the function which requires as little run time as possible. Perhaps pre-compute some stages?
+
+Avi
+
+Sent from my iPhone
+
+> On Jul 18, 2023, at 9:07 PM, Gabriel Constantino Blain <gabriel.blain at sp.gov.br> wrote:
+> 
+> ?Dears,
+> I submitted my R package to CRAN.
+> However, it didn't pass the CRAN checks because of 2 notes:
+> Note 1:
+> Flavor: r-devel-linux-x86_64-debian-gcc, r-devel-windows-x86_64
+> Check: CRAN incoming feasibility, Result: NOTE
+>  Maintainer: 'Gabriel Constantino Blain <gabriel.blain at sp.gov.br>'
+>  New submission
+>    Possibly misspelled words in DESCRIPTION:
+>    EP (14:45)
+>    NASAPOWER (11:18)
+>    OperatSDI (12:9)
+>    PowerSDI (7:18, 13:9)
+>    SPEI (3:31, 7:50, 10:20)
+>    SPI (3:23, 7:42, 10:12)
+>    ScientSDI (9:19)
+>    evapotranspitation (13:44)
+>    subperiods (15:76)
+> Note 2:
+> Flavor: r-devel-windows-x86_64
+> Check: examples, Result: NOTE
+>  Examples with CPU (user + system) or elapsed time > 10s
+>             user system elapsed
+>  ScientSDI 82.71   0.75   88.00
+>  Reference 29.75   0.05   29.80
+>  Accuracy  10.02   1.11   11.12
+> Flavor: r-devel-linux-x86_64-debian-gcc
+> Check: examples, Result: NOTE
+>  Examples with CPU (user + system) or elapsed time > 5s
+>              user system elapsed
+>  ScientSDI 52.674  0.176  57.765
+>  Reference 20.749  0.148  20.898
+>  Accuracy   6.001  0.024   6.024
+> 
+> Regarding note 1, not all the words are misspelled,
+> EP, SPI and SPEI are acronyms
+> OperatSDI and ScientSDI are functions of my package
+> PowerSDI is the name of my package's name
+> NASAPOWER is the project's name.
+> 
+> Regarding note 2, I don't know what's wrong. Is it related to the time to run the examples (>5s)? If is it so, it is not an error. There are so many calculations that it does take some time to do it.
+> 
+> The package is available at https://github.com/gabrielblain/PowerSDI
+> I really appreciate any help you can provide.
+> Best regards
+> Gabriel
+> 
+>    [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Jul 18 20:30:17 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 18 Jul 2023 21:30:17 +0300
+Subject: [R-pkg-devel] Package PowerSDI NOTES
+In-Reply-To: <CPYP284MB15437A8686D73F4501F312DBA738A@CPYP284MB1543.BRAP284.PROD.OUTLOOK.COM>
+References: <CPYP284MB15437A8686D73F4501F312DBA738A@CPYP284MB1543.BRAP284.PROD.OUTLOOK.COM>
+Message-ID: <20230718213017.28e8bb3c@Tarkus>
+
+On Tue, 18 Jul 2023 16:37:46 +0000
+Gabriel Constantino Blain <gabriel.blain at sp.gov.br> wrote:
+
+> Regarding note 1, not all the words are misspelled,
+
+This is fine, especially if you add a comment to your package
+submission.
+
+> Regarding note 2, I don't know what's wrong. Is it related to the
+> time to run the examples (>5s)? If is it so, it is not an error.
+> There are so many calculations that it does take some time to do it.
+
+I'm sorry, but it's a policy of CRAN to require examples that run "for
+no more than a few seconds each":
+https://cran.r-project.org/web/packages/policies.html
+
+I know it may be non-trivial, but I hope it's possible to reduce the
+amount of data processed by your examples until they take around 5
+seconds or less on a typical computer. For example, could it be
+possible to reduce the date range of the ScientSDI example to one year
+and/or increase(?) the TS parameter?
+
+-- 
+Best regards,
+Ivan
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Jul 18 21:11:45 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 18 Jul 2023 15:11:45 -0400
+Subject: [R-pkg-devel] Package PowerSDI NOTES
+In-Reply-To: <CPYP284MB15437A8686D73F4501F312DBA738A@CPYP284MB1543.BRAP284.PROD.OUTLOOK.COM>
+References: <CPYP284MB15437A8686D73F4501F312DBA738A@CPYP284MB1543.BRAP284.PROD.OUTLOOK.COM>
+Message-ID: <92e931a4-8e58-0e0d-2838-288f39cf059d@gmail.com>
+
+On 18/07/2023 12:37 p.m., Gabriel Constantino Blain wrote:
+> Dears,
+> I submitted my R package to CRAN.
+> However, it didn't pass the CRAN checks because of 2 notes:
+> Note 1:
+> Flavor: r-devel-linux-x86_64-debian-gcc, r-devel-windows-x86_64
+> Check: CRAN incoming feasibility, Result: NOTE
+>    Maintainer: 'Gabriel Constantino Blain <gabriel.blain at sp.gov.br>'
+>    New submission
+>      Possibly misspelled words in DESCRIPTION:
+>      EP (14:45)
+>      NASAPOWER (11:18)
+>      OperatSDI (12:9)
+>      PowerSDI (7:18, 13:9)
+>      SPEI (3:31, 7:50, 10:20)
+>      SPI (3:23, 7:42, 10:12)
+>      ScientSDI (9:19)
+>      evapotranspitation (13:44)
+>      subperiods (15:76)
+> Note 2:
+> Flavor: r-devel-windows-x86_64
+> Check: examples, Result: NOTE
+>    Examples with CPU (user + system) or elapsed time > 10s
+>               user system elapsed
+>    ScientSDI 82.71   0.75   88.00
+>    Reference 29.75   0.05   29.80
+>    Accuracy  10.02   1.11   11.12
+> Flavor: r-devel-linux-x86_64-debian-gcc
+> Check: examples, Result: NOTE
+>    Examples with CPU (user + system) or elapsed time > 5s
+>                user system elapsed
+>    ScientSDI 52.674  0.176  57.765
+>    Reference 20.749  0.148  20.898
+>    Accuracy   6.001  0.024   6.024
+> 
+> Regarding note 1, not all the words are misspelled,
+> EP, SPI and SPEI are acronyms
+> OperatSDI and ScientSDI are functions of my package
+> PowerSDI is the name of my package's name
+>   NASAPOWER is the project's name.
+
+Writing R Extensions section 1.1.1 describes some rules for quoting 
+non-English words.  I think they imply OperatSDI, ScientSDI and PowerSDI 
+should be in single quotes.  I am not sure whether that also applies to 
+your other non-English words.
+
+Duncan Murdoch
+
+> 
+> Regarding note 2, I don't know what's wrong. Is it related to the time to run the examples (>5s)? If is it so, it is not an error. There are so many calculations that it does take some time to do it.
+> 
+> The package is available at https://github.com/gabrielblain/PowerSDI
+> I really appreciate any help you can provide.
+> Best regards
+> Gabriel
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From bbo|ker @end|ng |rom gm@||@com  Tue Jul 18 23:33:59 2023
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Tue, 18 Jul 2023 17:33:59 -0400
+Subject: [R-pkg-devel] Package PowerSDI NOTES
+In-Reply-To: <92e931a4-8e58-0e0d-2838-288f39cf059d@gmail.com>
+References: <CPYP284MB15437A8686D73F4501F312DBA738A@CPYP284MB1543.BRAP284.PROD.OUTLOOK.COM>
+ <92e931a4-8e58-0e0d-2838-288f39cf059d@gmail.com>
+Message-ID: <014be75b-8cd4-5f47-7c58-73b89ae7972e@gmail.com>
+
+   See also
+
+https://ropensci.org/blog/2022/01/21/ropensci-news-digest-january-2022/#to-quote-or-not-to-quote-non-existing-words-in-description
+
+https://stat.ethz.ch/R-manual/R-patched/library/utils/html/aspell-utils.html
+
+On 2023-07-18 3:11 p.m., Duncan Murdoch wrote:
+> On 18/07/2023 12:37 p.m., Gabriel Constantino Blain wrote:
+>> Dears,
+>> I submitted my R package to CRAN.
+>> However, it didn't pass the CRAN checks because of 2 notes:
+>> Note 1:
+>> Flavor: r-devel-linux-x86_64-debian-gcc, r-devel-windows-x86_64
+>> Check: CRAN incoming feasibility, Result: NOTE
+>> ?? Maintainer: 'Gabriel Constantino Blain <gabriel.blain at sp.gov.br>'
+>> ?? New submission
+>> ???? Possibly misspelled words in DESCRIPTION:
+>> ???? EP (14:45)
+>> ???? NASAPOWER (11:18)
+>> ???? OperatSDI (12:9)
+>> ???? PowerSDI (7:18, 13:9)
+>> ???? SPEI (3:31, 7:50, 10:20)
+>> ???? SPI (3:23, 7:42, 10:12)
+>> ???? ScientSDI (9:19)
+>> ???? evapotranspitation (13:44)
+>> ???? subperiods (15:76)
+>> Note 2:
+>> Flavor: r-devel-windows-x86_64
+>> Check: examples, Result: NOTE
+>> ?? Examples with CPU (user + system) or elapsed time > 10s
+>> ????????????? user system elapsed
+>> ?? ScientSDI 82.71?? 0.75?? 88.00
+>> ?? Reference 29.75?? 0.05?? 29.80
+>> ?? Accuracy? 10.02?? 1.11?? 11.12
+>> Flavor: r-devel-linux-x86_64-debian-gcc
+>> Check: examples, Result: NOTE
+>> ?? Examples with CPU (user + system) or elapsed time > 5s
+>> ?????????????? user system elapsed
+>> ?? ScientSDI 52.674? 0.176? 57.765
+>> ?? Reference 20.749? 0.148? 20.898
+>> ?? Accuracy?? 6.001? 0.024?? 6.024
+>>
+>> Regarding note 1, not all the words are misspelled,
+>> EP, SPI and SPEI are acronyms
+>> OperatSDI and ScientSDI are functions of my package
+>> PowerSDI is the name of my package's name
+>> ? NASAPOWER is the project's name.
+> 
+> Writing R Extensions section 1.1.1 describes some rules for quoting 
+> non-English words.? I think they imply OperatSDI, ScientSDI and PowerSDI 
+> should be in single quotes.? I am not sure whether that also applies to 
+> your other non-English words.
+> 
+> Duncan Murdoch
+> 
+>>
+>> Regarding note 2, I don't know what's wrong. Is it related to the time 
+>> to run the examples (>5s)? If is it so, it is not an error. There are 
+>> so many calculations that it does take some time to do it.
+>>
+>> The package is available at https://github.com/gabrielblain/PowerSDI
+>> I really appreciate any help you can provide.
+>> Best regards
+>> Gabriel
+>>
+>> ????[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From bbo|ker @end|ng |rom gm@||@com  Tue Jul 18 23:51:03 2023
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Tue, 18 Jul 2023 17:51:03 -0400
+Subject: [R-pkg-devel] "Version contains leading zeroes" note: clarity
+Message-ID: <d36d84e6-d4ac-5256-dec5-1b28bdcc6c54@gmail.com>
+
+   Hi folks,
+
+   I got the dreaded
+
+Version contains leading zeroes
+
+NOTE from a package check - the version was 0.0.1.000.
+
+until I dug into the code and found the regex "(^|[.-])0[0-9]+" I didn't 
+realize the restriction was on leading zeroes *within a version 
+component* - I was interpreting it as leftmost in the whole version 
+(i.e., the initial 0).
+
+   I eventually found the documentation in ?package_version (feels like 
+it should also be pointed to somewhere in Writing R Extensions?
+
+Numeric versions are sequences of one or more non-negative
+      integers, usually (e.g., in package ?DESCRIPTION? files)
+      represented as character strings with the elements of the sequence
+      concatenated and separated by single ?.? or ?-? characters.  R
+      package versions consist of at least two such integers, an R
+      system version of exactly three (major, minor and patchlevel).
+
+Doesn't say anything about leading zero(e)s here ...
+
+   "Zeroes" looks weird to me, but I see that "zeroes" is used on 26 
+lines in .Rd files in the R code base, while "zeros" is used on 36 lines 
+... so close to a tie. (Maybe someone wants to clean this up ... ? 
+Maybe a mini-project for the R bug sprint at the end of the summer?
+
+   Also, I'm sure this has been asked a few 100 times but: a new-to-CRAN 
+maintainer triggers a NOTE.  Is there any way that a new user would know 
+that this was informational only?  (There is also a 
+Note_to_CRAN_maintainers 
+<https://github.com/r-devel/r-svn/blob/0252cdbf14c73acd26ae2090df3c04aa6118b523/src/library/tools/R/check.R#L6009>: 
+wouldn't that be more appropriate here?)
+
+   cheers
+    Ben Bolker
+
+
