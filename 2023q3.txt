@@ -6443,3 +6443,201 @@ Kind regards,
 Johannes
 
 
+From edd @end|ng |rom deb|@n@org  Sat Jul 22 14:26:08 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Sat, 22 Jul 2023 07:26:08 -0500
+Subject: [R-pkg-devel] macOS results not mirrored/updated at CRAN
+In-Reply-To: <SY4PR01MB56580500A52A8E91A06D1C53AC3AA@SY4PR01MB5658.ausprd01.prod.outlook.com>
+References: <25775.16177.937585.974774@rob.eddelbuettel.com>
+ <25779.10961.299898.418341@rob.eddelbuettel.com>
+ <SY4PR01MB56580500A52A8E91A06D1C53AC3AA@SY4PR01MB5658.ausprd01.prod.outlook.com>
+Message-ID: <25787.51936.871790.433852@rob.eddelbuettel.com>
+
+
+Simon,
+
+This still persists. As Murray reported, it happened for a while now, it is
+still happening eg package tiledb has been rebuilt everywhere [1] since the
+upload a few days ago -- yet the results page still reports builds two
+uploads ago [2] for both arm64 variants of your macOS setup.
+
+Can you take a look, please?
+
+Thanks in advance,  Dirk
+
+
+[1] https://cran.r-project.org/package=tiledb
+[2] https://cran.r-project.org/web/checks/check_results_tiledb.html
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From trb5me @end|ng |rom v|rg|n|@@edu  Sat Jul 22 02:51:41 2023
+From: trb5me @end|ng |rom v|rg|n|@@edu (taylor brown)
+Date: Fri, 21 Jul 2023 20:51:41 -0400
+Subject: [R-pkg-devel] DESCRIPTION file question
+Message-ID: <B7AE607C-2D14-47AD-B6BF-90796F82196A@virginia.edu>
+
+Hi everyone,
+
+I have a question about the DESCRIPTION file of an R package that has some c++ dependencies. 
+
+This package of mine builds c++ code during an interactive R session, but does not contain any source c++ in itself. The c++ files make reference to some dependencies that are made available by other third party R packages.
+
+LinkingTo is the appropriate field for the DESCRIPTION file (usually) here, not Imports, but if If I remove the dependencies (BH and RcppEigen) from the Imports field, the code examples in the vignette will fail to build on a fresh machine. 
+
+The NOTES in my build mention that, because I have no src/ directory, LinkingTo is ignored. Simultaneously, there is another note that mentions Imports is also excessive. 
+
+It?s kind of a catch 22. It feels like my options are either add the Imports lines and ignore the NOTE, or add a superfluous src/ directory to silence the NOTE. Which option is the preferred one? Or is there a third?
+
+Best,
+
+Taylor R. Brown, Ph.D.
+Assistant Professor of Statistics, General Faculty
+Department of Statistics
+University of Virginia
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Sat Jul 22 23:07:03 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Sat, 22 Jul 2023 16:07:03 -0500
+Subject: [R-pkg-devel] DESCRIPTION file question
+In-Reply-To: <B7AE607C-2D14-47AD-B6BF-90796F82196A@virginia.edu>
+References: <B7AE607C-2D14-47AD-B6BF-90796F82196A@virginia.edu>
+Message-ID: <25788.17655.652585.247570@rob.eddelbuettel.com>
+
+
+Taylor,
+
+I believe we have been over this at StackOverflow but you may by now have
+deleted the question/
+
+On 21 July 2023 at 20:51, taylor brown via R-package-devel wrote:
+| I have a question about the DESCRIPTION file of an R package that has some c++ dependencies. 
+| 
+| This package of mine builds c++ code during an interactive R session, but
+|  does not contain any source c++ in itself. The c++ files make reference to
+|  some dependencies that are made available by other third party R packages.
+|
+| LinkingTo is the appropriate field for the DESCRIPTION file (usually) here, not Imports, but if If I remove the dependencies (BH and RcppEigen) from the Imports field, the code examples in the vignette will fail to build on a fresh machine. 
+| 
+| The NOTES in my build mention that, because I have no src/ directory, LinkingTo is ignored. Simultaneously, there is another note that mentions Imports is also excessive. 
+
+As your package has no src/ directory and does no compilation itself, you do
+not need / have no use for LinkingTo to provide the include/ directory of one
+or more listed packages.
+
+(If you have offer that compilation ability in a helper function you need to
+tell the deal with it in the function. You can use `requireNamespace()` to
+check if a package is present, warn or error if not, and compute the include/
+directory location using R helper functions such as system.file().)
+
+| It?s kind of a catch 22. It feels like my options are either add the Imports lines and ignore the NOTE, or add a superfluous src/ directory to silence the NOTE. Which option is the preferred one? Or is there a third?
+
+I think all you need is in Writing R Extensions. For us to help you more a
+concrete example, maybe even from a mock package, would help.
+
+Cheers, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From edd @end|ng |rom deb|@n@org  Sun Jul 23 00:22:20 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Sat, 22 Jul 2023 17:22:20 -0500
+Subject: [R-pkg-devel] DESCRIPTION file question
+In-Reply-To: <25788.17655.652585.247570@rob.eddelbuettel.com>
+References: <B7AE607C-2D14-47AD-B6BF-90796F82196A@virginia.edu>
+ <25788.17655.652585.247570@rob.eddelbuettel.com>
+Message-ID: <25788.22172.342211.311432@rob.eddelbuettel.com>
+
+
+On 22 July 2023 at 16:07, Dirk Eddelbuettel wrote:
+| 
+| Taylor,
+| 
+| I believe we have been over this at StackOverflow but you may by now have
+| deleted the question/
+| 
+| On 21 July 2023 at 20:51, taylor brown via R-package-devel wrote:
+| | I have a question about the DESCRIPTION file of an R package that has some c++ dependencies. 
+| | 
+| | This package of mine builds c++ code during an interactive R session, but
+| |  does not contain any source c++ in itself. The c++ files make reference to
+| |  some dependencies that are made available by other third party R packages.
+| |
+| | LinkingTo is the appropriate field for the DESCRIPTION file (usually) here, not Imports, but if If I remove the dependencies (BH and RcppEigen) from the Imports field, the code examples in the vignette will fail to build on a fresh machine. 
+| | 
+| | The NOTES in my build mention that, because I have no src/ directory, LinkingTo is ignored. Simultaneously, there is another note that mentions Imports is also excessive. 
+| 
+| As your package has no src/ directory and does no compilation itself, you do
+| not need / have no use for LinkingTo to provide the include/ directory of one
+| or more listed packages.
+| 
+| (If you have offer that compilation ability in a helper function you need to
+| tell the deal with it in the function. You can use `requireNamespace()` to
+| check if a package is present, warn or error if not, and compute the include/
+| directory location using R helper functions such as system.file().)
+| 
+| | It?s kind of a catch 22. It feels like my options are either add the Imports lines and ignore the NOTE, or add a superfluous src/ directory to silence the NOTE. Which option is the preferred one? Or is there a third?
+| 
+| I think all you need is in Writing R Extensions. For us to help you more a
+| concrete example, maybe even from a mock package, would help.
+
+PS An existing example is provided by the 'inline' package, originally by
+Oleg Sklyar, extented by many, and maintained by me for some time. It lets
+you work on code in C, C++, Fortran, ... and it compiles, links and loads it
+for you from an R session just you seem to desire.
+
+And 'inline' has no LinkingTo and only one Imports for 'methods' as it uses
+some S4.
+
+Hth, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Sun Jul 23 01:17:15 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Sun, 23 Jul 2023 11:17:15 +1200
+Subject: [R-pkg-devel] macOS results not mirrored/updated at CRAN
+In-Reply-To: <25787.51936.871790.433852@rob.eddelbuettel.com>
+References: <25775.16177.937585.974774@rob.eddelbuettel.com>
+ <25779.10961.299898.418341@rob.eddelbuettel.com>
+ <SY4PR01MB56580500A52A8E91A06D1C53AC3AA@SY4PR01MB5658.ausprd01.prod.outlook.com>
+ <25787.51936.871790.433852@rob.eddelbuettel.com>
+Message-ID: <D4DA5737-AD56-42FE-A8C7-6202DA1F8D80@R-project.org>
+
+Drik,
+
+thanks. I have tried to address the problem and the actual sync problem for big-sur-x86_64 was fixed (as you can the see the results have been updated after you reported it), but apparently there was another, independent, problem with the cron jobs on that machine. I have changed the way the results sync is triggered, so hopefully that will make it more reliable.
+
+Cheers,
+Simon
+
+
+> On Jul 23, 2023, at 12:26 AM, Dirk Eddelbuettel <edd at debian.org> wrote:
+> 
+> 
+> Simon,
+> 
+> This still persists. As Murray reported, it happened for a while now, it is
+> still happening eg package tiledb has been rebuilt everywhere [1] since the
+> upload a few days ago -- yet the results page still reports builds two
+> uploads ago [2] for both arm64 variants of your macOS setup.
+> 
+> Can you take a look, please?
+> 
+> Thanks in advance,  Dirk
+> 
+> 
+> [1] https://cran.r-project.org/package=tiledb
+> [2] https://cran.r-project.org/web/checks/check_results_tiledb.html
+> -- 
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> 
+
+
