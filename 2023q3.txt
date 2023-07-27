@@ -6762,3 +6762,216 @@ University of Virginia
 	[[alternative HTML version deleted]]
 
 
+From pro|jcn@@h @end|ng |rom gm@||@com  Wed Jul 26 15:37:38 2023
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Wed, 26 Jul 2023 09:37:38 -0400
+Subject: [R-pkg-devel] Changes to checks on NEWS?
+Message-ID: <33b8892d-b3cd-b7b8-7ffe-30ba8e2c7f8e@gmail.com>
+
+
+In work on an upgrade to my optimx package, I added to my (plain text) NEWS
+file.
+
+The lines
+
+VERSION 2023-06-25
+
+       o This is a MAJOR revision and overhaul of the optimx package and its components.
+       o Fixed CITATION file based on R CMD check --as-cran complaints
+         regarding requirement for person() and bibentry() changes.
+
+pass R CMD check --as-cran
+
+but
+
+VERSION 2023-06-25
+
+     This is a MAJOR revision and overhaul of the optimx package and its components.
+       o Fixed CITATION file based on R CMD check --as-cran complaints
+         regarding requirement for person() and bibentry() changes.
+
+give a NOTE that news cannot process the chunk/lines in NEWS.
+
+R CMD check    passes. (i.e., CRAN checks are tripping the NOTE).
+
+I don't see anything about this in Writing R Extensions at moment.
+
+Does anyone have information on what may have changed. I'd like to avoid NOTEs if possible,
+and since I'm using a plain-text NEWS, don't believe this should trigger one.
+
+The version that passes was the result of some almost random tries to see what would
+trigger a note.
+
+Cheers,
+
+John Nash
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Jul 26 16:03:25 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 26 Jul 2023 17:03:25 +0300
+Subject: [R-pkg-devel] Changes to checks on NEWS?
+In-Reply-To: <33b8892d-b3cd-b7b8-7ffe-30ba8e2c7f8e@gmail.com>
+References: <33b8892d-b3cd-b7b8-7ffe-30ba8e2c7f8e@gmail.com>
+Message-ID: <20230726170325.410e9c1b@arachnoid>
+
+? Wed, 26 Jul 2023 09:37:38 -0400
+J C Nash <profjcnash at gmail.com> ?????:
+
+> I'd like to avoid NOTEs if possible, and since I'm using a plain-text
+> NEWS, don't believe this should trigger one.
+
+Plain-text NEWS files are parsed according to the rules specified in
+help(news), which is admittedly laconic in its description. If you run
+tools:::.news_reader_default('https://cran.r-project.org/web/packages/optimx/NEWS')
+(or news(package = 'optimx')), you can see that R's news() already
+misunderstands some of the contents of your NEWS file.
+
+A relatively recent change (r82543, July 2022) set
+_R_CHECK_NEWS_IN_PLAIN_TEXT_=TRUE for R CMD check --as-cran and started
+verifying that R's plain text "news reader" function could actually
+parse plain-text NEWS files without warnings or errors.
+
+I think that if you rename NEWS to ChangeLog, R will leave the file
+alone, but CRAN will offer it to users as plain text.
+
+-- 
+Best regards,
+Ivan
+
+
+From pro|jcn@@h @end|ng |rom gm@||@com  Wed Jul 26 16:18:15 2023
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Wed, 26 Jul 2023 10:18:15 -0400
+Subject: [R-pkg-devel] Changes to checks on NEWS?
+In-Reply-To: <20230726170325.410e9c1b@arachnoid>
+References: <33b8892d-b3cd-b7b8-7ffe-30ba8e2c7f8e@gmail.com>
+ <20230726170325.410e9c1b@arachnoid>
+Message-ID: <a0de0fc4-a35c-97de-00e5-c94a3da36cbf@gmail.com>
+
+Thanks for the info, though it seems odd that CRAN wants to
+parse a plain text file that is purely for information, since it
+should have no impact on the current package or any other. I suppose
+there might be character set issues to check. The motive for parsing
+it eludes me.
+
+Does anyone know if there are plans to use NEWS for some purpose in
+the future i.e., to actually track changes beyond package maintainer's
+comments?
+
+Cheers, and thanks again.
+
+JN
+
+
+On 2023-07-26 10:03, Ivan Krylov wrote:
+> ? Wed, 26 Jul 2023 09:37:38 -0400
+> J C Nash <profjcnash at gmail.com> ?????:
+> 
+>> I'd like to avoid NOTEs if possible, and since I'm using a plain-text
+>> NEWS, don't believe this should trigger one.
+> 
+> Plain-text NEWS files are parsed according to the rules specified in
+> help(news), which is admittedly laconic in its description. If you run
+> tools:::.news_reader_default('https://cran.r-project.org/web/packages/optimx/NEWS')
+> (or news(package = 'optimx')), you can see that R's news() already
+> misunderstands some of the contents of your NEWS file.
+> 
+> A relatively recent change (r82543, July 2022) set
+> _R_CHECK_NEWS_IN_PLAIN_TEXT_=TRUE for R CMD check --as-cran and started
+> verifying that R's plain text "news reader" function could actually
+> parse plain-text NEWS files without warnings or errors.
+> 
+> I think that if you rename NEWS to ChangeLog, R will leave the file
+> alone, but CRAN will offer it to users as plain text.
+>
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Jul 26 16:25:05 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 26 Jul 2023 10:25:05 -0400
+Subject: [R-pkg-devel] Changes to checks on NEWS?
+In-Reply-To: <a0de0fc4-a35c-97de-00e5-c94a3da36cbf@gmail.com>
+References: <33b8892d-b3cd-b7b8-7ffe-30ba8e2c7f8e@gmail.com>
+ <20230726170325.410e9c1b@arachnoid>
+ <a0de0fc4-a35c-97de-00e5-c94a3da36cbf@gmail.com>
+Message-ID: <aba5b1d8-b7b1-800b-039d-3636b6b38c96@gmail.com>
+
+On 26/07/2023 10:18 a.m., J C Nash wrote:
+> Thanks for the info, though it seems odd that CRAN wants to
+> parse a plain text file that is purely for information, since it
+> should have no impact on the current package or any other. I suppose
+> there might be character set issues to check. The motive for parsing
+> it eludes me.
+> 
+> Does anyone know if there are plans to use NEWS for some purpose in
+> the future i.e., to actually track changes beyond package maintainer's
+> comments?
+
+NEWS has been used for a long time by the utils::news() function, which 
+in turn is used by the HTML help system.
+
+Duncan Murdoch
+
+> 
+> Cheers, and thanks again.
+> 
+> JN
+> 
+> 
+> On 2023-07-26 10:03, Ivan Krylov wrote:
+>> ? Wed, 26 Jul 2023 09:37:38 -0400
+>> J C Nash <profjcnash at gmail.com> ?????:
+>>
+>>> I'd like to avoid NOTEs if possible, and since I'm using a plain-text
+>>> NEWS, don't believe this should trigger one.
+>>
+>> Plain-text NEWS files are parsed according to the rules specified in
+>> help(news), which is admittedly laconic in its description. If you run
+>> tools:::.news_reader_default('https://cran.r-project.org/web/packages/optimx/NEWS')
+>> (or news(package = 'optimx')), you can see that R's news() already
+>> misunderstands some of the contents of your NEWS file.
+>>
+>> A relatively recent change (r82543, July 2022) set
+>> _R_CHECK_NEWS_IN_PLAIN_TEXT_=TRUE for R CMD check --as-cran and started
+>> verifying that R's plain text "news reader" function could actually
+>> parse plain-text NEWS files without warnings or errors.
+>>
+>> I think that if you rename NEWS to ChangeLog, R will leave the file
+>> alone, but CRAN will offer it to users as plain text.
+>>
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From pro|jcn@@h @end|ng |rom gm@||@com  Wed Jul 26 17:45:40 2023
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Wed, 26 Jul 2023 11:45:40 -0400
+Subject: [R-pkg-devel] Changes to checks on NEWS?
+In-Reply-To: <aba5b1d8-b7b1-800b-039d-3636b6b38c96@gmail.com>
+References: <33b8892d-b3cd-b7b8-7ffe-30ba8e2c7f8e@gmail.com>
+ <20230726170325.410e9c1b@arachnoid>
+ <a0de0fc4-a35c-97de-00e5-c94a3da36cbf@gmail.com>
+ <aba5b1d8-b7b1-800b-039d-3636b6b38c96@gmail.com>
+Message-ID: <b0ab0a5d-06f5-2d85-1adf-bb21bca70177@gmail.com>
+
+The important information is in the body of the man page for news(),
+i.e., found by
+    ?utils::news
+
+and this explains why putting an "o" in front of a line clears the
+NOTE. Once I realized that CRAN is running this, I could see the
+"why". Thanks.
+
+JN
+
+On 2023-07-26 10:25, Duncan Murdoch wrote:
+> 
+> NEWS has been used for a long time by the utils::news() function, which in turn is used by the HTML help system.
+> 
+> Duncan Murdoch
+>
+
+
