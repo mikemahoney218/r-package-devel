@@ -7286,3 +7286,429 @@ Best regards,
 Ivan
 
 
+From d@n@gro@e @end|ng |rom |@nc@@ter@@c@uk  Mon Aug  7 14:58:30 2023
+From: d@n@gro@e @end|ng |rom |@nc@@ter@@c@uk (Grose, Daniel)
+Date: Mon, 7 Aug 2023 12:58:30 +0000
+Subject: [R-pkg-devel] clang issue
+Message-ID: <LO2P265MB41510EE6A06AF9D6F6781AD6BE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+
+Hi
+
+My package submission fails due to --------
+
+
+
+In file included from MeanAnomalyMV.cpp:7:
+In file included from ./Functions_mean.h:4:
+In file included from usr/local/clang-trunk/bin../include/c++/v1/vector:321:
+In file included from
+usr/local/clang-trunk/bin../include/c++/v1/__format/formatter_bool.h:20:
+In file included from
+usr/local/clang-trunk/bin../include/c++/v1/__format/formatter_integral.h:32:
+In file included from usr/local/clang-trunk/bin../include/c++/v1/locale:202:
+usr/local/clang-trunk/bin../include/c++/v1/__locale:962:34: error: too
+many arguments provided to function-like macro invocation
+   962 |     int length(state_type& __st, const extern_type* __frm,
+const extern_type* __end, size_t __mx) const
+       |                                  ^
+/data/gannet/ripley/R/R-flang/include/Rinternals.h:968:9: note: macro
+'length' defined here
+   968 | #define length(x)               Rf_length(x)
+       |         ^
+...
+
+Please define R_NO_REMAP and fix the fallout: it has Rinternals.h
+included all over the place in both .h and .cpp files.  It must not be
+included before <vector> nor any other C++ header.
+
+Please fix and resubmit.
+
+--------------------------------------------
+
+I have tried to reproduce the error using clang-15 on Ubuntu-22.04, but everything seems fine --
+
+ clang-15 -std=gnu++17 -I"/usr/share/R/include" -DNDEBUG -DBOOST_ALLOW_DEPRECATED_HEADERS -DR_NO_REMAP -I'/home/grosedj/R-packages/Rcpp/include' -I'/home/grosedj/R-packages/BH/include'    -fpic  -g -O2 -fdebug-prefix-map=/build/r-base-a3XuZ5/r-base-4.2.2.20221110=. -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2  -c MeanAnomalyMV.cpp -o MeanAnomalyMV.o
+
+
+Any ideas ?
+
+Many thanks,
+
+Daniel Grose
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Mon Aug  7 15:13:38 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Mon, 7 Aug 2023 08:13:38 -0500
+Subject: [R-pkg-devel] clang issue
+In-Reply-To: <LO2P265MB41510EE6A06AF9D6F6781AD6BE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+References: <LO2P265MB41510EE6A06AF9D6F6781AD6BE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+Message-ID: <25808.60930.221146.150878@rob.eddelbuettel.com>
+
+
+Daniel,
+
+This is not new, and not related to clang.
+
+On 7 August 2023 at 12:58, Grose, Daniel wrote:
+| Any ideas ?
+
+Add a line
+
+   #define R_NO_REMAP 1
+
+before _any_ inclusion of R headers. See Section 6 of Writing R Extensions.
+
+If you use eg Rcpp it is done for you when you include Rcpp headers.
+
+Cheers, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From d@n@gro@e @end|ng |rom |@nc@@ter@@c@uk  Mon Aug  7 15:16:33 2023
+From: d@n@gro@e @end|ng |rom |@nc@@ter@@c@uk (Grose, Daniel)
+Date: Mon, 7 Aug 2023 13:16:33 +0000
+Subject: [R-pkg-devel] [External] Re:  clang issue
+In-Reply-To: <25808.60930.221146.150878@rob.eddelbuettel.com>
+References: <LO2P265MB41510EE6A06AF9D6F6781AD6BE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+ <25808.60930.221146.150878@rob.eddelbuettel.com>
+Message-ID: <LO2P265MB4151E71C52A3A129B2E45BB2BE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+
+Hi Dirk
+
+Thanks for the quick response.
+
+I thought  -DR_NO_REMAP in Makevars would set R_NO_REMAP across all compilation units. Is this not the case ?
+
+Thanks,
+
+Dan
+________________________________
+From: Dirk Eddelbuettel <edd at debian.org>
+Sent: 07 August 2023 14:13
+To: Grose, Daniel <dan.grose at lancaster.ac.uk>
+Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: [External] Re: [R-pkg-devel] clang issue
+
+This email originated outside the University. Check before clicking links or attachments.
+
+Daniel,
+
+This is not new, and not related to clang.
+
+On 7 August 2023 at 12:58, Grose, Daniel wrote:
+| Any ideas ?
+
+Add a line
+
+   #define R_NO_REMAP 1
+
+before _any_ inclusion of R headers. See Section 6 of Writing R Extensions.
+
+If you use eg Rcpp it is done for you when you include Rcpp headers.
+
+Cheers, Dirk
+
+--
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Mon Aug  7 15:32:53 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Mon, 7 Aug 2023 16:32:53 +0300
+Subject: [R-pkg-devel] [External] Re:  clang issue
+In-Reply-To: <LO2P265MB4151E71C52A3A129B2E45BB2BE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+References: <LO2P265MB41510EE6A06AF9D6F6781AD6BE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+ <25808.60930.221146.150878@rob.eddelbuettel.com>
+ <LO2P265MB4151E71C52A3A129B2E45BB2BE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+Message-ID: <20230807163253.52f87a1c@parabola>
+
+? Mon, 7 Aug 2023 13:16:33 +0000
+"Grose, Daniel" <dan.grose at lancaster.ac.uk> ?????:
+
+> I thought  -DR_NO_REMAP in Makevars would set R_NO_REMAP across all
+> compilation units. Is this not the case ?
+
+It should have worked. Can we see the code? Is there a visible compiler
+command line in the check results that you quoted in the first message?
+
+-- 
+Best regards,
+Ivan
+
+
+From d@n@gro@e @end|ng |rom |@nc@@ter@@c@uk  Mon Aug  7 15:38:54 2023
+From: d@n@gro@e @end|ng |rom |@nc@@ter@@c@uk (Grose, Daniel)
+Date: Mon, 7 Aug 2023 13:38:54 +0000
+Subject: [R-pkg-devel] [External] Re:  clang issue
+In-Reply-To: <20230807163253.52f87a1c@parabola>
+References: <LO2P265MB41510EE6A06AF9D6F6781AD6BE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+ <25808.60930.221146.150878@rob.eddelbuettel.com>
+ <LO2P265MB4151E71C52A3A129B2E45BB2BE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+ <20230807163253.52f87a1c@parabola>
+Message-ID: <LO2P265MB4151351FAC451BB01A8DC63EBE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+
+Hi Ivan
+
+No - unfortunately not. I cannot reproduce the error locally so I posted the snippet that Uwe Ligges sent me regarding the failed CRAN submission. That is all of the information I have.
+
+For now I will follow Dirk's advice and see if the CRAN submission gets accepted.
+
+Thanks for your help.
+
+Best wishes,
+Dan
+________________________________
+From: Ivan Krylov <krylov.r00t at gmail.com>
+Sent: 07 August 2023 14:32
+To: Grose, Daniel <dan.grose at lancaster.ac.uk>
+Cc: Dirk Eddelbuettel <edd at debian.org>; r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] [External] Re: clang issue
+
+? Mon, 7 Aug 2023 13:16:33 +0000
+"Grose, Daniel" <dan.grose at lancaster.ac.uk> ?????:
+
+> I thought  -DR_NO_REMAP in Makevars would set R_NO_REMAP across all
+> compilation units. Is this not the case ?
+
+It should have worked. Can we see the code? Is there a visible compiler
+command line in the check results that you quoted in the first message?
+
+--
+Best regards,
+Ivan
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Mon Aug  7 15:53:06 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Mon, 7 Aug 2023 08:53:06 -0500
+Subject: [R-pkg-devel] [External] Re:  clang issue
+In-Reply-To: <LO2P265MB4151351FAC451BB01A8DC63EBE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+References: <LO2P265MB41510EE6A06AF9D6F6781AD6BE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+ <25808.60930.221146.150878@rob.eddelbuettel.com>
+ <LO2P265MB4151E71C52A3A129B2E45BB2BE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+ <20230807163253.52f87a1c@parabola>
+ <LO2P265MB4151351FAC451BB01A8DC63EBE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+Message-ID: <25808.63298.413970.189167@rob.eddelbuettel.com>
+
+
+On 7 August 2023 at 13:38, Grose, Daniel wrote:
+| No - unfortunately not. I cannot reproduce the error locally so I posted the
+| snippet that Uwe Ligges sent me regarding the failed CRAN submission. That is
+| all of the information I have.
+| 
+| For now I will follow Dirk's advice and see if the CRAN submission gets
+| accepted.
+
+Yes as Ivan state using PKG_CFLAGS etc should be equivalent but there can be
+pitfalls if you eg set PKG_CFLAGS but also have a C++ (or Fortran) file.
+
+So as Ivan already asked: what is you repo?  We can help better (and faster)
+with reproducible code.
+
+Best, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From d@n@gro@e @end|ng |rom |@nc@@ter@@c@uk  Mon Aug  7 15:55:17 2023
+From: d@n@gro@e @end|ng |rom |@nc@@ter@@c@uk (Grose, Daniel)
+Date: Mon, 7 Aug 2023 13:55:17 +0000
+Subject: [R-pkg-devel] [External] Re:  clang issue
+In-Reply-To: <25808.63298.413970.189167@rob.eddelbuettel.com>
+References: <LO2P265MB41510EE6A06AF9D6F6781AD6BE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+ <25808.60930.221146.150878@rob.eddelbuettel.com>
+ <LO2P265MB4151E71C52A3A129B2E45BB2BE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+ <20230807163253.52f87a1c@parabola>
+ <LO2P265MB4151351FAC451BB01A8DC63EBE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+ <25808.63298.413970.189167@rob.eddelbuettel.com>
+Message-ID: <LO2P265MB4151D7C1F0C28A57E4BCEBB7BE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+
+Hi Ivan/Dirk
+
+As I say - I cannot reproduce the error myself. I will try asking Uwe Ligges for more information.
+
+Best wishes,
+Dan
+________________________________
+From: Dirk Eddelbuettel <edd at debian.org>
+Sent: 07 August 2023 14:53
+To: Grose, Daniel <dan.grose at lancaster.ac.uk>
+Cc: Ivan Krylov <krylov.r00t at gmail.com>; Dirk Eddelbuettel <edd at debian.org>; r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] [External] Re: clang issue
+
+
+On 7 August 2023 at 13:38, Grose, Daniel wrote:
+| No - unfortunately not. I cannot reproduce the error locally so I posted the
+| snippet that Uwe Ligges sent me regarding the failed CRAN submission. That is
+| all of the information I have.
+|
+| For now I will follow Dirk's advice and see if the CRAN submission gets
+| accepted.
+
+Yes as Ivan state using PKG_CFLAGS etc should be equivalent but there can be
+pitfalls if you eg set PKG_CFLAGS but also have a C++ (or Fortran) file.
+
+So as Ivan already asked: what is you repo?  We can help better (and faster)
+with reproducible code.
+
+Best, Dirk
+
+--
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Mon Aug  7 17:19:04 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Mon, 7 Aug 2023 10:19:04 -0500
+Subject: [R-pkg-devel] [External] Re:  clang issue
+In-Reply-To: <LO2P265MB4151D7C1F0C28A57E4BCEBB7BE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+References: <LO2P265MB41510EE6A06AF9D6F6781AD6BE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+ <25808.60930.221146.150878@rob.eddelbuettel.com>
+ <LO2P265MB4151E71C52A3A129B2E45BB2BE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+ <20230807163253.52f87a1c@parabola>
+ <LO2P265MB4151351FAC451BB01A8DC63EBE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+ <25808.63298.413970.189167@rob.eddelbuettel.com>
+ <LO2P265MB4151D7C1F0C28A57E4BCEBB7BE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+Message-ID: <25809.2920.490117.377050@rob.eddelbuettel.com>
+
+
+On 7 August 2023 at 13:55, Grose, Daniel wrote:
+| As I say - I cannot reproduce the error myself. I will try asking Uwe Ligges
+| for more information.
+
+Methinks you are doing it wrong. We created the r-package-devel list years
+ago to take load away from the overworked CRAN maintainers who are "on the
+critical path" and a bottleneck we would rather see lightened.
+
+Also, you were asked twice to share your repo or package. As you won't I
+stop here as you seemingly do not want us to help you. Your call.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From d@n@gro@e @end|ng |rom |@nc@@ter@@c@uk  Mon Aug  7 17:52:38 2023
+From: d@n@gro@e @end|ng |rom |@nc@@ter@@c@uk (Grose, Daniel)
+Date: Mon, 7 Aug 2023 15:52:38 +0000
+Subject: [R-pkg-devel] [External] Re:  clang issue
+In-Reply-To: <25809.2920.490117.377050@rob.eddelbuettel.com>
+References: <LO2P265MB41510EE6A06AF9D6F6781AD6BE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+ <25808.60930.221146.150878@rob.eddelbuettel.com>
+ <LO2P265MB4151E71C52A3A129B2E45BB2BE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+ <20230807163253.52f87a1c@parabola>
+ <LO2P265MB4151351FAC451BB01A8DC63EBE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+ <25808.63298.413970.189167@rob.eddelbuettel.com>
+ <LO2P265MB4151D7C1F0C28A57E4BCEBB7BE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+ <25809.2920.490117.377050@rob.eddelbuettel.com>
+Message-ID: <LO2P265MB4151E819F9C8F1BD738E202CBE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+
+Hi Dirk
+
+My apologies. I thought you were asking for compiler output. You can find the code at
+
+
+https://github.com/grosed/anomaly
+
+[https://opengraph.githubassets.com/866d37f560339c5ee145d5cd7e40edf768223cf08b8e9f35ae97e14d1f2b47f5/grosed/anomaly]<https://github.com/grosed/anomaly>
+GitHub - grosed/anomaly<https://github.com/grosed/anomaly>
+Contribute to grosed/anomaly development by creating an account on GitHub.
+github.com
+
+
+in the version-4.3.0 branch.
+
+Many thanks,
+Dan
+________________________________
+From: Dirk Eddelbuettel <edd at debian.org>
+Sent: 07 August 2023 16:19
+To: Grose, Daniel <dan.grose at lancaster.ac.uk>
+Cc: Dirk Eddelbuettel <edd at debian.org>; Ivan Krylov <krylov.r00t at gmail.com>; r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] [External] Re: clang issue
+
+
+On 7 August 2023 at 13:55, Grose, Daniel wrote:
+| As I say - I cannot reproduce the error myself. I will try asking Uwe Ligges
+| for more information.
+
+Methinks you are doing it wrong. We created the r-package-devel list years
+ago to take load away from the overworked CRAN maintainers who are "on the
+critical path" and a bottleneck we would rather see lightened.
+
+Also, you were asked twice to share your repo or package. As you won't I
+stop here as you seemingly do not want us to help you. Your call.
+
+Dirk
+
+--
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Mon Aug  7 20:01:28 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Mon, 7 Aug 2023 21:01:28 +0300
+Subject: [R-pkg-devel] [External] Re:  clang issue
+In-Reply-To: <LO2P265MB4151E819F9C8F1BD738E202CBE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+References: <LO2P265MB41510EE6A06AF9D6F6781AD6BE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+ <25808.60930.221146.150878@rob.eddelbuettel.com>
+ <LO2P265MB4151E71C52A3A129B2E45BB2BE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+ <20230807163253.52f87a1c@parabola>
+ <LO2P265MB4151351FAC451BB01A8DC63EBE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+ <25808.63298.413970.189167@rob.eddelbuettel.com>
+ <LO2P265MB4151D7C1F0C28A57E4BCEBB7BE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+ <25809.2920.490117.377050@rob.eddelbuettel.com>
+ <LO2P265MB4151E819F9C8F1BD738E202CBE0CA@LO2P265MB4151.GBRP265.PROD.OUTLOOK.COM>
+Message-ID: <20230807210128.6db4ba49@parabola>
+
+? Mon, 7 Aug 2023 15:52:38 +0000
+"Grose, Daniel" <dan.grose at lancaster.ac.uk> ?????:
+
+> https://github.com/grosed/anomaly
+
+Ah, so this is why I couldn't find your package on CRAN. Now I can see
+the compiler log, together with the compiler command line:
+https://www.stats.ox.ac.uk/pub/bdr/clang17/anomaly.log
+
+It looks like -DR_NO_REMAP is missing from src/Makevars, both in the
+last archived version on CRAN and in the version-4.3.0 branch, but if
+you add it to the line with PKG_CPPFLAGS, it should work.
+
+If it's too much to fix, at least make sure to move any R-related
+#includes below the system #includes. MeanAnomalyMV.cpp originally blew
+up because (1) -DR_NO_REMAP was missing from the compiler command line,
+(2) Rinternals.h was included, which provides #define length(x), and
+(3) a standard C++ header was included, which tried to define a
+function named length. Moving the R headers below the standard C++
+headers would have prevented it.
+
+It may also help to change the interface of MeanAnomalyMV so that it
+either (1) uses Rcpp, enjoying built-in R_NO_REMAP or (2) works purely
+in terms of R and C types, avoiding the need to #include <vector> and
+<string>.
+
+Hope you'll succeed in getting the package back in shape!
+
+-- 
+Best regards,
+Ivan
+
+
