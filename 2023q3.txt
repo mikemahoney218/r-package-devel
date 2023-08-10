@@ -7763,3 +7763,466 @@ Thanks so much,  Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From thom@@@petzo|dt @end|ng |rom tu-dre@den@de  Wed Aug  9 16:26:42 2023
+From: thom@@@petzo|dt @end|ng |rom tu-dre@den@de (Thomas Petzoldt)
+Date: Wed, 9 Aug 2023 16:26:42 +0200
+Subject: [R-pkg-devel] preventing auto-update of R and c2d4u r-cran-*
+ packages on Ubuntu 22.04
+Message-ID: <31ae1e4f-3f95-cf6a-ef45-a93d4967b16e@tu-dresden.de>
+
+Hi,
+
+I am running a couple of? shiny servers with several apps that are based 
+around own CRAN packages. It worked stable for years, but due to the 
+growing number of packages, the compile time for regular manual package 
+installation and updates became inconvenient.
+
+Therefore, I have been very happy to use pre-compiled packages from the 
+c2d4u repository: deb 
+https://ppa.launchpadcontent.net/c2d4u.team/c2d4u4.0+/ubuntu/ jammy main
+
+This is indeed a great service, thanks to Dirk Edelbuettel, mark Rutter 
+and the complete team! The downside is, that now the r-cran-* binaries 
+are installed automatically, together with the system update. I 
+experienced now repeated cases that crashed some of the shiny apps, 
+mainly due to conflicts between the binary packages and other packages 
+installed from sources.
+
+My question: what is best practise, to disallow automatic updates for 
+all r-cran-* packages? Uncommenting the complete package source in the 
+apt/sources.list.d/cd4u...list file? Fiddling around with? 
+/etc/apt/preferences ?
+
+The ideal approach would be to put a plain textfile of all installed 
+r-cran packages somewhere to the system, where packages that are to be 
+upgraded (or oppositely: pinned) are just commented or outcommented.
+
+Thanks in advance,
+
+Thomas
+
+
+From edd @end|ng |rom deb|@n@org  Wed Aug  9 16:41:29 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 9 Aug 2023 09:41:29 -0500
+Subject: [R-pkg-devel] preventing auto-update of R and c2d4u r-cran-*
+ packages on Ubuntu 22.04
+In-Reply-To: <31ae1e4f-3f95-cf6a-ef45-a93d4967b16e@tu-dresden.de>
+References: <31ae1e4f-3f95-cf6a-ef45-a93d4967b16e@tu-dresden.de>
+Message-ID: <25811.42393.429393.518363@rob.eddelbuettel.com>
+
+
+On 9 August 2023 at 16:26, Thomas Petzoldt wrote:
+| I am running a couple of? shiny servers with several apps that are based 
+| around own CRAN packages. It worked stable for years, but due to the 
+| growing number of packages, the compile time for regular manual package 
+| installation and updates became inconvenient.
+| 
+| Therefore, I have been very happy to use pre-compiled packages from the 
+| c2d4u repository: deb 
+| https://ppa.launchpadcontent.net/c2d4u.team/c2d4u4.0+/ubuntu/ jammy main
+
+These days you also have r2u which has all of CRAN ie 20k binaries (each, for
+two Ubuntu flavors). See  https://eddelbuettel.github.io/r2u
+ 
+| This is indeed a great service, thanks to Dirk Edelbuettel, mark Rutter
+
+That would be Michael Rutter.
+
+| and the complete team! The downside is, that now the r-cran-* binaries 
+| are installed automatically, together with the system update. I 
+| experienced now repeated cases that crashed some of the shiny apps, 
+| mainly due to conflicts between the binary packages and other packages 
+| installed from sources.
+
+If you use r2u (as I do on a laptop, an ec2 server, all my CI testing for
+work and testing for months now) you get all packages and do not need to
+mix.  Try r2u, it's good.
+ 
+| My question: what is best practise, to disallow automatic updates for 
+| all r-cran-* packages? Uncommenting the complete package source in the 
+| apt/sources.list.d/cd4u...list file? Fiddling around with? 
+| /etc/apt/preferences ?
+| 
+| The ideal approach would be to put a plain textfile of all installed 
+| r-cran packages somewhere to the system, where packages that are to be 
+| upgraded (or oppositely: pinned) are just commented or outcommented.
+
+That is very Debian / Ubuntu specific question.  Can I ask you to bring it to
+the dedicated list r-sig-debian ?
+
+>From the top of my head I can think of setting package status 'hold' (a
+simpler per-package approach) or setting specific apt pinning values to not
+alter packages from specific repos, see the manual pages.
+
+But please ask on r-sig-debian. This list is for generic R packaging questions.
+
+Thanks, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From thom@@@petzo|dt @end|ng |rom tu-dre@den@de  Wed Aug  9 17:00:03 2023
+From: thom@@@petzo|dt @end|ng |rom tu-dre@den@de (Thomas Petzoldt)
+Date: Wed, 9 Aug 2023 17:00:03 +0200
+Subject: [R-pkg-devel] preventing auto-update of R and c2d4u r-cran-*
+ packages on Ubuntu 22.04
+In-Reply-To: <25811.42393.429393.518363@rob.eddelbuettel.com>
+References: <31ae1e4f-3f95-cf6a-ef45-a93d4967b16e@tu-dresden.de>
+ <25811.42393.429393.518363@rob.eddelbuettel.com>
+Message-ID: <fab18f12-bece-3050-e6ed-35da493150df@tu-dresden.de>
+
+Hi Dirk,
+
+thank you very much dirk for the quick response. I was aware that 
+r-package-devel may not be the optimal place ;-) but hoped to address 
+the right audience between r-devel and r-help.
+
+Many thanks also for the suggestions, especially r2u and sorry for 
+confusing the name of Michael.
+
+Thomas
+
+Am 09.08.2023 um 16:41 schrieb Dirk Eddelbuettel:
+> On 9 August 2023 at 16:26, Thomas Petzoldt wrote:
+> | I am running a couple of? shiny servers with several apps that are based
+> | around own CRAN packages. It worked stable for years, but due to the
+> | growing number of packages, the compile time for regular manual package
+> | installation and updates became inconvenient.
+> |
+> | Therefore, I have been very happy to use pre-compiled packages from the
+> | c2d4u repository: deb
+> | https://ppa.launchpadcontent.net/c2d4u.team/c2d4u4.0+/ubuntu/ jammy main
+>
+> These days you also have r2u which has all of CRAN ie 20k binaries (each, for
+> two Ubuntu flavors). See  https://eddelbuettel.github.io/r2u
+>   
+> | This is indeed a great service, thanks to Dirk Edelbuettel, mark Rutter
+>
+> That would be Michael Rutter.
+>
+> | and the complete team! The downside is, that now the r-cran-* binaries
+> | are installed automatically, together with the system update. I
+> | experienced now repeated cases that crashed some of the shiny apps,
+> | mainly due to conflicts between the binary packages and other packages
+> | installed from sources.
+>
+> If you use r2u (as I do on a laptop, an ec2 server, all my CI testing for
+> work and testing for months now) you get all packages and do not need to
+> mix.  Try r2u, it's good.
+>   
+> | My question: what is best practise, to disallow automatic updates for
+> | all r-cran-* packages? Uncommenting the complete package source in the
+> | apt/sources.list.d/cd4u...list file? Fiddling around with
+> | /etc/apt/preferences ?
+> |
+> | The ideal approach would be to put a plain textfile of all installed
+> | r-cran packages somewhere to the system, where packages that are to be
+> | upgraded (or oppositely: pinned) are just commented or outcommented.
+>
+> That is very Debian / Ubuntu specific question.  Can I ask you to bring it to
+> the dedicated list r-sig-debian ?
+>
+>  From the top of my head I can think of setting package status 'hold' (a
+> simpler per-package approach) or setting specific apt pinning values to not
+> alter packages from specific repos, see the manual pages.
+>
+> But please ask on r-sig-debian. This list is for generic R packaging questions.
+>
+> Thanks, Dirk
+
+
+From em@nue|e@cord@no @end|ng |rom gm@||@com  Wed Aug  9 17:06:01 2023
+From: em@nue|e@cord@no @end|ng |rom gm@||@com (Emanuele Cordano)
+Date: Wed, 9 Aug 2023 17:06:01 +0200
+Subject: [R-pkg-devel] LICENSE file in an R package for CRAN submission
+Message-ID: <CAKw81f9o8MYv9x5-j54G-reur8q+DXQY1vdmmV0HfZJnFnjghg@mail.gmail.com>
+
+Dear list,
+
+is there a way to put the LICENSE file within an R package like in Github,
+I have an R package on Github with a a LICENSE file compliant to Github and
+containing the text of the licence citing in the DESCRIPION file. But when
+I check the package , I obatained the following output:
+
+* checking top-level files ... NOTE
+File
+  LICENSE
+
+is not mentioned in the DESCRIPTION file.
+
+How can I solve this?
+Thank you
+best
+Emanuele Cordano
+-- 
+Emanuele Cordano, PhD
+Environmental Engineer / Ingegnere per l' Ambiente e il territorio nr.
+3587 (Albo A - Provincia di Trento)
+cell: +39 3282818564
+email: emanuele.cordano at gmail.com,emanuele.cordano at rendena100.eu,
+emanuele.cordano at eurac.edu
+PEC: emanuele.cordano at ingpec.eu
+URL: www.rendena100.eu
+LinkedIn: https://www.linkedin.com/in/emanuele-cordano-31995333
+GitHub: https://github.com/ecor
+
+	[[alternative HTML version deleted]]
+
+
+From bbo|ker @end|ng |rom gm@||@com  Wed Aug  9 17:15:30 2023
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Wed, 9 Aug 2023 11:15:30 -0400
+Subject: [R-pkg-devel] LICENSE file in an R package for CRAN submission
+In-Reply-To: <CAKw81f9o8MYv9x5-j54G-reur8q+DXQY1vdmmV0HfZJnFnjghg@mail.gmail.com>
+References: <CAKw81f9o8MYv9x5-j54G-reur8q+DXQY1vdmmV0HfZJnFnjghg@mail.gmail.com>
+Message-ID: <db993691-1d48-632f-1ab0-c2868da8a4fc@gmail.com>
+
+    You have two choices:
+
+* put LICENSE in your .Rbuildignore file so that it shows up on Github 
+but is excluded from the package
+
+* follow the instructions in 
+https://cran.r-project.org/doc/manuals/R-exts.html#Licensing to refer to 
+LICENSE in your DESCRIPTION file. However, CRAN generally prefers that 
+you use a standard license ("GPL-2", "GPL-3"), to make it easier for 
+them to know that you've really complied with their openness 
+requirements, and that you *not* include a license file that is 
+redundant with that spec:
+
+ > Whereas you should feel free to include a license file in your source 
+distribution, please do not arrange to install yet another copy of the 
+GNU COPYING or COPYING.LIB files but refer to the copies on 
+https://www.R-project.org/Licenses/ and included in the R distribution 
+(in directory share/licenses). Since files named LICENSE or LICENCE will 
+be installed, do not use these names for standard license files. To 
+include comments about the licensing rather than the body of a license, 
+use a file named something like LICENSE.note.
+
+On 2023-08-09 11:06 a.m., Emanuele Cordano wrote:
+> Dear list,
+> 
+> is there a way to put the LICENSE file within an R package like in Github,
+> I have an R package on Github with a a LICENSE file compliant to Github and
+> containing the text of the licence citing in the DESCRIPION file. But when
+> I check the package , I obatained the following output:
+> 
+> * checking top-level files ... NOTE
+> File
+>    LICENSE
+> 
+> is not mentioned in the DESCRIPTION file.
+> 
+> How can I solve this?
+> Thank you
+> best
+> Emanuele Cordano
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+(Acting) Graduate chair, Mathematics & Statistics
+ > E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Aug  9 17:15:39 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 9 Aug 2023 18:15:39 +0300
+Subject: [R-pkg-devel] LICENSE file in an R package for CRAN submission
+In-Reply-To: <CAKw81f9o8MYv9x5-j54G-reur8q+DXQY1vdmmV0HfZJnFnjghg@mail.gmail.com>
+References: <CAKw81f9o8MYv9x5-j54G-reur8q+DXQY1vdmmV0HfZJnFnjghg@mail.gmail.com>
+Message-ID: <20230809181539.520265a4@Tarkus>
+
+On Wed, 9 Aug 2023 17:06:01 +0200
+Emanuele Cordano <emanuele.cordano at gmail.com> wrote:
+
+> I have an R package on Github with a a LICENSE file compliant to
+> Github and containing the text of the licence citing in the
+> DESCRIPION file. But when I check the package , I obatained the
+> following output:
+> 
+> * checking top-level files ... NOTE
+> File
+>   LICENSE
+> 
+> is not mentioned in the DESCRIPTION file.
+
+What is the license? If it's something like GPL, just add LICENSE to
+.Rbuildignore so that it stays in the repo, satisfying GitHub, but
+doesn't get included inside the package file, satisfying R CMD check.
+
+If it's something like MIT where you have to name the copyright holder
+and the copyright year, things become more complicated.
+
+See <https://cran.r-project.org/doc/manuals/R-exts.html#Licensing> for
+the precise requirements.
+
+-- 
+Best regards,
+Ivan
+
+
+From edd @end|ng |rom deb|@n@org  Wed Aug  9 17:17:30 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 9 Aug 2023 10:17:30 -0500
+Subject: [R-pkg-devel] preventing auto-update of R and c2d4u r-cran-*
+ packages on Ubuntu 22.04
+In-Reply-To: <fab18f12-bece-3050-e6ed-35da493150df@tu-dresden.de>
+References: <31ae1e4f-3f95-cf6a-ef45-a93d4967b16e@tu-dresden.de>
+ <25811.42393.429393.518363@rob.eddelbuettel.com>
+ <fab18f12-bece-3050-e6ed-35da493150df@tu-dresden.de>
+Message-ID: <25811.44554.983497.36842@rob.eddelbuettel.com>
+
+
+Hi Thomas,
+
+On 9 August 2023 at 17:00, Thomas Petzoldt wrote:
+| thank you very much dirk for the quick response. I was aware that 
+| r-package-devel may not be the optimal place ;-) but hoped to address 
+| the right audience between r-devel and r-help.
+| 
+| Many thanks also for the suggestions, especially r2u and sorry for 
+| confusing the name of Michael.
+
+I have one more idea but I'll wait for you to post on r-sig-debian.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From bbo|ker @end|ng |rom gm@||@com  Wed Aug  9 17:17:47 2023
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Wed, 9 Aug 2023 11:17:47 -0400
+Subject: [R-pkg-devel] LICENSE file in an R package for CRAN submission
+In-Reply-To: <db993691-1d48-632f-1ab0-c2868da8a4fc@gmail.com>
+References: <CAKw81f9o8MYv9x5-j54G-reur8q+DXQY1vdmmV0HfZJnFnjghg@mail.gmail.com>
+ <db993691-1d48-632f-1ab0-c2868da8a4fc@gmail.com>
+Message-ID: <229060ad-b2f8-3237-b97b-91df62d13a74@gmail.com>
+
+In case you're thinking of putting the package on CRAN, note also from 
+the CRAN policy https://cran.r-project.org/web/packages/policies.html:
+
+ > Packages with licenses not listed at 
+https://svn.r-project.org/R/trunk/share/licenses/license.db will 
+generally not be accepted.
+
+On 2023-08-09 11:15 a.m., Ben Bolker wrote:
+>  ?? You have two choices:
+> 
+> * put LICENSE in your .Rbuildignore file so that it shows up on Github 
+> but is excluded from the package
+> 
+> * follow the instructions in 
+> https://cran.r-project.org/doc/manuals/R-exts.html#Licensing to refer to 
+> LICENSE in your DESCRIPTION file. However, CRAN generally prefers that 
+> you use a standard license ("GPL-2", "GPL-3"), to make it easier for 
+> them to know that you've really complied with their openness 
+> requirements, and that you *not* include a license file that is 
+> redundant with that spec:
+> 
+>  > Whereas you should feel free to include a license file in your source 
+> distribution, please do not arrange to install yet another copy of the 
+> GNU COPYING or COPYING.LIB files but refer to the copies on 
+> https://www.R-project.org/Licenses/ and included in the R distribution 
+> (in directory share/licenses). Since files named LICENSE or LICENCE will 
+> be installed, do not use these names for standard license files. To 
+> include comments about the licensing rather than the body of a license, 
+> use a file named something like LICENSE.note.
+> 
+> On 2023-08-09 11:06 a.m., Emanuele Cordano wrote:
+>> Dear list,
+>>
+>> is there a way to put the LICENSE file within an R package like in 
+>> Github,
+>> I have an R package on Github with a a LICENSE file compliant to 
+>> Github and
+>> containing the text of the licence citing in the DESCRIPION file. But 
+>> when
+>> I check the package , I obatained the following output:
+>>
+>> * checking top-level files ... NOTE
+>> File
+>> ?? LICENSE
+>>
+>> is not mentioned in the DESCRIPTION file.
+>>
+>> How can I solve this?
+>> Thank you
+>> best
+>> Emanuele Cordano
+> 
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+(Acting) Graduate chair, Mathematics & Statistics
+ > E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
+From h@w|ckh@m @end|ng |rom gm@||@com  Wed Aug  9 17:35:24 2023
+From: h@w|ckh@m @end|ng |rom gm@||@com (Hadley Wickham)
+Date: Wed, 9 Aug 2023 10:35:24 -0500
+Subject: [R-pkg-devel] LICENSE file in an R package for CRAN submission
+In-Reply-To: <CAKw81f9o8MYv9x5-j54G-reur8q+DXQY1vdmmV0HfZJnFnjghg@mail.gmail.com>
+References: <CAKw81f9o8MYv9x5-j54G-reur8q+DXQY1vdmmV0HfZJnFnjghg@mail.gmail.com>
+Message-ID: <CABdHhvG1syisnotuCVGNk1Zte_Hj9U+XFsLj_ZfAs388gR2XNw@mail.gmail.com>
+
+If you're using one of the licenses supported by usethis
+(https://usethis.r-lib.org/reference/licenses.html), you can just call
+the appropriate function and it will do all the setup required to be
+both CRAN and GitHub compatible.
+
+Hadley
+
+On Wed, Aug 9, 2023 at 10:10?AM Emanuele Cordano
+<emanuele.cordano at gmail.com> wrote:
+>
+> Dear list,
+>
+> is there a way to put the LICENSE file within an R package like in Github,
+> I have an R package on Github with a a LICENSE file compliant to Github and
+> containing the text of the licence citing in the DESCRIPION file. But when
+> I check the package , I obatained the following output:
+>
+> * checking top-level files ... NOTE
+> File
+>   LICENSE
+>
+> is not mentioned in the DESCRIPTION file.
+>
+> How can I solve this?
+> Thank you
+> best
+> Emanuele Cordano
+> --
+> Emanuele Cordano, PhD
+> Environmental Engineer / Ingegnere per l' Ambiente e il territorio nr.
+> 3587 (Albo A - Provincia di Trento)
+> cell: +39 3282818564
+> email: emanuele.cordano at gmail.com,emanuele.cordano at rendena100.eu,
+> emanuele.cordano at eurac.edu
+> PEC: emanuele.cordano at ingpec.eu
+> URL: www.rendena100.eu
+> LinkedIn: https://www.linkedin.com/in/emanuele-cordano-31995333
+> GitHub: https://github.com/ecor
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+
+-- 
+http://hadley.nz
+
+
