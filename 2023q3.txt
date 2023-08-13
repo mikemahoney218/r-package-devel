@@ -8319,3 +8319,443 @@ thomas.petzoldt at tu-dresden.de> wrote:
 	[[alternative HTML version deleted]]
 
 
+From @|mon@urb@nek @end|ng |rom R-project@org  Fri Aug 11 05:22:45 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Fri, 11 Aug 2023 15:22:45 +1200
+Subject: [R-pkg-devel] macOS results not mirrored/updated at CRAN
+In-Reply-To: <25810.14575.345108.235926@rob.eddelbuettel.com>
+References: <25775.16177.937585.974774@rob.eddelbuettel.com>
+ <25779.10961.299898.418341@rob.eddelbuettel.com>
+ <SY4PR01MB56580500A52A8E91A06D1C53AC3AA@SY4PR01MB5658.ausprd01.prod.outlook.com>
+ <25787.51936.871790.433852@rob.eddelbuettel.com>
+ <D4DA5737-AD56-42FE-A8C7-6202DA1F8D80@R-project.org>
+ <25810.14575.345108.235926@rob.eddelbuettel.com>
+Message-ID: <625F1940-4187-4629-8701-44BD1E8CCC0A@R-project.org>
+
+Dirk,
+
+thanks - one of those annoying cases where a script works in the login shell, but not in the cron job -- hopefully fixed.
+
+Cheers,
+Simon
+
+
+> On 9/08/2023, at 12:45 AM, Dirk Eddelbuettel <edd at debian.org> wrote:
+> 
+> 
+> Simon,
+> 
+> This is still an issue for arm64.  Uploaded tiledb and RQuantLib yesterday,
+> both already built binaries for macOS (thank you!) but on the x86_64 ones are
+> on the results page.  Can you take another peek at this?
+> 
+> Thanks so much,  Dirk
+> 
+> -- 
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> 
+
+
+From thom@@@petzo|dt @end|ng |rom tu-dre@den@de  Fri Aug 11 07:54:38 2023
+From: thom@@@petzo|dt @end|ng |rom tu-dre@den@de (Thomas Petzoldt)
+Date: Fri, 11 Aug 2023 07:54:38 +0200
+Subject: [R-pkg-devel] preventing auto-update of R and c2d4u r-cran-*
+ packages on Ubuntu 22.04
+In-Reply-To: <CAL9B2veROMdW+jtKY5OJSAyEG6fHxh1faZ-E9jwbKF5yE9cc3Q@mail.gmail.com>
+References: <31ae1e4f-3f95-cf6a-ef45-a93d4967b16e@tu-dresden.de>
+ <25811.42393.429393.518363@rob.eddelbuettel.com>
+ <fab18f12-bece-3050-e6ed-35da493150df@tu-dresden.de>
+ <CAL9B2veROMdW+jtKY5OJSAyEG6fHxh1faZ-E9jwbKF5yE9cc3Q@mail.gmail.com>
+Message-ID: <33deb4ee-dcd4-2ec3-4320-25b728bdbf61@tu-dresden.de>
+
+
+
+On 10.08.2023 at 17:56 Neal Fultz wrote:
+> In the past, I've extracted the pre-built debian packages into the 
+> user's personal folder, instead of installing them via apt. It worked 
+> (but it was not fun), and was pretty manual.? That might interact a bit 
+> better with some of the third party tools for dealing with dependencies 
+> in shiny apps, compared to system-wide installs; ymmv.
+
+Thank you for the suggestion. My implemented approach works indeed 
+similar to this.
+
+After moving this discussion to R-SIG-Debian 
+(https://stat.ethz.ch/pipermail/r-sig-debian/2023-August/thread.html), 
+Dirk Eddelbuettel suggested five different approaches.
+
+I made indeed a snapshot (a local copy) of the complete "site-library" 
+folder to another place of the file system (e.g. 
+"site-library-snapshot"). In the .Renviron file of the shiny user, the 
+environment variable R_LIBS_USER then points to this location. The base 
+packages from "library" are conservative, so I decided to use them from 
+the original position.
+
+Finally, an rmarkdown script provided by the shiny-server can report the 
+value of .libPaths() and versions and locations of installed packages:
+
+installed.packages()[,2:3]
+
+This works well, except for a package that contained relative symbolic 
+links to the file system.
+
+Thomas
+
+
+
+From edd @end|ng |rom deb|@n@org  Fri Aug 11 15:09:41 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 11 Aug 2023 08:09:41 -0500
+Subject: [R-pkg-devel] preventing auto-update of R and c2d4u r-cran-*
+ packages on Ubuntu 22.04
+In-Reply-To: <33deb4ee-dcd4-2ec3-4320-25b728bdbf61@tu-dresden.de>
+References: <31ae1e4f-3f95-cf6a-ef45-a93d4967b16e@tu-dresden.de>
+ <25811.42393.429393.518363@rob.eddelbuettel.com>
+ <fab18f12-bece-3050-e6ed-35da493150df@tu-dresden.de>
+ <CAL9B2veROMdW+jtKY5OJSAyEG6fHxh1faZ-E9jwbKF5yE9cc3Q@mail.gmail.com>
+ <33deb4ee-dcd4-2ec3-4320-25b728bdbf61@tu-dresden.de>
+Message-ID: <25814.13077.692566.548117@rob.eddelbuettel.com>
+
+
+On 11 August 2023 at 07:54, Thomas Petzoldt wrote:
+| After moving this discussion to R-SIG-Debian 
+| (https://stat.ethz.ch/pipermail/r-sig-debian/2023-August/thread.html), 
+| Dirk Eddelbuettel suggested five different approaches.
+| 
+| I made indeed a snapshot (a local copy) of the complete "site-library" 
+| folder to another place of the file system (e.g. 
+| "site-library-snapshot"). In the .Renviron file of the shiny user, the 
+| environment variable R_LIBS_USER then points to this location. The base 
+| packages from "library" are conservative, so I decided to use them from 
+| the original position.
+| 
+| Finally, an rmarkdown script provided by the shiny-server can report the 
+| value of .libPaths() and versions and locations of installed packages:
+| 
+| installed.packages()[,2:3]
+| 
+| This works well, except for a package that contained relative symbolic 
+| links to the file system.
+
+Perfect, and thanks for reporting back.
+
+One other exception would be 'bad' packages with a hard code installation
+path (via rpath or install_name_tool) but luckily CRAN outlaws that so it
+should be rare (but 'been there, done that' and had to fix a package or two
+of mine). In short, 'should work most of the time as described here'.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From pro|jcn@@h @end|ng |rom gm@||@com  Fri Aug 11 22:41:01 2023
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Fri, 11 Aug 2023 16:41:01 -0400
+Subject: [R-pkg-devel] CRAN test complaints about package that passes most
+ platforms
+Message-ID: <64f9f1a8-139b-918e-8397-43b9f923f473@gmail.com>
+
+My nlsr package was revised mid-February. After CRAN approved it, I got a
+message that it was "failing" M1Mac tests. The issue turned out to be ANOTHER
+package that was being used in an example in a vignette. Because M1 does not
+provide the IEEE 754 80 bit registers, a method in package minqa did not
+"converge", that is, it did not pass a termination test. Relaxing a tolerance
+got a "pass" on the test service for M1 Mac then available. This issue can
+be found by searching the web, though it probably deserves some clarity in
+R documentation somewhere. The presentation of such problems can, of course,
+take many forms.
+
+There was a minor revision to nlsr in May to rationalize the names of some functions
+to produce summary information about solutions. This seemed to give no issues until
+now.
+
+Two days ago, however, I received a msg that the (unchanged!) package is failing tests
+on M1 and on Fedora clang r-devel tests in building some vignettes. The messages
+are about pandoc and a missing file "framed.sty". All other tests showing on
+CRAN are OK. When I try with R-hub I seem to get even more complaints than
+the messages from CRAN, but about the same issues, and about vignette
+building.
+
+2 queries:
+
+- Is anyone else getting similar messages? If so, it may be useful to share
+notes to try to get this resolved. It seems within reason that the issue is
+some unfortunate detail in Fedora and M1 that interacts with particular
+syntax in the vignette, or that the setup of those machines is inadequate.
+Comparing notes may reveal what is causing complaints and help to fix either
+in the .Rmd vignettes or in the pandoc structure.
+
+- Is there an M1Mac test platform to which packages can be submitted? Brian
+Ripley did have one, but trying the link I used before seems not to present
+a submission dialog.
+
+I'd like to be helpful, but have a suspicion that a humble package developer
+is being used as a stooge to find and fix software glitches outside of R. However,
+if it's a matter of an unfortunate mismatch of document and processor, I'll be
+happy to help document and fix it.
+
+It would be a pity if vignettes cause enough trouble that developers simply don't
+include them.
+
+Best,
+
+John Nash
+
+
+From roy@mende|@@ohn @end|ng |rom no@@@gov  Fri Aug 11 22:56:05 2023
+From: roy@mende|@@ohn @end|ng |rom no@@@gov (Roy Mendelssohn - NOAA Federal)
+Date: Fri, 11 Aug 2023 13:56:05 -0700
+Subject: [R-pkg-devel] 
+ CRAN test complaints about package that passes most platforms
+In-Reply-To: <64f9f1a8-139b-918e-8397-43b9f923f473@gmail.com>
+References: <64f9f1a8-139b-918e-8397-43b9f923f473@gmail.com>
+Message-ID: <F9234AB8-A2B5-4FD8-80CE-B2F05412FD1E@noaa.gov>
+
+
+
+> On Aug 11, 2023, at 1:41 PM, J C Nash <profjcnash at gmail.com> wrote:
+> 
+> - Is there an M1Mac test platform to which packages can be submitted? Brian
+> Ripley did have one, but trying the link I used before seems not to present
+> a submission dialog.
+
+Perhaps:
+
+https://mac.r-project.org/macbuilder/submit.html
+
+-Roy
+
+**********************
+"The contents of this message do not reflect any position of the U.S. Government or NOAA."
+**********************
+Roy Mendelssohn
+Supervisory Operations Research Analyst
+NOAA/NMFS
+Environmental Research Division
+Southwest Fisheries Science Center
+***Note new street address***
+110 McAllister Way
+Santa Cruz, CA 95060
+Phone: (831)-420-3666
+Fax: (831) 420-3980
+e-mail: Roy.Mendelssohn at noaa.gov www: https://www.pfeg.noaa.gov/
+
+"Old age and treachery will overcome youth and skill."
+"From those who have been given much, much will be expected" 
+"the arc of the moral universe is long, but it bends toward justice" -MLK Jr.
+
+
+From |ent|nj @end|ng |rom @hutt|ethre@d@com  Sat Aug 12 15:10:37 2023
+From: |ent|nj @end|ng |rom @hutt|ethre@d@com (Jamie Lentin)
+Date: Sat, 12 Aug 2023 14:10:37 +0100
+Subject: [R-pkg-devel] gdb availability on r-devel-linux-x86_64-fedora-gcc
+Message-ID: <0c6f536870145fa037b2553ce5bb8f1f@shuttlethread.com>
+
+Hello list,
+
+Our package gadget3[0] has just started failing the "donttest" 
+additional check[1] on r-devel-linux-x86_64-fedora-gcc, specifically:-
+
+   > # Build the model in an isolated R session w/debugger
+   > writeLines(TMB::gdbsource(g3_tmb_adfun(cpp, compile_flags = "-g", 
+output_script = TRUE)))
+   Error in system(cmd, intern = TRUE, ignore.stdout = FALSE, 
+ignore.stderr = TRUE) :
+     error in running command
+   Calls: writeLines -> <Anonymous> -> system
+   Execution halted
+
+The system call in question is done by the TMB package[2], and not ours 
+to tinker with:
+
+   cmd <- paste("R --vanilla < ",file," -d gdb --debugger-args=\"-x",
+                gdbscript,"\"")
+   txt <- system(cmd,intern=TRUE,ignore.stdout=FALSE,ignore.stderr=TRUE)
+
+My only vaguely reasonable guess is that gdb isn't available on the host 
+in question (certainly R will be!). How likely is this? Is it worth 
+trying to resubmit with the call wrapped with an "if (gdb is on the 
+path)"?
+
+If this is a silly idea, which I suspect it is, would a resubmission 
+removing the example be accepted or just raise red flags? This is 
+obviously cheating---and it's a useful example I'd rather keep---but I'm 
+not sure we have many other options available to us.
+
+This example isn't a problem when run elsewhere. The TMB package itself 
+isn't failing[3], but there doesn't seem to be any examples exercising 
+TMB::gdbsource() there.
+
+Thanks for any help!
+
+[0] https://CRAN.R-project.org/package=gadget3
+[1] https://www.stats.ox.ac.uk/pub/bdr/donttest/gadget3.out
+[2] 
+https://github.com/kaskr/adcomp/blob/master/TMB/R/gdbsource.R#L40-L42
+[3] https://cran.r-project.org/web/checks/check_results_TMB.html
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Sat Aug 12 18:12:35 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Sat, 12 Aug 2023 18:12:35 +0200
+Subject: [R-pkg-devel] 
+ gdb availability on r-devel-linux-x86_64-fedora-gcc
+In-Reply-To: <0c6f536870145fa037b2553ce5bb8f1f@shuttlethread.com>
+References: <0c6f536870145fa037b2553ce5bb8f1f@shuttlethread.com>
+Message-ID: <f49a77aa-c424-588c-0f46-c8d5004634dd@statistik.tu-dortmund.de>
+
+
+
+On 12.08.2023 15:10, Jamie Lentin wrote:
+> Hello list,
+> 
+> Our package gadget3[0] has just started failing the "donttest" 
+> additional check[1] on r-devel-linux-x86_64-fedora-gcc, specifically:-
+> 
+>  ? > # Build the model in an isolated R session w/debugger
+>  ? > writeLines(TMB::gdbsource(g3_tmb_adfun(cpp, compile_flags = "-g", 
+> output_script = TRUE)))
+>  ? Error in system(cmd, intern = TRUE, ignore.stdout = FALSE, 
+> ignore.stderr = TRUE) :
+>  ??? error in running command
+>  ? Calls: writeLines -> <Anonymous> -> system
+>  ? Execution halted
+> 
+> The system call in question is done by the TMB package[2], and not ours 
+> to tinker with:
+> 
+>  ? cmd <- paste("R --vanilla < ",file," -d gdb --debugger-args=\"-x",
+>  ?????????????? gdbscript,"\"")
+>  ? txt <- system(cmd,intern=TRUE,ignore.stdout=FALSE,ignore.stderr=TRUE)
+> 
+> My only vaguely reasonable guess is that gdb isn't available on the host 
+> in question (certainly R will be!). How likely is this? Is it worth 
+> trying to resubmit with the call wrapped with an "if (gdb is on the path)"?
+
+
+I guess it is really not available as that system got an update.
+Note that you package does not declare any SystemRequirements. Please do 
+so and mention gdb.
+
+Wrapping it in "if (gdb is on the path)" seems a good solution.
+
+Best,
+Uwe Ligges
+
+
+> 
+> If this is a silly idea, which I suspect it is, would a resubmission 
+> removing the example be accepted or just raise red flags? This is 
+> obviously cheating---and it's a useful example I'd rather keep---but I'm 
+> not sure we have many other options available to us.
+> 
+> This example isn't a problem when run elsewhere. The TMB package itself 
+> isn't failing[3], but there doesn't seem to be any examples exercising 
+> TMB::gdbsource() there.
+> 
+> Thanks for any help!
+> 
+> [0] https://CRAN.R-project.org/package=gadget3
+> [1] https://www.stats.ox.ac.uk/pub/bdr/donttest/gadget3.out
+> [2] https://github.com/kaskr/adcomp/blob/master/TMB/R/gdbsource.R#L40-L42
+> [3] https://cran.r-project.org/web/checks/check_results_TMB.html
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From edd @end|ng |rom deb|@n@org  Sat Aug 12 23:19:33 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Sat, 12 Aug 2023 16:19:33 -0500
+Subject: [R-pkg-devel] 
+ gdb availability on r-devel-linux-x86_64-fedora-gcc
+In-Reply-To: <f49a77aa-c424-588c-0f46-c8d5004634dd@statistik.tu-dortmund.de>
+References: <0c6f536870145fa037b2553ce5bb8f1f@shuttlethread.com>
+ <f49a77aa-c424-588c-0f46-c8d5004634dd@statistik.tu-dortmund.de>
+Message-ID: <25815.63333.522184.604529@rob.eddelbuettel.com>
+
+
+On 12 August 2023 at 18:12, Uwe Ligges wrote:
+| On 12.08.2023 15:10, Jamie Lentin wrote:
+| > The system call in question is done by the TMB package[2], and not ours 
+| > to tinker with:
+| > 
+| >  ? cmd <- paste("R --vanilla < ",file," -d gdb --debugger-args=\"-x",
+| >  ?????????????? gdbscript,"\"")
+| >  ? txt <- system(cmd,intern=TRUE,ignore.stdout=FALSE,ignore.stderr=TRUE)
+| > 
+| > My only vaguely reasonable guess is that gdb isn't available on the host 
+| > in question (certainly R will be!). How likely is this? Is it worth 
+| > trying to resubmit with the call wrapped with an "if (gdb is on the path)"?
+| 
+| 
+| I guess it is really not available as that system got an update.
+| Note that you package does not declare any SystemRequirements. Please do 
+| so and mention gdb.
+| 
+| Wrapping it in "if (gdb is on the path)" seems a good solution.
+
+Seconded esp as some systems may have lldb instead of gdb, or neither.
+Adding a simple `if (nzchar(Sys.which("gdb")))` should get you there.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Sun Aug 13 00:52:14 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Sun, 13 Aug 2023 00:52:14 +0200
+Subject: [R-pkg-devel] 
+ gdb availability on r-devel-linux-x86_64-fedora-gcc
+In-Reply-To: <25815.63333.522184.604529@rob.eddelbuettel.com>
+References: <0c6f536870145fa037b2553ce5bb8f1f@shuttlethread.com>
+ <f49a77aa-c424-588c-0f46-c8d5004634dd@statistik.tu-dortmund.de>
+ <25815.63333.522184.604529@rob.eddelbuettel.com>
+Message-ID: <00d5c596-4fa9-9659-a53b-e0eaf18ee24d@statistik.tu-dortmund.de>
+
+
+
+On 12.08.2023 23:19, Dirk Eddelbuettel wrote:
+> 
+> On 12 August 2023 at 18:12, Uwe Ligges wrote:
+> | On 12.08.2023 15:10, Jamie Lentin wrote:
+> | > The system call in question is done by the TMB package[2], and not ours
+> | > to tinker with:
+> | >
+> | >  ? cmd <- paste("R --vanilla < ",file," -d gdb --debugger-args=\"-x",
+> | >  ?????????????? gdbscript,"\"")
+> | >  ? txt <- system(cmd,intern=TRUE,ignore.stdout=FALSE,ignore.stderr=TRUE)
+> | >
+> | > My only vaguely reasonable guess is that gdb isn't available on the host
+> | > in question (certainly R will be!). How likely is this? Is it worth
+> | > trying to resubmit with the call wrapped with an "if (gdb is on the path)"?
+> |
+> |
+> | I guess it is really not available as that system got an update.
+> | Note that you package does not declare any SystemRequirements. Please do
+> | so and mention gdb.
+> |
+> | Wrapping it in "if (gdb is on the path)" seems a good solution.
+> 
+> Seconded esp as some systems may have lldb instead of gdb, or neither.
+> Adding a simple `if (nzchar(Sys.which("gdb")))` should get you there.
+> 
+> Dirk
+> 
+
+
+Note that also
+
+1. The machine does not have R on the path (but Rdev)
+2. you need to use a current pandoc. Citing Professor Ripley: "The 
+platforms failing are using pandoc 3.1.6 or (newly updated, M1mac) 3.1.6.1"
+
+Best,
+Uwe Ligges
+
+
