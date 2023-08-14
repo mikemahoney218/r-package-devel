@@ -8759,3 +8759,585 @@ Best,
 Uwe Ligges
 
 
+From m|ketopper123 @end|ng |rom gm@||@com  Sun Aug 13 07:49:01 2023
+From: m|ketopper123 @end|ng |rom gm@||@com (Michael Topper)
+Date: Sat, 12 Aug 2023 22:49:01 -0700
+Subject: [R-pkg-devel] Examples are too long in computation for CRAN
+Message-ID: <CAN6696sn9Hc5=R50uK_iG=2DY+uffjjA+h+jgRsxv==VjPJ1gA@mail.gmail.com>
+
+Hello all,
+
+Not sure how to handle this, as it had not been an issue on my previous
+CRAN submissions. It appears that some of my examples/tests are taking too
+long to run for CRAN's standards. Is there a way around this other than the
+simple "change the example" or "change the test"?
+
+Moreover, is there any insight as to why this would happen on the third
+update of the package rather than on the first or second?
+
+Thanks in advance, and see below for the NOTE:
+
+
+Flavor: r-devel-linux-x86_64-debian-gcc
+Check: examples, Result: NOTE
+  Examples with CPU (user + system) or elapsed time > 5s
+                    user system elapsed
+  panelsummary     9.574  0.273   0.817
+  panelsummary_raw 6.048  0.164   0.450
+  Examples with CPU time > 2.5 times elapsed time
+                    user system elapsed  ratio
+  panelsummary_raw 6.048  0.164   0.450 13.804
+  panelsummary     9.574  0.273   0.817 12.053
+  clean_raw        3.684  0.064   0.514  7.292
+
+Flavor: r-devel-linux-x86_64-debian-gcc
+Check: tests, Result: NOTE
+    Running 'testthat.R' [54s/6s]
+  Running R code in 'testthat.R' had CPU time 9.3 times elapsed time
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sun Aug 13 08:14:42 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sun, 13 Aug 2023 09:14:42 +0300
+Subject: [R-pkg-devel] Examples are too long in computation for CRAN
+In-Reply-To: <CAN6696sn9Hc5=R50uK_iG=2DY+uffjjA+h+jgRsxv==VjPJ1gA@mail.gmail.com>
+References: <CAN6696sn9Hc5=R50uK_iG=2DY+uffjjA+h+jgRsxv==VjPJ1gA@mail.gmail.com>
+Message-ID: <20230813091442.37cc6189@parabola>
+
+? Sat, 12 Aug 2023 22:49:01 -0700
+Michael Topper <miketopper123 at gmail.com> ?????:
+
+> It appears that some of my examples/tests are taking too
+> long to run for CRAN's standards.
+
+I don't think they are running too long; I think they are too parallel.
+The elapsed time is below 1s, but the "user" time (CPU time spent in
+the process) is 7 to 13 times that. This suggests that your code
+resulted in starting more threads than CRAN allows (up to 2 if you have
+to test parallellism). Are you using OpenMP? data.table? makeCluster()?
+It's simplest to always to default to a parallelism factor of 2 in
+examples an tests, because determining the right number is a hard
+problem. (What if the computer is busy doing something else? What if
+the BLAS is already parallel enough?)
+
+> Moreover, is there any insight as to why this would happen on the
+> third update of the package rather than on the first or second?
+
+The rule has always depended on the particular system running the
+checks (five seconds on my 12-year-old ThinkPad or on my ultraportative
+with an Intel Atom that had snails in its ancestry?). Maybe some
+dependency of your package has updated and started creating threads
+where it previously didn't.
+
+-- 
+Best regards,
+Ivan
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Sun Aug 13 08:26:23 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Sun, 13 Aug 2023 08:26:23 +0200
+Subject: [R-pkg-devel] Examples are too long in computation for CRAN
+In-Reply-To: <20230813091442.37cc6189@parabola>
+References: <CAN6696sn9Hc5=R50uK_iG=2DY+uffjjA+h+jgRsxv==VjPJ1gA@mail.gmail.com>
+ <20230813091442.37cc6189@parabola>
+Message-ID: <f033518a-c19a-a27d-c229-a5523ea92ed8@statistik.tu-dortmund.de>
+
+
+
+On 13.08.2023 08:14, Ivan Krylov wrote:
+> ? Sat, 12 Aug 2023 22:49:01 -0700
+> Michael Topper <miketopper123 at gmail.com> ?????:
+> 
+>> It appears that some of my examples/tests are taking too
+>> long to run for CRAN's standards.
+> 
+> I don't think they are running too long; I think they are too parallel.
+> The elapsed time is below 1s, but the "user" time (CPU time spent in
+> the process) is 7 to 13 times that. This suggests that your code
+> resulted in starting more threads than CRAN allows (up to 2 if you have
+> to test parallellism). Are you using OpenMP? data.table? makeCluster()?
+> It's simplest to always to default to a parallelism factor of 2 in
+> examples an tests, because determining the right number is a hard
+> problem. (What if the computer is busy doing something else? What if
+> the BLAS is already parallel enough?)
+> 
+>> Moreover, is there any insight as to why this would happen on the
+>> third update of the package rather than on the first or second?
+> 
+> The rule has always depended on the particular system running the
+> checks (five seconds on my 12-year-old ThinkPad or on my ultraportative
+> with an Intel Atom that had snails in its ancestry?). Maybe some
+> dependency of your package has updated and started creating threads
+> where it previously didn't.
+> 
+
+
+Good points, not only for examples and tests, but also for defaults.
+
+On shared resources (such as clusters) users may not expect the 
+parallelization you use and then overallocate the resources.
+
+Example: 20 cores available to the user who runs makeCluster() for 
+paallelization, but the underlying code does multihreading on 20 cores. 
+Then we end up in 20*20 threads on the machine slowing down the machine 
+and processes of other uers.
+Hence, defaults should also not be more than 2. Simply allow the user to 
+ask for more.
+
+Best,
+Uwe Ligges
+
+
+From m|ketopper123 @end|ng |rom gm@||@com  Sun Aug 13 09:59:40 2023
+From: m|ketopper123 @end|ng |rom gm@||@com (Michael Topper)
+Date: Sun, 13 Aug 2023 00:59:40 -0700
+Subject: [R-pkg-devel] Examples are too long in computation for CRAN
+In-Reply-To: <f033518a-c19a-a27d-c229-a5523ea92ed8@statistik.tu-dortmund.de>
+References: <CAN6696sn9Hc5=R50uK_iG=2DY+uffjjA+h+jgRsxv==VjPJ1gA@mail.gmail.com>
+ <20230813091442.37cc6189@parabola>
+ <f033518a-c19a-a27d-c229-a5523ea92ed8@statistik.tu-dortmund.de>
+Message-ID: <CAN6696sCCmHsMxUzBhA1WH7xJzxPUS=e8fTPyxmjGW0KGuO=Qg@mail.gmail.com>
+
+I have tried the following:
+
+   - Trimming down the examples substantially to only run 1 regression
+   per-function.
+   - Setting the nthreads argument to 2 in fixest::feels() in case this is
+   the problem as suggested.
+   - Tried to use skip_cran_test() on the tests that include fixest
+   regressions
+
+However, while the time has substantially been trimmed down, it still does
+not pass. At this point, I'm not sure what the next step is.
+
+Below is the results:
+
+Flavor: r-devel-linux-x86_64-debian-gcc
+Check: examples, Result: NOTE
+  Examples with CPU time > 2.5 times elapsed time
+                    user system elapsed ratio
+  panelsummary_raw 3.354  0.054   0.461 7.393
+  clean_raw        3.436  0.091   0.571 6.177
+  panelsummary     3.636  0.136   0.824 4.578
+
+Flavor: r-devel-linux-x86_64-debian-gcc
+Check: tests, Result: NOTE
+    Running 'testthat.R' [39s/4s]
+  Running R code in 'testthat.R' had CPU time 8.7 times elapsed time
+
+On Sat, Aug 12, 2023 at 11:26?PM Uwe Ligges <ligges at statistik.tu-dortmund.de>
+wrote:
+
+>
+>
+> On 13.08.2023 08:14, Ivan Krylov wrote:
+> > ? Sat, 12 Aug 2023 22:49:01 -0700
+> > Michael Topper <miketopper123 at gmail.com> ?????:
+> >
+> >> It appears that some of my examples/tests are taking too
+> >> long to run for CRAN's standards.
+> >
+> > I don't think they are running too long; I think they are too parallel.
+> > The elapsed time is below 1s, but the "user" time (CPU time spent in
+> > the process) is 7 to 13 times that. This suggests that your code
+> > resulted in starting more threads than CRAN allows (up to 2 if you have
+> > to test parallellism). Are you using OpenMP? data.table? makeCluster()?
+> > It's simplest to always to default to a parallelism factor of 2 in
+> > examples an tests, because determining the right number is a hard
+> > problem. (What if the computer is busy doing something else? What if
+> > the BLAS is already parallel enough?)
+> >
+> >> Moreover, is there any insight as to why this would happen on the
+> >> third update of the package rather than on the first or second?
+> >
+> > The rule has always depended on the particular system running the
+> > checks (five seconds on my 12-year-old ThinkPad or on my ultraportative
+> > with an Intel Atom that had snails in its ancestry?). Maybe some
+> > dependency of your package has updated and started creating threads
+> > where it previously didn't.
+> >
+>
+>
+> Good points, not only for examples and tests, but also for defaults.
+>
+> On shared resources (such as clusters) users may not expect the
+> parallelization you use and then overallocate the resources.
+>
+> Example: 20 cores available to the user who runs makeCluster() for
+> paallelization, but the underlying code does multihreading on 20 cores.
+> Then we end up in 20*20 threads on the machine slowing down the machine
+> and processes of other uers.
+> Hence, defaults should also not be more than 2. Simply allow the user to
+> ask for more.
+>
+> Best,
+> Uwe Ligges
+>
+
+
+-- 
+Michael Topper
+B.S. Economics and Mathematics, University of California San Diego 2015
+M.A. Economics, San Diego State University 2018
+Mobile: (805) 914-4285
+miketopper123 at gmail.com
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sun Aug 13 10:42:59 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sun, 13 Aug 2023 11:42:59 +0300
+Subject: [R-pkg-devel] Examples are too long in computation for CRAN
+In-Reply-To: <CAN6696sCCmHsMxUzBhA1WH7xJzxPUS=e8fTPyxmjGW0KGuO=Qg@mail.gmail.com>
+References: <CAN6696sn9Hc5=R50uK_iG=2DY+uffjjA+h+jgRsxv==VjPJ1gA@mail.gmail.com>
+ <20230813091442.37cc6189@parabola>
+ <f033518a-c19a-a27d-c229-a5523ea92ed8@statistik.tu-dortmund.de>
+ <CAN6696sCCmHsMxUzBhA1WH7xJzxPUS=e8fTPyxmjGW0KGuO=Qg@mail.gmail.com>
+Message-ID: <20230813114259.77e21bbe@parabola>
+
+? Sun, 13 Aug 2023 00:59:40 -0700
+Michael Topper <miketopper123 at gmail.com> ?????:
+
+>    - Setting the nthreads argument to 2 in fixest::feels() in case
+> this is the problem as suggested.
+
+Any chance you could be hitting some other code paths in the fixest
+package while working on the objects returned by fixest::feols()?
+
+Try running trace(fixest::getFixest_nthreads) and then running examples
+in the same R session. Assuming that (1) your only problem is fixest
+and (2) every fixest function that uses OpenMP consults
+getFixest_nthreads() by default, it should be possible to catch them
+this way.
+
+If you see a call but aren't sure about its origin, try tracer =
+quote(traceback()) or tracer = quote(browser()). (As a precaution,
+untrace() the function before trace()ing it again.)
+
+FWIW, modelsummary depends on both fixest and data.table, but it
+doesn't look like you're creating threads via these.
+
+>    - Tried to use skip_cran_test() on the tests that include fixest
+>    regressions
+
+For tests, there's one more option: fixest::setFixest_nthreads(1) at
+the beginning of the file. This should eliminate any extra threads
+originating from fixest. If you do this and the problem persists, it
+must be something else. Unfortunately, this is global state, and using
+this in examples will involve saving the previous value and then
+restoring it later.
+
+(If you had separate test files in tests/*.R, R would be able to tell
+you which one causes excessive CPU time. Unfortunately, testthat idioms
+and core R idioms don't work well together.)
+
+It really is unfortunate that you cannot reproduce this without a
+computer with a lot of cores and working OpenMP.
+
+-- 
+Best regards,
+Ivan
+
+
+From |ent|nj @end|ng |rom @hutt|ethre@d@com  Sun Aug 13 19:25:11 2023
+From: |ent|nj @end|ng |rom @hutt|ethre@d@com (Jamie Lentin)
+Date: Sun, 13 Aug 2023 18:25:11 +0100
+Subject: [R-pkg-devel] 
+ gdb availability on r-devel-linux-x86_64-fedora-gcc
+In-Reply-To: <00d5c596-4fa9-9659-a53b-e0eaf18ee24d@statistik.tu-dortmund.de>
+References: <0c6f536870145fa037b2553ce5bb8f1f@shuttlethread.com>
+ <f49a77aa-c424-588c-0f46-c8d5004634dd@statistik.tu-dortmund.de>
+ <25815.63333.522184.604529@rob.eddelbuettel.com>
+ <00d5c596-4fa9-9659-a53b-e0eaf18ee24d@statistik.tu-dortmund.de>
+Message-ID: <7403d24efd019db3cb61e88d637650ee@shuttlethread.com>
+
+Thanks both!
+
+On 2023-08-12 23:52, Uwe Ligges wrote:
+> On 12.08.2023 23:19, Dirk Eddelbuettel wrote:
+>> 
+>> On 12 August 2023 at 18:12, Uwe Ligges wrote:
+>> | On 12.08.2023 15:10, Jamie Lentin wrote:
+>> | > The system call in question is done by the TMB package[2], and not 
+>> ours
+>> | > to tinker with:
+>> | >
+>> | >  ? cmd <- paste("R --vanilla < ",file," -d gdb 
+>> --debugger-args=\"-x",
+>> | >  ?????????????? gdbscript,"\"")
+>> | >  ? txt <- 
+>> system(cmd,intern=TRUE,ignore.stdout=FALSE,ignore.stderr=TRUE)
+>> | >
+>> | > My only vaguely reasonable guess is that gdb isn't available on 
+>> the host
+>> | > in question (certainly R will be!). How likely is this? Is it 
+>> worth
+>> | > trying to resubmit with the call wrapped with an "if (gdb is on 
+>> the path)"?
+>> |
+>> | I guess it is really not available as that system got an update.
+>> | Note that you package does not declare any SystemRequirements. 
+>> Please do
+>> | so and mention gdb.
+
+It's TMB::gdbsource() that's calling system("R -d gdb"), so presumably 
+the SystemRequirements should live there rather than gadget3? I can 
+raise an issue suggesting this.
+
+>> | Wrapping it in "if (gdb is on the path)" seems a good solution.
+>> 
+>> Seconded esp as some systems may have lldb instead of gdb, or neither.
+>> Adding a simple `if (nzchar(Sys.which("gdb")))` should get you there.
+>> 
+>> Dirk
+>> 
+> 
+> Note that also
+> 
+> 1. The machine does not have R on the path (but Rdev)
+
+Okay, I'll check for "all(nzchar(Sys.which(c('gdb', 'R'))))". This is 
+overkill somewhat, and the example won't run in some environments that 
+TMB::gdbsource() should work in. However, at least it'll check it does 
+work for the relatively default case.
+
+> 2. you need to use a current pandoc. Citing Professor Ripley: "The
+> platforms failing are using pandoc 3.1.6 or (newly updated, M1mac)
+> 3.1.6.1"
+
+I'll be sure to try upgrading before resubmitting.
+
+Thanks again for your help!
+
+> Best,
+> Uwe Ligges
+
+
+From bbo|ker @end|ng |rom gm@||@com  Sun Aug 13 21:17:09 2023
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Sun, 13 Aug 2023 15:17:09 -0400
+Subject: [R-pkg-devel] status of "possibly invalid URL/403 error" NOTEs?
+Message-ID: <af047398-58dd-1289-c719-2aa1441595da@gmail.com>
+
+   I have a package whose documentation includes the reference 
+\doi{10.1137/18M1186411} which redirects here:
+https://epubs.siam.org/doi/10.1137/18M1186411
+
+Running R CMD check --as-cran on the package gives
+
+Found the following (possibly) invalid URLs:
+   URL: https://epubs.siam.org/doi/10.1137/18M1186411
+     From: man/llig.Rd
+     Status: 403
+     Message: Forbidden
+
+   I can access this perfectly well in the browser.
+
+   Is there any way to avoid this (other than, say, including the URL in 
+a form that does *not* provide a link so that R CMD check won't try to 
+access it? (As Uwe Ligges says 
+[here](https://stat.ethz.ch/pipermail/r-package-devel/2020q1/005195.html) 
+(for a more obviously problematic case), "mention the URL in plain text 
+but not link"
+
+   Here Hadley Wickham says that these NOTEs can be ignored
+
+https://twitter.com/hadleywickham/status/1358170607314235392
+
+but "Hadley said it on twitter" is not an ideal source. The CRAN 
+repository policy says that packages must pass checks without 
+"significant" notes, but it's always hard to know what's significant and 
+what's not ...
+
+   There's a thread here: 
+https://stat.ethz.ch/pipermail/r-package-devel/2020q1/005171.html
+
+    Tangentially: is there a more convenient way to search the 
+r-package-devel archives than googling (e.g.) 
+"site:https://stat.ethz.ch/pipermail/r-package-devel  403" ?
+
+
+From @vr@h@m@@d|er @end|ng |rom gm@||@com  Sun Aug 13 22:57:53 2023
+From: @vr@h@m@@d|er @end|ng |rom gm@||@com (Avraham Adler)
+Date: Sun, 13 Aug 2023 16:57:53 -0400
+Subject: [R-pkg-devel] status of "possibly invalid URL/403 error" NOTEs?
+In-Reply-To: <af047398-58dd-1289-c719-2aa1441595da@gmail.com>
+References: <af047398-58dd-1289-c719-2aa1441595da@gmail.com>
+Message-ID: <715F42AD-E205-43E6-9819-175FABA38B7E@gmail.com>
+
+I had a similar issue with a paper on JSTOR. Usually CRAN let it through. However, I eventually switched from URL to DOI and now the user needs to find the free source so to rid myself of the constant hassle. CRAN really doesn?t like redirects. I guess you could wrap it in \code{} so as not to hyperlink. 
+
+Avi
+
+Sent from my iPhone
+
+> On Aug 13, 2023, at 3:17 PM, Ben Bolker <bbolker at gmail.com> wrote:
+> 
+> ?  I have a package whose documentation includes the reference \doi{10.1137/18M1186411} which redirects here:
+> https://epubs.siam.org/doi/10.1137/18M1186411
+> 
+> Running R CMD check --as-cran on the package gives
+> 
+> Found the following (possibly) invalid URLs:
+>  URL: https://epubs.siam.org/doi/10.1137/18M1186411
+>    From: man/llig.Rd
+>    Status: 403
+>    Message: Forbidden
+> 
+>  I can access this perfectly well in the browser.
+> 
+>  Is there any way to avoid this (other than, say, including the URL in a form that does *not* provide a link so that R CMD check won't try to access it? (As Uwe Ligges says [here](https://stat.ethz.ch/pipermail/r-package-devel/2020q1/005195.html) (for a more obviously problematic case), "mention the URL in plain text but not link"
+> 
+>  Here Hadley Wickham says that these NOTEs can be ignored
+> 
+> https://twitter.com/hadleywickham/status/1358170607314235392
+> 
+> but "Hadley said it on twitter" is not an ideal source. The CRAN repository policy says that packages must pass checks without "significant" notes, but it's always hard to know what's significant and what's not ...
+> 
+>  There's a thread here: https://stat.ethz.ch/pipermail/r-package-devel/2020q1/005171.html
+> 
+>   Tangentially: is there a more convenient way to search the r-package-devel archives than googling (e.g.) "site:https://stat.ethz.ch/pipermail/r-package-devel  403" ?
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Sun Aug 13 23:02:33 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Sun, 13 Aug 2023 23:02:33 +0200
+Subject: [R-pkg-devel] status of "possibly invalid URL/403 error" NOTEs?
+In-Reply-To: <715F42AD-E205-43E6-9819-175FABA38B7E@gmail.com>
+References: <af047398-58dd-1289-c719-2aa1441595da@gmail.com>
+ <715F42AD-E205-43E6-9819-175FABA38B7E@gmail.com>
+Message-ID: <04475695-33b8-b0e6-2bf9-079908b7963d@statistik.tu-dortmund.de>
+
+
+
+On 13.08.2023 22:57, Avraham Adler wrote:
+> I had a similar issue with a paper on JSTOR. Usually CRAN let it through. However, I eventually switched from URL to DOI and now the user needs to find the free source so to rid myself of the constant hassle. CRAN really doesn?t like redirects. I guess you could wrap it in \code{} so as not to hyperlink.
+> 
+> Avi
+> 
+> Sent from my iPhone
+> 
+>> On Aug 13, 2023, at 3:17 PM, Ben Bolker <bbolker at gmail.com> wrote:
+>>
+>> ?  I have a package whose documentation includes the reference \doi{10.1137/18M1186411} which redirects here:
+>> https://epubs.siam.org/doi/10.1137/18M1186411
+>>
+>> Running R CMD check --as-cran on the package gives
+>>
+>> Found the following (possibly) invalid URLs:
+>>   URL: https://epubs.siam.org/doi/10.1137/18M1186411
+>>     From: man/llig.Rd
+>>     Status: 403
+>>     Message: Forbidden
+
+
+CRAN will snpect this manually and let is pass.
+
+Best,
+Uwe Ligges
+
+
+>>   I can access this perfectly well in the browser.
+>>
+>>   Is there any way to avoid this (other than, say, including the URL in a form that does *not* provide a link so that R CMD check won't try to access it? (As Uwe Ligges says [here](https://stat.ethz.ch/pipermail/r-package-devel/2020q1/005195.html) (for a more obviously problematic case), "mention the URL in plain text but not link"
+>>
+>>   Here Hadley Wickham says that these NOTEs can be ignored
+>>
+>> https://twitter.com/hadleywickham/status/1358170607314235392
+>>
+>> but "Hadley said it on twitter" is not an ideal source. The CRAN repository policy says that packages must pass checks without "significant" notes, but it's always hard to know what's significant and what's not ...
+>>
+>>   There's a thread here: https://stat.ethz.ch/pipermail/r-package-devel/2020q1/005171.html
+>>
+>>    Tangentially: is there a more convenient way to search the r-package-devel archives than googling (e.g.) "site:https://stat.ethz.ch/pipermail/r-package-devel  403" ?
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Sun Aug 13 23:10:53 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Mon, 14 Aug 2023 09:10:53 +1200
+Subject: [R-pkg-devel] 
+ gdb availability on r-devel-linux-x86_64-fedora-gcc
+In-Reply-To: <7403d24efd019db3cb61e88d637650ee@shuttlethread.com>
+References: <0c6f536870145fa037b2553ce5bb8f1f@shuttlethread.com>
+ <f49a77aa-c424-588c-0f46-c8d5004634dd@statistik.tu-dortmund.de>
+ <25815.63333.522184.604529@rob.eddelbuettel.com>
+ <00d5c596-4fa9-9659-a53b-e0eaf18ee24d@statistik.tu-dortmund.de>
+ <7403d24efd019db3cb61e88d637650ee@shuttlethread.com>
+Message-ID: <EC20B2C6-3751-434D-A87E-A3D098853864@R-project.org>
+
+
+
+> On 14/08/2023, at 5:25 AM, Jamie Lentin <lentinj at shuttlethread.com> wrote:
+> 
+> Thanks both!
+> 
+> On 2023-08-12 23:52, Uwe Ligges wrote:
+>> On 12.08.2023 23:19, Dirk Eddelbuettel wrote:
+>>> On 12 August 2023 at 18:12, Uwe Ligges wrote:
+>>> | On 12.08.2023 15:10, Jamie Lentin wrote:
+>>> | > The system call in question is done by the TMB package[2], and not ours
+>>> | > to tinker with:
+>>> | >
+>>> | >    cmd <- paste("R --vanilla < ",file," -d gdb --debugger-args=\"-x",
+>>> | >                 gdbscript,"\"")
+>>> | >    txt <- system(cmd,intern=TRUE,ignore.stdout=FALSE,ignore.stderr=TRUE)
+>>> | >
+>>> | > My only vaguely reasonable guess is that gdb isn't available on the host
+>>> | > in question (certainly R will be!). How likely is this? Is it worth
+>>> | > trying to resubmit with the call wrapped with an "if (gdb is on the path)"?
+>>> |
+>>> | I guess it is really not available as that system got an update.
+>>> | Note that you package does not declare any SystemRequirements. Please do
+>>> | so and mention gdb.
+> 
+> It's TMB::gdbsource() that's calling system("R -d gdb"), so presumably the SystemRequirements should live there rather than gadget3? I can raise an issue suggesting this.
+> 
+>>> | Wrapping it in "if (gdb is on the path)" seems a good solution.
+>>> Seconded esp as some systems may have lldb instead of gdb, or neither.
+>>> Adding a simple `if (nzchar(Sys.which("gdb")))` should get you there.
+>>> Dirk
+>> Note that also
+>> 1. The machine does not have R on the path (but Rdev)
+> 
+> Okay, I'll check for "all(nzchar(Sys.which(c('gdb', 'R'))))". This is overkill somewhat, and the example won't run in some environments that TMB::gdbsource() should work in. However, at least it'll check it does work for the relatively default case.
+> 
+
+Please note that it should not be calling some random program called R - it should be calling the R instance it's running in (as Uwe pointed out there may be several) so possibly something like file.path(R.home(),"bin","R")
+
+Cheers,
+Simon
+
+
+>> 2. you need to use a current pandoc. Citing Professor Ripley: "The
+>> platforms failing are using pandoc 3.1.6 or (newly updated, M1mac)
+>> 3.1.6.1"
+> 
+> I'll be sure to try upgrading before resubmitting.
+> 
+> Thanks again for your help!
+> 
+>> Best,
+>> Uwe Ligges
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
