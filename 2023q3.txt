@@ -9341,3 +9341,205 @@ Simon
 > 
 
 
+From m@rk@p@dgh@m @end|ng |rom em@||@com  Mon Aug 14 11:51:20 2023
+From: m@rk@p@dgh@m @end|ng |rom em@||@com (Mark Padgham)
+Date: Mon, 14 Aug 2023 11:51:20 +0200
+Subject: [R-pkg-devel] Suppressing compiler warnings?
+Message-ID: <a3ca1dd5-8b36-47db-904b-e7ee4ee2f8ee@email.com>
+
+An update of a package of mine got immediately kicked off CRAN because
+an externally-bundled file which had not been changed for years, and
+which included "pragma clang system_header" to suppress warnings. The
+concern is fair enough. Removing that nevertheless now generates a heap
+of warnings which CRAN will have to wade through / grep to assess
+whether any are of concern. These can be easily suppressed by replacing
+cheap "system_header" with targeted suppression of just two classes of
+warnings for that bundled header file only. But I guess this is also
+forbidden? Should I now just leave those warnings, and rely on CRAN's
+grep policies to assess them? Is there any public list of what such grep
+policies might be? (And no, I can't adapt the code to remove the
+warnings, because most are "zero-as-null-pointer-constant", but the "0"
+is actually better than nullptr the way the code is constructed. The
+rest are - currently - unimportant deprecation warnings, all of one
+specific class.)
+
+Thanks,
+
+Mark
+
+
+From edd @end|ng |rom deb|@n@org  Mon Aug 14 14:43:10 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Mon, 14 Aug 2023 07:43:10 -0500
+Subject: [R-pkg-devel] Suppressing compiler warnings?
+In-Reply-To: <a3ca1dd5-8b36-47db-904b-e7ee4ee2f8ee@email.com>
+References: <a3ca1dd5-8b36-47db-904b-e7ee4ee2f8ee@email.com>
+Message-ID: <25818.8542.10323.686705@rob.eddelbuettel.com>
+
+
+On 14 August 2023 at 11:51, Mark Padgham wrote:
+| An update of a package of mine got immediately kicked off CRAN because
+| an externally-bundled file which had not been changed for years, and
+| which included "pragma clang system_header" to suppress warnings. The
+| concern is fair enough. Removing that nevertheless now generates a heap
+| of warnings which CRAN will have to wade through / grep to assess
+| whether any are of concern. These can be easily suppressed by replacing
+| cheap "system_header" with targeted suppression of just two classes of
+| warnings for that bundled header file only. But I guess this is also
+| forbidden? Should I now just leave those warnings, and rely on CRAN's
+| grep policies to assess them? Is there any public list of what such grep
+| policies might be? (And no, I can't adapt the code to remove the
+| warnings, because most are "zero-as-null-pointer-constant", but the "0"
+| is actually better than nullptr the way the code is constructed. The
+| rest are - currently - unimportant deprecation warnings, all of one
+| specific class.)
+
+It is in the CRAN Repostory Policy:
+
+   - Packages should not attempt to disable compiler diagnostics, nor to
+     remove other diagnostic information such as symbols in shared objects. 
+
+Per 'svn blame' it goes back to commit 4049 from Apr 2019, but a commit from
+Nov 2017 has 'memtion (sic!) not disabling compiler diagnostics'.
+
+FWIW I have had to do it for BH and RcppEigen for some time leading to both
+of them 'spamming' package users with a lot of noise. I don't particularly
+like that, but I also do not have too many choices here.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From m@rk@p@dgh@m @end|ng |rom em@||@com  Mon Aug 14 14:59:05 2023
+From: m@rk@p@dgh@m @end|ng |rom em@||@com (Mark Padgham)
+Date: Mon, 14 Aug 2023 14:59:05 +0200
+Subject: [R-pkg-devel] Suppressing compiler warnings?
+In-Reply-To: <25818.8542.10323.686705@rob.eddelbuettel.com>
+References: <a3ca1dd5-8b36-47db-904b-e7ee4ee2f8ee@email.com>
+ <25818.8542.10323.686705@rob.eddelbuettel.com>
+Message-ID: <4024eccd-adbd-44e0-8f05-6ada08d5a736@email.com>
+
+
+On 14/08/2023 14:43, Dirk Eddelbuettel wrote:
+> On 14 August 2023 at 11:51, Mark Padgham wrote:
+> | An update of a package of mine got immediately kicked off CRAN because
+> | an externally-bundled file which had not been changed for years, and
+> | which included "pragma clang system_header" to suppress warnings. The
+> | concern is fair enough. Removing that nevertheless now generates a heap
+> | of warnings which CRAN will have to wade through / grep to assess
+> | whether any are of concern. These can be easily suppressed by replacing
+> | cheap "system_header" with targeted suppression of just two classes of
+> | warnings for that bundled header file only. But I guess this is also
+> | forbidden? Should I now just leave those warnings, and rely on CRAN's
+> | grep policies to assess them? Is there any public list of what such grep
+> | policies might be? (And no, I can't adapt the code to remove the
+> | warnings, because most are "zero-as-null-pointer-constant", but the "0"
+> | is actually better than nullptr the way the code is constructed. The
+> | rest are - currently - unimportant deprecation warnings, all of one
+> | specific class.)
+>
+> It is in the CRAN Repostory Policy:
+>
+>     - Packages should not attempt to disable compiler diagnostics, nor to
+>       remove other diagnostic information such as symbols in shared objects.
+>
+> Per 'svn blame' it goes back to commit 4049 from Apr 2019, but a commit from
+> Nov 2017 has 'memtion (sic!) not disabling compiler diagnostics'.
+>
+> FWIW I have had to do it for BH and RcppEigen for some time leading to both
+> of them 'spamming' package users with a lot of noise. I don't particularly
+> like that, but I also do not have too many choices here.
+>
+> Dirk
+>
+Thanks Dirk! I've seen also that a couple of tidyverse and r-lib pkgs
+bundle the same header, and they also do nothing to suppress this
+compiler spam. But gee it would be good to have some "official"
+reference for what compiler warnings CRAN are likely to complain about,
+and which ones they'll ignore!
+
+
+From bbo|ker @end|ng |rom gm@||@com  Tue Aug 15 01:43:51 2023
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Mon, 14 Aug 2023 19:43:51 -0400
+Subject: [R-pkg-devel] Suppressing compiler warnings?
+In-Reply-To: <4024eccd-adbd-44e0-8f05-6ada08d5a736@email.com>
+References: <a3ca1dd5-8b36-47db-904b-e7ee4ee2f8ee@email.com>
+ <25818.8542.10323.686705@rob.eddelbuettel.com>
+ <4024eccd-adbd-44e0-8f05-6ada08d5a736@email.com>
+Message-ID: <ae720cb1-5ebc-95be-fbd4-dee3ea75dcaa@gmail.com>
+
+   This also doesn't answer your question, but:
+
+A trick that the TMB package uses to help users is to suggest that they 
+add "CXXFLAGS += -Wno-ignored-attributes" to their `.R/Makevars` file. 
+This means that *they* don't have to see useless warnings when compiling 
+code.
+
+   In your case I don't know if there is a compiler flag that is 
+equivalent to your pragma, or you could add your own macro/#ifdef 
+(CXXFLAGS += -DSUPPRESS_WARNINGS) so that *you* don't have to see the 
+warning messages. (If CRAN doesn't want to see all the warnings that's 
+their problem ...)
+
+
+On 2023-08-14 8:59 a.m., Mark Padgham wrote:
+> 
+> On 14/08/2023 14:43, Dirk Eddelbuettel wrote:
+>> On 14 August 2023 at 11:51, Mark Padgham wrote:
+>> | An update of a package of mine got immediately kicked off CRAN because
+>> | an externally-bundled file which had not been changed for years, and
+>> | which included "pragma clang system_header" to suppress warnings. The
+>> | concern is fair enough. Removing that nevertheless now generates a heap
+>> | of warnings which CRAN will have to wade through / grep to assess
+>> | whether any are of concern. These can be easily suppressed by replacing
+>> | cheap "system_header" with targeted suppression of just two classes of
+>> | warnings for that bundled header file only. But I guess this is also
+>> | forbidden? Should I now just leave those warnings, and rely on CRAN's
+>> | grep policies to assess them? Is there any public list of what such 
+>> grep
+>> | policies might be? (And no, I can't adapt the code to remove the
+>> | warnings, because most are "zero-as-null-pointer-constant", but the "0"
+>> | is actually better than nullptr the way the code is constructed. The
+>> | rest are - currently - unimportant deprecation warnings, all of one
+>> | specific class.)
+>>
+>> It is in the CRAN Repostory Policy:
+>>
+>> ??? - Packages should not attempt to disable compiler diagnostics, nor to
+>> ????? remove other diagnostic information such as symbols in shared 
+>> objects.
+>>
+>> Per 'svn blame' it goes back to commit 4049 from Apr 2019, but a 
+>> commit from
+>> Nov 2017 has 'memtion (sic!) not disabling compiler diagnostics'.
+>>
+>> FWIW I have had to do it for BH and RcppEigen for some time leading to 
+>> both
+>> of them 'spamming' package users with a lot of noise. I don't 
+>> particularly
+>> like that, but I also do not have too many choices here.
+>>
+>> Dirk
+>>
+> Thanks Dirk! I've seen also that a couple of tidyverse and r-lib pkgs
+> bundle the same header, and they also do nothing to suppress this
+> compiler spam. But gee it would be good to have some "official"
+> reference for what compiler warnings CRAN are likely to complain about,
+> and which ones they'll ignore!
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+(Acting) Graduate chair, Mathematics & Statistics
+ > E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
