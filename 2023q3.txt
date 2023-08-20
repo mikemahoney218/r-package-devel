@@ -9693,3 +9693,304 @@ Joshua Ulrich  |  about.me/joshuaulrich
 FOSS Trading  |  www.fosstrading.com
 
 
+From ke||ey @end|ng |rom d@|@c@  Sat Aug 19 14:54:40 2023
+From: ke||ey @end|ng |rom d@|@c@ (Daniel Kelley)
+Date: Sat, 19 Aug 2023 12:54:40 +0000
+Subject: [R-pkg-devel] possible solution to package-documentation-alias
+ problem
+Message-ID: <E79A0C00-6FE3-48DA-AAC3-29A63D28A452@dal.ca>
+
+# Preamble
+
+This email is to tell other developers what I did to address an issue with
+documenting a package.  I'm not sure that I am correct in my approach --
+comments would definitely be appreciated -- but at least this email is fairly
+concrete about the changes I made. To be honest, I don't know how to test
+whether my changes are suitable, since no problem is reported in local builds or
+in remote windows checks, and no problem is listed on the CRAN tests page.
+
+# The problem
+
+Today I received multiple emails from K. Hornik, telling me about problems with
+the package-level documentation for several CRAN packages that I maintain. Here
+is a key part of that email:
+
+    You have file 'oce/man/oce.Rd' with \docType{package}, likely intended as a
+    package overview help file, but without the appropriate PKGNAME-package
+    \alias as per "Documenting packages" in R-exts.
+
+# Possible solution
+
+As a test (using the 'plan' package, which is much smaller and thus ought to
+give faster test results), I changed my Roxygen2 block
+
+    #' @name plan
+    #' @docType package
+    #' @author Dan Kelley
+    NULL
+
+to read
+
+    #' @name plan
+    #' @docType package
+    #' @author Dan Kelley
+    #' @keywords internal
+    "_PACKAGE"
+    ## usethis namespace: start
+    ## usethis namespace: end
+    NULL
+
+Note that the two ## comments are likely not required, but I included them
+because I saw them at
+
+https://github.com/jonesor/mpmsim/commit/e8d0f0d657ffa24c25ddd3165c7ddcad16322e3d
+
+which I found to be quite a helpful resource.
+
+# Local testing
+
+After rebuilding locally, I can now do
+
+    package?plan
+
+and get the expected documentation for the package as a whole.
+
+# CRAN submission
+
+I submitted the update to CRAN, and it has appeared as a tarball.  It has not
+yet appeared in built-up packages sources, but perhaps the fact that I didn't
+get any warnings from CRAN suggests that the flaw has been addressed.
+
+# Conclusions
+
+If I am right, a simple fix is all that will be required for many packages.
+However, I don't know of any way to know if this fix follows recommended
+procedures.  There appear to be multiple ways of addressing the issue.
+
+Perhaps other developers will have better solutions than the one I've outlined
+above.  Or, if I happen to have done something right, then perhaps this email
+will be of some use to other developers.
+
+Dan Kelley / Department of Oceanography / Dalhousie University / Canada
+
+
+From roy@mende|@@ohn @end|ng |rom no@@@gov  Sat Aug 19 18:22:03 2023
+From: roy@mende|@@ohn @end|ng |rom no@@@gov (Roy Mendelssohn - NOAA Federal)
+Date: Sat, 19 Aug 2023 09:22:03 -0700
+Subject: [R-pkg-devel] possible solution to package-documentation-alias
+ problem
+In-Reply-To: <E79A0C00-6FE3-48DA-AAC3-29A63D28A452@dal.ca>
+References: <E79A0C00-6FE3-48DA-AAC3-29A63D28A452@dal.ca>
+Message-ID: <85911D6F-C571-4D17-91CC-93B158CC8FA9@noaa.gov>
+
+Thanks Dan.  Also see:
+
+https://r-pkgs.org/man.html#sec-man-package-doc
+
+My understanding is that literally thousands of packages are broken in the same way.
+
+-Roy
+
+> On Aug 19, 2023, at 5:54 AM, Daniel Kelley <kelley at dal.ca> wrote:
+> 
+> # Preamble
+> 
+> This email is to tell other developers what I did to address an issue with
+> documenting a package.  I'm not sure that I am correct in my approach --
+> comments would definitely be appreciated -- but at least this email is fairly
+> concrete about the changes I made. To be honest, I don't know how to test
+> whether my changes are suitable, since no problem is reported in local builds or
+> in remote windows checks, and no problem is listed on the CRAN tests page.
+> 
+> # The problem
+> 
+> Today I received multiple emails from K. Hornik, telling me about problems with
+> the package-level documentation for several CRAN packages that I maintain. Here
+> is a key part of that email:
+> 
+>    You have file 'oce/man/oce.Rd' with \docType{package}, likely intended as a
+>    package overview help file, but without the appropriate PKGNAME-package
+>    \alias as per "Documenting packages" in R-exts.
+> 
+> # Possible solution
+> 
+> As a test (using the 'plan' package, which is much smaller and thus ought to
+> give faster test results), I changed my Roxygen2 block
+> 
+>    #' @name plan
+>    #' @docType package
+>    #' @author Dan Kelley
+>    NULL
+> 
+> to read
+> 
+>    #' @name plan
+>    #' @docType package
+>    #' @author Dan Kelley
+>    #' @keywords internal
+>    "_PACKAGE"
+>    ## usethis namespace: start
+>    ## usethis namespace: end
+>    NULL
+> 
+> Note that the two ## comments are likely not required, but I included them
+> because I saw them at
+> 
+> https://github.com/jonesor/mpmsim/commit/e8d0f0d657ffa24c25ddd3165c7ddcad16322e3d
+> 
+> which I found to be quite a helpful resource.
+> 
+> # Local testing
+> 
+> After rebuilding locally, I can now do
+> 
+>    package?plan
+> 
+> and get the expected documentation for the package as a whole.
+> 
+> # CRAN submission
+> 
+> I submitted the update to CRAN, and it has appeared as a tarball.  It has not
+> yet appeared in built-up packages sources, but perhaps the fact that I didn't
+> get any warnings from CRAN suggests that the flaw has been addressed.
+> 
+> # Conclusions
+> 
+> If I am right, a simple fix is all that will be required for many packages.
+> However, I don't know of any way to know if this fix follows recommended
+> procedures.  There appear to be multiple ways of addressing the issue.
+> 
+> Perhaps other developers will have better solutions than the one I've outlined
+> above.  Or, if I happen to have done something right, then perhaps this email
+> will be of some use to other developers.
+> 
+> Dan Kelley / Department of Oceanography / Dalhousie University / Canada
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+**********************
+"The contents of this message do not reflect any position of the U.S. Government or NOAA."
+**********************
+Roy Mendelssohn
+Supervisory Operations Research Analyst
+NOAA/NMFS
+Environmental Research Division
+Southwest Fisheries Science Center
+***Note new street address***
+110 McAllister Way
+Santa Cruz, CA 95060
+Phone: (831)-420-3666
+Fax: (831) 420-3980
+e-mail: Roy.Mendelssohn at noaa.gov www: https://www.pfeg.noaa.gov/
+
+"Old age and treachery will overcome youth and skill."
+"From those who have been given much, much will be expected" 
+"the arc of the moral universe is long, but it bends toward justice" -MLK Jr.
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Aug 19 19:04:04 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 19 Aug 2023 13:04:04 -0400
+Subject: [R-pkg-devel] possible solution to package-documentation-alias
+ problem
+In-Reply-To: <E79A0C00-6FE3-48DA-AAC3-29A63D28A452@dal.ca>
+References: <E79A0C00-6FE3-48DA-AAC3-29A63D28A452@dal.ca>
+Message-ID: <94bef1fa-2507-5a5f-1677-69ca09a044c1@gmail.com>
+
+When you get a note from CRAN, remember that it ignores Roxygen comments 
+completely.  It's just looking at the files that Roxygen produces.  So 
+you should look at the .Rd files when you get a complaint about them.
+
+Your previous code would have produced a file named plan.Rd, and that 
+file didn't include the "plan-package" alias that was requested.  The 
+new version does, so things are now fine.  I think that up until a few 
+years ago, the old version would have worked, but this news item from 
+2019 hints at the change:
+
+"Using @docType package no longer automatically adds -name. Instead 
+document _PACKAGE to get all the defaults for package documentation, or 
+use @name to override the default file name."
+
+Duncan Murdoch
+
+On 19/08/2023 8:54 a.m., Daniel Kelley wrote:
+> # Preamble
+> 
+> This email is to tell other developers what I did to address an issue with
+> documenting a package.  I'm not sure that I am correct in my approach --
+> comments would definitely be appreciated -- but at least this email is fairly
+> concrete about the changes I made. To be honest, I don't know how to test
+> whether my changes are suitable, since no problem is reported in local builds or
+> in remote windows checks, and no problem is listed on the CRAN tests page.
+> 
+> # The problem
+> 
+> Today I received multiple emails from K. Hornik, telling me about problems with
+> the package-level documentation for several CRAN packages that I maintain. Here
+> is a key part of that email:
+> 
+>      You have file 'oce/man/oce.Rd' with \docType{package}, likely intended as a
+>      package overview help file, but without the appropriate PKGNAME-package
+>      \alias as per "Documenting packages" in R-exts.
+> 
+> # Possible solution
+> 
+> As a test (using the 'plan' package, which is much smaller and thus ought to
+> give faster test results), I changed my Roxygen2 block
+> 
+>      #' @name plan
+>      #' @docType package
+>      #' @author Dan Kelley
+>      NULL
+> 
+> to read
+> 
+>      #' @name plan
+>      #' @docType package
+>      #' @author Dan Kelley
+>      #' @keywords internal
+>      "_PACKAGE"
+>      ## usethis namespace: start
+>      ## usethis namespace: end
+>      NULL
+> 
+> Note that the two ## comments are likely not required, but I included them
+> because I saw them at
+> 
+> https://github.com/jonesor/mpmsim/commit/e8d0f0d657ffa24c25ddd3165c7ddcad16322e3d
+> 
+> which I found to be quite a helpful resource.
+> 
+> # Local testing
+> 
+> After rebuilding locally, I can now do
+> 
+>      package?plan
+> 
+> and get the expected documentation for the package as a whole.
+> 
+> # CRAN submission
+> 
+> I submitted the update to CRAN, and it has appeared as a tarball.  It has not
+> yet appeared in built-up packages sources, but perhaps the fact that I didn't
+> get any warnings from CRAN suggests that the flaw has been addressed.
+> 
+> # Conclusions
+> 
+> If I am right, a simple fix is all that will be required for many packages.
+> However, I don't know of any way to know if this fix follows recommended
+> procedures.  There appear to be multiple ways of addressing the issue.
+> 
+> Perhaps other developers will have better solutions than the one I've outlined
+> above.  Or, if I happen to have done something right, then perhaps this email
+> will be of some use to other developers.
+> 
+> Dan Kelley / Department of Oceanography / Dalhousie University / Canada
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
