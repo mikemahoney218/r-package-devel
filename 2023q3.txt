@@ -10962,3 +10962,1154 @@ https://stat.ethz.ch/mailman/listinfo/r-package-devel
 	[[alternative HTML version deleted]]
 
 
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Wed Aug 23 15:31:01 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Wed, 23 Aug 2023 15:31:01 +0200
+Subject: [R-pkg-devel] 
+ Trouble with long-running tests on CRAN debian server
+In-Reply-To: <GV2PR02MB87700FF98E542FF85D2E0156D51EA@GV2PR02MB8770.eurprd02.prod.outlook.com>
+References: <CAO1VBV0w03odWXX=jPHELnrwp8VejVD2L5V6PhUTFD+EA6J5cA@mail.gmail.com>
+ <20230821151654.002682a0@Tarkus>
+ <CAO1VBV39Tx_XQDZkwqsudXJkkRfR8cckiK-OV-Com3=2HA73_g@mail.gmail.com>
+ <20230821160502.66d8c505@Tarkus>
+ <25827.26810.377310.594496@rob.eddelbuettel.com>
+ <CAO1VBV18ZVgxuX8_9EAmp99NGTyRLG6whfYVauM6sosccRQmbw@mail.gmail.com>
+ <GV2PR02MB87700FF98E542FF85D2E0156D51EA@GV2PR02MB8770.eurprd02.prod.outlook.com>
+Message-ID: <3a78262a-0760-9541-59c7-0403b0164d00@statistik.tu-dortmund.de>
+
+I (any many collegues here) have been caught several times by the 
+following example:
+
+1. did something in parallel on a cluster, set up via 
+parallel::makeCluster().
+2. e.g. allocated 20 cores and got them on one single machine
+3. ran some code in parallel via parLapply()
+
+Bang! 400 threads;
+So I have started 20 parallel processes, each of which is using the 
+automatically set max. 20 threads as OMP_THREAD_LIMIT was also adjusted 
+by the cluster to 20 (rather than 1).
+
+Hence, I really believe a default should always be small, not only in 
+examples and tests, but generally. And people who aim for more should be 
+able to increase the defaults.
+
+Do you believe a software that auto-occupies a 96 core machines with 96 
+threads by default is sensible?
+
+Best,
+Uwe Ligges
+
+
+
+
+
+
+On 21.08.2023 21:59, Berry Boessenkool wrote:
+> 
+> If you add that to each exported function, isn't that a lot of code to read + maintain?
+> Also, it seems like unnecessary computational overhead.
+>  From a software design point of view, it might be nicer to set that in the examples + tests.
+> 
+> Regards,
+> Berry
+> 
+> ________________________________
+> From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Scott Ritchie <sritchie73 at gmail.com>
+> Sent: Monday, August 21, 2023 19:23
+> To: Dirk Eddelbuettel <edd at debian.org>
+> Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+> Subject: Re: [R-pkg-devel] Trouble with long-running tests on CRAN debian server
+> 
+> Thanks Dirk and Ivan,
+> 
+> I took a slightly different work-around of forcing the number of threads to
+> 1 when running functions of the test dataset in the package, by adding the
+> following to each user facing function:
+> 
+> ```
+>    # Check if running on package test_data, and if so, force data.table to
+> be
+>    # single threaded so that we can avoid a NOTE on CRAN submission
+>    if (isTRUE(all.equal(x, ukbnmr::test_data))) {
+>      registered_threads <- getDTthreads()
+>      setDTthreads(1)
+>      on.exit({ setDTthreads(registered_threads) }) # re-register so no
+> unintended side effects for users
+>    }
+> ```
+> (i.e. here x is the input argument to the function)
+> 
+> It took some trial and error to get to pass the CRAN tests; the number of
+> columns in the input data was also contributing to the problem.
+> 
+> Best,
+> 
+> Scott
+> 
+> 
+> On Mon, 21 Aug 2023 at 14:38, Dirk Eddelbuettel <edd at debian.org> wrote:
+> 
+>>
+>> On 21 August 2023 at 16:05, Ivan Krylov wrote:
+>> | Dirk is probably right that it's a good idea to have OMP_THREAD_LIMIT=2
+>> | set on the CRAN check machine. Either that, or place the responsibility
+>> | on data.table for setting the right number of threads by default. But
+>> | that's a policy question: should a CRAN package start no more than two
+>> | threads/child processes even if it doesn't know it's running in an
+>> | environment where the CPU time / elapsed time limit is two?
+>>
+>> Methinks that given this language in the CRAN Repository Policy
+>>
+>>    If running a package uses multiple threads/cores it must never use more
+>>    than two simultaneously: the check farm is a shared resource and will
+>>    typically be running many checks simultaneously.
+>>
+>> it would indeed be nice if this variable, and/or equivalent ones, were set.
+>>
+>> As I mentioned before, I had long added a similar throttle (not for
+>> data.table) in a package I look after (for work, even). So a similar
+>> throttler with optionality is below. I'll add this to my `dang` package
+>> collecting various functions.
+>>
+>> A usage example follows. It does nothing by default, ensuring 'full power'
+>> but reflects the minimum of two possible options, or an explicit count:
+>>
+>>      > dang::limitDataTableCores(verbose=TRUE)
+>>      Limiting data.table to '12'.
+>>      > Sys.setenv("OMP_THREAD_LIMIT"=3);
+>> dang::limitDataTableCores(verbose=TRUE)
+>>      Limiting data.table to '3'.
+>>      > options(Ncpus=2); dang::limitDataTableCores(verbose=TRUE)
+>>      Limiting data.table to '2'.
+>>      > dang::limitDataTableCores(1, verbose=TRUE)
+>>      Limiting data.table to '1'.
+>>      >
+>>
+>> That makes it, in my eyes, preferable to any unconditional 'always pick 1
+>> thread'.
+>>
+>> Dirk
+>>
+>>
+>> ##' Set threads for data.table respecting possible local settings
+>> ##'
+>> ##' This function set the number of threads \pkg{data.table} will use
+>> ##' while reflecting two possible machine-specific settings from the
+>> ##' environment variable \sQuote{OMP_THREAD_LIMIT} as well as the R
+>> ##' option \sQuote{Ncpus} (uses e.g. for parallel builds).
+>> ##' @title Set data.table threads respecting default settingss
+>> ##' @param ncores A numeric or character variable with the desired
+>> ##' count of threads to use
+>> ##' @param verbose A logical value with a default of \sQuote{FALSE} to
+>> ##' operate more verbosely
+>> ##' @return The return value of the \pkg{data.table} function
+>> ##' \code{setDTthreads} which is called as a side-effect.
+>> ##' @author Dirk Eddelbuettel
+>> ##' @export
+>> limitDataTableCores <- function(ncores, verbose = FALSE) {
+>>      if (missing(ncores)) {
+>>          ## start with a simple fallback: 'Ncpus' (if set) or else 2
+>>          ncores <- getOption("Ncpus", 2L)
+>>          ## also consider OMP_THREAD_LIMIT (cf Writing R Extensions), gets
+>> NA if envvar unset
+>>          ompcores <- as.integer(Sys.getenv("OMP_THREAD_LIMIT"))
+>>          ## and then keep the smaller
+>>          ncores <- min(na.omit(c(ncores, ompcores)))
+>>      }
+>>      stopifnot("Package 'data.table' must be installed." =
+>> requireNamespace("data.table", quietly=TRUE))
+>>      stopifnot("Argument 'ncores' must be numeric or character" =
+>> is.numeric(ncores) || is.character(ncores))
+>>      if (verbose) message("Limiting data.table to '", ncores, "'.")
+>>      data.table::setDTthreads(ncores)
+>> }
+>>
+>> |
+>> | --
+>> | Best regards,
+>> | Ivan
+>> |
+>> | ______________________________________________
+>> | R-package-devel at r-project.org mailing list
+>> | https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>> --
+>> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>>
+> 
+>          [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Wed Aug 23 15:58:37 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Wed, 23 Aug 2023 06:58:37 -0700
+Subject: [R-pkg-devel] 
+ Trouble with long-running tests on CRAN debian server
+In-Reply-To: <3a78262a-0760-9541-59c7-0403b0164d00@statistik.tu-dortmund.de>
+References: <CAO1VBV0w03odWXX=jPHELnrwp8VejVD2L5V6PhUTFD+EA6J5cA@mail.gmail.com>
+ <20230821151654.002682a0@Tarkus>
+ <CAO1VBV39Tx_XQDZkwqsudXJkkRfR8cckiK-OV-Com3=2HA73_g@mail.gmail.com>
+ <20230821160502.66d8c505@Tarkus>
+ <25827.26810.377310.594496@rob.eddelbuettel.com>
+ <CAO1VBV18ZVgxuX8_9EAmp99NGTyRLG6whfYVauM6sosccRQmbw@mail.gmail.com>
+ <GV2PR02MB87700FF98E542FF85D2E0156D51EA@GV2PR02MB8770.eurprd02.prod.outlook.com>
+ <3a78262a-0760-9541-59c7-0403b0164d00@statistik.tu-dortmund.de>
+Message-ID: <B42815E3-4326-4734-9107-EC7C9C9AE40F@dcn.davis.ca.us>
+
+To whom are you addressing this question? The OpenMP developers who define the missing-OMP_THREAD_LIMIT behaviour and-or supply default config files? The CRAN server administrators who set the variable in their site-wide configuration intentionally or unintentionally? Or the package authors expected to kludge in settings to override those defaults for CRAN testing while not overriding them in normal use?
+
+I would vote for explicitly addressing this (rhetorical?) question to the CRAN server administrators...
+
+On August 23, 2023 6:31:01 AM PDT, Uwe Ligges <ligges at statistik.tu-dortmund.de> wrote:
+>I (any many collegues here) have been caught several times by the following example:
+>
+>1. did something in parallel on a cluster, set up via parallel::makeCluster().
+>2. e.g. allocated 20 cores and got them on one single machine
+>3. ran some code in parallel via parLapply()
+>
+>Bang! 400 threads;
+>So I have started 20 parallel processes, each of which is using the automatically set max. 20 threads as OMP_THREAD_LIMIT was also adjusted by the cluster to 20 (rather than 1).
+>
+>Hence, I really believe a default should always be small, not only in examples and tests, but generally. And people who aim for more should be able to increase the defaults.
+>
+>Do you believe a software that auto-occupies a 96 core machines with 96 threads by default is sensible?
+>
+>Best,
+>Uwe Ligges
+>
+>
+>
+>
+>
+>
+>On 21.08.2023 21:59, Berry Boessenkool wrote:
+>> 
+>> If you add that to each exported function, isn't that a lot of code to read + maintain?
+>> Also, it seems like unnecessary computational overhead.
+>>  From a software design point of view, it might be nicer to set that in the examples + tests.
+>> 
+>> Regards,
+>> Berry
+>> 
+>> ________________________________
+>> From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Scott Ritchie <sritchie73 at gmail.com>
+>> Sent: Monday, August 21, 2023 19:23
+>> To: Dirk Eddelbuettel <edd at debian.org>
+>> Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+>> Subject: Re: [R-pkg-devel] Trouble with long-running tests on CRAN debian server
+>> 
+>> Thanks Dirk and Ivan,
+>> 
+>> I took a slightly different work-around of forcing the number of threads to
+>> 1 when running functions of the test dataset in the package, by adding the
+>> following to each user facing function:
+>> 
+>> ```
+>>    # Check if running on package test_data, and if so, force data.table to
+>> be
+>>    # single threaded so that we can avoid a NOTE on CRAN submission
+>>    if (isTRUE(all.equal(x, ukbnmr::test_data))) {
+>>      registered_threads <- getDTthreads()
+>>      setDTthreads(1)
+>>      on.exit({ setDTthreads(registered_threads) }) # re-register so no
+>> unintended side effects for users
+>>    }
+>> ```
+>> (i.e. here x is the input argument to the function)
+>> 
+>> It took some trial and error to get to pass the CRAN tests; the number of
+>> columns in the input data was also contributing to the problem.
+>> 
+>> Best,
+>> 
+>> Scott
+>> 
+>> 
+>> On Mon, 21 Aug 2023 at 14:38, Dirk Eddelbuettel <edd at debian.org> wrote:
+>> 
+>>> 
+>>> On 21 August 2023 at 16:05, Ivan Krylov wrote:
+>>> | Dirk is probably right that it's a good idea to have OMP_THREAD_LIMIT=2
+>>> | set on the CRAN check machine. Either that, or place the responsibility
+>>> | on data.table for setting the right number of threads by default. But
+>>> | that's a policy question: should a CRAN package start no more than two
+>>> | threads/child processes even if it doesn't know it's running in an
+>>> | environment where the CPU time / elapsed time limit is two?
+>>> 
+>>> Methinks that given this language in the CRAN Repository Policy
+>>> 
+>>>    If running a package uses multiple threads/cores it must never use more
+>>>    than two simultaneously: the check farm is a shared resource and will
+>>>    typically be running many checks simultaneously.
+>>> 
+>>> it would indeed be nice if this variable, and/or equivalent ones, were set.
+>>> 
+>>> As I mentioned before, I had long added a similar throttle (not for
+>>> data.table) in a package I look after (for work, even). So a similar
+>>> throttler with optionality is below. I'll add this to my `dang` package
+>>> collecting various functions.
+>>> 
+>>> A usage example follows. It does nothing by default, ensuring 'full power'
+>>> but reflects the minimum of two possible options, or an explicit count:
+>>> 
+>>>      > dang::limitDataTableCores(verbose=TRUE)
+>>>      Limiting data.table to '12'.
+>>>      > Sys.setenv("OMP_THREAD_LIMIT"=3);
+>>> dang::limitDataTableCores(verbose=TRUE)
+>>>      Limiting data.table to '3'.
+>>>      > options(Ncpus=2); dang::limitDataTableCores(verbose=TRUE)
+>>>      Limiting data.table to '2'.
+>>>      > dang::limitDataTableCores(1, verbose=TRUE)
+>>>      Limiting data.table to '1'.
+>>>      >
+>>> 
+>>> That makes it, in my eyes, preferable to any unconditional 'always pick 1
+>>> thread'.
+>>> 
+>>> Dirk
+>>> 
+>>> 
+>>> ##' Set threads for data.table respecting possible local settings
+>>> ##'
+>>> ##' This function set the number of threads \pkg{data.table} will use
+>>> ##' while reflecting two possible machine-specific settings from the
+>>> ##' environment variable \sQuote{OMP_THREAD_LIMIT} as well as the R
+>>> ##' option \sQuote{Ncpus} (uses e.g. for parallel builds).
+>>> ##' @title Set data.table threads respecting default settingss
+>>> ##' @param ncores A numeric or character variable with the desired
+>>> ##' count of threads to use
+>>> ##' @param verbose A logical value with a default of \sQuote{FALSE} to
+>>> ##' operate more verbosely
+>>> ##' @return The return value of the \pkg{data.table} function
+>>> ##' \code{setDTthreads} which is called as a side-effect.
+>>> ##' @author Dirk Eddelbuettel
+>>> ##' @export
+>>> limitDataTableCores <- function(ncores, verbose = FALSE) {
+>>>      if (missing(ncores)) {
+>>>          ## start with a simple fallback: 'Ncpus' (if set) or else 2
+>>>          ncores <- getOption("Ncpus", 2L)
+>>>          ## also consider OMP_THREAD_LIMIT (cf Writing R Extensions), gets
+>>> NA if envvar unset
+>>>          ompcores <- as.integer(Sys.getenv("OMP_THREAD_LIMIT"))
+>>>          ## and then keep the smaller
+>>>          ncores <- min(na.omit(c(ncores, ompcores)))
+>>>      }
+>>>      stopifnot("Package 'data.table' must be installed." =
+>>> requireNamespace("data.table", quietly=TRUE))
+>>>      stopifnot("Argument 'ncores' must be numeric or character" =
+>>> is.numeric(ncores) || is.character(ncores))
+>>>      if (verbose) message("Limiting data.table to '", ncores, "'.")
+>>>      data.table::setDTthreads(ncores)
+>>> }
+>>> 
+>>> |
+>>> | --
+>>> | Best regards,
+>>> | Ivan
+>>> |
+>>> | ______________________________________________
+>>> | R-package-devel at r-project.org mailing list
+>>> | https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>> 
+>>> --
+>>> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>>> 
+>> 
+>>          [[alternative HTML version deleted]]
+>> 
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>> 
+>> 	[[alternative HTML version deleted]]
+>> 
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+>______________________________________________
+>R-package-devel at r-project.org mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From @r|tch|e73 @end|ng |rom gm@||@com  Wed Aug 23 16:00:20 2023
+From: @r|tch|e73 @end|ng |rom gm@||@com (Scott Ritchie)
+Date: Wed, 23 Aug 2023 15:00:20 +0100
+Subject: [R-pkg-devel] 
+ Trouble with long-running tests on CRAN debian server
+In-Reply-To: <3a78262a-0760-9541-59c7-0403b0164d00@statistik.tu-dortmund.de>
+References: <CAO1VBV0w03odWXX=jPHELnrwp8VejVD2L5V6PhUTFD+EA6J5cA@mail.gmail.com>
+ <20230821151654.002682a0@Tarkus>
+ <CAO1VBV39Tx_XQDZkwqsudXJkkRfR8cckiK-OV-Com3=2HA73_g@mail.gmail.com>
+ <20230821160502.66d8c505@Tarkus>
+ <25827.26810.377310.594496@rob.eddelbuettel.com>
+ <CAO1VBV18ZVgxuX8_9EAmp99NGTyRLG6whfYVauM6sosccRQmbw@mail.gmail.com>
+ <GV2PR02MB87700FF98E542FF85D2E0156D51EA@GV2PR02MB8770.eurprd02.prod.outlook.com>
+ <3a78262a-0760-9541-59c7-0403b0164d00@statistik.tu-dortmund.de>
+Message-ID: <CAO1VBV08vFUrgt3VL8Eqa==ao6GrMbB392f1n-YR8BrcWCJTVQ@mail.gmail.com>
+
+Hi Uwe,
+
+I agree and have also been burnt myself by programs occupying the maximum
+number of cores available.
+
+My understanding is that in the absence of explicit parallelisation, use of
+data.table in a package should not lead to this type of behaviour?
+
+Best,
+
+Scott
+
+On Wed, 23 Aug 2023 at 14:30, Uwe Ligges <ligges at statistik.tu-dortmund.de>
+wrote:
+
+> I (any many collegues here) have been caught several times by the
+> following example:
+>
+> 1. did something in parallel on a cluster, set up via
+> parallel::makeCluster().
+> 2. e.g. allocated 20 cores and got them on one single machine
+> 3. ran some code in parallel via parLapply()
+>
+> Bang! 400 threads;
+> So I have started 20 parallel processes, each of which is using the
+> automatically set max. 20 threads as OMP_THREAD_LIMIT was also adjusted
+> by the cluster to 20 (rather than 1).
+>
+> Hence, I really believe a default should always be small, not only in
+> examples and tests, but generally. And people who aim for more should be
+> able to increase the defaults.
+>
+> Do you believe a software that auto-occupies a 96 core machines with 96
+> threads by default is sensible?
+>
+> Best,
+> Uwe Ligges
+>
+>
+>
+>
+>
+>
+> On 21.08.2023 21:59, Berry Boessenkool wrote:
+> >
+> > If you add that to each exported function, isn't that a lot of code to
+> read + maintain?
+> > Also, it seems like unnecessary computational overhead.
+> >  From a software design point of view, it might be nicer to set that in
+> the examples + tests.
+> >
+> > Regards,
+> > Berry
+> >
+> > ________________________________
+> > From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf
+> of Scott Ritchie <sritchie73 at gmail.com>
+> > Sent: Monday, August 21, 2023 19:23
+> > To: Dirk Eddelbuettel <edd at debian.org>
+> > Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+> > Subject: Re: [R-pkg-devel] Trouble with long-running tests on CRAN
+> debian server
+> >
+> > Thanks Dirk and Ivan,
+> >
+> > I took a slightly different work-around of forcing the number of threads
+> to
+> > 1 when running functions of the test dataset in the package, by adding
+> the
+> > following to each user facing function:
+> >
+> > ```
+> >    # Check if running on package test_data, and if so, force data.table
+> to
+> > be
+> >    # single threaded so that we can avoid a NOTE on CRAN submission
+> >    if (isTRUE(all.equal(x, ukbnmr::test_data))) {
+> >      registered_threads <- getDTthreads()
+> >      setDTthreads(1)
+> >      on.exit({ setDTthreads(registered_threads) }) # re-register so no
+> > unintended side effects for users
+> >    }
+> > ```
+> > (i.e. here x is the input argument to the function)
+> >
+> > It took some trial and error to get to pass the CRAN tests; the number of
+> > columns in the input data was also contributing to the problem.
+> >
+> > Best,
+> >
+> > Scott
+> >
+> >
+> > On Mon, 21 Aug 2023 at 14:38, Dirk Eddelbuettel <edd at debian.org> wrote:
+> >
+> >>
+> >> On 21 August 2023 at 16:05, Ivan Krylov wrote:
+> >> | Dirk is probably right that it's a good idea to have
+> OMP_THREAD_LIMIT=2
+> >> | set on the CRAN check machine. Either that, or place the
+> responsibility
+> >> | on data.table for setting the right number of threads by default. But
+> >> | that's a policy question: should a CRAN package start no more than two
+> >> | threads/child processes even if it doesn't know it's running in an
+> >> | environment where the CPU time / elapsed time limit is two?
+> >>
+> >> Methinks that given this language in the CRAN Repository Policy
+> >>
+> >>    If running a package uses multiple threads/cores it must never use
+> more
+> >>    than two simultaneously: the check farm is a shared resource and will
+> >>    typically be running many checks simultaneously.
+> >>
+> >> it would indeed be nice if this variable, and/or equivalent ones, were
+> set.
+> >>
+> >> As I mentioned before, I had long added a similar throttle (not for
+> >> data.table) in a package I look after (for work, even). So a similar
+> >> throttler with optionality is below. I'll add this to my `dang` package
+> >> collecting various functions.
+> >>
+> >> A usage example follows. It does nothing by default, ensuring 'full
+> power'
+> >> but reflects the minimum of two possible options, or an explicit count:
+> >>
+> >>      > dang::limitDataTableCores(verbose=TRUE)
+> >>      Limiting data.table to '12'.
+> >>      > Sys.setenv("OMP_THREAD_LIMIT"=3);
+> >> dang::limitDataTableCores(verbose=TRUE)
+> >>      Limiting data.table to '3'.
+> >>      > options(Ncpus=2); dang::limitDataTableCores(verbose=TRUE)
+> >>      Limiting data.table to '2'.
+> >>      > dang::limitDataTableCores(1, verbose=TRUE)
+> >>      Limiting data.table to '1'.
+> >>      >
+> >>
+> >> That makes it, in my eyes, preferable to any unconditional 'always pick
+> 1
+> >> thread'.
+> >>
+> >> Dirk
+> >>
+> >>
+> >> ##' Set threads for data.table respecting possible local settings
+> >> ##'
+> >> ##' This function set the number of threads \pkg{data.table} will use
+> >> ##' while reflecting two possible machine-specific settings from the
+> >> ##' environment variable \sQuote{OMP_THREAD_LIMIT} as well as the R
+> >> ##' option \sQuote{Ncpus} (uses e.g. for parallel builds).
+> >> ##' @title Set data.table threads respecting default settingss
+> >> ##' @param ncores A numeric or character variable with the desired
+> >> ##' count of threads to use
+> >> ##' @param verbose A logical value with a default of \sQuote{FALSE} to
+> >> ##' operate more verbosely
+> >> ##' @return The return value of the \pkg{data.table} function
+> >> ##' \code{setDTthreads} which is called as a side-effect.
+> >> ##' @author Dirk Eddelbuettel
+> >> ##' @export
+> >> limitDataTableCores <- function(ncores, verbose = FALSE) {
+> >>      if (missing(ncores)) {
+> >>          ## start with a simple fallback: 'Ncpus' (if set) or else 2
+> >>          ncores <- getOption("Ncpus", 2L)
+> >>          ## also consider OMP_THREAD_LIMIT (cf Writing R Extensions),
+> gets
+> >> NA if envvar unset
+> >>          ompcores <- as.integer(Sys.getenv("OMP_THREAD_LIMIT"))
+> >>          ## and then keep the smaller
+> >>          ncores <- min(na.omit(c(ncores, ompcores)))
+> >>      }
+> >>      stopifnot("Package 'data.table' must be installed." =
+> >> requireNamespace("data.table", quietly=TRUE))
+> >>      stopifnot("Argument 'ncores' must be numeric or character" =
+> >> is.numeric(ncores) || is.character(ncores))
+> >>      if (verbose) message("Limiting data.table to '", ncores, "'.")
+> >>      data.table::setDTthreads(ncores)
+> >> }
+> >>
+> >> |
+> >> | --
+> >> | Best regards,
+> >> | Ivan
+> >> |
+> >> | ______________________________________________
+> >> | R-package-devel at r-project.org mailing list
+> >> | https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >>
+> >> --
+> >> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> >>
+> >
+> >          [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Wed Aug 23 16:24:46 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Wed, 23 Aug 2023 16:24:46 +0200
+Subject: [R-pkg-devel] 
+ Trouble with long-running tests on CRAN debian server
+In-Reply-To: <B42815E3-4326-4734-9107-EC7C9C9AE40F@dcn.davis.ca.us>
+References: <CAO1VBV0w03odWXX=jPHELnrwp8VejVD2L5V6PhUTFD+EA6J5cA@mail.gmail.com>
+ <20230821151654.002682a0@Tarkus>
+ <CAO1VBV39Tx_XQDZkwqsudXJkkRfR8cckiK-OV-Com3=2HA73_g@mail.gmail.com>
+ <20230821160502.66d8c505@Tarkus>
+ <25827.26810.377310.594496@rob.eddelbuettel.com>
+ <CAO1VBV18ZVgxuX8_9EAmp99NGTyRLG6whfYVauM6sosccRQmbw@mail.gmail.com>
+ <GV2PR02MB87700FF98E542FF85D2E0156D51EA@GV2PR02MB8770.eurprd02.prod.outlook.com>
+ <3a78262a-0760-9541-59c7-0403b0164d00@statistik.tu-dortmund.de>
+ <B42815E3-4326-4734-9107-EC7C9C9AE40F@dcn.davis.ca.us>
+Message-ID: <84a351e2-e9e5-f2c7-200d-3e9f17bf9337@statistik.tu-dortmund.de>
+
+
+
+On 23.08.2023 15:58, Jeff Newmiller wrote:
+> To whom are you addressing this question? The OpenMP developers who define the missing-OMP_THREAD_LIMIT behaviour and-or supply default config files? The CRAN server administrators who set the variable in their site-wide configuration intentionally or unintentionally? Or the package authors expected to kludge in settings to override those defaults for CRAN testing while not overriding them in normal use?
+
+Of course , the CRAN teams controls the env vars on the CRAN servers, 
+but not on a server a user might use. And a user is typically unaware 
+that a package uses multithreading.
+R users are typically not developers with a lot of insight in computer 
+science. Most R users I know would not even know how to set an env var.
+
+So why do you ecxpect your users to set an appropriate OMP_THREAD_LIMIT? 
+Particularly when they aim at parallelization, they have to set it to 1.
+I advocate not only to limit the number of cores for CRAN but also (and 
+inparticular)  the default! Something we cannot check easily.
+
+
+An alternative would be to teach R to set OMP_THREAD_LIMIT=1 locally by 
+default and a mechanism to change that for users.
+
+Best,
+Uwe Ligges
+
+
+> 
+> I would vote for explicitly addressing this (rhetorical?) question to the CRAN server administrators...
+> 
+> On August 23, 2023 6:31:01 AM PDT, Uwe Ligges <ligges at statistik.tu-dortmund.de> wrote:
+>> I (any many collegues here) have been caught several times by the following example:
+>>
+>> 1. did something in parallel on a cluster, set up via parallel::makeCluster().
+>> 2. e.g. allocated 20 cores and got them on one single machine
+>> 3. ran some code in parallel via parLapply()
+>>
+>> Bang! 400 threads;
+>> So I have started 20 parallel processes, each of which is using the automatically set max. 20 threads as OMP_THREAD_LIMIT was also adjusted by the cluster to 20 (rather than 1).
+>>
+>> Hence, I really believe a default should always be small, not only in examples and tests, but generally. And people who aim for more should be able to increase the defaults.
+>>
+>> Do you believe a software that auto-occupies a 96 core machines with 96 threads by default is sensible?
+>>
+>> Best,
+>> Uwe Ligges
+>>
+>>
+>>
+>>
+>>
+>>
+>> On 21.08.2023 21:59, Berry Boessenkool wrote:
+>>>
+>>> If you add that to each exported function, isn't that a lot of code to read + maintain?
+>>> Also, it seems like unnecessary computational overhead.
+>>>   From a software design point of view, it might be nicer to set that in the examples + tests.
+>>>
+>>> Regards,
+>>> Berry
+>>>
+>>> ________________________________
+>>> From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Scott Ritchie <sritchie73 at gmail.com>
+>>> Sent: Monday, August 21, 2023 19:23
+>>> To: Dirk Eddelbuettel <edd at debian.org>
+>>> Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+>>> Subject: Re: [R-pkg-devel] Trouble with long-running tests on CRAN debian server
+>>>
+>>> Thanks Dirk and Ivan,
+>>>
+>>> I took a slightly different work-around of forcing the number of threads to
+>>> 1 when running functions of the test dataset in the package, by adding the
+>>> following to each user facing function:
+>>>
+>>> ```
+>>>     # Check if running on package test_data, and if so, force data.table to
+>>> be
+>>>     # single threaded so that we can avoid a NOTE on CRAN submission
+>>>     if (isTRUE(all.equal(x, ukbnmr::test_data))) {
+>>>       registered_threads <- getDTthreads()
+>>>       setDTthreads(1)
+>>>       on.exit({ setDTthreads(registered_threads) }) # re-register so no
+>>> unintended side effects for users
+>>>     }
+>>> ```
+>>> (i.e. here x is the input argument to the function)
+>>>
+>>> It took some trial and error to get to pass the CRAN tests; the number of
+>>> columns in the input data was also contributing to the problem.
+>>>
+>>> Best,
+>>>
+>>> Scott
+>>>
+>>>
+>>> On Mon, 21 Aug 2023 at 14:38, Dirk Eddelbuettel <edd at debian.org> wrote:
+>>>
+>>>>
+>>>> On 21 August 2023 at 16:05, Ivan Krylov wrote:
+>>>> | Dirk is probably right that it's a good idea to have OMP_THREAD_LIMIT=2
+>>>> | set on the CRAN check machine. Either that, or place the responsibility
+>>>> | on data.table for setting the right number of threads by default. But
+>>>> | that's a policy question: should a CRAN package start no more than two
+>>>> | threads/child processes even if it doesn't know it's running in an
+>>>> | environment where the CPU time / elapsed time limit is two?
+>>>>
+>>>> Methinks that given this language in the CRAN Repository Policy
+>>>>
+>>>>     If running a package uses multiple threads/cores it must never use more
+>>>>     than two simultaneously: the check farm is a shared resource and will
+>>>>     typically be running many checks simultaneously.
+>>>>
+>>>> it would indeed be nice if this variable, and/or equivalent ones, were set.
+>>>>
+>>>> As I mentioned before, I had long added a similar throttle (not for
+>>>> data.table) in a package I look after (for work, even). So a similar
+>>>> throttler with optionality is below. I'll add this to my `dang` package
+>>>> collecting various functions.
+>>>>
+>>>> A usage example follows. It does nothing by default, ensuring 'full power'
+>>>> but reflects the minimum of two possible options, or an explicit count:
+>>>>
+>>>>       > dang::limitDataTableCores(verbose=TRUE)
+>>>>       Limiting data.table to '12'.
+>>>>       > Sys.setenv("OMP_THREAD_LIMIT"=3);
+>>>> dang::limitDataTableCores(verbose=TRUE)
+>>>>       Limiting data.table to '3'.
+>>>>       > options(Ncpus=2); dang::limitDataTableCores(verbose=TRUE)
+>>>>       Limiting data.table to '2'.
+>>>>       > dang::limitDataTableCores(1, verbose=TRUE)
+>>>>       Limiting data.table to '1'.
+>>>>       >
+>>>>
+>>>> That makes it, in my eyes, preferable to any unconditional 'always pick 1
+>>>> thread'.
+>>>>
+>>>> Dirk
+>>>>
+>>>>
+>>>> ##' Set threads for data.table respecting possible local settings
+>>>> ##'
+>>>> ##' This function set the number of threads \pkg{data.table} will use
+>>>> ##' while reflecting two possible machine-specific settings from the
+>>>> ##' environment variable \sQuote{OMP_THREAD_LIMIT} as well as the R
+>>>> ##' option \sQuote{Ncpus} (uses e.g. for parallel builds).
+>>>> ##' @title Set data.table threads respecting default settingss
+>>>> ##' @param ncores A numeric or character variable with the desired
+>>>> ##' count of threads to use
+>>>> ##' @param verbose A logical value with a default of \sQuote{FALSE} to
+>>>> ##' operate more verbosely
+>>>> ##' @return The return value of the \pkg{data.table} function
+>>>> ##' \code{setDTthreads} which is called as a side-effect.
+>>>> ##' @author Dirk Eddelbuettel
+>>>> ##' @export
+>>>> limitDataTableCores <- function(ncores, verbose = FALSE) {
+>>>>       if (missing(ncores)) {
+>>>>           ## start with a simple fallback: 'Ncpus' (if set) or else 2
+>>>>           ncores <- getOption("Ncpus", 2L)
+>>>>           ## also consider OMP_THREAD_LIMIT (cf Writing R Extensions), gets
+>>>> NA if envvar unset
+>>>>           ompcores <- as.integer(Sys.getenv("OMP_THREAD_LIMIT"))
+>>>>           ## and then keep the smaller
+>>>>           ncores <- min(na.omit(c(ncores, ompcores)))
+>>>>       }
+>>>>       stopifnot("Package 'data.table' must be installed." =
+>>>> requireNamespace("data.table", quietly=TRUE))
+>>>>       stopifnot("Argument 'ncores' must be numeric or character" =
+>>>> is.numeric(ncores) || is.character(ncores))
+>>>>       if (verbose) message("Limiting data.table to '", ncores, "'.")
+>>>>       data.table::setDTthreads(ncores)
+>>>> }
+>>>>
+>>>> |
+>>>> | --
+>>>> | Best regards,
+>>>> | Ivan
+>>>> |
+>>>> | ______________________________________________
+>>>> | R-package-devel at r-project.org mailing list
+>>>> | https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>
+>>>> --
+>>>> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>>>>
+>>>
+>>>           [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>
+>>> 	[[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Wed Aug 23 17:47:43 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Wed, 23 Aug 2023 08:47:43 -0700
+Subject: [R-pkg-devel] 
+ Trouble with long-running tests on CRAN debian server
+In-Reply-To: <84a351e2-e9e5-f2c7-200d-3e9f17bf9337@statistik.tu-dortmund.de>
+References: <CAO1VBV0w03odWXX=jPHELnrwp8VejVD2L5V6PhUTFD+EA6J5cA@mail.gmail.com>
+ <20230821151654.002682a0@Tarkus>
+ <CAO1VBV39Tx_XQDZkwqsudXJkkRfR8cckiK-OV-Com3=2HA73_g@mail.gmail.com>
+ <20230821160502.66d8c505@Tarkus>
+ <25827.26810.377310.594496@rob.eddelbuettel.com>
+ <CAO1VBV18ZVgxuX8_9EAmp99NGTyRLG6whfYVauM6sosccRQmbw@mail.gmail.com>
+ <GV2PR02MB87700FF98E542FF85D2E0156D51EA@GV2PR02MB8770.eurprd02.prod.outlook.com>
+ <3a78262a-0760-9541-59c7-0403b0164d00@statistik.tu-dortmund.de>
+ <B42815E3-4326-4734-9107-EC7C9C9AE40F@dcn.davis.ca.us>
+ <84a351e2-e9e5-f2c7-200d-3e9f17bf9337@statistik.tu-dortmund.de>
+Message-ID: <E9330AFF-E8EC-4A67-AD65-3E8E22D0FC40@dcn.davis.ca.us>
+
+I think one should be very cautious about overriding "standard" mechanisms for controlling software infrastructure like OpenMP.  You risk making the task of navigating the already-complex task of configuring the software environment even more complex by increasing the number of places you have to look in to find out why the mechanism documented by OpenMP is having no effect.
+
+It may be that R Core agrees with you and creates an R-specific setting to control this... but IMO it should be accompanied by warning messages to help people figure out why their real work is underperforming if they link with compiled code that is supposed to make use of threads.
+
+On August 23, 2023 7:24:46 AM PDT, Uwe Ligges <ligges at statistik.tu-dortmund.de> wrote:
+>
+>
+>On 23.08.2023 15:58, Jeff Newmiller wrote:
+>> To whom are you addressing this question? The OpenMP developers who define the missing-OMP_THREAD_LIMIT behaviour and-or supply default config files? The CRAN server administrators who set the variable in their site-wide configuration intentionally or unintentionally? Or the package authors expected to kludge in settings to override those defaults for CRAN testing while not overriding them in normal use?
+>
+>Of course , the CRAN teams controls the env vars on the CRAN servers, but not on a server a user might use. And a user is typically unaware that a package uses multithreading.
+>R users are typically not developers with a lot of insight in computer science. Most R users I know would not even know how to set an env var.
+>
+>So why do you ecxpect your users to set an appropriate OMP_THREAD_LIMIT? Particularly when they aim at parallelization, they have to set it to 1.
+>I advocate not only to limit the number of cores for CRAN but also (and inparticular)  the default! Something we cannot check easily.
+>
+>
+>An alternative would be to teach R to set OMP_THREAD_LIMIT=1 locally by default and a mechanism to change that for users.
+>
+>Best,
+>Uwe Ligges
+>
+>
+>> 
+>> I would vote for explicitly addressing this (rhetorical?) question to the CRAN server administrators...
+>> 
+>> On August 23, 2023 6:31:01 AM PDT, Uwe Ligges <ligges at statistik.tu-dortmund.de> wrote:
+>>> I (any many collegues here) have been caught several times by the following example:
+>>> 
+>>> 1. did something in parallel on a cluster, set up via parallel::makeCluster().
+>>> 2. e.g. allocated 20 cores and got them on one single machine
+>>> 3. ran some code in parallel via parLapply()
+>>> 
+>>> Bang! 400 threads;
+>>> So I have started 20 parallel processes, each of which is using the automatically set max. 20 threads as OMP_THREAD_LIMIT was also adjusted by the cluster to 20 (rather than 1).
+>>> 
+>>> Hence, I really believe a default should always be small, not only in examples and tests, but generally. And people who aim for more should be able to increase the defaults.
+>>> 
+>>> Do you believe a software that auto-occupies a 96 core machines with 96 threads by default is sensible?
+>>> 
+>>> Best,
+>>> Uwe Ligges
+>>> 
+>>> 
+>>> 
+>>> 
+>>> 
+>>> 
+>>> On 21.08.2023 21:59, Berry Boessenkool wrote:
+>>>> 
+>>>> If you add that to each exported function, isn't that a lot of code to read + maintain?
+>>>> Also, it seems like unnecessary computational overhead.
+>>>>   From a software design point of view, it might be nicer to set that in the examples + tests.
+>>>> 
+>>>> Regards,
+>>>> Berry
+>>>> 
+>>>> ________________________________
+>>>> From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Scott Ritchie <sritchie73 at gmail.com>
+>>>> Sent: Monday, August 21, 2023 19:23
+>>>> To: Dirk Eddelbuettel <edd at debian.org>
+>>>> Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+>>>> Subject: Re: [R-pkg-devel] Trouble with long-running tests on CRAN debian server
+>>>> 
+>>>> Thanks Dirk and Ivan,
+>>>> 
+>>>> I took a slightly different work-around of forcing the number of threads to
+>>>> 1 when running functions of the test dataset in the package, by adding the
+>>>> following to each user facing function:
+>>>> 
+>>>> ```
+>>>>     # Check if running on package test_data, and if so, force data.table to
+>>>> be
+>>>>     # single threaded so that we can avoid a NOTE on CRAN submission
+>>>>     if (isTRUE(all.equal(x, ukbnmr::test_data))) {
+>>>>       registered_threads <- getDTthreads()
+>>>>       setDTthreads(1)
+>>>>       on.exit({ setDTthreads(registered_threads) }) # re-register so no
+>>>> unintended side effects for users
+>>>>     }
+>>>> ```
+>>>> (i.e. here x is the input argument to the function)
+>>>> 
+>>>> It took some trial and error to get to pass the CRAN tests; the number of
+>>>> columns in the input data was also contributing to the problem.
+>>>> 
+>>>> Best,
+>>>> 
+>>>> Scott
+>>>> 
+>>>> 
+>>>> On Mon, 21 Aug 2023 at 14:38, Dirk Eddelbuettel <edd at debian.org> wrote:
+>>>> 
+>>>>> 
+>>>>> On 21 August 2023 at 16:05, Ivan Krylov wrote:
+>>>>> | Dirk is probably right that it's a good idea to have OMP_THREAD_LIMIT=2
+>>>>> | set on the CRAN check machine. Either that, or place the responsibility
+>>>>> | on data.table for setting the right number of threads by default. But
+>>>>> | that's a policy question: should a CRAN package start no more than two
+>>>>> | threads/child processes even if it doesn't know it's running in an
+>>>>> | environment where the CPU time / elapsed time limit is two?
+>>>>> 
+>>>>> Methinks that given this language in the CRAN Repository Policy
+>>>>> 
+>>>>>     If running a package uses multiple threads/cores it must never use more
+>>>>>     than two simultaneously: the check farm is a shared resource and will
+>>>>>     typically be running many checks simultaneously.
+>>>>> 
+>>>>> it would indeed be nice if this variable, and/or equivalent ones, were set.
+>>>>> 
+>>>>> As I mentioned before, I had long added a similar throttle (not for
+>>>>> data.table) in a package I look after (for work, even). So a similar
+>>>>> throttler with optionality is below. I'll add this to my `dang` package
+>>>>> collecting various functions.
+>>>>> 
+>>>>> A usage example follows. It does nothing by default, ensuring 'full power'
+>>>>> but reflects the minimum of two possible options, or an explicit count:
+>>>>> 
+>>>>>       > dang::limitDataTableCores(verbose=TRUE)
+>>>>>       Limiting data.table to '12'.
+>>>>>       > Sys.setenv("OMP_THREAD_LIMIT"=3);
+>>>>> dang::limitDataTableCores(verbose=TRUE)
+>>>>>       Limiting data.table to '3'.
+>>>>>       > options(Ncpus=2); dang::limitDataTableCores(verbose=TRUE)
+>>>>>       Limiting data.table to '2'.
+>>>>>       > dang::limitDataTableCores(1, verbose=TRUE)
+>>>>>       Limiting data.table to '1'.
+>>>>>       >
+>>>>> 
+>>>>> That makes it, in my eyes, preferable to any unconditional 'always pick 1
+>>>>> thread'.
+>>>>> 
+>>>>> Dirk
+>>>>> 
+>>>>> 
+>>>>> ##' Set threads for data.table respecting possible local settings
+>>>>> ##'
+>>>>> ##' This function set the number of threads \pkg{data.table} will use
+>>>>> ##' while reflecting two possible machine-specific settings from the
+>>>>> ##' environment variable \sQuote{OMP_THREAD_LIMIT} as well as the R
+>>>>> ##' option \sQuote{Ncpus} (uses e.g. for parallel builds).
+>>>>> ##' @title Set data.table threads respecting default settingss
+>>>>> ##' @param ncores A numeric or character variable with the desired
+>>>>> ##' count of threads to use
+>>>>> ##' @param verbose A logical value with a default of \sQuote{FALSE} to
+>>>>> ##' operate more verbosely
+>>>>> ##' @return The return value of the \pkg{data.table} function
+>>>>> ##' \code{setDTthreads} which is called as a side-effect.
+>>>>> ##' @author Dirk Eddelbuettel
+>>>>> ##' @export
+>>>>> limitDataTableCores <- function(ncores, verbose = FALSE) {
+>>>>>       if (missing(ncores)) {
+>>>>>           ## start with a simple fallback: 'Ncpus' (if set) or else 2
+>>>>>           ncores <- getOption("Ncpus", 2L)
+>>>>>           ## also consider OMP_THREAD_LIMIT (cf Writing R Extensions), gets
+>>>>> NA if envvar unset
+>>>>>           ompcores <- as.integer(Sys.getenv("OMP_THREAD_LIMIT"))
+>>>>>           ## and then keep the smaller
+>>>>>           ncores <- min(na.omit(c(ncores, ompcores)))
+>>>>>       }
+>>>>>       stopifnot("Package 'data.table' must be installed." =
+>>>>> requireNamespace("data.table", quietly=TRUE))
+>>>>>       stopifnot("Argument 'ncores' must be numeric or character" =
+>>>>> is.numeric(ncores) || is.character(ncores))
+>>>>>       if (verbose) message("Limiting data.table to '", ncores, "'.")
+>>>>>       data.table::setDTthreads(ncores)
+>>>>> }
+>>>>> 
+>>>>> |
+>>>>> | --
+>>>>> | Best regards,
+>>>>> | Ivan
+>>>>> |
+>>>>> | ______________________________________________
+>>>>> | R-package-devel at r-project.org mailing list
+>>>>> | https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>> 
+>>>>> --
+>>>>> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>>>>> 
+>>>> 
+>>>>           [[alternative HTML version deleted]]
+>>>> 
+>>>> ______________________________________________
+>>>> R-package-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>> 
+>>>> 	[[alternative HTML version deleted]]
+>>>> 
+>>>> ______________________________________________
+>>>> R-package-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>> 
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>> 
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From edd @end|ng |rom deb|@n@org  Wed Aug 23 20:54:02 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 23 Aug 2023 13:54:02 -0500
+Subject: [R-pkg-devel] Setting valgrind options when running R CMD check
+ --use-valgrind
+Message-ID: <25830.21962.290050.855823@rob.eddelbuettel.com>
+
+
+When I invoke valgrind via
+   R -d valgrind -e '...'
+the options in the file ~/.valgrindrc are being picked up. Good.
+
+When I invok valgrind via
+   R CMD check --use-valgrind ...
+the options in the file ~/.valgrindrc are NOT being picked up. Bad.
+
+And valgrind complains.  How can I add the needed options?  Adding
+   --debugger-args="...."
+does not work.  Is there another trick?
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Aug 23 22:49:17 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 23 Aug 2023 16:49:17 -0400
+Subject: [R-pkg-devel] Setting valgrind options when running R CMD check
+ --use-valgrind
+In-Reply-To: <25830.21962.290050.855823@rob.eddelbuettel.com>
+References: <25830.21962.290050.855823@rob.eddelbuettel.com>
+Message-ID: <f67d0895-4dc4-1d99-0056-200631b07e9c@gmail.com>
+
+On 23/08/2023 2:54 p.m., Dirk Eddelbuettel wrote:
+> 
+> When I invoke valgrind via
+>     R -d valgrind -e '...'
+> the options in the file ~/.valgrindrc are being picked up. Good.
+> 
+> When I invok valgrind via
+>     R CMD check --use-valgrind ...
+> the options in the file ~/.valgrindrc are NOT being picked up. Bad.
+> 
+> And valgrind complains.  How can I add the needed options?  Adding
+>     --debugger-args="...."
+> does not work.  Is there another trick?
+
+I don't know the answer to your question, but here's something to try. 
+There's a way to run an "R CMD check" equivalent from a regular session, 
+so presumably it could be done from "R -d valgrind -e":
+
+     tools:::.check_packages(c("pkg", "--option1", "--option2"))
+
+A likely problem is that many of the check tests are run in separate 
+processes; I don't know if the valgrind setting would be inherited or not.
+
+Duncan Murdoch
+
+
+From edd @end|ng |rom deb|@n@org  Thu Aug 24 00:27:01 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 23 Aug 2023 17:27:01 -0500
+Subject: [R-pkg-devel] Setting valgrind options when running R CMD check
+ --use-valgrind
+In-Reply-To: <f67d0895-4dc4-1d99-0056-200631b07e9c@gmail.com>
+References: <25830.21962.290050.855823@rob.eddelbuettel.com>
+ <f67d0895-4dc4-1d99-0056-200631b07e9c@gmail.com>
+Message-ID: <25830.34741.261609.618204@rob.eddelbuettel.com>
+
+
+On 23 August 2023 at 16:49, Duncan Murdoch wrote:
+| On 23/08/2023 2:54 p.m., Dirk Eddelbuettel wrote:
+| > 
+| > When I invoke valgrind via
+| >     R -d valgrind -e '...'
+| > the options in the file ~/.valgrindrc are being picked up. Good.
+| > 
+| > When I invok valgrind via
+| >     R CMD check --use-valgrind ...
+| > the options in the file ~/.valgrindrc are NOT being picked up. Bad.
+| > 
+| > And valgrind complains.  How can I add the needed options?  Adding
+| >     --debugger-args="...."
+| > does not work.  Is there another trick?
+| 
+| I don't know the answer to your question, but here's something to try. 
+| There's a way to run an "R CMD check" equivalent from a regular session, 
+| so presumably it could be done from "R -d valgrind -e":
+| 
+|      tools:::.check_packages(c("pkg", "--option1", "--option2"))
+| 
+| A likely problem is that many of the check tests are run in separate 
+| processes; I don't know if the valgrind setting would be inherited or not.
+
+Thanks for the reminder, I also re-realized by re-reading WRE that setting
+VALGRIND_OPTS="...." works.  And with that I am no longer fully sure I can
+claim that ~/.valgrindrc was ignored.  I may have misread an error.
+
+Thanks for the prompt help, it is appreciated.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
