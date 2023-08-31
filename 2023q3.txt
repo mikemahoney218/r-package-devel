@@ -15457,3 +15457,528 @@ On 26.08.2023 02:05, Simon Urbanek wrote:
 >
 
 
+From thom@@@petzo|dt @end|ng |rom tu-dre@den@de  Wed Aug 30 08:43:04 2023
+From: thom@@@petzo|dt @end|ng |rom tu-dre@den@de (Thomas Petzoldt)
+Date: Wed, 30 Aug 2023 08:43:04 +0200
+Subject: [R-pkg-devel] Modernizing legacy Fortran:, REAL(kind=8)
+Message-ID: <2c2d8db5-182f-11ac-4b9e-03f2e09ecb8c@tu-dresden.de>
+
+Hi,
+
+some package maintainers including me got a reminder from Prof. Brian 
+Ripley to modernize REAL and INTEGER declarations using the KIND option:
+
+On 29.08.2023 at 19:31 Prof Brian Ripley wrote:
+> According to the Fortran standards, numerical values are just an 
+> enumeration, and what e.g. real(kind=4) means (or even if it is 
+> accepted) is implementation dependent.
+>
+> We see such constructs in packages 
+
+[... line with packages deleted to avoid exposing the other packages and 
+authors]
+
+> Please change them to something portable (kind(1.0) or kind(1.0d0} are 
+> commonly used, as is c_double from iso_c_binding).
+>
+> Before 2023-09-26 to safely retain your package on CRAN (some of you 
+> have earlier deadlines for other issues).
+
+We use a lot of legacy code that though partly modernized due to similar 
+requests, still uses a mix of DOUBLE PRECISION and a few REAL(KIND=8) 
+and COMPLEX(KIND=8). As the code will still remain legacy style with 
+respect to some other constructs, I wonder what to use to go a step 
+forward, but remain as consistent as possible, which is of course a 
+compromise. I see the following options:
+
+a) change REAL(kind=8) back to DOUBLE PRECISION that is again old style. 
+It seems to be portable and is still widely used.
+
+b) just formally change the few occurrences to:REAL(kind=0.0d) as 
+suggested. It is easy, but inconsistency remains.
+
+c) or, define "dp" as recommended in modern style guides and use it 
+instead of REAL(kind=8) and the future also for DOUBLE PRECISION this way:
+
+integer,parameter::dp=kind(0.0d0)
+
+and then
+
+real(dp)::a,b,c
+
+However, this would need changes at many places, the mix between old and 
+new constructswill generally get worse.
+
+Another question is, that with either of these, we may not be sure to 
+use 8 byte double. Changing this could influence for precision and 
+pointer arithmetics.
+
+Any recommendations? Thanks a lot!
+
+Thomas
+
+
+From @vr@h@m@@d|er @end|ng |rom gm@||@com  Wed Aug 30 10:01:37 2023
+From: @vr@h@m@@d|er @end|ng |rom gm@||@com (Avraham Adler)
+Date: Wed, 30 Aug 2023 04:01:37 -0400
+Subject: [R-pkg-devel] Modernizing legacy Fortran:, REAL(kind=8)
+Message-ID: <CAE1BEF4-78C8-422C-B90E-67CF72D59A9E@gmail.com>
+
+?I?ve had no issues using the iso_c_binding schema. 
+
+Avi
+
+Sent from my iPhone
+
+> On Aug 30, 2023, at 2:43 AM, Thomas Petzoldt <thomas.petzoldt at tu-dresden.de> wrote:
+> 
+> ?Hi,
+> 
+> some package maintainers including me got a reminder from Prof. Brian Ripley to modernize REAL and INTEGER declarations using the KIND option:
+> 
+>> On 29.08.2023 at 19:31 Prof Brian Ripley wrote:
+>> According to the Fortran standards, numerical values are just an enumeration, and what e.g. real(kind=4) means (or even if it is accepted) is implementation dependent.
+>> We see such constructs in packages
+> 
+> [... line with packages deleted to avoid exposing the other packages and authors]
+> 
+>> Please change them to something portable (kind(1.0) or kind(1.0d0} are commonly used, as is c_double from iso_c_binding).
+>> Before 2023-09-26 to safely retain your package on CRAN (some of you have earlier deadlines for other issues).
+> 
+> We use a lot of legacy code that though partly modernized due to similar requests, still uses a mix of DOUBLE PRECISION and a few REAL(KIND=8) and COMPLEX(KIND=8). As the code will still remain legacy style with respect to some other constructs, I wonder what to use to go a step forward, but remain as consistent as possible, which is of course a compromise. I see the following options:
+> 
+> a) change REAL(kind=8) back to DOUBLE PRECISION that is again old style. It seems to be portable and is still widely used.
+> 
+> b) just formally change the few occurrences to:REAL(kind=0.0d) as suggested. It is easy, but inconsistency remains.
+> 
+> c) or, define "dp" as recommended in modern style guides and use it instead of REAL(kind=8) and the future also for DOUBLE PRECISION this way:
+> 
+> integer,parameter::dp=kind(0.0d0)
+> 
+> and then
+> 
+> real(dp)::a,b,c
+> 
+> However, this would need changes at many places, the mix between old and new constructswill generally get worse.
+> 
+> Another question is, that with either of these, we may not be sure to use 8 byte double. Changing this could influence for precision and pointer arithmetics.
+> 
+> Any recommendations? Thanks a lot!
+> 
+> Thomas
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Aug 30 11:58:03 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 30 Aug 2023 12:58:03 +0300
+Subject: [R-pkg-devel] Modernizing legacy Fortran:, REAL(kind=8)
+In-Reply-To: <2c2d8db5-182f-11ac-4b9e-03f2e09ecb8c@tu-dresden.de>
+References: <2c2d8db5-182f-11ac-4b9e-03f2e09ecb8c@tu-dresden.de>
+Message-ID: <20230830125803.0d0b7290@Tarkus>
+
+On Wed, 30 Aug 2023 08:43:04 +0200
+Thomas Petzoldt <thomas.petzoldt at tu-dresden.de> wrote:
+
+> a) change REAL(kind=8) back to DOUBLE PRECISION that is again old
+> style. It seems to be portable and is still widely used.
+
+I don't have a reference as good as the Fortran standard, but Steve
+Lionel said in Dr. Fortran [*] that DOUBLE PRECISION is still part of
+the standard fixed-form syntax.
+
+>  COMPLEX(KIND=8)
+
+This could be particularly problematic if you're trying to interoperate
+with C, but will probably not surface unless you use LTO:
+https://bugs.r-project.org/show_bug.cgi?id=18430
+
+Unfortunately, there's no standard DOUBLE COMPLEX.
+
+-- 
+Best regards,
+Ivan
+
+[*]
+https://stevelionel.com/drfortran/2017/03/27/doctor-fortran-in-it-takes-all-kinds/
+
+
+From em@nue|e@cord@no @end|ng |rom gm@||@com  Wed Aug 30 18:03:19 2023
+From: em@nue|e@cord@no @end|ng |rom gm@||@com (Emanuele Cordano)
+Date: Wed, 30 Aug 2023 18:03:19 +0200
+Subject: [R-pkg-devel] DESCRITION error
+Message-ID: <CAKw81f-EytkpfGntWs9Zo1HFDUzHpRnigWPAjKGcCfPnWSHO+w@mail.gmail.com>
+
+Dear list,
+
+I'm creating a package. At a first build, I found out the following error.
+I parsed DESCRIPTION  file and I did not find any possible causes for this
+error. I searched on the web , but I found no clear explanation of this
+error. Have you ever experienced with this? What does this error mean ?
+I'm using an Rstudio server, but it's the first time it happens after
+building several other developed packages.
+
+
+Error reading package DESCRIPTION: system error 71 (Protocol error)
+
+Thank you
+Best
+Emanuele
+-- 
+Emanuele Cordano, PhD
+Environmental Engineer / Ingegnere per l' Ambiente e il territorio nr.
+3587 (Albo A - Provincia di Trento)
+cell: +39 3282818564
+email: emanuele.cordano at gmail.com,emanuele.cordano at rendena100.eu,
+emanuele.cordano at eurac.edu
+PEC: emanuele.cordano at ingpec.eu
+URL: www.rendena100.eu
+LinkedIn: https://www.linkedin.com/in/emanuele-cordano-31995333
+GitHub: https://github.com/ecor
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Aug 30 18:23:23 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 30 Aug 2023 12:23:23 -0400
+Subject: [R-pkg-devel] DESCRITION error
+In-Reply-To: <CAKw81f-EytkpfGntWs9Zo1HFDUzHpRnigWPAjKGcCfPnWSHO+w@mail.gmail.com>
+References: <CAKw81f-EytkpfGntWs9Zo1HFDUzHpRnigWPAjKGcCfPnWSHO+w@mail.gmail.com>
+Message-ID: <70faf716-f83c-309d-332d-e17dcdf3b1fd@gmail.com>
+
+On 30/08/2023 12:03 p.m., Emanuele Cordano wrote:
+> Dear list,
+> 
+> I'm creating a package. At a first build, I found out the following error.
+> I parsed DESCRIPTION  file and I did not find any possible causes for this
+> error. I searched on the web , but I found no clear explanation of this
+> error. Have you ever experienced with this? What does this error mean ?
+> I'm using an Rstudio server, but it's the first time it happens after
+> building several other developed packages.
+> 
+> 
+> Error reading package DESCRIPTION: system error 71 (Protocol error)
+
+That error says that R couldn't read the DESCRIPTION file.  It sounds as 
+though you are on Windows, your file is on a network share, and the 
+server won't let you connect.  If that's the case, this link discusses 
+the issue:
+
+ 
+https://answers.microsoft.com/en-us/windows/forum/all/operating-system-error-71-this-remote-computer-has/74270db8-4522-4e24-a494-5bf75becc9da
+
+
+From em@nue|e@cord@no @end|ng |rom gm@||@com  Wed Aug 30 18:32:19 2023
+From: em@nue|e@cord@no @end|ng |rom gm@||@com (Emanuele Cordano)
+Date: Wed, 30 Aug 2023 18:32:19 +0200
+Subject: [R-pkg-devel] DESCRITION error
+In-Reply-To: <70faf716-f83c-309d-332d-e17dcdf3b1fd@gmail.com>
+References: <CAKw81f-EytkpfGntWs9Zo1HFDUzHpRnigWPAjKGcCfPnWSHO+w@mail.gmail.com>
+ <70faf716-f83c-309d-332d-e17dcdf3b1fd@gmail.com>
+Message-ID: <CAKw81f9UN6oEf998vT2O5Z_wKjHiSyCQXXyLLrVzV89hL4_CRA@mail.gmail.com>
+
+Thanks . I?m working on Linux Ubuntu 20.04. I?m seeing the url you sent.
+
+
+Il giorno mer 30 ago 2023 alle 18:23 Duncan Murdoch <
+murdoch.duncan at gmail.com> ha scritto:
+
+> On 30/08/2023 12:03 p.m., Emanuele Cordano wrote:
+> > Dear list,
+> >
+> > I'm creating a package. At a first build, I found out the following
+> error.
+> > I parsed DESCRIPTION  file and I did not find any possible causes for
+> this
+> > error. I searched on the web , but I found no clear explanation of this
+> > error. Have you ever experienced with this? What does this error mean ?
+> > I'm using an Rstudio server, but it's the first time it happens after
+> > building several other developed packages.
+> >
+> >
+> > Error reading package DESCRIPTION: system error 71 (Protocol error)
+>
+> That error says that R couldn't read the DESCRIPTION file.  It sounds as
+> though you are on Windows, your file is on a network share, and the
+> server won't let you connect.  If that's the case, this link discusses
+> the issue:
+>
+>
+>
+> https://answers.microsoft.com/en-us/windows/forum/all/operating-system-error-71-this-remote-computer-has/74270db8-4522-4e24-a494-5bf75becc9da
+>
+>
+> --
+Emanuele Cordano, PhD
+Environmental Engineer / Ingegnere per l' Ambiente e il territorio nr.
+3587 (Albo A - Provincia di Trento)
+cell: +39 3282818564
+email: emanuele.cordano at gmail.com,emanuele.cordano at rendena100.eu,
+emanuele.cordano at eurac.edu
+PEC: emanuele.cordano at ingpec.eu
+URL: www.rendena100.eu
+LinkedIn: https://www.linkedin.com/in/emanuele-cordano-31995333
+GitHub: https://github.com/ecor
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Aug 30 18:35:11 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 30 Aug 2023 12:35:11 -0400
+Subject: [R-pkg-devel] DESCRITION error
+In-Reply-To: <CAKw81f9UN6oEf998vT2O5Z_wKjHiSyCQXXyLLrVzV89hL4_CRA@mail.gmail.com>
+References: <CAKw81f-EytkpfGntWs9Zo1HFDUzHpRnigWPAjKGcCfPnWSHO+w@mail.gmail.com>
+ <70faf716-f83c-309d-332d-e17dcdf3b1fd@gmail.com>
+ <CAKw81f9UN6oEf998vT2O5Z_wKjHiSyCQXXyLLrVzV89hL4_CRA@mail.gmail.com>
+Message-ID: <114d1c12-0a62-f2ae-c354-0bd026d8910e@gmail.com>
+
+If you are on Ubuntu, my guess is likely not relevant (unless maybe the 
+server holding your files is running Windows).
+
+Duncan Murdoch
+
+On 30/08/2023 12:32 p.m., Emanuele Cordano wrote:
+> Thanks . I?m working on Linux Ubuntu 20.04. I?m seeing the url you sent.
+> 
+> 
+> Il giorno mer 30 ago 2023 alle 18:23 Duncan Murdoch 
+> <murdoch.duncan at gmail.com <mailto:murdoch.duncan at gmail.com>> ha scritto:
+> 
+>     On 30/08/2023 12:03 p.m., Emanuele Cordano wrote:
+>      > Dear list,
+>      >
+>      > I'm creating a package. At a first build, I found out the
+>     following error.
+>      > I parsed DESCRIPTION? file and I did not find any possible causes
+>     for this
+>      > error. I searched on the web , but I found no clear explanation
+>     of this
+>      > error. Have you ever experienced with this? What does this error
+>     mean ?
+>      > I'm using an Rstudio server, but it's the first time it happens after
+>      > building several other developed packages.
+>      >
+>      >
+>      > Error reading package DESCRIPTION: system error 71 (Protocol error)
+> 
+>     That error says that R couldn't read the DESCRIPTION file.? It
+>     sounds as
+>     though you are on Windows, your file is on a network share, and the
+>     server won't let you connect.? If that's the case, this link discusses
+>     the issue:
+> 
+> 
+>     https://answers.microsoft.com/en-us/windows/forum/all/operating-system-error-71-this-remote-computer-has/74270db8-4522-4e24-a494-5bf75becc9da <https://answers.microsoft.com/en-us/windows/forum/all/operating-system-error-71-this-remote-computer-has/74270db8-4522-4e24-a494-5bf75becc9da>
+> 
+> 
+> -- 
+> Emanuele Cordano, PhD
+> Environmental Engineer / Ingegnere per l'?Ambiente e il territorio nr.
+> 3587 (Albo A - Provincia di Trento)
+> cell: +39 3282818564 <tel:%2B39%203282818564>
+> email: emanuele.cordano at gmail.com 
+> <mailto:emanuele.cordano at gmail.com>,emanuele.cordano at rendena100.eu 
+> <mailto:emanuele.cordano at rendena100.eu>,
+> emanuele.cordano at eurac.edu <mailto:emanuele.cordano at eurac.edu>
+> PEC: emanuele.cordano at ingpec.eu <mailto:emanuele.cordano at ingpec.eu>
+> URL: www.rendena100.eu <http://www.rendena100.eu/>
+> LinkedIn: https://www.linkedin.com/in/emanuele-cordano-31995333 
+> <https://www.linkedin.com/in/emanuele-cordano-31995333>
+> GitHub: https://github.com/ecor <https://github.com/ecor>
+>
+
+
+From t@1@1@ndn @end|ng |rom gm@||@com  Thu Aug 31 00:32:33 2023
+From: t@1@1@ndn @end|ng |rom gm@||@com (SHIMA Tatsuya)
+Date: Thu, 31 Aug 2023 07:32:33 +0900
+Subject: [R-pkg-devel] What to do when a package is archived from CRAN
+In-Reply-To: <57d981a1-78ca-48cd-9871-14ca0ea55a5b@gmail.com>
+References: <20230827002220.1ac419f9@Tarkus>
+ <E8BAA352-B7D3-4C31-9AA3-D9C8C853B069@hiddenelephants.co.uk>
+ <0651845e-34b0-4986-a575-0dd609777793@gmail.com>
+ <a7e4e703-7357-2819-75a8-ce2d3e9287dc@statistik.tu-dortmund.de>
+ <57d981a1-78ca-48cd-9871-14ca0ea55a5b@gmail.com>
+Message-ID: <697fb806-5962-48f3-950e-4fcabec0dd4c@gmail.com>
+
+I submitted prqlr 0.5.1 yesterday, which is almost identical to prqlr 
+0.5.0, and prqlr is now available again on CRAN.
+Thanks to the CRAN reviewers for their quick reaction.
+
+Best,
+Tatsuya
+
+On 2023/08/29 19:12, SHIMA Tatsuya wrote:
+> Hi Uwe, thanks for the summary of the background.
+> Let me ask you a few questions about a couple of points.
+>
+> > Accepting a package that downloads crates from github
+>
+> I don't think prqlr 0.5.0 downloads crates on GitHub.
+> prqlr <= 0.4.0 use crate on GitHub which I patched to support old Rust 
+> on Debian <https://github.com/PRQL/prql/pull/1561>, but with 0.5.0 I 
+> switched to installing from crates.io completely.
+> (This was made possible because Debian recently upgraded Rust for the 
+> first time in six months.)
+>
+> > All the correspondence we see claims that the submission had bundled 
+> the rust code, but the version that got archived after publication was 
+> 104KB and did not.
+>
+> I am aware that in the first submission of prqlr 0.5.0, the size of 
+> the source was 12MB due to the vendoring all Rust dependent crates and 
+> CRAN pointed out the size of 12MB as a reason for rejection.
+> That is why in my second submission I wrote the following comment that 
+> I had removed the vendoring tarball.
+>
+> > To reduce package size on CRAN, it does not vendor dependent Rust 
+> crates.
+>
+> https://github.com/eitsupi/prqlr/pull/161/commits/9aba66647fa5e48da0a5983643a4df001721b3f7#diff-cf8c1cd4cfb6a9ceb5ba522a5711321831948fea41fbb0cd9f799506c7caca1bR22-R27 
+>
+>
+> In other words, I did not claim to have bundled the Rust code.
+> And that second submission was accepted by CRAN and I have not 
+> received any further messages from CRAN.
+>
+> I am aware that the CRAN policy says that we can ask CRAN for 
+> permission to download from the internet.
+> I intended to ask for that in this comment.
+>
+> If I am doing this wrong, what should I do?
+>
+> Thanks for reading this.
+>
+> Best,
+> Tatsuya
+>
+> On 2023/08/28 17:24, Uwe Ligges wrote:
+>> Friends,
+>>
+>> CRAN wrote initially to some rust using maintainers:
+>>
+>> The CRAN policy on authorship/copyright is very clear:
+>>
+>> "(?All components? includes any downloaded at installation or during 
+>> use.) "
+>>
+>> Please explain how your package complies if you believe it does.
+>>
+>> Further, we ask that you use the 'cargo vendor' mechanism to avoid 
+>> downloading during installation and limit the number of CPUs 'cargo 
+>> build' can use during installation.? Both points are covered in 
+>> <https://cran.r-project.org/web/packages/using_rust.html>."
+>>
+>>
+>>
+>>
+>> Accepting a package that downloads crates from github happened 
+>> automatically, but incorrectly (a false negative):
+>> All the correspondence we see claims that the submission had bundled 
+>> the rust code, but the version that got archived after publication 
+>> was 104KB and did not.
+>>
+>> So please simply follow the mails you got and fix the package folwing 
+>> the "using_rust" documentation.
+>>
+>> In addition, it was mentined already to get the authorship straight.
+>>
+>> Best,
+>> Uwe Ligges
+>>
+>>
+>>
+>>
+>>
+>>
+>>
+>> On 27.08.2023 17:28, SHIMA Tatsuya wrote:
+>>> Hi Tim, thank you for sharing this information. i didn't know this.
+>>>
+>>> If this is the cause, the problem seems to have been resolved in the 
+>>> latest serde <https://github.com/serde-rs/serde/pull/2590>, so it 
+>>> seems to be possible to deal with it.
+>>>
+>>> Best,
+>>> Tatsuya
+>>>
+>>> On 2023/08/27 20:24, Tim Taylor wrote:
+>>>> Could you have been caught out with the precompiled binary that 
+>>>> serde started distributing in a few of it?s versions 
+>>>> (https://github.com/serde-rs/serde/issues/2538)? That could have 
+>>>> been a reason if you pinned a version with it present but only CRAN 
+>>>> could confirm if that was the reason.
+>>>>
+>>>> Tim
+>>>>
+>>>>> On 26 Aug 2023, at 22:22, Ivan Krylov <krylov.r00t at gmail.com> wrote:
+>>>>>
+>>>>> ?On Sat, 26 Aug 2023 11:46:44 +0900
+>>>>> SHIMA Tatsuya <ts1s1andn at gmail.com> wrote:
+>>>>>
+>>>>>> I noticed that my submitted package `prqlr` 0.5.0 was archived from
+>>>>>> CRAN on 2023-08-19.
+>>>>>> <https://CRAN.R-project.org/package=prqlr>
+>>>>>>
+>>>>>> I submitted prqlr 0.5.0 on 2023-08-13. I believe I have since only
+>>>>>> received word from CRAN that it passed the automated release 
+>>>>>> process.
+>>>>>
+>>>>> Sarah gave a good guess (although there are CRAN packages containing
+>>>>> C++ and Rust code with NOTEs about size of their libs, 18.2Mb is 
+>>>>> still
+>>>>> a lot), though I do find it strange that you didn't receive anything
+>>>>> from CRAN prior to having your package archived. I don't think I ever
+>>>>> had problems with e-mails being delivered from CRAN to GMail, but we
+>>>>> can't rule that out.
+>>>>>
+>>>>> You've obviously made an effort to follow the Rust policy, and I 
+>>>>> don't
+>>>>> see any obvious problems with this part of the package, although I
+>>>>> haven't tried it myself to verify the installation working offline 
+>>>>> from
+>>>>> bundled source code.
+>>>>>
+>>>>> You've also made an effort to list all the authors of the code
+>>>>> comprising your package in inst/AUTHORS, which is the right thing 
+>>>>> to do
+>>>>> to avoid making the list of authors in DESCRIPTION long enough to be
+>>>>> unreadable.
+>>>>>
+>>>>> You licensed the package as MIT. Are your dependencies compatible 
+>>>>> with
+>>>>> MIT? All direct dependencies of your Rust code seem to be licensed
+>>>>> under either MIT or Apache-2.0, which seems to be compatible. You 
+>>>>> named
+>>>>> the copyright holder of your package as "prqlr authors", which may 
+>>>>> be a
+>>>>> problem. (I think I saw it somewhere that for MIT license, CRAN 
+>>>>> prefers
+>>>>> the copyright holder to be some kind of legal entity: either the 
+>>>>> legal
+>>>>> name of a person, or a company, or something like that.)
+>>>>>
+>>>>> Could the Rust code or any of the dependencies accidentally write 
+>>>>> under
+>>>>> the user's home directory or take over the terminal or something like
+>>>>> that?
+>>>>>
+>>>>> We might need a response from CRAN after all.
+>>>>>
+>>>>> -- 
+>>>>> Best regards,
+>>>>> Ivan
+>>>>>
+>>>>> ______________________________________________
+>>>>> R-package-devel at r-project.org mailing list
+>>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
