@@ -16485,3 +16485,782 @@ On 31.08.2023 17:04, I?aki Ucar wrote:
 > Best,
 
 
+From md@ncho @end|ng |rom bu@|ne@@-@c|ence@|o  Fri Sep  1 14:26:32 2023
+From: md@ncho @end|ng |rom bu@|ne@@-@c|ence@|o (Matt Dancho)
+Date: Fri, 1 Sep 2023 08:26:32 -0400
+Subject: [R-pkg-devel] CRAN Detected Using More Than 2 Cores By Default
+Message-ID: <CAN9wbhwOTwRiK4cvEEC92ukVqgiYPaQXRgcay7gd+3gjJgk1MQ@mail.gmail.com>
+
+Hello,
+
+First time caller. Long time listener. I have an issue identified in my
+Modeltime R package version 1.2.8 CRAN submission.
+
+*CRAN Issue*
+Flavor: r-devel-linux-x86_64-debian-gcc
+Check: tests, Result: NOTE
+     Running 'testthat.R' [20s/7s]
+   Running R code in 'testthat.R' had CPU time 2.7 times elapsed time
+
+Flavor: r-devel-linux-x86_64-debian-gcc
+Check: re-building of vignette outputs, Result: NOTE
+   Re-building vignettes had CPU time 2.7 times elapsed time
+
+both ratios indicate you are using more than 2 cores by default. Please
+see the CRAN policies.
+
+
+*Problem:*
+When preparing relatively minor updates, I have submitted modeltime version
+1.2.8 (
+https://github.com/business-science/modeltime
+) to CRAN but did not pass the incoming checks.
+
+The error occurs on Debian indicating more than 2 cores are being used by
+default.
+
+I?m not sure how to detect where this is happening. Not how to fix it.
+
+I do permit parallel processing in some modeltime functions but everything
+is set to 1 core by default. The vignette and tests should be processed
+
+
+Please let me know if you see something in my code that I could be missing
+causing this issue.
+
+Thanks, Matt
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Sep  1 16:04:53 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 1 Sep 2023 17:04:53 +0300
+Subject: [R-pkg-devel] CRAN Detected Using More Than 2 Cores By Default
+In-Reply-To: <CAN9wbhwOTwRiK4cvEEC92ukVqgiYPaQXRgcay7gd+3gjJgk1MQ@mail.gmail.com>
+References: <CAN9wbhwOTwRiK4cvEEC92ukVqgiYPaQXRgcay7gd+3gjJgk1MQ@mail.gmail.com>
+Message-ID: <20230901170453.3ce4f542@arachnoid>
+
+? Fri, 1 Sep 2023 08:26:32 -0400
+Matt Dancho <mdancho at business-science.io> ?????:
+
+> Check: tests, Result: NOTE
+>      Running 'testthat.R' [20s/7s]
+>    Running R code in 'testthat.R' had CPU time 2.7 times elapsed time
+> 
+> Flavor: r-devel-linux-x86_64-debian-gcc
+> Check: re-building of vignette outputs, Result: NOTE
+>    Re-building vignettes had CPU time 2.7 times elapsed time
+
+Here's the conclusion of a recent R-pkg-devel thread:
+https://stat.ethz.ch/pipermail/r-package-devel/2023q3/009513.html
+
+It might help to set the environment variable OMP_THREAD_LIMIT to 2 in
+your tests and vignettes, but with examples (and, generally, with
+defaults in your functions) it will be harder to achieve compliance:
+https://github.com/Rdatatable/data.table/issues/5658#issuecomment-1700972630
+
+I don't see an immediate dependency of your package that could be doing
+something in parallel, but maybe you'll be able to find it after
+reading the R-package-devel thread.
+
+-- 
+Best regards,
+Ivan
+
+
+From h@nyu@@ong @end|ng |rom duke@edu  Fri Sep  1 10:14:12 2023
+From: h@nyu@@ong @end|ng |rom duke@edu (Hanyu Song)
+Date: Fri, 1 Sep 2023 08:14:12 +0000
+Subject: [R-pkg-devel] Python module dependency
+Message-ID: <BN7PR05MB4466E057890E4D3BF9DC8883EFE4A@BN7PR05MB4466.namprd05.prod.outlook.com>
+
+Hello,
+
+I am writing an R package that depends on a very uncommonly used Python module named "ctef" and I have several questions about it:
+
+a. How shall I write examples for the functions that depend on the Python module? Shall I just do:
+#' @examplesIf reticulate::py_module_available('ctef')
+#' my_function_that_depends_on_ctef(arg1, arg2)
+in case the CRAN testing platform does not have the module?
+
+b. I read from the documentation of the R package "reticulate" that we should delay load the Python modules, but it is not entirely clear to me how to do it.
+
+Are the following lines of code sufficient for that purpose? Do I need to create any virtual environment?
+
+#'  global reference to ctef
+#'
+#'@description
+#'`ctef` will be initialized in .onLoad.
+#'
+ctef <- NULL
+
+#' Delay load ctef module
+#'
+#' @description
+#' `.onLoad` delays loading ctef module (will only be loaded when accessed via $).
+#'
+#' @param libname Library name
+#' @param pkgname Package name
+.onLoad <- function(libname, pkgname) {
+    ctef <<- reticulate::import("ctef", delay_load = TRUE)
+
+}
+
+c. How shall I import the module in my R code? For now I included the import function in my_function_that_depends_on_ctef; see below:
+my_function_that_depends_on_ctef <- function(X, k) {
+ mod <- reticulate::import('ctef',delay_load = TRUE)
+  input <- as.matrix(X)
+  res <- mod$ctef$ctef(input,as.integer(k))
+return(res)
+}
+
+Is this correct?
+
+There are not many R packages that depend on a Python module, so the resources are quite limited. Thank you for your help.
+
+
+Best,
+Hanyu Song
+
+
+	[[alternative HTML version deleted]]
+
+
+From vo|ody@ @end|ng |rom m|nd@pr|ng@com  Fri Sep  1 16:51:46 2023
+From: vo|ody@ @end|ng |rom m|nd@pr|ng@com (Vladimir Dergachev)
+Date: Fri, 1 Sep 2023 10:51:46 -0400 (EDT)
+Subject: [R-pkg-devel] Python module dependency
+In-Reply-To: <BN7PR05MB4466E057890E4D3BF9DC8883EFE4A@BN7PR05MB4466.namprd05.prod.outlook.com>
+References: <BN7PR05MB4466E057890E4D3BF9DC8883EFE4A@BN7PR05MB4466.namprd05.prod.outlook.com>
+Message-ID: <alpine.DEB.2.22.394.2309011048480.14518@iridium>
+
+
+Have you consider translating ctef into R ?
+
+This would remove the dependencies and make your package much more robust.
+And would make it much easier to pass CRAN checks.
+
+Looking at ctef code it is pure Python and there aren't many lines. And in 
+my experience, one line of R is worth 10 lines of Python :)
+
+Also, ctef has a dependency on KMeans, so translating ctef into R will 
+remove that too.
+
+best
+
+Vladimir Dergachev
+
+On Fri, 1 Sep 2023, Hanyu Song wrote:
+
+> Hello,
+>
+> I am writing an R package that depends on a very uncommonly used Python module named "ctef" and I have several questions about it:
+>
+> a. How shall I write examples for the functions that depend on the Python module? Shall I just do:
+> #' @examplesIf reticulate::py_module_available('ctef')
+> #' my_function_that_depends_on_ctef(arg1, arg2)
+> in case the CRAN testing platform does not have the module?
+>
+> b. I read from the documentation of the R package "reticulate" that we should delay load the Python modules, but it is not entirely clear to me how to do it.
+>
+> Are the following lines of code sufficient for that purpose? Do I need to create any virtual environment?
+>
+> #'  global reference to ctef
+> #'
+> #'@description
+> #'`ctef` will be initialized in .onLoad.
+> #'
+> ctef <- NULL
+>
+> #' Delay load ctef module
+> #'
+> #' @description
+> #' `.onLoad` delays loading ctef module (will only be loaded when accessed via $).
+> #'
+> #' @param libname Library name
+> #' @param pkgname Package name
+> .onLoad <- function(libname, pkgname) {
+>    ctef <<- reticulate::import("ctef", delay_load = TRUE)
+>
+> }
+>
+> c. How shall I import the module in my R code? For now I included the import function in my_function_that_depends_on_ctef; see below:
+> my_function_that_depends_on_ctef <- function(X, k) {
+> mod <- reticulate::import('ctef',delay_load = TRUE)
+>  input <- as.matrix(X)
+>  res <- mod$ctef$ctef(input,as.integer(k))
+> return(res)
+> }
+>
+> Is this correct?
+>
+> There are not many R packages that depend on a Python module, so the resources are quite limited. Thank you for your help.
+>
+>
+> Best,
+> Hanyu Song
+>
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Sep  1 23:55:53 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sat, 2 Sep 2023 00:55:53 +0300
+Subject: [R-pkg-devel] Python module dependency
+In-Reply-To: <BN7PR05MB4466E057890E4D3BF9DC8883EFE4A@BN7PR05MB4466.namprd05.prod.outlook.com>
+References: <BN7PR05MB4466E057890E4D3BF9DC8883EFE4A@BN7PR05MB4466.namprd05.prod.outlook.com>
+Message-ID: <20230902005553.1038260a@Tarkus>
+
+On Fri, 1 Sep 2023 08:14:12 +0000
+Hanyu Song <hanyu.song at duke.edu> wrote:
+
+> b. I read from the documentation of the R package "reticulate" that
+> we should delay load the Python modules, but it is not entirely clear
+> to me how to do it.
+
+> Do I need to create any virtual environment?
+
+Not in the package code (unless the package is specifically designed to
+manage python virtual environments and therefore clearly has user's
+permission to access the filesystem). Virtual environments are here,
+like R libraries, for the user to create and manage.
+
+> Are the following lines of code sufficient for that purpose?
+> 
+> ctef <- NULL
+> .onLoad <- function(libname, pkgname) {
+>     ctef <<- reticulate::import("ctef", delay_load = TRUE)
+> }
+
+Yes, according to
+https://cran.r-project.org/package=reticulate/vignettes/package.html.
+
+It's important both to avoid a plain
+
+ctef <- reticulate::import("ctef")
+
+in the package namespace (because that's evaluated at source package
+installation time / binary package build time, and you don't want to
+capture references to a Python module that could have been moved since
+the R package has been installed) and to delay it further using the
+delay_load = TRUE argument (to let the user alter the Python search
+path even after loading your R package that depends on the python
+module).
+
+> c. How shall I import the module in my R code?
+
+Now that you have the object created above and initialised from
+.onLoad, your function_that_depends_on_ctef should be able to just use
+it:
+
+function_that_depends_on_ctef <- function(X, k) {
+ input <- as.matrix(X)
+ ctef$ctef$ctef(input,as.integer(k))
+}
+
+Make sure to declare the dependency in SystemRequirements: of your
+DESCRIPTION.
+
+-- 
+Best regards,
+Ivan
+
+
+From md@ncho @end|ng |rom bu@|ne@@-@c|ence@|o  Sat Sep  2 13:29:48 2023
+From: md@ncho @end|ng |rom bu@|ne@@-@c|ence@|o (Matt Dancho)
+Date: Sat, 2 Sep 2023 07:29:48 -0400
+Subject: [R-pkg-devel] CRAN Detected Using More Than 2 Cores By Default
+In-Reply-To: <20230901170453.3ce4f542@arachnoid>
+References: <CAN9wbhwOTwRiK4cvEEC92ukVqgiYPaQXRgcay7gd+3gjJgk1MQ@mail.gmail.com>
+ <20230901170453.3ce4f542@arachnoid>
+Message-ID: <CAN9wbhxDy9vzgzj-XTT5jsMLJMJXWuQ+Z6k1v-N_WMmL-qJNFw@mail.gmail.com>
+
+Thank you very much. I?ll try this and let you know.
+
+On Fri, Sep 1, 2023 at 10:04 AM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+
+> ? Fri, 1 Sep 2023 08:26:32 -0400
+> Matt Dancho <mdancho at business-science.io> ?????:
+>
+> > Check: tests, Result: NOTE
+> >      Running 'testthat.R' [20s/7s]
+> >    Running R code in 'testthat.R' had CPU time 2.7 times elapsed time
+> >
+> > Flavor: r-devel-linux-x86_64-debian-gcc
+> > Check: re-building of vignette outputs, Result: NOTE
+> >    Re-building vignettes had CPU time 2.7 times elapsed time
+>
+> Here's the conclusion of a recent R-pkg-devel thread:
+> https://stat.ethz.ch/pipermail/r-package-devel/2023q3/009513.html
+>
+> It might help to set the environment variable OMP_THREAD_LIMIT to 2 in
+> your tests and vignettes, but with examples (and, generally, with
+> defaults in your functions) it will be harder to achieve compliance:
+>
+> https://github.com/Rdatatable/data.table/issues/5658#issuecomment-1700972630
+>
+> I don't see an immediate dependency of your package that could be doing
+> something in parallel, but maybe you'll be able to find it after
+> reading the R-package-devel thread.
+>
+> --
+> Best regards,
+> Ivan
+>
+
+	[[alternative HTML version deleted]]
+
+
+From t@1@1@ndn @end|ng |rom gm@||@com  Sat Sep  2 15:03:22 2023
+From: t@1@1@ndn @end|ng |rom gm@||@com (SHIMA Tatsuya)
+Date: Sat, 2 Sep 2023 22:03:22 +0900
+Subject: [R-pkg-devel] What to do when a package is archived from CRAN
+In-Reply-To: <CAN+W6_s=xWcqok1Ahy-UaJ6TiJYWLiohLSPUHwptirr7uAratw@mail.gmail.com>
+References: <20230827002220.1ac419f9@Tarkus>
+ <E8BAA352-B7D3-4C31-9AA3-D9C8C853B069@hiddenelephants.co.uk>
+ <0651845e-34b0-4986-a575-0dd609777793@gmail.com>
+ <a7e4e703-7357-2819-75a8-ce2d3e9287dc@statistik.tu-dortmund.de>
+ <57d981a1-78ca-48cd-9871-14ca0ea55a5b@gmail.com>
+ <697fb806-5962-48f3-950e-4fcabec0dd4c@gmail.com>
+ <25840.36229.529582.693181@rob.eddelbuettel.com>
+ <CAN+W6_s=xWcqok1Ahy-UaJ6TiJYWLiohLSPUHwptirr7uAratw@mail.gmail.com>
+Message-ID: <43c0b2fd-9169-449c-b12f-12d8cd8cb948@gmail.com>
+
+Thanks Llu?s, I did not know I could find it there.
+
+For this archive, CRAN sent me an e-mail urging me to stop downloading 
+from crates.io and vendoring all Rust source code, even if it exceeds 5MB.
+
+On 2023/08/31 23:24, Llu?s Revilla wrote:
+> The reasons that CRAN has for this (from: 
+> https://cran.r-project.org/src/contrib/PACKAGES.in) are:
+> X-CRAN-History: Archived on 2023-08-19 for policy violation.
+>    Downloading on installation from github.
+>    Unarchived on 2023-08-30.
+> X-CRAN-Comment: Archived on 2023-08-31 for policy violation.
+>    .
+>    Downloading on installation from github.
+>
+> I see your file src/rust/Cargo.lock has some references to github.com 
+> <http://github.com> which is probably what has triggered this. I'm 
+> sorry I cannot help further.
+> Good luck!
+>
+> On Thu, 31 Aug 2023 at 14:54, Dirk Eddelbuettel <edd at debian.org> wrote:
+>
+>
+>     On 31 August 2023 at 07:32, SHIMA Tatsuya wrote:
+>     | I submitted prqlr 0.5.1 yesterday, which is almost identical to
+>     prqlr
+>     | 0.5.0, and prqlr is now available again on CRAN.
+>     | Thanks to the CRAN reviewers for their quick reaction.
+>
+>     And it is gone again (per CRANberries). Never a dull moment with
+>     CRAN.
+>
+>     Dirk
+>
+>     -- 
+>     dirk.eddelbuettel.com <http://dirk.eddelbuettel.com> |
+>     @eddelbuettel | edd at debian.org
+>
+>     ______________________________________________
+>     R-package-devel at r-project.org mailing list
+>     https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+	[[alternative HTML version deleted]]
+
+
+From md@ncho @end|ng |rom bu@|ne@@-@c|ence@|o  Sat Sep  2 17:17:53 2023
+From: md@ncho @end|ng |rom bu@|ne@@-@c|ence@|o (Matt Dancho)
+Date: Sat, 2 Sep 2023 11:17:53 -0400
+Subject: [R-pkg-devel] CRAN Detected Using More Than 2 Cores By Default
+In-Reply-To: <CAN9wbhxDy9vzgzj-XTT5jsMLJMJXWuQ+Z6k1v-N_WMmL-qJNFw@mail.gmail.com>
+References: <CAN9wbhwOTwRiK4cvEEC92ukVqgiYPaQXRgcay7gd+3gjJgk1MQ@mail.gmail.com>
+ <20230901170453.3ce4f542@arachnoid>
+ <CAN9wbhxDy9vzgzj-XTT5jsMLJMJXWuQ+Z6k1v-N_WMmL-qJNFw@mail.gmail.com>
+Message-ID: <CAN9wbhzOarSc6K=LgLfZMbaM34XiA6_JCpaGNNMNpe_9ig=Gog@mail.gmail.com>
+
+I was able to get it to work with your solution. Thanks a lot.
+
+Solution was to set Sys.setenv(?OMP_THREAD_LIMIT?, ?1?) on load. I may
+adjust this down the road but modeltime 1.2.8 is now on CRAN.
+
+Thanks, Matt
+
+On Sat, Sep 2, 2023 at 7:29 AM Matt Dancho <mdancho at business-science.io>
+wrote:
+
+> Thank you very much. I?ll try this and let you know.
+>
+> On Fri, Sep 1, 2023 at 10:04 AM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+>
+>> ? Fri, 1 Sep 2023 08:26:32 -0400
+>> Matt Dancho <mdancho at business-science.io> ?????:
+>>
+>> > Check: tests, Result: NOTE
+>> >      Running 'testthat.R' [20s/7s]
+>> >    Running R code in 'testthat.R' had CPU time 2.7 times elapsed time
+>> >
+>> > Flavor: r-devel-linux-x86_64-debian-gcc
+>> > Check: re-building of vignette outputs, Result: NOTE
+>> >    Re-building vignettes had CPU time 2.7 times elapsed time
+>>
+>> Here's the conclusion of a recent R-pkg-devel thread:
+>> https://stat.ethz.ch/pipermail/r-package-devel/2023q3/009513.html
+>>
+>> It might help to set the environment variable
+>> OMP_THREAD_LIMIT to 2 in
+>> your tests and vignettes, but with examples (and, generally, with
+>> defaults in your functions) it will be harder to achieve compliance:
+>>
+>> https://github.com/Rdatatable/data.table/issues/5658#issuecomment-1700972630
+>>
+>> I don't see an immediate dependency of your package that could be doing
+>> something in parallel, but maybe you'll be able to find it after
+>> reading the R-package-devel thread.
+>>
+>> --
+>> Best regards,
+>> Ivan
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From pro|jcn@@h @end|ng |rom gm@||@com  Sat Sep  2 20:34:08 2023
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Sat, 2 Sep 2023 14:34:08 -0400
+Subject: [R-pkg-devel] URL syntax causes R CMD build failure - a fix
+Message-ID: <97289a48-a5f3-090e-454b-f6a07fba9962@gmail.com>
+
+I'm posting this in case it helps some other developers getting build failure.
+
+Recently package nlsr that I maintain got a message that it failed to build on
+some platforms. The exact source of the problem is still to be illuminated,
+but seems to be in knitr::render and/or pandoc or an unfortunate interaction.
+An update to pandoc triggered a failure to process a vignette that had been
+happily processed for several years. The error messages are unhelpful, at least
+to me,
+
+    Error at "nlsr-devdoc.knit.md" (line 5419, column 1):
+    unexpected end of input
+    Error: pandoc document conversion failed with error 64
+    Execution halted
+
+Unfortunately, adding "keep_md: TRUE" (you need upper case TRUE to save it when
+there is no error of this type), did not save the intermediate file in this
+case. However, searching for "pandoc error 64" presented one web page where the author
+used brute force search of his document by removing / replacing sections to find
+the line(s) that caused trouble. This is a little tedious, but effective. In my
+case, the offending line turned out to be a copied and pasted URL
+
+https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm
+
+The coded characters can be replaced by a hyphen, to give,
+
+https://en.wikipedia.org/wiki/Levenberg-Marquardt_algorithm
+
+and this, when pasted in Mozilla Firefox at least, will go to the appropriate
+wikipedia page.
+
+I'd be interested in hearing from others who have had similar difficulties. I
+suspect this is relatively rare, and causing some sort of infelicity in the
+output of knitr::render that then trips up some versions of pandoc, that may,
+for instance, be now applying stricter rules to URL syntax.
+
+Best,
+
+John Nash
+
+
+From jch@|| @end|ng |rom @c|tov@t|on@com  Sat Sep  2 20:50:57 2023
+From: jch@|| @end|ng |rom @c|tov@t|on@com (John Carter Hall)
+Date: Sat, 2 Sep 2023 18:50:57 +0000
+Subject: [R-pkg-devel] R Package Development -- PDF Manual without Index
+Message-ID: <PH0PR16MB5042F07F1E9AD74B4FA2CB05DCEBA@PH0PR16MB5042.namprd16.prod.outlook.com>
+
+Hello R-Package-Devel Mailing List,
+
+I am new to R package development, and am having to limp a project across the line after my organization has gone through significant changes in recent weeks.
+As such, I am emailing to understand what I can do to solve an error I am having:
+
+The Error
+
+Flavor: r-devel-linux-x86_64-debian-gcc
+Check: PDF version of manual without index, Result: ERROR
+
+The Issue
+
+For whatever reason, the R CMD check? desires different fields in the DESCRIPTION file than does the devtools::check() function (particularly w.r.t. the 'Author' field), and so I have to use devtools to build/check the package. The devtools::build_manual function, however, does not work, and so I am forced to utilize Rd2pdf to create my PDF manual.
+
+I have to make the manual via Windows due to issues with an Ubuntu installation of my package. However, the package is intended for Linux/Debian audiences.
+
+What I Need Help With
+
+I believe I have the manual created. I do not know if this manual needs to be created when CRAN does their checks, but I have the document (I am comparing its appearance to the manual of ggplot2?, and the structure is similar). I do not know where it needs to be located. I have tried the root directory of the package, the doc? folder, etc... but nothing works.
+
+What can I do?
+
+Best,
+Carter
+
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Sep  2 22:17:54 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 2 Sep 2023 16:17:54 -0400
+Subject: [R-pkg-devel] R Package Development -- PDF Manual without Index
+In-Reply-To: <PH0PR16MB5042F07F1E9AD74B4FA2CB05DCEBA@PH0PR16MB5042.namprd16.prod.outlook.com>
+References: <PH0PR16MB5042F07F1E9AD74B4FA2CB05DCEBA@PH0PR16MB5042.namprd16.prod.outlook.com>
+Message-ID: <c8c4e303-ed49-b01b-6934-9db696ce35d1@gmail.com>
+
+On 02/09/2023 2:50 p.m., John Carter Hall wrote:
+> Hello R-Package-Devel Mailing List,
+> 
+> I am new to R package development, and am having to limp a project across the line after my organization has gone through significant changes in recent weeks.
+> As such, I am emailing to understand what I can do to solve an error I am having:
+> 
+> The Error
+> 
+> Flavor: r-devel-linux-x86_64-debian-gcc
+> Check: PDF version of manual without index, Result: ERROR
+> 
+> The Issue
+> 
+> For whatever reason, the R CMD check? desires different fields in the DESCRIPTION file than does the devtools::check() function (particularly w.r.t. the 'Author' field), and so I have to use devtools to build/check the package. The devtools::build_manual function, however, does not work, and so I am forced to utilize Rd2pdf to create my PDF manual.
+
+CRAN will use R CMD check, so if things aren't working there, they won't 
+accept your package.
+> 
+> I have to make the manual via Windows due to issues with an Ubuntu installation of my package. However, the package is intended for Linux/Debian audiences.
+> 
+> What I Need Help With
+> 
+> I believe I have the manual created. I do not know if this manual needs to be created when CRAN does their checks, but I have the document (I am comparing its appearance to the manual of ggplot2?, and the structure is similar). I do not know where it needs to be located. I have tried the root directory of the package, the doc? folder, etc... but nothing works.
+
+You don't need to make a manual at all.  CRAN will do that for you.
+
+Duncan Murdoch
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Sat Sep  2 22:45:14 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Sat, 02 Sep 2023 13:45:14 -0700
+Subject: [R-pkg-devel] R Package Development -- PDF Manual without Index
+In-Reply-To: <PH0PR16MB5042F07F1E9AD74B4FA2CB05DCEBA@PH0PR16MB5042.namprd16.prod.outlook.com>
+References: <PH0PR16MB5042F07F1E9AD74B4FA2CB05DCEBA@PH0PR16MB5042.namprd16.prod.outlook.com>
+Message-ID: <B5DAD478-9113-4630-994B-4C8E09D5434A@dcn.davis.ca.us>
+
+CRAN doesn't care about whether devtools is happy. R CMD check --as-cran needs to work, e.g. as in [1].
+
+Devtools is a convenience tool to help put all of the necessary bits in the right places in your source code according to [2]. But if there is any disagreement about what works, devtools is never the definitive answer.
+
+If you put your current package source code online, as in on GitHub and share that here, then someone may be able to help you bridge the gap to satisfy both devtools and CRAN.
+
+[1] https://kbroman.org/pkg_primer/pages/check.html
+[2] https://cran.r-project.org/doc/manuals/R-exts.html
+
+On September 2, 2023 11:50:57 AM PDT, John Carter Hall <jchall at scitovation.com> wrote:
+>Hello R-Package-Devel Mailing List,
+>
+>I am new to R package development, and am having to limp a project across the line after my organization has gone through significant changes in recent weeks.
+>As such, I am emailing to understand what I can do to solve an error I am having:
+>
+>The Error
+>
+>Flavor: r-devel-linux-x86_64-debian-gcc
+>Check: PDF version of manual without index, Result: ERROR
+>
+>The Issue
+>
+>For whatever reason, the R CMD check? desires different fields in the DESCRIPTION file than does the devtools::check() function (particularly w.r.t. the 'Author' field), and so I have to use devtools to build/check the package. The devtools::build_manual function, however, does not work, and so I am forced to utilize Rd2pdf to create my PDF manual.
+>
+>I have to make the manual via Windows due to issues with an Ubuntu installation of my package. However, the package is intended for Linux/Debian audiences.
+>
+>What I Need Help With
+>
+>I believe I have the manual created. I do not know if this manual needs to be created when CRAN does their checks, but I have the document (I am comparing its appearance to the manual of ggplot2?, and the structure is similar). I do not know where it needs to be located. I have tried the root directory of the package, the doc? folder, etc... but nothing works.
+>
+>What can I do?
+>
+>Best,
+>Carter
+>
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-package-devel at r-project.org mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From greg @end|ng |rom ||rm@n@y@h@com  Sat Sep  2 23:23:41 2023
+From: greg @end|ng |rom ||rm@n@y@h@com (Greg Hunt)
+Date: Sun, 3 Sep 2023 07:23:41 +1000
+Subject: [R-pkg-devel] URL syntax causes R CMD build failure - a fix
+In-Reply-To: <97289a48-a5f3-090e-454b-f6a07fba9962@gmail.com>
+References: <97289a48-a5f3-090e-454b-f6a07fba9962@gmail.com>
+Message-ID: <CAAS8PA+p0rJkE5Atq2rYrbBSFtmLbWsWii_NtwZkyhxG=hKg3g@mail.gmail.com>
+
+The percent encoded characters appear to be valid in that URL, suggesting
+that rejecting them is an error. That kind of error could occur when the
+software processing them converts them back to a non-unicode character set.
+
+On Sun, 3 Sep 2023 at 4:34 am, J C Nash <profjcnash at gmail.com> wrote:
+
+> I'm posting this in case it helps some other developers getting build
+> failure.
+>
+> Recently package nlsr that I maintain got a message that it failed to
+> build on
+> some platforms. The exact source of the problem is still to be illuminated,
+> but seems to be in knitr::render and/or pandoc or an unfortunate
+> interaction.
+> An update to pandoc triggered a failure to process a vignette that had been
+> happily processed for several years. The error messages are unhelpful, at
+> least
+> to me,
+>
+>     Error at "nlsr-devdoc.knit.md" (line 5419, column 1):
+>     unexpected end of input
+>     Error: pandoc document conversion failed with error 64
+>     Execution halted
+>
+> Unfortunately, adding "keep_md: TRUE" (you need upper case TRUE to save it
+> when
+> there is no error of this type), did not save the intermediate file in this
+> case. However, searching for "pandoc error 64" presented one web page
+> where the author
+> used brute force search of his document by removing / replacing sections
+> to find
+> the line(s) that caused trouble. This is a little tedious, but effective.
+> In my
+> case, the offending line turned out to be a copied and pasted URL
+>
+> https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm
+>
+> The coded characters can be replaced by a hyphen, to give,
+>
+> https://en.wikipedia.org/wiki/Levenberg-Marquardt_algorithm
+>
+> and this, when pasted in Mozilla Firefox at least, will go to the
+> appropriate
+> wikipedia page.
+>
+> I'd be interested in hearing from others who have had similar
+> difficulties. I
+> suspect this is relatively rare, and causing some sort of infelicity in the
+> output of knitr::render that then trips up some versions of pandoc, that
+> may,
+> for instance, be now applying stricter rules to URL syntax.
+>
+> Best,
+>
+> John Nash
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Sun Sep  3 00:30:21 2023
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Sat, 2 Sep 2023 17:30:21 -0500
+Subject: [R-pkg-devel] URL syntax causes R CMD build failure - a fix
+In-Reply-To: <CAAS8PA+p0rJkE5Atq2rYrbBSFtmLbWsWii_NtwZkyhxG=hKg3g@mail.gmail.com>
+References: <97289a48-a5f3-090e-454b-f6a07fba9962@gmail.com>
+ <CAAS8PA+p0rJkE5Atq2rYrbBSFtmLbWsWii_NtwZkyhxG=hKg3g@mail.gmail.com>
+Message-ID: <3c92fa11-44c7-cecc-6703-575394d8c539@effectivedefense.org>
+
+I've encountered similar issues. However, it has been long enough ago 
+that I don't remember enough details to say more without trying to 
+update my CRAN packages to see what messages I get and maybe researching 
+my notes from previous problems of this nature. Spencer Graves
+
+
+On 9/2/23 4:23 PM, Greg Hunt wrote:
+> The percent encoded characters appear to be valid in that URL, suggesting
+> that rejecting them is an error. That kind of error could occur when the
+> software processing them converts them back to a non-unicode character set.
+> 
+> On Sun, 3 Sep 2023 at 4:34 am, J C Nash <profjcnash at gmail.com> wrote:
+> 
+>> I'm posting this in case it helps some other developers getting build
+>> failure.
+>>
+>> Recently package nlsr that I maintain got a message that it failed to
+>> build on
+>> some platforms. The exact source of the problem is still to be illuminated,
+>> but seems to be in knitr::render and/or pandoc or an unfortunate
+>> interaction.
+>> An update to pandoc triggered a failure to process a vignette that had been
+>> happily processed for several years. The error messages are unhelpful, at
+>> least
+>> to me,
+>>
+>>      Error at "nlsr-devdoc.knit.md" (line 5419, column 1):
+>>      unexpected end of input
+>>      Error: pandoc document conversion failed with error 64
+>>      Execution halted
+>>
+>> Unfortunately, adding "keep_md: TRUE" (you need upper case TRUE to save it
+>> when
+>> there is no error of this type), did not save the intermediate file in this
+>> case. However, searching for "pandoc error 64" presented one web page
+>> where the author
+>> used brute force search of his document by removing / replacing sections
+>> to find
+>> the line(s) that caused trouble. This is a little tedious, but effective.
+>> In my
+>> case, the offending line turned out to be a copied and pasted URL
+>>
+>> https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm
+>>
+>> The coded characters can be replaced by a hyphen, to give,
+>>
+>> https://en.wikipedia.org/wiki/Levenberg-Marquardt_algorithm
+>>
+>> and this, when pasted in Mozilla Firefox at least, will go to the
+>> appropriate
+>> wikipedia page.
+>>
+>> I'd be interested in hearing from others who have had similar
+>> difficulties. I
+>> suspect this is relatively rare, and causing some sort of infelicity in the
+>> output of knitr::render that then trips up some versions of pandoc, that
+>> may,
+>> for instance, be now applying stricter rules to URL syntax.
+>>
+>> Best,
+>>
+>> John Nash
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
