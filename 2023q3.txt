@@ -17264,3 +17264,242 @@ On 9/2/23 4:23 PM, Greg Hunt wrote:
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Sun Sep  3 16:29:07 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Sun, 3 Sep 2023 16:29:07 +0200
+Subject: [R-pkg-devel] URL syntax causes R CMD build failure - a fix
+In-Reply-To: <3c92fa11-44c7-cecc-6703-575394d8c539@effectivedefense.org>
+References: <97289a48-a5f3-090e-454b-f6a07fba9962@gmail.com>
+ <CAAS8PA+p0rJkE5Atq2rYrbBSFtmLbWsWii_NtwZkyhxG=hKg3g@mail.gmail.com>
+ <3c92fa11-44c7-cecc-6703-575394d8c539@effectivedefense.org>
+Message-ID: <4e9e5a74-0e11-6b64-c4a8-3f2ad7f7b9c6@statistik.tu-dortmund.de>
+
+John can you point us to an example?
+Where is it in your package and what is the R CMD check output?
+
+Guess: Within an Rd file you have to escape the %  characters otherwise 
+they start a comment.
+
+Best,
+Uwe Ligges
+
+
+
+On 03.09.2023 00:30, Spencer Graves wrote:
+> I've encountered similar issues. However, it has been long enough ago 
+> that I don't remember enough details to say more without trying to 
+> update my CRAN packages to see what messages I get and maybe researching 
+> my notes from previous problems of this nature. Spencer Graves
+> 
+> 
+> On 9/2/23 4:23 PM, Greg Hunt wrote:
+>> The percent encoded characters appear to be valid in that URL, suggesting
+>> that rejecting them is an error. That kind of error could occur when the
+>> software processing them converts them back to a non-unicode character 
+>> set.
+>>
+>> On Sun, 3 Sep 2023 at 4:34 am, J C Nash <profjcnash at gmail.com> wrote:
+>>
+>>> I'm posting this in case it helps some other developers getting build
+>>> failure.
+>>>
+>>> Recently package nlsr that I maintain got a message that it failed to
+>>> build on
+>>> some platforms. The exact source of the problem is still to be 
+>>> illuminated,
+>>> but seems to be in knitr::render and/or pandoc or an unfortunate
+>>> interaction.
+>>> An update to pandoc triggered a failure to process a vignette that 
+>>> had been
+>>> happily processed for several years. The error messages are 
+>>> unhelpful, at
+>>> least
+>>> to me,
+>>>
+>>> ???? Error at "nlsr-devdoc.knit.md" (line 5419, column 1):
+>>> ???? unexpected end of input
+>>> ???? Error: pandoc document conversion failed with error 64
+>>> ???? Execution halted
+>>>
+>>> Unfortunately, adding "keep_md: TRUE" (you need upper case TRUE to 
+>>> save it
+>>> when
+>>> there is no error of this type), did not save the intermediate file 
+>>> in this
+>>> case. However, searching for "pandoc error 64" presented one web page
+>>> where the author
+>>> used brute force search of his document by removing / replacing sections
+>>> to find
+>>> the line(s) that caused trouble. This is a little tedious, but 
+>>> effective.
+>>> In my
+>>> case, the offending line turned out to be a copied and pasted URL
+>>>
+>>> https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm
+>>>
+>>> The coded characters can be replaced by a hyphen, to give,
+>>>
+>>> https://en.wikipedia.org/wiki/Levenberg-Marquardt_algorithm
+>>>
+>>> and this, when pasted in Mozilla Firefox at least, will go to the
+>>> appropriate
+>>> wikipedia page.
+>>>
+>>> I'd be interested in hearing from others who have had similar
+>>> difficulties. I
+>>> suspect this is relatively rare, and causing some sort of infelicity 
+>>> in the
+>>> output of knitr::render that then trips up some versions of pandoc, that
+>>> may,
+>>> for instance, be now applying stricter rules to URL syntax.
+>>>
+>>> Best,
+>>>
+>>> John Nash
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>
+>>
+>> ????[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From pro|jcn@@h @end|ng |rom gm@||@com  Sun Sep  3 16:46:01 2023
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Sun, 3 Sep 2023 10:46:01 -0400
+Subject: [R-pkg-devel] URL syntax causes R CMD build failure - a fix
+In-Reply-To: <4e9e5a74-0e11-6b64-c4a8-3f2ad7f7b9c6@statistik.tu-dortmund.de>
+References: <97289a48-a5f3-090e-454b-f6a07fba9962@gmail.com>
+ <CAAS8PA+p0rJkE5Atq2rYrbBSFtmLbWsWii_NtwZkyhxG=hKg3g@mail.gmail.com>
+ <3c92fa11-44c7-cecc-6703-575394d8c539@effectivedefense.org>
+ <4e9e5a74-0e11-6b64-c4a8-3f2ad7f7b9c6@statistik.tu-dortmund.de>
+Message-ID: <031d54ed-9827-82c2-6423-51ac0351c553@gmail.com>
+
+Thanks Uwe. I think you may have the reason, esp. if the url is output as LaTex
+formatted text to the intermediate files.
+
+ > Where is it in your package and what is the R CMD check output?
+
+The issue was a failure to build the nlsr-devdoc.Rmd vignette. Unfortunately, the
+messages were as below (indented). The package passed in May and earlier, and
+failure occurred when pandoc updated recently on some platforms, so there is some
+change in the toolchain that triggered this. While pandoc is a wonderful tool, its
+message output can be very unhelpful. I've had difficulties outside of R converting
+LaTex to epub for some of my historical novels. In those cases I've also seen apparent
+success with "bits left out" which does upset the readers when the story has gaps.
+I've never resolved the "why?", but have managed to work around, sometimes by simply
+adding a vertical space (i.e., line ending), or otherwise rearranging text. It would
+be nice to know the reason, but as with the present issue, the reward is not worth
+the effort.
+
+I've also seen awkwardness with currency symbols, though that may be my own lack of
+detailed knowledge with LaTex. I need multiple currencies in some stories, and end
+up editing with Sigil. I anticipate that some R users with vignettes that have
+several currencies might want to check output.
+
+Whether or not the url syntax that caused the present trouble is valid or not, the
+percentage signs are likely worth avoiding if possible.
+
+Thanks,
+
+JN
+
+On 2023-09-03 10:29, Uwe Ligges wrote:
+> John can you point us to an example?
+> Where is it in your package and what is the R CMD check output?
+> 
+> Guess: Within an Rd file you have to escape the %? characters otherwise they start a comment.
+> 
+> Best,
+> Uwe Ligges
+> 
+> 
+> 
+> On 03.09.2023 00:30, Spencer Graves wrote:
+>> I've encountered similar issues. However, it has been long enough ago that I don't remember enough details to say more 
+>> without trying to update my CRAN packages to see what messages I get and maybe researching my notes from previous 
+>> problems of this nature. Spencer Graves
+>>
+>>
+>> On 9/2/23 4:23 PM, Greg Hunt wrote:
+>>> The percent encoded characters appear to be valid in that URL, suggesting
+>>> that rejecting them is an error. That kind of error could occur when the
+>>> software processing them converts them back to a non-unicode character set.
+>>>
+>>> On Sun, 3 Sep 2023 at 4:34 am, J C Nash <profjcnash at gmail.com> wrote:
+>>>
+>>>> I'm posting this in case it helps some other developers getting build
+>>>> failure.
+>>>>
+>>>> Recently package nlsr that I maintain got a message that it failed to
+>>>> build on
+>>>> some platforms. The exact source of the problem is still to be illuminated,
+>>>> but seems to be in knitr::render and/or pandoc or an unfortunate
+>>>> interaction.
+>>>> An update to pandoc triggered a failure to process a vignette that had been
+>>>> happily processed for several years. The error messages are unhelpful, at
+>>>> least
+>>>> to me,
+>>>>
+>>>> ???? Error at "nlsr-devdoc.knit.md" (line 5419, column 1):
+>>>> ???? unexpected end of input
+>>>> ???? Error: pandoc document conversion failed with error 64
+>>>> ???? Execution halted
+>>>>
+>>>> Unfortunately, adding "keep_md: TRUE" (you need upper case TRUE to save it
+>>>> when
+>>>> there is no error of this type), did not save the intermediate file in this
+>>>> case. However, searching for "pandoc error 64" presented one web page
+>>>> where the author
+>>>> used brute force search of his document by removing / replacing sections
+>>>> to find
+>>>> the line(s) that caused trouble. This is a little tedious, but effective.
+>>>> In my
+>>>> case, the offending line turned out to be a copied and pasted URL
+>>>>
+>>>> https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm
+>>>>
+>>>> The coded characters can be replaced by a hyphen, to give,
+>>>>
+>>>> https://en.wikipedia.org/wiki/Levenberg-Marquardt_algorithm
+>>>>
+>>>> and this, when pasted in Mozilla Firefox at least, will go to the
+>>>> appropriate
+>>>> wikipedia page.
+>>>>
+>>>> I'd be interested in hearing from others who have had similar
+>>>> difficulties. I
+>>>> suspect this is relatively rare, and causing some sort of infelicity in the
+>>>> output of knitr::render that then trips up some versions of pandoc, that
+>>>> may,
+>>>> for instance, be now applying stricter rules to URL syntax.
+>>>>
+>>>> Best,
+>>>>
+>>>> John Nash
+>>>>
+>>>> ______________________________________________
+>>>> R-package-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>
+>>>
+>>> ????[[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
