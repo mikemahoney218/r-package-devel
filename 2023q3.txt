@@ -18983,3 +18983,158 @@ Regards,
 Shu Fai
 
 
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Tue Sep 19 11:02:41 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Tue, 19 Sep 2023 11:02:41 +0200
+Subject: [R-pkg-devel] Checking the number of cores used
+In-Reply-To: <CAPVJd2UYAEOZj=i2rBRVp9v+_3fZ=VTK9Ky0fOfWxWdWZM4E_Q@mail.gmail.com>
+References: <CAPVJd2UYAEOZj=i2rBRVp9v+_3fZ=VTK9Ky0fOfWxWdWZM4E_Q@mail.gmail.com>
+Message-ID: <68aca5fd-63af-75a5-d97a-41cc357b9cb3@statistik.tu-dortmund.de>
+
+
+
+On 18.09.2023 16:10, Shu Fai Cheung wrote:
+> Hi All,
+> 
+> I know we should not use more than 2 cores in tests, vignettes, etc. I
+> encountered and solved this issue before. However, I still committed
+> this mistake in a new package and would like find out where the cause
+> is.
+> 
+> I have a package that already has parallel processing disabled by
+> default and I did not enable parallel processing in the examples and
+> tests (except for one test, which is always skipped by skip()).
+> However, I was told that somewhere in the package more than 2 cores
+> are used.
+> 
+> I checked several times and even added a temporary 'stop()` to "trap"
+> parallel processing but still could not find where the source of the
+> problem is.
+> 
+> I checked the timing in the log in R CMD check results from winbuilder
+> but everything seems OK. The user time and elapsed time are similar
+> for all the examples.
+> 
+> Is there any quick way to check where things go wrong regarding the
+> number of cores? It is not easy to find the source of the problems
+> when there are many examples and tests.
+
+If it is OK on winbuilder but not on Linux, then likely something makes 
+use of multithreading.
+
+Best,
+Uwe Ligges
+
+
+
+> Regards,
+> Shu Fai
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Sep 19 11:59:22 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 19 Sep 2023 05:59:22 -0400
+Subject: [R-pkg-devel] Checking the number of cores used
+In-Reply-To: <CAPVJd2UYAEOZj=i2rBRVp9v+_3fZ=VTK9Ky0fOfWxWdWZM4E_Q@mail.gmail.com>
+References: <CAPVJd2UYAEOZj=i2rBRVp9v+_3fZ=VTK9Ky0fOfWxWdWZM4E_Q@mail.gmail.com>
+Message-ID: <5986f124-8ba6-4ee2-bd09-2035fb94f421@gmail.com>
+
+On 18/09/2023 10:10 a.m., Shu Fai Cheung wrote:
+> Hi All,
+> 
+> I know we should not use more than 2 cores in tests, vignettes, etc. I
+> encountered and solved this issue before. However, I still committed
+> this mistake in a new package and would like find out where the cause
+> is.
+> 
+> I have a package that already has parallel processing disabled by
+> default and I did not enable parallel processing in the examples and
+> tests (except for one test, which is always skipped by skip()).
+> However, I was told that somewhere in the package more than 2 cores
+> are used.
+> 
+> I checked several times and even added a temporary 'stop()` to "trap"
+> parallel processing but still could not find where the source of the
+> problem is.
+> 
+> I checked the timing in the log in R CMD check results from winbuilder
+> but everything seems OK. The user time and elapsed time are similar
+> for all the examples.
+> 
+> Is there any quick way to check where things go wrong regarding the
+> number of cores? It is not easy to find the source of the problems
+> when there are many examples and tests.
+
+If you run R CMD check <pkg> at the command line, it will produce a 
+directory *.Rcheck containing a number of files.  One of those files 
+will be *-Ex.timings, which will give the individual timings of each of 
+the examples in your package.  Maybe you can recognize from those which 
+of the examples are problematic ones, and add `proc.time()` calls to the 
+example to figure out which line(s) cause the issue.
+
+I don't remember whether winbuilder keeps the timings file when it runs 
+a check.
+
+Duncan Murdoch
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Sep 19 12:10:06 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 19 Sep 2023 06:10:06 -0400
+Subject: [R-pkg-devel] Checking the number of cores used
+In-Reply-To: <5986f124-8ba6-4ee2-bd09-2035fb94f421@gmail.com>
+References: <CAPVJd2UYAEOZj=i2rBRVp9v+_3fZ=VTK9Ky0fOfWxWdWZM4E_Q@mail.gmail.com>
+ <5986f124-8ba6-4ee2-bd09-2035fb94f421@gmail.com>
+Message-ID: <de73881f-15ef-4cbc-9bc2-a2aa750cafab@gmail.com>
+
+Sorry, I missed the --as-cran option:  you run
+
+  R CMD check --as-cran <pkg>
+
+Duncan Murdoch
+
+On 19/09/2023 5:59 a.m., Duncan Murdoch wrote:
+> On 18/09/2023 10:10 a.m., Shu Fai Cheung wrote:
+>> Hi All,
+>>
+>> I know we should not use more than 2 cores in tests, vignettes, etc. I
+>> encountered and solved this issue before. However, I still committed
+>> this mistake in a new package and would like find out where the cause
+>> is.
+>>
+>> I have a package that already has parallel processing disabled by
+>> default and I did not enable parallel processing in the examples and
+>> tests (except for one test, which is always skipped by skip()).
+>> However, I was told that somewhere in the package more than 2 cores
+>> are used.
+>>
+>> I checked several times and even added a temporary 'stop()` to "trap"
+>> parallel processing but still could not find where the source of the
+>> problem is.
+>>
+>> I checked the timing in the log in R CMD check results from winbuilder
+>> but everything seems OK. The user time and elapsed time are similar
+>> for all the examples.
+>>
+>> Is there any quick way to check where things go wrong regarding the
+>> number of cores? It is not easy to find the source of the problems
+>> when there are many examples and tests.
+> 
+> If you run R CMD check <pkg> at the command line, it will produce a
+> directory *.Rcheck containing a number of files.  One of those files
+> will be *-Ex.timings, which will give the individual timings of each of
+> the examples in your package.  Maybe you can recognize from those which
+> of the examples are problematic ones, and add `proc.time()` calls to the
+> example to figure out which line(s) cause the issue.
+> 
+> I don't remember whether winbuilder keeps the timings file when it runs
+> a check.
+> 
+> Duncan Murdoch
+>
+
+
