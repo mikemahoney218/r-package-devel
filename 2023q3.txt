@@ -19138,3 +19138,246 @@ On 19/09/2023 5:59 a.m., Duncan Murdoch wrote:
 >
 
 
+From @hu|@|@cheung @end|ng |rom gm@||@com  Wed Sep 20 10:09:09 2023
+From: @hu|@|@cheung @end|ng |rom gm@||@com (Shu Fai Cheung)
+Date: Wed, 20 Sep 2023 16:09:09 +0800
+Subject: [R-pkg-devel] Checking the number of cores used
+In-Reply-To: <5986f124-8ba6-4ee2-bd09-2035fb94f421@gmail.com>
+References: <CAPVJd2UYAEOZj=i2rBRVp9v+_3fZ=VTK9Ky0fOfWxWdWZM4E_Q@mail.gmail.com>
+ <5986f124-8ba6-4ee2-bd09-2035fb94f421@gmail.com>
+Message-ID: <CAPVJd2U7QhqvkgocA+OZrVMqh6Axgk0h5m8c9OYB0nZz-eXa6A@mail.gmail.com>
+
+Thanks a lot. I don't have a physical linux box and so I need to use
+rhub. But I don't know why there are no "-Ex.timings" files in the
+check. E.g,
+
+check(platform = "debian-gcc-release", show_status = FALSE, check_args
+= "--as-cran")
+
+I can only see these files in artifacts:
+
+[ ]    00check.log    2023-09-20 08:00     3.4K
+[ ]    00install.out    2023-09-20 08:00     702
+[ ]    Rdlatex.log    2023-09-20 08:00     30K
+[ ]    modelbpp-Ex.Rout    2023-09-20 08:00     28K
+[ ]    modelbpp-manual.log    2023-09-20 08:00     19K
+
+The case is the same for this, no "-Ex.timings" files:
+
+check(platform = "windows-x86_64-release", show_status = FALSE,
+check_args = "--as-cran")
+
+Although I think I need to, I tried adding "--timings" but still do
+not see the "-Ex.timings".
+
+However, if I run the check locally in Windows 10 using R CMD check
+with --as-cran, I can find the "-Ex.timings" files.
+
+I can find the total time at the end of "-Ex.Rout" but I think this is
+not what I need:
+
+> base::cat("Time elapsed: ", proc.time() - base::get("ptime", pos = 'CheckExEnv'),"\n")
+Time elapsed:  10.963 0.161 13.589 0.302 0.081
+
+Regards,
+Shu Fai
+
+
+On Tue, Sep 19, 2023 at 5:59?PM Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>
+> On 18/09/2023 10:10 a.m., Shu Fai Cheung wrote:
+> > Hi All,
+> >
+> > I know we should not use more than 2 cores in tests, vignettes, etc. I
+> > encountered and solved this issue before. However, I still committed
+> > this mistake in a new package and would like find out where the cause
+> > is.
+> >
+> > I have a package that already has parallel processing disabled by
+> > default and I did not enable parallel processing in the examples and
+> > tests (except for one test, which is always skipped by skip()).
+> > However, I was told that somewhere in the package more than 2 cores
+> > are used.
+> >
+> > I checked several times and even added a temporary 'stop()` to "trap"
+> > parallel processing but still could not find where the source of the
+> > problem is.
+> >
+> > I checked the timing in the log in R CMD check results from winbuilder
+> > but everything seems OK. The user time and elapsed time are similar
+> > for all the examples.
+> >
+> > Is there any quick way to check where things go wrong regarding the
+> > number of cores? It is not easy to find the source of the problems
+> > when there are many examples and tests.
+>
+> If you run R CMD check <pkg> at the command line, it will produce a
+> directory *.Rcheck containing a number of files.  One of those files
+> will be *-Ex.timings, which will give the individual timings of each of
+> the examples in your package.  Maybe you can recognize from those which
+> of the examples are problematic ones, and add `proc.time()` calls to the
+> example to figure out which line(s) cause the issue.
+>
+> I don't remember whether winbuilder keeps the timings file when it runs
+> a check.
+>
+> Duncan Murdoch
+>
+
+
+From @hu|@|@cheung @end|ng |rom gm@||@com  Wed Sep 20 10:27:31 2023
+From: @hu|@|@cheung @end|ng |rom gm@||@com (Shu Fai Cheung)
+Date: Wed, 20 Sep 2023 16:27:31 +0800
+Subject: [R-pkg-devel] Checking the number of cores used
+In-Reply-To: <68aca5fd-63af-75a5-d97a-41cc357b9cb3@statistik.tu-dortmund.de>
+References: <CAPVJd2UYAEOZj=i2rBRVp9v+_3fZ=VTK9Ky0fOfWxWdWZM4E_Q@mail.gmail.com>
+ <68aca5fd-63af-75a5-d97a-41cc357b9cb3@statistik.tu-dortmund.de>
+Message-ID: <CAPVJd2Xmfmy1D+0qVkDs-PkgN9oBNPZXenDUkNDQr93fYHOcAA@mail.gmail.com>
+
+Thanks for the suggestion. I will use rhub and a virtual machine to check again.
+
+I read some previous posts and I thought I need to check the times to
+see if there is any unintended usage of parallel processing, e.g., CPU
+time > 2 x elapsed time. May I ask a few questions on this part?
+
+This is from the "-Ex.Rout" file:
+
+> base::cat("Time elapsed: ", proc.time() - base::get("ptime", pos = 'CheckExEnv'),"\n")
+Time elapsed:  14.94 0.27 15.26 NA NA
+
+First, is this something I can ignore, unless the CPU time is
+substantially larger than elapsed time? This is the total time but the
+parallel process may be triggered in only one of the many examples.
+
+Second, are the files "-Ex.timings", showing per-example timing, only
+available on some platforms? I could get it locally in Windows, and
+can find it in Winbuilder output. However, I could not find them in
+the rhub platforms I tried, not even in the Windows platform. I
+suppose adding "--as-cran" will also add "--timings"?
+
+Third, the "testthat.Rout" file only shows the total time:
+
+> proc.time()
+   user  system elapsed
+ 13.530   0.291  29.492
+
+I believe the user time is not useful as we can use two processes in
+testthat. How can we detect the use of more than two cores in the
+tests?
+
+Last, how can we detect the use of more than two cores in vignettes? I
+checked and couldn't find similar timing information on vignettes.
+
+Sorry for asking so many questions. I would like to have a reliable
+way to detect hidden use of parallel processing such that I can
+prevent the problem from happening. I have some ideas which package I
+imported is causing the problem but I have used it before without
+problem. Therefore, I would like to see if I overlooked anything.
+
+Regards,
+Shu Fai
+
+On Tue, Sep 19, 2023 at 5:02?PM Uwe Ligges
+<ligges at statistik.tu-dortmund.de> wrote:
+>
+>
+>
+> On 18.09.2023 16:10, Shu Fai Cheung wrote:
+> > Hi All,
+> >
+> > I know we should not use more than 2 cores in tests, vignettes, etc. I
+> > encountered and solved this issue before. However, I still committed
+> > this mistake in a new package and would like find out where the cause
+> > is.
+> >
+> > I have a package that already has parallel processing disabled by
+> > default and I did not enable parallel processing in the examples and
+> > tests (except for one test, which is always skipped by skip()).
+> > However, I was told that somewhere in the package more than 2 cores
+> > are used.
+> >
+> > I checked several times and even added a temporary 'stop()` to "trap"
+> > parallel processing but still could not find where the source of the
+> > problem is.
+> >
+> > I checked the timing in the log in R CMD check results from winbuilder
+> > but everything seems OK. The user time and elapsed time are similar
+> > for all the examples.
+> >
+> > Is there any quick way to check where things go wrong regarding the
+> > number of cores? It is not easy to find the source of the problems
+> > when there are many examples and tests.
+>
+> If it is OK on winbuilder but not on Linux, then likely something makes
+> use of multithreading.
+>
+> Best,
+> Uwe Ligges
+>
+>
+>
+> > Regards,
+> > Shu Fai
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Sep 20 11:08:32 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 20 Sep 2023 09:08:32 +0000
+Subject: [R-pkg-devel] Checking the number of cores used
+In-Reply-To: <CAPVJd2Xmfmy1D+0qVkDs-PkgN9oBNPZXenDUkNDQr93fYHOcAA@mail.gmail.com>
+References: <CAPVJd2UYAEOZj=i2rBRVp9v+_3fZ=VTK9Ky0fOfWxWdWZM4E_Q@mail.gmail.com>
+ <68aca5fd-63af-75a5-d97a-41cc357b9cb3@statistik.tu-dortmund.de>
+ <CAPVJd2Xmfmy1D+0qVkDs-PkgN9oBNPZXenDUkNDQr93fYHOcAA@mail.gmail.com>
+Message-ID: <CB7D8DC0-4969-4B9D-9210-B04E2191951F@gmail.com>
+
+20 ???????? 2023 ?. 8:27:31 UTC, Shu Fai Cheung <shufai.cheung at gmail.com> ?????:
+
+>Third, the "testthat.Rout" file only shows the total time:
+>
+>> proc.time()
+>   user  system elapsed
+> 13.530   0.291  29.492
+>
+>I believe the user time is not useful as we can use two processes in
+>testthat. How can we detect the use of more than two cores in the
+>tests?
+R could report CPU and elapsed tme for each test file in tests/*.R, but with testthat, it only sees tests/testthat.R, which isn't very useful.
+
+If you know R6, it should be possible to implement a CPUTimeReporter that would collect information about CPU and "wallclock" time taken by each individual test: https://testthat.r-lib.org/reference/Reporter.html
+
+It may be worth submitting a feature request for such a reporter.
+-- 
+Best regards,
+Ivan
+
+
+From h@nyu@@ong @end|ng |rom duke@edu  Thu Sep 21 02:03:11 2023
+From: h@nyu@@ong @end|ng |rom duke@edu (Hanyu Song)
+Date: Thu, 21 Sep 2023 00:03:11 +0000
+Subject: [R-pkg-devel] A simple question regarding examples
+Message-ID: <BN7PR05MB446682F3EE8AA00D37021AFAEFF2A@BN7PR05MB4466.namprd05.prod.outlook.com>
+
+Hello,
+
+I have a simple question about including examples. My code depends on a rarely used Python module, so I am using the @examplesIf tag per Hadley Wickham's advice as follows:
+
+#' @examplesIf reticulate::py_module_available('ctef')
+#'  res <- my_func(input1, input2)
+
+Unfortunately, my_func runs overtime during the CRAN check. To resolve this, do I simply use the less elegant approach as follows?
+
+#' \dontrun{
+#' if (reticulate::py_module_available('ctef')) {
+#' res <- my_func(input1, input2)
+#' }
+
+Thank you,
+Hanyu
+
+	[[alternative HTML version deleted]]
+
+
