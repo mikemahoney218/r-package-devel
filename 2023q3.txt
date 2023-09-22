@@ -19381,3 +19381,919 @@ Hanyu
 	[[alternative HTML version deleted]]
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Sep 21 09:07:03 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 21 Sep 2023 10:07:03 +0300
+Subject: [R-pkg-devel] A simple question regarding examples
+In-Reply-To: <BN7PR05MB446682F3EE8AA00D37021AFAEFF2A@BN7PR05MB4466.namprd05.prod.outlook.com>
+References: <BN7PR05MB446682F3EE8AA00D37021AFAEFF2A@BN7PR05MB4466.namprd05.prod.outlook.com>
+Message-ID: <20230921100703.6370122e@Tarkus>
+
+On Thu, 21 Sep 2023 00:03:11 +0000
+Hanyu Song <hanyu.song at duke.edu> wrote:
+
+> Unfortunately, my_func runs overtime during the CRAN check. To
+> resolve this, do I simply use the less elegant approach as follows?
+> 
+> #' \dontrun{
+> #' if (reticulate::py_module_available('ctef')) {
+> #' res <- my_func(input1, input2)
+> #' }
+
+\dontrun{} is reserved for things that either cannot be guaranteed to
+work (highly dependent on the user's system), involve examples of
+interactive input/output (e.g. ?debugger), or are potentially too
+destructive in case they break (e.g. ?connections). The \examples
+section should include running code, which example(your_func) should
+run. If there's only the \dontrun{} section, it won't pass the review.
+
+For things that ought to work, it's best to reduce inputs further until
+the example runs within the time limit. One remaining escape hatch is
+\donttest{}, but R CMD check --as-cran still involves running
+\donttest{} examples. Putting the whole example in a \donttest{}
+section doesn't sound like a good idea either.
+
+-- 
+Best regards,
+Ivan
+
+
+From j@goreck| @end|ng |rom w|t@edu@p|  Thu Sep 21 09:46:26 2023
+From: j@goreck| @end|ng |rom w|t@edu@p| (Jan Gorecki)
+Date: Thu, 21 Sep 2023 09:46:26 +0200
+Subject: [R-pkg-devel] safely allocate SEXP and handle failure
+Message-ID: <CAOO9MKVAhjSF8rQOpjjem+O+GdTBKZ6k_=ePQCr-F+q0tzdQoA@mail.gmail.com>
+
+Dear pkg developers
+
+I would like to safely allocate R object from C. By safely I mean
+that, I can test if allocation succeeded or failed, and then raise
+exception myself.
+R_alloc and allocVector both raises exception straightaway, so I am
+not able to handle failed allocation myself.
+In plain C it is something like that:
+
+int *x = malloc(nx*sizeof(int));
+if (!x) {
+  my_fun_to_set_exception_signal();
+  free(x);
+  return;
+}
+
+How can I do it for creating SEXP object?
+
+Best Regards,
+Jan Gorecki
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Sep 21 10:40:45 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 21 Sep 2023 11:40:45 +0300
+Subject: [R-pkg-devel] safely allocate SEXP and handle failure
+In-Reply-To: <CAOO9MKVAhjSF8rQOpjjem+O+GdTBKZ6k_=ePQCr-F+q0tzdQoA@mail.gmail.com>
+References: <CAOO9MKVAhjSF8rQOpjjem+O+GdTBKZ6k_=ePQCr-F+q0tzdQoA@mail.gmail.com>
+Message-ID: <20230921114045.330591f9@Tarkus>
+
+On Thu, 21 Sep 2023 09:46:26 +0200
+Jan Gorecki <j.gorecki at wit.edu.pl> wrote:
+
+> I would like to safely allocate R object from C. By safely I mean
+> that, I can test if allocation succeeded or failed, and then raise
+> exception myself.
+> R_alloc and allocVector both raises exception straightaway, so I am
+> not able to handle failed allocation myself.
+
+All R objects are subject to garbage collection (as potential garbage
+or at least as a source of information about live objects), so they
+have to be allocated by talking to the GC. (This also means that
+R_alloc() is not a good way to create new SEXPs.)
+
+It's not that it's impossible to return a failure code on allocation
+failures instead of performing a longjmp() away from your code, but
+since the rest of error handling in R works this way, extension code
+has to always be ready to be longjmp()'d away from at every R API call.
+
+How about catching the exception instead?
+
+struct alloc_args { SEXPTYPE type; R_xlen_t len; };
+
+static SEXP do_allocate(void * arguments) {
+ struct alloc_args * args = arguments;
+ return allocVector(args->type, args->len);
+}
+
+static SEXP maybe_allocate(SEXPTYPE type, R_xlen_t len) {
+ struct alloc_args args = { .type = type, .len = len };
+ return R_tryCatchError(do_allocate, &args, NULL, NULL);
+} // returns R_NilValue on failure via the default tryCatch handler
+
+Code is untested but should work according to WRE:
+https://cran.r-project.org/doc/manuals/R-exts.html#Condition-handling-and-cleanup-code
+
+-- 
+Best regards,
+Ivan
+
+
+From ti@yiiiedi@iogs m@iii@g oii yse@gri@@com  Wed Sep 20 12:30:53 2023
+From: ti@yiiiedi@iogs m@iii@g oii yse@gri@@com (ti@yiiiedi@iogs m@iii@g oii yse@gri@@com)
+Date: Wed, 20 Sep 2023 12:30:53 +0200
+Subject: [R-pkg-devel] tinyfiledialogs - The bindings are ready,
+ but I need help to make of package of it
+In-Reply-To: <mailman.9577.0.1695200891.55128.r-package-devel@r-project.org>
+References: <mailman.9577.0.1695200891.55128.r-package-devel@r-project.org>
+Message-ID: <e65f8a78-5bed-e9a1-ba14-cd9959dda17b@ysengrin.com>
+
+https://tinyfiledialogs.sourceforge.net
+
+Hi,
+
+I am the author of tinyfiledialogs a cross-platform C C++ library 
+(windows, Mac, Unix) which offers many modal dialogs and popup 
+notifications (both for graphic and console modes). It aims to be 
+extremely easy to use. There is no init, no main loop, and no external 
+dependencies. It is used by hundreds projects on GitHub.
+
+The following github call returns almost 15000 files (you need to be 
+logged on github)
+
+https://github.com/search?q=tinyfd+OR+tinyfiledialogs&type=code
+
+
+With the latest version v3.14, I've just released the bindings for R.
+
+I've been pointed to the documentation link on how to write a package,
+but it would really help if someone who knows what to do could direct me.
+
+Thanks in advance
+
+Guillaume Vareille
+
+
+ ??? # first load the included library (it could easily be compiled on 
+the target machine)
+ ??? dyn.load("tinyfiledialogsLinux64.so")
+
+ ??? # then load the included R interface
+ ??? tinyfd_openFileDialog <- function(aTitle, aDefaultPathAndFile , 
+aNumOfFilterPatterns,
+ ??? ??? ??? ??? aFilterPatterns, aSingleFilterDescription , 
+aAllowMultipleSelects)
+ ??? {
+ ?? ?? result <- .C("tfd_openFileDialog",
+ ?? ???????? charToRaw(aTitle),
+ ??? ?? ? ?? lOpenFile = aDefaultPathAndFile ,
+ ??????? ??? as.integer(aNumOfFilterPatterns) ,
+ ??????? ??? aFilterPatterns ,
+ ??????? ??? charToRaw(aSingleFilterDescription) ,
+ ??????? ??? as.integer(aAllowMultipleSelects) )
+
+ ?? ?? if ( result$lOpenFile == "NULL" ) return()
+ ?? ?? else return(result$lOpenFile)
+ ??? }
+
+ ??? # now, you can call the dialog
+ ??? lFilename <- tinyfd_openFileDialog( "a title" , 
+"/Users/bardos/Documents/" , 1 , c ("*.txt","*.jpg") , "some files" , 0 )
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Sep 21 11:33:47 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 21 Sep 2023 12:33:47 +0300
+Subject: [R-pkg-devel] tinyfiledialogs - The bindings are ready,
+ but I need help to make of package of it
+In-Reply-To: <e65f8a78-5bed-e9a1-ba14-cd9959dda17b@ysengrin.com>
+References: <mailman.9577.0.1695200891.55128.r-package-devel@r-project.org>
+ <e65f8a78-5bed-e9a1-ba14-cd9959dda17b@ysengrin.com>
+Message-ID: <20230921123347.5c8401ca@Tarkus>
+
+Dear Guillaume Vareille,
+
+? Wed, 20 Sep 2023 12:30:53 +0200
+tinyfiledialogs at ysengrin.com ?????:
+
+> I've been pointed to the documentation link on how to write a package,
+> but it would really help if someone who knows what to do could direct
+> me.
+
+There's potentially a lot to tell. Converting the entire Writing R
+Extensions [*] into e-mails is a poor use of one's time. Do you have
+more specific questions? If you don't know where to start, try
+utils::package.skeleton or the pkgKitten package (which aims to pass R
+CMD check right from the start). There's also books like R Packages by
+Hadley Wickham and Jennifer Bryan, but they mention a lot of techniques
+and third-party dependencies that you don't have to use.
+
+>  ??? # first load the included library (it could easily be compiled
+> on the target machine)
+>  ??? dyn.load("tinyfiledialogsLinux64.so")
+
+You will need to put your source files into the src/ subdirectory of
+the package and arrange for them to get compiled (see WRE 1.1.5 and
+1.2.1). It's best to write a special entry point in order to let R know
+about the functions you intend to call (see WRE 5.4).
+
+Does your code have third-party dependencies? If you'd like to put the
+package on CRAN, you will need to bundle your own code with the package
+(since it's probably not available yet in major GNU/Linux
+distributions, macOS recipes and MXE) but set up a ./configure script
+to locate the third-party dependencies while the package is being
+installed: https://cran.r-project.org/web/packages/external_libs.html
+
+>  ?? ?? result <- .C("tfd_openFileDialog",
+>  ?? ???????? charToRaw(aTitle),
+
+In R, strings have encodings. A string can be stored in UTF-8, Latin-1,
+the native locale encoding (which may include anything from
+Windows-936 to KOI8-R) or even as arbitrary bytes, which admittedly
+makes it less of a string (see ?Encoding).
+
+x1 <- `Encoding<-`('fran\xe7ais', 'latin1')
+x2 <- `Encoding<-`('fran\xc3\xa7ais', 'UTF-8')
+x1 == x2 # TRUE, they encode the same characters
+identical(charToRaw(x1), charToRaw(x2)) # not even the same length
+
+Which encoding does tfd_openFileDialog() use for the file names and
+paths? Does it work with UCRT on Windows in UTF-8 locale mode? (Can you
+return a filename that is not representable in the ANSI codepage?) You
+will probably need to convert the strings into a certain encoding before
+passing them to tfd_openFileDialog(...) (e.g. enc2utf8(.)).
+
+>  ?? ?? if ( result$lOpenFile == "NULL" ) return()
+
+What happens if I create a file named NULL on my system and try to open
+it?
+
+Good luck, and I hope that your effort results in a good R package!
+
+-- 
+Best regards,
+Ivan
+
+[*] https://cran.r-project.org/doc/manuals/R-exts.html
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Sep 21 12:44:44 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 21 Sep 2023 06:44:44 -0400
+Subject: [R-pkg-devel] A simple question regarding examples
+In-Reply-To: <BN7PR05MB446682F3EE8AA00D37021AFAEFF2A@BN7PR05MB4466.namprd05.prod.outlook.com>
+References: <BN7PR05MB446682F3EE8AA00D37021AFAEFF2A@BN7PR05MB4466.namprd05.prod.outlook.com>
+Message-ID: <f944d404-7331-4c35-9ef6-445b66be2f7d@gmail.com>
+
+On 20/09/2023 8:03 p.m., Hanyu Song wrote:
+> Hello,
+> 
+> I have a simple question about including examples. My code depends on a rarely used Python module, so I am using the @examplesIf tag per Hadley Wickham's advice as follows:
+> 
+> #' @examplesIf reticulate::py_module_available('ctef')
+> #'  res <- my_func(input1, input2)
+> 
+> Unfortunately, my_func runs overtime during the CRAN check. To resolve this, do I simply use the less elegant approach as follows?
+> 
+> #' \dontrun{
+> #' if (reticulate::py_module_available('ctef')) {
+> #' res <- my_func(input1, input2)
+> #' }
+> 
+
+The @examplesIf comments are directed at Roxygen; R checks will never 
+look at them.  R will run tests based on what is in the my_func.Rd 
+examples section.  I'd guess that's pretty similar to your second 
+version (except for the \dontrun part, which you shouldn't use, as Ivan 
+said).
+
+Duncan Murdoch
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Sep 21 15:26:38 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 21 Sep 2023 16:26:38 +0300
+Subject: [R-pkg-devel] tinyfiledialogs - The bindings are ready,
+ but I need help to make of package of it
+In-Reply-To: <e860d8e7-e2d7-0679-c660-10e566de3d47@ysengrin.com>
+References: <mailman.9577.0.1695200891.55128.r-package-devel@r-project.org>
+ <e65f8a78-5bed-e9a1-ba14-cd9959dda17b@ysengrin.com>
+ <20230921123347.5c8401ca@Tarkus>
+ <e860d8e7-e2d7-0679-c660-10e566de3d47@ysengrin.com>
+Message-ID: <20230921162638.7a914608@arachnoid>
+
+? Thu, 21 Sep 2023 15:02:12 +0200
+Guillaume Vareille <guillaume at ysengrin.com> ?????:
+
+> There are no dependencies
+
+I see now, you're using dialog-style programs on Unix-like operating
+systems. That's clever.
+
+Note that CRAN packages are not allowed to take over the standard input
+and standard output, so you might have to #ifdef that out of the code
+for the R package, or maybe use R functions for terminal output instead
+of standard input/output.
+
+> and everything is considered/treated as UTF-8.
+
+Also very useful. Make sure to use enc2utf8 then.
+
+> I don't know what UCRT is
+
+UCRT stands for "universal C runtime", a new standard C library
+implementation that makes it possible to use UTF-8 as the "ANSI"
+encoding on Windows. Much less important you use the "W" (wchar_t) APIs
+on Windows.
+
+> I was hoping to find a tldr version of the "how to write an
+> extension".
+
+Start with utils::package.skeleton or pkgKitten and fill in the blanks
+until it both works and passes R CMD check --as-cran. (Start with R CMD
+check without --as-cran to have a less intimidating list of things to
+fix.)
+
+> What files are supposed to be in my package ? the C file
+> or the compiled shared libraries ?
+
+The C file goes into src/. Also add useDynLib(YOURPACKAGENAME) to the
+NAMESPACE file to avoid the need for dyn.load(potentially unknown path
+to the shared library) in your R function. For best results, declare
+your entry points as described in WRE 5.4.
+
+> What else ? a documentation file? is there a model to follow?
+
+Yes, any R function you export will need to have a corresponding help
+page in a man/*.Rd file. You can start with prompt() to create a
+skeleton to fill. I think that both utils::package.skeleton and
+pkgKitten will make you such a skeleton as part of the package if you
+give them an R function to put there.
+
+(Let's keep Cc: r-package-devel at r-project.org so that others on the
+list may offer their advice too.)
+
+-- 
+Best regards,
+Ivan
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Sep 21 16:37:06 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 21 Sep 2023 17:37:06 +0300
+Subject: [R-pkg-devel] safely allocate SEXP and handle failure
+In-Reply-To: <CAOO9MKV73=kAf5EqaaGn0kHRmbWwonp=H9_hJ8iFbFnQ+k5cKg@mail.gmail.com>
+References: <CAOO9MKVAhjSF8rQOpjjem+O+GdTBKZ6k_=ePQCr-F+q0tzdQoA@mail.gmail.com>
+ <20230921114045.330591f9@Tarkus>
+ <CAOO9MKV73=kAf5EqaaGn0kHRmbWwonp=H9_hJ8iFbFnQ+k5cKg@mail.gmail.com>
+Message-ID: <20230921173706.6310d2e5@arachnoid>
+
+? Thu, 21 Sep 2023 15:10:56 +0200
+Jan Gorecki <j.gorecki at wit.edu.pl> ?????:
+
+> Do you by any chance know any examples of using
+> R_withCallingErrorHandler? Or could you modify your example to use
+> this instead?
+
+Calling handlers are different from exiting handlers established by
+tryCatch. Instead of replacing the value of an expression that raised a
+condition with the return value of the exiting handler, calling
+handlers get an opportunity to clean up or invoke a so-called restart,
+but when they return, the execution continues:
+
+withCallingHandlers(stop("fatal"), error = function(cond) {
+ writeLines("I'm a calling handler, this is my argument:")
+ str(cond)
+})
+# I'm a calling handler, this is my argument:
+# List of 2
+#  $ message: chr "fatal"
+#  $ call   : language withCallingHandlers(stop("fatal"), ...
+#  - attr(*, "class")= chr [1:3] "simpleError" "error" "condition"
+# Error in withCallingHandlers(stop("fatal"), error = function(cond) { :
+#   fatal
+
+Since setting up restarts will involve calling into R, a complete
+solution will involve much more code than R_tryCatchError.
+
+-- 
+Best regards,
+Ivan
+
+
+From |r|end|y @end|ng |rom yorku@c@  Thu Sep 21 18:33:35 2023
+From: |r|end|y @end|ng |rom yorku@c@ (Michael L Friendly)
+Date: Thu, 21 Sep 2023 16:33:35 +0000
+Subject: [R-pkg-devel] roxygen style documentation for data sets
+Message-ID: <YT1PR01MB3146467327C21594C977E187ABF8A@YT1PR01MB3146.CANPRD01.PROD.OUTLOOK.COM>
+
+I have many datasets in a some of my packages, and always used `utils::promptData()` to generate the skeleton of a man/data.Rd file.
+Now that I've switched to roxygen style, I have found no simple equivalent. In fact, with RStudio tools for generating documentation
+for functions, it is surprising that documenting data has been overlooked.
+
+I solved this problem by simply editing `utils::promptData()` to replace .Rd style with equivalent roxygen tags.
+
+The result in now in a gist, https://gist.github.com/friendly/14f3ee1464213bb0b9fbcb489468383b
+I called this function `use_data_doc()`, because I thought it would be a welcome addition to the usethis package.
+
+I hope that someone on this list can advise how to make such a function available to all R package developers.
+
+-Michael
+
+---
+Michael Friendly     Email: friendly AT yorku DOT ca
+Professor, Psychology Dept.
+York University      Voice: 416 736-2100 x66249
+4700 Keele Street    Web: http://www.datavis.ca<http://www.datavis.ca/> | @datavisFriendly
+Toronto, ONT  M3J 1P3 CANADA
+
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Sep 21 19:37:13 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 21 Sep 2023 20:37:13 +0300
+Subject: [R-pkg-devel] roxygen style documentation for data sets
+In-Reply-To: <YT1PR01MB3146467327C21594C977E187ABF8A@YT1PR01MB3146.CANPRD01.PROD.OUTLOOK.COM>
+References: <YT1PR01MB3146467327C21594C977E187ABF8A@YT1PR01MB3146.CANPRD01.PROD.OUTLOOK.COM>
+Message-ID: <20230921203713.252d80c1@arachnoid>
+
+? Thu, 21 Sep 2023 16:33:35 +0000
+Michael L Friendly <friendly at yorku.ca> ?????:
+
+> I called this function `use_data_doc()`, because I thought it would
+> be a welcome addition to the usethis package.
+> 
+> I hope that someone on this list can advise how to make such a
+> function available to all R package developers.
+
+Perhaps a pull request to https://github.com/r-lib/usethis/pulls ?
+
+Should this function be considered a work derived from R? If yes, then
+(in my non-lawyer opinion) it retains its ownership by R Core and being
+licensed under GPL-2, which may be a problem for MIT-licensed usethis.
+
+-- 
+Best regards,
+Ivan
+
+
+From |r|end|y @end|ng |rom yorku@c@  Thu Sep 21 20:45:34 2023
+From: |r|end|y @end|ng |rom yorku@c@ (Michael L Friendly)
+Date: Thu, 21 Sep 2023 18:45:34 +0000
+Subject: [R-pkg-devel] roxygen style documentation for data sets
+In-Reply-To: <20230921203713.252d80c1@arachnoid>
+References: <YT1PR01MB3146467327C21594C977E187ABF8A@YT1PR01MB3146.CANPRD01.PROD.OUTLOOK.COM>
+ <20230921203713.252d80c1@arachnoid>
+Message-ID: <YT1PR01MB31464E71F1A5F0100E488DE1ABF8A@YT1PR01MB3146.CANPRD01.PROD.OUTLOOK.COM>
+
+Yes, if usethis is the most useful place for this to be, I suppose I should first flag this as an issue, and then issue a PR for my code.
+
+I don't understand the fine distinctions between GPL-2 and MIT licensed code.
+
+Perhaps some other developers can chime in here.
+
+-Michael
+
+-----Original Message-----
+From: Ivan Krylov <krylov.r00t at gmail.com> 
+Sent: Thursday, September 21, 2023 1:37 PM
+To: Michael L Friendly <friendly at yorku.ca>
+Cc: r-package-devel at r-project.org
+Subject: Re: [R-pkg-devel] roxygen style documentation for data sets
+
+? Thu, 21 Sep 2023 16:33:35 +0000
+Michael L Friendly <friendly at yorku.ca> ?????:
+
+> I called this function `use_data_doc()`, because I thought it would be 
+> a welcome addition to the usethis package.
+> 
+> I hope that someone on this list can advise how to make such a 
+> function available to all R package developers.
+
+Perhaps a pull request to https://github.com/r-lib/usethis/pulls ?
+
+Should this function be considered a work derived from R? If yes, then (in my non-lawyer opinion) it retains its ownership by R Core and being licensed under GPL-2, which may be a problem for MIT-licensed usethis.
+
+--
+Best regards,
+Ivan
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Thu Sep 21 21:23:21 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Thu, 21 Sep 2023 12:23:21 -0700
+Subject: [R-pkg-devel] [Tagged] Re: roxygen style documentation for data
+ sets
+In-Reply-To: <YT1PR01MB31464E71F1A5F0100E488DE1ABF8A@YT1PR01MB3146.CANPRD01.PROD.OUTLOOK.COM>
+References: <YT1PR01MB3146467327C21594C977E187ABF8A@YT1PR01MB3146.CANPRD01.PROD.OUTLOOK.COM>
+ <20230921203713.252d80c1@arachnoid>
+ <YT1PR01MB31464E71F1A5F0100E488DE1ABF8A@YT1PR01MB3146.CANPRD01.PROD.OUTLOOK.COM>
+Message-ID: <8A79C381-7C94-4F33-8E8E-1824EA93E55C@dcn.davis.ca.us>
+
+None of us here are lawyers, but a simple google search should take you to discussions such as [1]. There is a long history of debates about the upsides and downsides of restricting how people can use your source code.
+
+My short take is that a GPL license prevents anyone from stuffing your code into a proprietary box and selling it without your consent... they have to share just as much as you did. MIT doesn't prevent this hiding, so people working for companies are less likely to have trouble getting approval to use your code... but you may not have any access to their fixes either. Just different definitions of "freedom" playing out their implications.
+
+[1] https://en.m.wikipedia.org/wiki/MIT_License#:~:text=The%20GNU%20GPL%20is%20explicit,license%20does%20not%20discuss%20patents.
+
+On September 21, 2023 11:45:34 AM PDT, Michael L Friendly <friendly at yorku.ca> wrote:
+>Yes, if usethis is the most useful place for this to be, I suppose I should first flag this as an issue, and then issue a PR for my code.
+>
+>I don't understand the fine distinctions between GPL-2 and MIT licensed code.
+>
+>Perhaps some other developers can chime in here.
+>
+>-Michael
+>
+>-----Original Message-----
+>From: Ivan Krylov <krylov.r00t at gmail.com> 
+>Sent: Thursday, September 21, 2023 1:37 PM
+>To: Michael L Friendly <friendly at yorku.ca>
+>Cc: r-package-devel at r-project.org
+>Subject: Re: [R-pkg-devel] roxygen style documentation for data sets
+>
+>? Thu, 21 Sep 2023 16:33:35 +0000
+>Michael L Friendly <friendly at yorku.ca> ?????:
+>
+>> I called this function `use_data_doc()`, because I thought it would be 
+>> a welcome addition to the usethis package.
+>> 
+>> I hope that someone on this list can advise how to make such a 
+>> function available to all R package developers.
+>
+>Perhaps a pull request to https://github.com/r-lib/usethis/pulls ?
+>
+>Should this function be considered a work derived from R? If yes, then (in my non-lawyer opinion) it retains its ownership by R Core and being licensed under GPL-2, which may be a problem for MIT-licensed usethis.
+>
+>--
+>Best regards,
+>Ivan
+>______________________________________________
+>R-package-devel at r-project.org mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Sep 21 21:58:01 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 21 Sep 2023 15:58:01 -0400
+Subject: [R-pkg-devel] roxygen style documentation for data sets
+In-Reply-To: <YT1PR01MB3146467327C21594C977E187ABF8A@YT1PR01MB3146.CANPRD01.PROD.OUTLOOK.COM>
+References: <YT1PR01MB3146467327C21594C977E187ABF8A@YT1PR01MB3146.CANPRD01.PROD.OUTLOOK.COM>
+Message-ID: <0a753a93-97e9-4d98-8092-2a1a87c80207@gmail.com>
+
+Hi Michael.
+
+I don't know if you're an RStudio user, but this seems ideal as the 
+basis for an RStudio plug-in.  Just install it, then when you want to 
+generate docs for some dataset defined in R code, move to the start of 
+the definition and hit some hot key to insert the documentation skeleton 
+ahead of the data definition.
+
+Duncan Murdoch
+
+On 21/09/2023 12:33 p.m., Michael L Friendly wrote:
+> I have many datasets in a some of my packages, and always used `utils::promptData()` to generate the skeleton of a man/data.Rd file.
+> Now that I've switched to roxygen style, I have found no simple equivalent. In fact, with RStudio tools for generating documentation
+> for functions, it is surprising that documenting data has been overlooked.
+> 
+> I solved this problem by simply editing `utils::promptData()` to replace .Rd style with equivalent roxygen tags.
+> 
+> The result in now in a gist, https://gist.github.com/friendly/14f3ee1464213bb0b9fbcb489468383b
+> I called this function `use_data_doc()`, because I thought it would be a welcome addition to the usethis package.
+> 
+> I hope that someone on this list can advise how to make such a function available to all R package developers.
+> 
+> -Michael
+> 
+> ---
+> Michael Friendly     Email: friendly AT yorku DOT ca
+> Professor, Psychology Dept.
+> York University      Voice: 416 736-2100 x66249
+> 4700 Keele Street    Web: http://www.datavis.ca<http://www.datavis.ca/> | @datavisFriendly
+> Toronto, ONT  M3J 1P3 CANADA
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From j|ox @end|ng |rom mcm@@ter@c@  Thu Sep 21 22:05:22 2023
+From: j|ox @end|ng |rom mcm@@ter@c@ (John Fox)
+Date: Thu, 21 Sep 2023 16:05:22 -0400
+Subject: [R-pkg-devel] roxygen style documentation for data sets
+In-Reply-To: <YT1PR01MB3146467327C21594C977E187ABF8A@YT1PR01MB3146.CANPRD01.PROD.OUTLOOK.COM>
+References: <YT1PR01MB3146467327C21594C977E187ABF8A@YT1PR01MB3146.CANPRD01.PROD.OUTLOOK.COM>
+Message-ID: <30c5c011-cd44-402f-b228-8b73de5986a1@mcmaster.ca>
+
+Hi Michael,
+
+I'm no license expert either, but I too believe that while a 
+GPL-licensed package can incorporate MIT-licensed code, an MIT-licensed 
+package can't incorporate GPL-licensed code.
+
+One solution, I think, would be to put your use_data_doc() in a separate 
+GPL-licensed package, which then could be specified as a dependency of 
+usethis. Of course, the usethis developers would have to agree.
+
+I hope this helps,
+  John
+
+
+On 2023-09-21 12:33 p.m., Michael L Friendly wrote:
+> Caution: External email.
+> 
+> 
+> I have many datasets in a some of my packages, and always used `utils::promptData()` to generate the skeleton of a man/data.Rd file.
+> Now that I've switched to roxygen style, I have found no simple equivalent. In fact, with RStudio tools for generating documentation
+> for functions, it is surprising that documenting data has been overlooked.
+> 
+> I solved this problem by simply editing `utils::promptData()` to replace .Rd style with equivalent roxygen tags.
+> 
+> The result in now in a gist, https://gist.github.com/friendly/14f3ee1464213bb0b9fbcb489468383b
+> I called this function `use_data_doc()`, because I thought it would be a welcome addition to the usethis package.
+> 
+> I hope that someone on this list can advise how to make such a function available to all R package developers.
+> 
+> -Michael
+> 
+> ---
+> Michael Friendly     Email: friendly AT yorku DOT ca
+> Professor, Psychology Dept.
+> York University      Voice: 416 736-2100 x66249
+> 4700 Keele Street    Web: http://www.datavis.ca<http://www.datavis.ca/> | @datavisFriendly
+> Toronto, ONT  M3J 1P3 CANADA
+> 
+> 
+>          [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From |r|end|y @end|ng |rom yorku@c@  Thu Sep 21 22:30:11 2023
+From: |r|end|y @end|ng |rom yorku@c@ (Michael L Friendly)
+Date: Thu, 21 Sep 2023 20:30:11 +0000
+Subject: [R-pkg-devel] roxygen style documentation for data sets
+In-Reply-To: <0a753a93-97e9-4d98-8092-2a1a87c80207@gmail.com>
+References: <YT1PR01MB3146467327C21594C977E187ABF8A@YT1PR01MB3146.CANPRD01.PROD.OUTLOOK.COM>
+ <0a753a93-97e9-4d98-8092-2a1a87c80207@gmail.com>
+Message-ID: <YT1PR01MB31462CB5D1BD34F8A9CDC0E3ABF8A@YT1PR01MB3146.CANPRD01.PROD.OUTLOOK.COM>
+
+I am an RStudio user, and I could see this as a plugin somewhere, but I don't want to create a package just for this.
+
+I'd rather that my code could be adopted somewhere in the framework of devtools/usethis/ ... 
+
+It's so obvious that this tool should be there somewhere, particularly since RStudio makes it hard to work with .Rd files, except those generated by devtools (which shouldn't be
+edited). E.g., I have many legacy .Rd files for data. I can't select example code and click Run, as one can do with roxygen documentation in .R files.
+
+-Michael
+
+-----Original Message-----
+From: Duncan Murdoch <murdoch.duncan at gmail.com> 
+Sent: Thursday, September 21, 2023 3:58 PM
+To: Michael L Friendly <friendly at yorku.ca>; r-package-devel at r-project.org
+Subject: Re: [R-pkg-devel] roxygen style documentation for data sets
+
+Hi Michael.
+
+I don't know if you're an RStudio user, but this seems ideal as the basis for an RStudio plug-in.  Just install it, then when you want to generate docs for some dataset defined in R code, move to the start of the definition and hit some hot key to insert the documentation skeleton ahead of the data definition.
+
+Duncan Murdoch
+
+On 21/09/2023 12:33 p.m., Michael L Friendly wrote:
+> I have many datasets in a some of my packages, and always used `utils::promptData()` to generate the skeleton of a man/data.Rd file.
+> Now that I've switched to roxygen style, I have found no simple 
+> equivalent. In fact, with RStudio tools for generating documentation for functions, it is surprising that documenting data has been overlooked.
+> 
+> I solved this problem by simply editing `utils::promptData()` to replace .Rd style with equivalent roxygen tags.
+> 
+> The result in now in a gist, 
+> https://gist.github.com/friendly/14f3ee1464213bb0b9fbcb489468383b
+> I called this function `use_data_doc()`, because I thought it would be a welcome addition to the usethis package.
+> 
+> I hope that someone on this list can advise how to make such a function available to all R package developers.
+> 
+> -Michael
+> 
+> ---
+> Michael Friendly     Email: friendly AT yorku DOT ca
+> Professor, Psychology Dept.
+> York University      Voice: 416 736-2100 x66249
+> 4700 Keele Street    Web: http://www.datavis.ca<http://www.datavis.ca/> | @datavisFriendly
+> Toronto, ONT  M3J 1P3 CANADA
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list 
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Thu Sep 21 22:46:14 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Thu, 21 Sep 2023 13:46:14 -0700
+Subject: [R-pkg-devel] roxygen style documentation for data sets
+In-Reply-To: <YT1PR01MB31462CB5D1BD34F8A9CDC0E3ABF8A@YT1PR01MB3146.CANPRD01.PROD.OUTLOOK.COM>
+References: <YT1PR01MB3146467327C21594C977E187ABF8A@YT1PR01MB3146.CANPRD01.PROD.OUTLOOK.COM>
+ <0a753a93-97e9-4d98-8092-2a1a87c80207@gmail.com>
+ <YT1PR01MB31462CB5D1BD34F8A9CDC0E3ABF8A@YT1PR01MB3146.CANPRD01.PROD.OUTLOOK.COM>
+Message-ID: <C44D9E2F-B504-4F57-A3D1-2D67C80C3A6B@dcn.davis.ca.us>
+
+I thought roxygen supported documenting NULL constants for data.
+
+I do think roxygen ought to be able to co-exist with Rd files... but the claim that documenting data requires Rd files smells fishy to me.
+
+On September 21, 2023 1:30:11 PM PDT, Michael L Friendly <friendly at yorku.ca> wrote:
+>I am an RStudio user, and I could see this as a plugin somewhere, but I don't want to create a package just for this.
+>
+>I'd rather that my code could be adopted somewhere in the framework of devtools/usethis/ ... 
+>
+>It's so obvious that this tool should be there somewhere, particularly since RStudio makes it hard to work with .Rd files, except those generated by devtools (which shouldn't be
+>edited). E.g., I have many legacy .Rd files for data. I can't select example code and click Run, as one can do with roxygen documentation in .R files.
+>
+>-Michael
+>
+>-----Original Message-----
+>From: Duncan Murdoch <murdoch.duncan at gmail.com> 
+>Sent: Thursday, September 21, 2023 3:58 PM
+>To: Michael L Friendly <friendly at yorku.ca>; r-package-devel at r-project.org
+>Subject: Re: [R-pkg-devel] roxygen style documentation for data sets
+>
+>Hi Michael.
+>
+>I don't know if you're an RStudio user, but this seems ideal as the basis for an RStudio plug-in.  Just install it, then when you want to generate docs for some dataset defined in R code, move to the start of the definition and hit some hot key to insert the documentation skeleton ahead of the data definition.
+>
+>Duncan Murdoch
+>
+>On 21/09/2023 12:33 p.m., Michael L Friendly wrote:
+>> I have many datasets in a some of my packages, and always used `utils::promptData()` to generate the skeleton of a man/data.Rd file.
+>> Now that I've switched to roxygen style, I have found no simple 
+>> equivalent. In fact, with RStudio tools for generating documentation for functions, it is surprising that documenting data has been overlooked.
+>> 
+>> I solved this problem by simply editing `utils::promptData()` to replace .Rd style with equivalent roxygen tags.
+>> 
+>> The result in now in a gist, 
+>> https://gist.github.com/friendly/14f3ee1464213bb0b9fbcb489468383b
+>> I called this function `use_data_doc()`, because I thought it would be a welcome addition to the usethis package.
+>> 
+>> I hope that someone on this list can advise how to make such a function available to all R package developers.
+>> 
+>> -Michael
+>> 
+>> ---
+>> Michael Friendly     Email: friendly AT yorku DOT ca
+>> Professor, Psychology Dept.
+>> York University      Voice: 416 736-2100 x66249
+>> 4700 Keele Street    Web: http://www.datavis.ca<http://www.datavis.ca/> | @datavisFriendly
+>> Toronto, ONT  M3J 1P3 CANADA
+>> 
+>> 
+>> 	[[alternative HTML version deleted]]
+>> 
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list 
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+>______________________________________________
+>R-package-devel at r-project.org mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Sep 21 22:50:24 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 21 Sep 2023 16:50:24 -0400
+Subject: [R-pkg-devel] roxygen style documentation for data sets
+In-Reply-To: <YT1PR01MB31462CB5D1BD34F8A9CDC0E3ABF8A@YT1PR01MB3146.CANPRD01.PROD.OUTLOOK.COM>
+References: <YT1PR01MB3146467327C21594C977E187ABF8A@YT1PR01MB3146.CANPRD01.PROD.OUTLOOK.COM>
+ <0a753a93-97e9-4d98-8092-2a1a87c80207@gmail.com>
+ <YT1PR01MB31462CB5D1BD34F8A9CDC0E3ABF8A@YT1PR01MB3146.CANPRD01.PROD.OUTLOOK.COM>
+Message-ID: <ff4160ea-2f8f-4300-a95f-20399a2d5147@gmail.com>
+
+I just found a couple of packages with add-ins that do something like 
+this:  sinew (on CRAN) and docthis on Github at
+
+  https://github.com/mdlincoln/docthis
+
+I think neither of them is quite as smooth as the `Code | Insert Roxygen 
+Skeleton` menu item in RStudio, but both do handle dataframes, and it 
+doesn't.
+
+Duncan Murdoch
+
+On 21/09/2023 4:30 p.m., Michael L Friendly wrote:
+> I am an RStudio user, and I could see this as a plugin somewhere, but I don't want to create a package just for this.
+> 
+> I'd rather that my code could be adopted somewhere in the framework of devtools/usethis/ ...
+> 
+> It's so obvious that this tool should be there somewhere, particularly since RStudio makes it hard to work with .Rd files, except those generated by devtools (which shouldn't be
+> edited). E.g., I have many legacy .Rd files for data. I can't select example code and click Run, as one can do with roxygen documentation in .R files.
+> 
+> -Michael
+> 
+> -----Original Message-----
+> From: Duncan Murdoch <murdoch.duncan at gmail.com>
+> Sent: Thursday, September 21, 2023 3:58 PM
+> To: Michael L Friendly <friendly at yorku.ca>; r-package-devel at r-project.org
+> Subject: Re: [R-pkg-devel] roxygen style documentation for data sets
+> 
+> Hi Michael.
+> 
+> I don't know if you're an RStudio user, but this seems ideal as the basis for an RStudio plug-in.  Just install it, then when you want to generate docs for some dataset defined in R code, move to the start of the definition and hit some hot key to insert the documentation skeleton ahead of the data definition.
+> 
+> Duncan Murdoch
+> 
+> On 21/09/2023 12:33 p.m., Michael L Friendly wrote:
+>> I have many datasets in a some of my packages, and always used `utils::promptData()` to generate the skeleton of a man/data.Rd file.
+>> Now that I've switched to roxygen style, I have found no simple
+>> equivalent. In fact, with RStudio tools for generating documentation for functions, it is surprising that documenting data has been overlooked.
+>>
+>> I solved this problem by simply editing `utils::promptData()` to replace .Rd style with equivalent roxygen tags.
+>>
+>> The result in now in a gist,
+>> https://gist.github.com/friendly/14f3ee1464213bb0b9fbcb489468383b
+>> I called this function `use_data_doc()`, because I thought it would be a welcome addition to the usethis package.
+>>
+>> I hope that someone on this list can advise how to make such a function available to all R package developers.
+>>
+>> -Michael
+>>
+>> ---
+>> Michael Friendly     Email: friendly AT yorku DOT ca
+>> Professor, Psychology Dept.
+>> York University      Voice: 416 736-2100 x66249
+>> 4700 Keele Street    Web: http://www.datavis.ca<http://www.datavis.ca/> | @datavisFriendly
+>> Toronto, ONT  M3J 1P3 CANADA
+>>
+>>
+>> 	[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+From h@nyu@@ong @end|ng |rom duke@edu  Fri Sep 22 00:11:37 2023
+From: h@nyu@@ong @end|ng |rom duke@edu (Hanyu Song)
+Date: Thu, 21 Sep 2023 22:11:37 +0000
+Subject: [R-pkg-devel] A simple question regarding examples
+In-Reply-To: <f944d404-7331-4c35-9ef6-445b66be2f7d@gmail.com>
+References: <BN7PR05MB446682F3EE8AA00D37021AFAEFF2A@BN7PR05MB4466.namprd05.prod.outlook.com>
+ <f944d404-7331-4c35-9ef6-445b66be2f7d@gmail.com>
+Message-ID: <BN7PR05MB446677F5FFC452D80807268BEFF8A@BN7PR05MB4466.namprd05.prod.outlook.com>
+
+Hello Duncan and Ivan,
+
+Thank you for your prompt response! Perhaps I should add that:
+
+I don't think the Python module "ctef" exists on CRAN. Therefore, I am very surprised that the example below runs overtime, since all it has to do is to run reticulate::py_module_available('ctef'). If even this part is running overtime, I am not quite sure how to deal with it.
+
+#' if (reticulate::py_module_available('ctef')) {
+#' res <- my_func(input1, input2)
+#' }
+
+Looking forward to your reply.
+
+Best,
+Hanyu
+________________________________
+From: Duncan Murdoch <murdoch.duncan at gmail.com>
+Sent: Thursday, September 21, 2023 6:44 AM
+To: Hanyu Song <hanyu.song at duke.edu>; r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] A simple question regarding examples
+
+On 20/09/2023 8:03 p.m., Hanyu Song wrote:
+> Hello,
+>
+> I have a simple question about including examples. My code depends on a rarely used Python module, so I am using the @examplesIf tag per Hadley Wickham's advice as follows:
+>
+> #' @examplesIf reticulate::py_module_available('ctef')
+> #'  res <- my_func(input1, input2)
+>
+> Unfortunately, my_func runs overtime during the CRAN check. To resolve this, do I simply use the less elegant approach as follows?
+>
+> #' \dontrun{
+> #' if (reticulate::py_module_available('ctef')) {
+> #' res <- my_func(input1, input2)
+> #' }
+>
+
+The @examplesIf comments are directed at Roxygen; R checks will never
+look at them.  R will run tests based on what is in the my_func.Rd
+examples section.  I'd guess that's pretty similar to your second
+version (except for the \dontrun part, which you shouldn't use, as Ivan
+said).
+
+Duncan Murdoch
+
+	[[alternative HTML version deleted]]
+
+
