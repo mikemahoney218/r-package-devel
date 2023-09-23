@@ -20297,3 +20297,307 @@ Duncan Murdoch
 	[[alternative HTML version deleted]]
 
 
+From ti@yiiiedi@iogs m@iii@g oii yse@gri@@com  Fri Sep 22 07:33:22 2023
+From: ti@yiiiedi@iogs m@iii@g oii yse@gri@@com (ti@yiiiedi@iogs m@iii@g oii yse@gri@@com)
+Date: Fri, 22 Sep 2023 07:33:22 +0200
+Subject: [R-pkg-devel] tinyfiledialogs - The bindings are ready,
+ but I need help to make of package of it
+In-Reply-To: <20230921123347.5c8401ca@Tarkus>
+References: <mailman.9577.0.1695200891.55128.r-package-devel@r-project.org>
+ <e65f8a78-5bed-e9a1-ba14-cd9959dda17b@ysengrin.com>
+ <20230921123347.5c8401ca@Tarkus>
+Message-ID: <7d5ada13-9af7-f574-15ed-1ca8a7547f38@ysengrin.com>
+
+Hi,
+
+There are no dependencies and everything is considered/treated as UTF-8.
+On windows, I internally do all the conversions between UTF-8 and UTF-16.
+I also offer functions to convert between UTF-8 , UTF-16 and MBCS.
+I don't know what UCRT is, but tinyfiledialogs is compatible with all 
+versions of windows from XP to 11,
+all the versions of mac since osx 10.2 and all the unix versions I have 
+ever came accross.
+
+
+I was hoping to find a tldr version of the "how to write an extension".
+The source code is just one C file (+ header) and one R file for the 
+interface.
+What files are supposed to be in my package ? the C file or the compiled 
+shared libraries ?
+What else ? a documentation file ? is there a model to follow ?
+
+thanks for your help
+
+guillaume
+
+
+
+On 9/21/23 11:33, Ivan Krylov wrote:
+> Dear Guillaume Vareille,
+>
+> ? Wed, 20 Sep 2023 12:30:53 +0200
+> tinyfiledialogs at ysengrin.com  ?????:
+>
+>> I've been pointed to the documentation link on how to write a package,
+>> but it would really help if someone who knows what to do could direct
+>> me.
+> There's potentially a lot to tell. Converting the entire Writing R
+> Extensions [*] into e-mails is a poor use of one's time. Do you have
+> more specific questions? If you don't know where to start, try
+> utils::package.skeleton or the pkgKitten package (which aims to pass R
+> CMD check right from the start). There's also books like R Packages by
+> Hadley Wickham and Jennifer Bryan, but they mention a lot of techniques
+> and third-party dependencies that you don't have to use.
+>
+>>   ??? # first load the included library (it could easily be compiled
+>> on the target machine)
+>>   ??? dyn.load("tinyfiledialogsLinux64.so")
+> You will need to put your source files into the src/ subdirectory of
+> the package and arrange for them to get compiled (see WRE 1.1.5 and
+> 1.2.1). It's best to write a special entry point in order to let R know
+> about the functions you intend to call (see WRE 5.4).
+>
+> Does your code have third-party dependencies? If you'd like to put the
+> package on CRAN, you will need to bundle your own code with the package
+> (since it's probably not available yet in major GNU/Linux
+> distributions, macOS recipes and MXE) but set up a ./configure script
+> to locate the third-party dependencies while the package is being
+> installed:https://cran.r-project.org/web/packages/external_libs.html
+>
+>>   ?? ?? result <- .C("tfd_openFileDialog",
+>>   ?? ???????? charToRaw(aTitle),
+> In R, strings have encodings. A string can be stored in UTF-8, Latin-1,
+> the native locale encoding (which may include anything from
+> Windows-936 to KOI8-R) or even as arbitrary bytes, which admittedly
+> makes it less of a string (see ?Encoding).
+>
+> x1 <- `Encoding<-`('fran\xe7ais', 'latin1')
+> x2 <- `Encoding<-`('fran\xc3\xa7ais', 'UTF-8')
+> x1 == x2 # TRUE, they encode the same characters
+> identical(charToRaw(x1), charToRaw(x2)) # not even the same length
+>
+> Which encoding does tfd_openFileDialog() use for the file names and
+> paths? Does it work with UCRT on Windows in UTF-8 locale mode? (Can you
+> return a filename that is not representable in the ANSI codepage?) You
+> will probably need to convert the strings into a certain encoding before
+> passing them to tfd_openFileDialog(...) (e.g. enc2utf8(.)).
+>
+>>   ?? ?? if ( result$lOpenFile == "NULL" ) return()
+> What happens if I create a file named NULL on my system and try to open
+> it?
+>
+> Good luck, and I hope that your effort results in a good R package!
+>
+
+	[[alternative HTML version deleted]]
+
+
+From br@d|eyjeck @end|ng |rom gm@||@com  Fri Sep 22 10:06:38 2023
+From: br@d|eyjeck @end|ng |rom gm@||@com (Brad Eck)
+Date: Fri, 22 Sep 2023 09:06:38 +0100
+Subject: [R-pkg-devel] tinyfiledialogs - The bindings are ready,
+ but I need help to make of package of it
+In-Reply-To: <7d5ada13-9af7-f574-15ed-1ca8a7547f38@ysengrin.com>
+References: <mailman.9577.0.1695200891.55128.r-package-devel@r-project.org>
+ <e65f8a78-5bed-e9a1-ba14-cd9959dda17b@ysengrin.com>
+ <20230921123347.5c8401ca@Tarkus>
+ <7d5ada13-9af7-f574-15ed-1ca8a7547f38@ysengrin.com>
+Message-ID: <CALECgPZ3m9KxL8UfhWEy_BKBPCiQ=u3+CRH9nO25u5+dSgLMcQ@mail.gmail.com>
+
+Dear Guillaume -
+
+Here is a minimal example of an R package that uses C source:
+https://github.com/bradleyjeck/fancyRpkg
+
+As the timestamps show, I made this a few years ago, so some things might
+not conform to the current version of Writing R Extensions.  But it should
+get you started.
+
+The motivation I had was to provide an R package that binds to a simulation
+engine written in C.
+That package is on CRAN and could be used as a more in depth example:
+https://cran.r-project.org/package=epanet2toolkit
+
+Hope this helps,
+
+Brad
+
+
+
+On Fri, Sep 22, 2023 at 6:33?AM <tinyfiledialogs at ysengrin.com> wrote:
+
+> Hi,
+>
+> There are no dependencies and everything is considered/treated as UTF-8.
+> On windows, I internally do all the conversions between UTF-8 and UTF-16.
+> I also offer functions to convert between UTF-8 , UTF-16 and MBCS.
+> I don't know what UCRT is, but tinyfiledialogs is compatible with all
+> versions of windows from XP to 11,
+> all the versions of mac since osx 10.2 and all the unix versions I have
+> ever came accross.
+>
+>
+> I was hoping to find a tldr version of the "how to write an extension".
+> The source code is just one C file (+ header) and one R file for the
+> interface.
+> What files are supposed to be in my package ? the C file or the compiled
+> shared libraries ?
+> What else ? a documentation file ? is there a model to follow ?
+>
+> thanks for your help
+>
+> guillaume
+>
+>
+>
+> On 9/21/23 11:33, Ivan Krylov wrote:
+> > Dear Guillaume Vareille,
+> >
+> > ? Wed, 20 Sep 2023 12:30:53 +0200
+> > tinyfiledialogs at ysengrin.com  ?????:
+> >
+> >> I've been pointed to the documentation link on how to write a package,
+> >> but it would really help if someone who knows what to do could direct
+> >> me.
+> > There's potentially a lot to tell. Converting the entire Writing R
+> > Extensions [*] into e-mails is a poor use of one's time. Do you have
+> > more specific questions? If you don't know where to start, try
+> > utils::package.skeleton or the pkgKitten package (which aims to pass R
+> > CMD check right from the start). There's also books like R Packages by
+> > Hadley Wickham and Jennifer Bryan, but they mention a lot of techniques
+> > and third-party dependencies that you don't have to use.
+> >
+> >>       # first load the included library (it could easily be compiled
+> >> on the target machine)
+> >>       dyn.load("tinyfiledialogsLinux64.so")
+> > You will need to put your source files into the src/ subdirectory of
+> > the package and arrange for them to get compiled (see WRE 1.1.5 and
+> > 1.2.1). It's best to write a special entry point in order to let R know
+> > about the functions you intend to call (see WRE 5.4).
+> >
+> > Does your code have third-party dependencies? If you'd like to put the
+> > package on CRAN, you will need to bundle your own code with the package
+> > (since it's probably not available yet in major GNU/Linux
+> > distributions, macOS recipes and MXE) but set up a ./configure script
+> > to locate the third-party dependencies while the package is being
+> > installed:https://cran.r-project.org/web/packages/external_libs.html
+> >
+> >>         result <- .C("tfd_openFileDialog",
+> >>               charToRaw(aTitle),
+> > In R, strings have encodings. A string can be stored in UTF-8, Latin-1,
+> > the native locale encoding (which may include anything from
+> > Windows-936 to KOI8-R) or even as arbitrary bytes, which admittedly
+> > makes it less of a string (see ?Encoding).
+> >
+> > x1 <- `Encoding<-`('fran\xe7ais', 'latin1')
+> > x2 <- `Encoding<-`('fran\xc3\xa7ais', 'UTF-8')
+> > x1 == x2 # TRUE, they encode the same characters
+> > identical(charToRaw(x1), charToRaw(x2)) # not even the same length
+> >
+> > Which encoding does tfd_openFileDialog() use for the file names and
+> > paths? Does it work with UCRT on Windows in UTF-8 locale mode? (Can you
+> > return a filename that is not representable in the ANSI codepage?) You
+> > will probably need to convert the strings into a certain encoding before
+> > passing them to tfd_openFileDialog(...) (e.g. enc2utf8(.)).
+> >
+> >>         if ( result$lOpenFile == "NULL" ) return()
+> > What happens if I create a file named NULL on my system and try to open
+> > it?
+> >
+> > Good luck, and I hope that your effort results in a good R package!
+> >
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From ti@yiiiedi@iogs m@iii@g oii yse@gri@@com  Fri Sep 22 10:15:02 2023
+From: ti@yiiiedi@iogs m@iii@g oii yse@gri@@com (ti@yiiiedi@iogs m@iii@g oii yse@gri@@com)
+Date: Fri, 22 Sep 2023 10:15:02 +0200
+Subject: [R-pkg-devel] R interface to tinyfiledialog
+In-Reply-To: <c3e5f2fe3999ed39beb5ec3a3e8d2bba@waternumbers.co.uk>
+References: <c3e5f2fe3999ed39beb5ec3a3e8d2bba@waternumbers.co.uk>
+Message-ID: <134a31fc-3490-01b9-08de-9d614ae9fa11@ysengrin.com>
+
+I did my bindings using the easy .C interface
+did you use the morecomplete .CALL ?
+
+On 9/22/23 00:08, Paul Smith wrote:
+> Hi,
+>
+> Following your email to the r-package-dev list I tidied up some 
+> previous work I did with an R wrapper for the tinyfiledialog C code 
+> into a package which can be found here
+>
+> https://github.com/waternumbers/tinyfiledialogR
+>
+> It is largely untested (except on my linux machine - KDE, openSUSE 
+> tumbleweed) and not ready for CRAN but shows one way of interfacing to 
+> the code.
+>
+> Feel free to fork or submit pull requests as you see fit.
+>
+> cheers
+>
+> Paul
+>
+
+	[[alternative HTML version deleted]]
+
+
+From p@u| @end|ng |rom w@ternumber@@co@uk  Fri Sep 22 10:55:42 2023
+From: p@u| @end|ng |rom w@ternumber@@co@uk (Paul Smith)
+Date: Fri, 22 Sep 2023 09:55:42 +0100
+Subject: [R-pkg-devel] tinyfiledialogs - The bindings are ready,
+ but I need help to make of package of it
+Message-ID: <1a4913a7ec5ca5cbbf182d459dd8d7fa@waternumbers.co.uk>
+
+Hi Guillaume
+
+As Ivan says there is a fair bit to packaging but not to much when you 
+get used to it.
+
+Since your email I've put a mostly untested package wrapping 
+tingfiledialogs via Rcpp on github
+
+https://github.com/waternumbers/tinyfiledialogR
+
+It is far from fully tested but might help.
+
+cheers
+
+Paul
+
+-- 
+The information in this message and any attachments is l...{{dropped:9}}
+
+
+From A@J@God|rey @end|ng |rom m@@@ey@@c@nz  Sat Sep 23 02:35:42 2023
+From: A@J@God|rey @end|ng |rom m@@@ey@@c@nz (Jonathan Godfrey)
+Date: Sat, 23 Sep 2023 00:35:42 +0000
+Subject: [R-pkg-devel] .OnLoad v .OnAttach
+Message-ID: <MEAPR01MB38290F58B66382B9A907CB4093FEA@MEAPR01MB3829.ausprd01.prod.outlook.com>
+
+Hello all,
+
+An issue has been raised for my BrailleR package.   https://github.com/ajrgodfrey/BrailleR/issues/97#issuecomment-1732136521
+
+I do make use of an .OnLoad() function for various tasks, including creation of a folder to put stuff in. The user gets to choose if this is temporary or fixed if the session is interactive. (all in zzz.R
+
+What risks do I face if any of this .OnLoad() are moved to .OnAttach()?
+
+Thanks,
+Jonathan
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
