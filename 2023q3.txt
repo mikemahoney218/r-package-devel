@@ -20601,3 +20601,257 @@ Jonathan
 	[[alternative HTML version deleted]]
 
 
+From ti@yiiiedi@iogs m@iii@g oii yse@gri@@com  Sat Sep 23 09:02:12 2023
+From: ti@yiiiedi@iogs m@iii@g oii yse@gri@@com (ti@yiiiedi@iogs m@iii@g oii yse@gri@@com)
+Date: Sat, 23 Sep 2023 09:02:12 +0200
+Subject: [R-pkg-devel] tinyfiledialogs - The bindings are ready,
+ but I need help to make of package of it
+In-Reply-To: <1a4913a7ec5ca5cbbf182d459dd8d7fa@waternumbers.co.uk>
+References: <1a4913a7ec5ca5cbbf182d459dd8d7fa@waternumbers.co.uk>
+Message-ID: <5c69787f-0b7d-fb2f-0814-cdb03fb1d6fb@ysengrin.com>
+
+Thanks to everybody for the help and input.
+I happens that Paul was already working on preparing a tinyfiledialogs 
+package for R !
+As he seems to know what is doing much more than I do,
+I will let him go ahead with the .Call version he is preparing and will 
+provide assistance when needed.
+
+thanks again.
+
+guillaume
+
+On 9/22/23 10:55, Paul Smith wrote:
+> Hi Guillaume
+>
+> As Ivan says there is a fair bit to packaging but not to much when you 
+> get used to it.
+>
+> Since your email I've put a mostly untested package wrapping 
+> tingfiledialogs via Rcpp on github
+>
+> https://github.com/waternumbers/tinyfiledialogR
+>
+> It is far from fully tested but might help.
+>
+> cheers
+>
+> Paul
+>
+
+	[[alternative HTML version deleted]]
+
+
+From r@||@@tubner @end|ng |rom gm@||@com  Sat Sep 23 10:42:25 2023
+From: r@||@@tubner @end|ng |rom gm@||@com (Ralf Stubner)
+Date: Sat, 23 Sep 2023 08:42:25 +0000
+Subject: [R-pkg-devel] User defined RNG and code registration.
+Message-ID: <CAFQwRQyN1rGYCUR5wf96dfaomtCdQ8SOjBLkxZ6GCKkUrLo8NA@mail.gmail.com>
+
+Hi everybody,
+
+Section 5.4 of WRE suggests to use `R_useDynamicSymbols(dll, FALSE);`
+when registering C/C++ routines in R packages, and Rcpp does so
+automatically. ?Random.user describes a way to hook a user- defined
+RNG into R. However, it looks like these two things are not
+compatible, i.e. `user_unif_rand` et al. are not found, if dynamic
+symbols are not allowed. Or can one register these routines somehow
+even though they are not following one of the standard calling
+conventions?
+
+Thanks
+Ralf
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Sep 23 11:50:39 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 23 Sep 2023 05:50:39 -0400
+Subject: [R-pkg-devel] .OnLoad v .OnAttach
+In-Reply-To: <MEAPR01MB38290F58B66382B9A907CB4093FEA@MEAPR01MB3829.ausprd01.prod.outlook.com>
+References: <MEAPR01MB38290F58B66382B9A907CB4093FEA@MEAPR01MB3829.ausprd01.prod.outlook.com>
+Message-ID: <72daf1d4-857b-4102-ae95-63640dc28073@gmail.com>
+
+On 22/09/2023 8:35 p.m., Jonathan Godfrey wrote:
+> Hello all,
+> 
+> An issue has been raised for my BrailleR package.   https://github.com/ajrgodfrey/BrailleR/issues/97#issuecomment-1732136521
+> 
+> I do make use of an .OnLoad() function for various tasks, including creation of a folder to put stuff in. The user gets to choose if this is temporary or fixed if the session is interactive. (all in zzz.R
+> 
+> What risks do I face if any of this .OnLoad() are moved to .OnAttach()?
+
+If you move code from .onLoad() to .onAttach(), it won't be executed if 
+the user never calls library(BrailleR) or require(BrailleR).  (This is a 
+little simplified; there are other ways to attach a package, but they 
+are rarely used.  More details on loading vs attaching below.)
+
+If some setup is required by functions in your package even if they are 
+called from other packages, it belongs in .onLoad(). A less convenient 
+approach is for those functions to check whether the setup has happened 
+every time you call them, and execute it if not.
+
+Here are the details of the differences:
+
+Loading makes the exported functions in the package available to other 
+packages that import them, or call them using BrailleR::fn syntax.  The 
+latter is also possible for users, and also triggers loading.  Once a 
+package is loaded it normally stays loaded for the whole session, so 
+.onLoad() will only be called once.
+
+Attaching puts your package on the search list so that exported 
+functions are available to the user without the prefix.  It will always 
+be preceded by loading.  A user triggers attaching by making calls to 
+library() or require().
+
+If another package "Depends" on BrailleR, then loading that package will 
+cause BrailleR to be attached.  The guidelines recommend against this, 
+so most packages will use "Imports" instead.  That triggers loading but 
+not attaching.
+
+Duncan Murdoch
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Sep 23 12:00:56 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 23 Sep 2023 06:00:56 -0400
+Subject: [R-pkg-devel] User defined RNG and code registration.
+In-Reply-To: <CAFQwRQyN1rGYCUR5wf96dfaomtCdQ8SOjBLkxZ6GCKkUrLo8NA@mail.gmail.com>
+References: <CAFQwRQyN1rGYCUR5wf96dfaomtCdQ8SOjBLkxZ6GCKkUrLo8NA@mail.gmail.com>
+Message-ID: <421be7b3-227e-4582-8747-cbf2566ff62f@gmail.com>
+
+On 23/09/2023 4:42 a.m., Ralf Stubner wrote:
+> Hi everybody,
+> 
+> Section 5.4 of WRE suggests to use `R_useDynamicSymbols(dll, FALSE);`
+> when registering C/C++ routines in R packages, and Rcpp does so
+> automatically. ?Random.user describes a way to hook a user- defined
+> RNG into R. However, it looks like these two things are not
+> compatible, i.e. `user_unif_rand` et al. are not found, if dynamic
+> symbols are not allowed. Or can one register these routines somehow
+> even though they are not following one of the standard calling
+> conventions?
+
+I don't know the answer here, but section 6.16 of WRE suggests that you 
+could explicitly make your functions visible even if they default to 
+invisible.
+
+Duncan Murdoch
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sat Sep 23 21:30:31 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sat, 23 Sep 2023 22:30:31 +0300
+Subject: [R-pkg-devel] User defined RNG and code registration.
+In-Reply-To: <CAFQwRQyN1rGYCUR5wf96dfaomtCdQ8SOjBLkxZ6GCKkUrLo8NA@mail.gmail.com>
+References: <CAFQwRQyN1rGYCUR5wf96dfaomtCdQ8SOjBLkxZ6GCKkUrLo8NA@mail.gmail.com>
+Message-ID: <20230923223031.55e249ba@parabola>
+
+? Sat, 23 Sep 2023 08:42:25 +0000
+Ralf Stubner <ralf.stubner at gmail.com> ?????:
+
+> ?Random.user describes a way to hook a user- defined
+> RNG into R. However, it looks like these two things are not
+> compatible, i.e. `user_unif_rand` et al. are not found, if dynamic
+> symbols are not allowed.
+
+You're right! Looking at the code, if R_useDynamicSymbols(dll, FALSE)
+has been called for a DLL, the branch that calls dlsym() or
+GetProcAddress() to find symbols from that library by their shared
+object symbol names gets completely disabled; only the registered
+function names known to R matter at this point.
+
+> Or can one register these routines somehow even though they are not
+> following one of the standard calling conventions?
+
+It sounds unsatisfying, but if you register your user_unif_rand
+function with the right name and any of the ABIs supported by R, it
+sounds like it should work as long as you never call it using the
+.Call/.C/.Fortran ABI it's registered for.
+
+-- 
+Best regards,
+Ivan
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sat Sep 23 21:46:34 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sat, 23 Sep 2023 22:46:34 +0300
+Subject: [R-pkg-devel] A simple question regarding examples
+In-Reply-To: <BN7PR05MB446677F5FFC452D80807268BEFF8A@BN7PR05MB4466.namprd05.prod.outlook.com>
+References: <BN7PR05MB446682F3EE8AA00D37021AFAEFF2A@BN7PR05MB4466.namprd05.prod.outlook.com>
+ <f944d404-7331-4c35-9ef6-445b66be2f7d@gmail.com>
+ <BN7PR05MB446677F5FFC452D80807268BEFF8A@BN7PR05MB4466.namprd05.prod.outlook.com>
+Message-ID: <20230923224634.6b06a8fc@parabola>
+
+? Thu, 21 Sep 2023 22:11:37 +0000
+Hanyu Song <hanyu.song at duke.edu> ?????:
+
+> Therefore, I am very surprised that the example below runs overtime,
+> since all it has to do is to run
+> reticulate::py_module_available('ctef'). If even this part is running
+> overtime, I am not quite sure how to deal with it.
+
+Can you show the precise message given to you by the check?
+
+Are you able to reproduce the problem if you run R CMD check (for
+example) in a virtual machine without a working Python installation?
+
+It would explain the situation if the process was stuck asking the user
+for (e.g.) permission to install miniconda, but these prompts are all
+guarded by tests for interactive() and therefore shouldn't be happening.
+
+-- 
+Best regards,
+Ivan
+
+
+From r@||@@tubner @end|ng |rom gm@||@com  Sat Sep 23 23:35:48 2023
+From: r@||@@tubner @end|ng |rom gm@||@com (Ralf Stubner)
+Date: Sat, 23 Sep 2023 21:35:48 +0000
+Subject: [R-pkg-devel] User defined RNG and code registration.
+In-Reply-To: <421be7b3-227e-4582-8747-cbf2566ff62f@gmail.com>
+References: <CAFQwRQyN1rGYCUR5wf96dfaomtCdQ8SOjBLkxZ6GCKkUrLo8NA@mail.gmail.com>
+ <421be7b3-227e-4582-8747-cbf2566ff62f@gmail.com>
+Message-ID: <CAFQwRQxKKec4o5B8fO-LPZQXD_QXJNbhSyNbOXmQduMoVDErTg@mail.gmail.com>
+
+On Sat, Sep 23, 2023 at 10:00?AM Duncan Murdoch
+<murdoch.duncan at gmail.com> wrote:
+
+> I don't know the answer here, but section 6.16 of WRE suggests that you
+> could explicitly make your functions visible even if they default to
+> invisible.
+
+Thanks Duncan. Unfortunately at least in my tests the visibility
+settings did not alter whether R could find these routines.
+
+Ralf
+
+
+From r@||@@tubner @end|ng |rom gm@||@com  Sat Sep 23 23:37:33 2023
+From: r@||@@tubner @end|ng |rom gm@||@com (Ralf Stubner)
+Date: Sat, 23 Sep 2023 21:37:33 +0000
+Subject: [R-pkg-devel] User defined RNG and code registration.
+In-Reply-To: <20230923223031.55e249ba@parabola>
+References: <CAFQwRQyN1rGYCUR5wf96dfaomtCdQ8SOjBLkxZ6GCKkUrLo8NA@mail.gmail.com>
+ <20230923223031.55e249ba@parabola>
+Message-ID: <CAFQwRQwmDDimWhhmceDtTJY=5ojp-0zTmCJEFmCqdTAYJPPsGQ@mail.gmail.com>
+
+On Sat, Sep 23, 2023 at 7:30?PM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+> You're right! Looking at the code, if R_useDynamicSymbols(dll, FALSE)
+> has been called for a DLL, the branch that calls dlsym() or
+> GetProcAddress() to find symbols from that library by their shared
+> object symbol names gets completely disabled; only the registered
+> function names known to R matter at this point.
+
+Thanks Ivan for the investigations! That explains my experiences.
+
+> It sounds unsatisfying, but if you register your user_unif_rand
+> function with the right name and any of the ABIs supported by R, it
+> sounds like it should work as long as you never call it using the
+> .Call/.C/.Fortran ABI it's registered for.
+
+That is indeed unsatisfying, but looks like the best workaround for now.
+
+Ralf
+
+
