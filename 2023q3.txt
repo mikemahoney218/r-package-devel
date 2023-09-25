@@ -20855,3 +20855,296 @@ That is indeed unsatisfying, but looks like the best workaround for now.
 Ralf
 
 
+From j@goreck| @end|ng |rom w|t@edu@p|  Sun Sep 24 10:38:41 2023
+From: j@goreck| @end|ng |rom w|t@edu@p| (Jan Gorecki)
+Date: Sun, 24 Sep 2023 10:38:41 +0200
+Subject: [R-pkg-devel] R_orderVector1 - algo: radix, shell, or another?
+Message-ID: <CAOO9MKVpkoVS6jCKBEJy6Qpb6Uxu1hRze-2kOQ4AdoECwMebPg@mail.gmail.com>
+
+Dear pkg developers,
+
+Are there any ways to check which sorting algorithm is being used when
+calling `order` function? Documentation at
+https://stat.ethz.ch/R-manual/R-devel/library/base/html/sort.html
+says it is radix for length < 2^31
+
+On the other hand, I am using R_orderVector1, passing in double float
+smaller than 2^31. Short description of it states
+"Fast version of 1-argument case of R_orderVector".
+Should I expect R_orderVector1 follow the same algo as R's order()? If so
+it should be radix as well.
+
+https://github.com/wch/r-source/blob/ed51d34ec195b89462a8531b9ef30b7b72e47204/src/main/sort.c#L1133
+
+If there is no way to check sorting algo, could anyone describe which one
+R_orderVector1 uses, and if there is easy API to use different ones from C?
+
+Best Regards,
+Jan Gorecki
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Sun Sep 24 17:27:25 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Sun, 24 Sep 2023 08:27:25 -0700
+Subject: [R-pkg-devel] R_orderVector1 - algo: radix, shell, or another?
+In-Reply-To: <CAOO9MKVpkoVS6jCKBEJy6Qpb6Uxu1hRze-2kOQ4AdoECwMebPg@mail.gmail.com>
+References: <CAOO9MKVpkoVS6jCKBEJy6Qpb6Uxu1hRze-2kOQ4AdoECwMebPg@mail.gmail.com>
+Message-ID: <9F2FDD23-CCAC-4C78-8068-1D97F358B109@dcn.davis.ca.us>
+
+Have you read the output of
+
+order
+
+entered at the R console?
+
+
+On September 24, 2023 1:38:41 AM PDT, Jan Gorecki <j.gorecki at wit.edu.pl> wrote:
+>Dear pkg developers,
+>
+>Are there any ways to check which sorting algorithm is being used when
+>calling `order` function? Documentation at
+>https://stat.ethz.ch/R-manual/R-devel/library/base/html/sort.html
+>says it is radix for length < 2^31
+>
+>On the other hand, I am using R_orderVector1, passing in double float
+>smaller than 2^31. Short description of it states
+>"Fast version of 1-argument case of R_orderVector".
+>Should I expect R_orderVector1 follow the same algo as R's order()? If so
+>it should be radix as well.
+>
+>https://github.com/wch/r-source/blob/ed51d34ec195b89462a8531b9ef30b7b72e47204/src/main/sort.c#L1133
+>
+>If there is no way to check sorting algo, could anyone describe which one
+>R_orderVector1 uses, and if there is easy API to use different ones from C?
+>
+>Best Regards,
+>Jan Gorecki
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-package-devel at r-project.org mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From j@goreck| @end|ng |rom w|t@edu@p|  Sun Sep 24 20:10:53 2023
+From: j@goreck| @end|ng |rom w|t@edu@p| (Jan Gorecki)
+Date: Sun, 24 Sep 2023 20:10:53 +0200
+Subject: [R-pkg-devel] R_orderVector1 - algo: radix, shell, or another?
+In-Reply-To: <9F2FDD23-CCAC-4C78-8068-1D97F358B109@dcn.davis.ca.us>
+References: <CAOO9MKVpkoVS6jCKBEJy6Qpb6Uxu1hRze-2kOQ4AdoECwMebPg@mail.gmail.com>
+ <9F2FDD23-CCAC-4C78-8068-1D97F358B109@dcn.davis.ca.us>
+Message-ID: <CAOO9MKU-nmOeDRJzZVzs1iBKkaojhkkEstb+rgf1mP+LBbD9bw@mail.gmail.com>
+
+Hi Jeff,
+
+Yes I did. My question is about R_orderVector1 which is part of public R C
+api.
+Should I notice something relevant in the source of R's order?
+
+Best
+Jan
+
+On Sun, Sep 24, 2023, 17:27 Jeff Newmiller <jdnewmil at dcn.davis.ca.us> wrote:
+
+> Have you read the output of
+>
+> order
+>
+> entered at the R console?
+>
+>
+> On September 24, 2023 1:38:41 AM PDT, Jan Gorecki <j.gorecki at wit.edu.pl>
+> wrote:
+> >Dear pkg developers,
+> >
+> >Are there any ways to check which sorting algorithm is being used when
+> >calling `order` function? Documentation at
+> >https://stat.ethz.ch/R-manual/R-devel/library/base/html/sort.html
+> >says it is radix for length < 2^31
+> >
+> >On the other hand, I am using R_orderVector1, passing in double float
+> >smaller than 2^31. Short description of it states
+> >"Fast version of 1-argument case of R_orderVector".
+> >Should I expect R_orderVector1 follow the same algo as R's order()? If so
+> >it should be radix as well.
+> >
+> >
+> https://github.com/wch/r-source/blob/ed51d34ec195b89462a8531b9ef30b7b72e47204/src/main/sort.c#L1133
+> >
+> >If there is no way to check sorting algo, could anyone describe which one
+> >R_orderVector1 uses, and if there is easy API to use different ones from
+> C?
+> >
+> >Best Regards,
+> >Jan Gorecki
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> >______________________________________________
+> >R-package-devel at r-project.org mailing list
+> >https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+> --
+> Sent from my phone. Please excuse my brevity.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Sun Sep 24 20:39:07 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Sun, 24 Sep 2023 11:39:07 -0700
+Subject: [R-pkg-devel] R_orderVector1 - algo: radix, shell, or another?
+In-Reply-To: <CAOO9MKU-nmOeDRJzZVzs1iBKkaojhkkEstb+rgf1mP+LBbD9bw@mail.gmail.com>
+References: <CAOO9MKVpkoVS6jCKBEJy6Qpb6Uxu1hRze-2kOQ4AdoECwMebPg@mail.gmail.com>
+ <9F2FDD23-CCAC-4C78-8068-1D97F358B109@dcn.davis.ca.us>
+ <CAOO9MKU-nmOeDRJzZVzs1iBKkaojhkkEstb+rgf1mP+LBbD9bw@mail.gmail.com>
+Message-ID: <79C665EB-A3F0-4746-867C-EC2129EB5CE8@dcn.davis.ca.us>
+
+You asked how order works. From the R source you can follow which C functions are executed, and since you seem familiar with C you can answer your own question.
+
+On September 24, 2023 11:10:53 AM PDT, Jan Gorecki <j.gorecki at wit.edu.pl> wrote:
+>Hi Jeff,
+>
+>Yes I did. My question is about R_orderVector1 which is part of public R C
+>api.
+>Should I notice something relevant in the source of R's order?
+>
+>Best
+>Jan
+>
+>On Sun, Sep 24, 2023, 17:27 Jeff Newmiller <jdnewmil at dcn.davis.ca.us> wrote:
+>
+>> Have you read the output of
+>>
+>> order
+>>
+>> entered at the R console?
+>>
+>>
+>> On September 24, 2023 1:38:41 AM PDT, Jan Gorecki <j.gorecki at wit.edu.pl>
+>> wrote:
+>> >Dear pkg developers,
+>> >
+>> >Are there any ways to check which sorting algorithm is being used when
+>> >calling `order` function? Documentation at
+>> >https://stat.ethz.ch/R-manual/R-devel/library/base/html/sort.html
+>> >says it is radix for length < 2^31
+>> >
+>> >On the other hand, I am using R_orderVector1, passing in double float
+>> >smaller than 2^31. Short description of it states
+>> >"Fast version of 1-argument case of R_orderVector".
+>> >Should I expect R_orderVector1 follow the same algo as R's order()? If so
+>> >it should be radix as well.
+>> >
+>> >
+>> https://github.com/wch/r-source/blob/ed51d34ec195b89462a8531b9ef30b7b72e47204/src/main/sort.c#L1133
+>> >
+>> >If there is no way to check sorting algo, could anyone describe which one
+>> >R_orderVector1 uses, and if there is easy API to use different ones from
+>> C?
+>> >
+>> >Best Regards,
+>> >Jan Gorecki
+>> >
+>> >       [[alternative HTML version deleted]]
+>> >
+>> >______________________________________________
+>> >R-package-devel at r-project.org mailing list
+>> >https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>> --
+>> Sent from my phone. Please excuse my brevity.
+>>
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Sun Sep 24 21:25:33 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Mon, 25 Sep 2023 08:25:33 +1300
+Subject: [R-pkg-devel] R_orderVector1 - algo: radix, shell, or another?
+In-Reply-To: <CAOO9MKU-nmOeDRJzZVzs1iBKkaojhkkEstb+rgf1mP+LBbD9bw@mail.gmail.com>
+References: <CAOO9MKVpkoVS6jCKBEJy6Qpb6Uxu1hRze-2kOQ4AdoECwMebPg@mail.gmail.com>
+ <9F2FDD23-CCAC-4C78-8068-1D97F358B109@dcn.davis.ca.us>
+ <CAOO9MKU-nmOeDRJzZVzs1iBKkaojhkkEstb+rgf1mP+LBbD9bw@mail.gmail.com>
+Message-ID: <B7711ED3-8C8C-406B-9B9F-736E96EDD9A1@R-project.org>
+
+I think the logic Jeff had in mind is that R order() uses C do_order() for method="shell" and since do_order() uses orderVector1() by induction it is the shell-sort implementation.
+
+order() itself uses whatever you specify in method=.
+
+Cheers,
+Simon
+
+
+> On Sep 25, 2023, at 7:10 AM, Jan Gorecki <j.gorecki at wit.edu.pl> wrote:
+> 
+> Hi Jeff,
+> 
+> Yes I did. My question is about R_orderVector1 which is part of public R C
+> api.
+> Should I notice something relevant in the source of R's order?
+> 
+> Best
+> Jan
+> 
+> On Sun, Sep 24, 2023, 17:27 Jeff Newmiller <jdnewmil at dcn.davis.ca.us> wrote:
+> 
+>> Have you read the output of
+>> 
+>> order
+>> 
+>> entered at the R console?
+>> 
+>> 
+>> On September 24, 2023 1:38:41 AM PDT, Jan Gorecki <j.gorecki at wit.edu.pl>
+>> wrote:
+>>> Dear pkg developers,
+>>> 
+>>> Are there any ways to check which sorting algorithm is being used when
+>>> calling `order` function? Documentation at
+>>> https://stat.ethz.ch/R-manual/R-devel/library/base/html/sort.html
+>>> says it is radix for length < 2^31
+>>> 
+>>> On the other hand, I am using R_orderVector1, passing in double float
+>>> smaller than 2^31. Short description of it states
+>>> "Fast version of 1-argument case of R_orderVector".
+>>> Should I expect R_orderVector1 follow the same algo as R's order()? If so
+>>> it should be radix as well.
+>>> 
+>>> 
+>> https://github.com/wch/r-source/blob/ed51d34ec195b89462a8531b9ef30b7b72e47204/src/main/sort.c#L1133
+>>> 
+>>> If there is no way to check sorting algo, could anyone describe which one
+>>> R_orderVector1 uses, and if there is easy API to use different ones from
+>> C?
+>>> 
+>>> Best Regards,
+>>> Jan Gorecki
+>>> 
+>>>      [[alternative HTML version deleted]]
+>>> 
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>> 
+>> --
+>> Sent from my phone. Please excuse my brevity.
+>> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
