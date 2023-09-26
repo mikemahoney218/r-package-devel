@@ -21148,3 +21148,231 @@ Simon
 > 
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Mon Sep 25 09:26:16 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Mon, 25 Sep 2023 10:26:16 +0300
+Subject: [R-pkg-devel] R_orderVector1 - algo: radix, shell, or another?
+In-Reply-To: <CAOO9MKVpkoVS6jCKBEJy6Qpb6Uxu1hRze-2kOQ4AdoECwMebPg@mail.gmail.com>
+References: <CAOO9MKVpkoVS6jCKBEJy6Qpb6Uxu1hRze-2kOQ4AdoECwMebPg@mail.gmail.com>
+Message-ID: <20230925102616.19ece03b@Tarkus>
+
+? Sun, 24 Sep 2023 10:38:41 +0200
+Jan Gorecki <j.gorecki at wit.edu.pl> ?????:
+
+> https://github.com/wch/r-source/blob/ed51d34ec195b89462a8531b9ef30b7b72e47204/src/main/sort.c#L1133
+
+> could anyone describe which one R_orderVector1 uses,
+
+The body of the sorting algorithm is defined in the sort2_with_index
+macro. This is shell sort. (I don't actually recognise sorting
+algorithms on sight, but the "sincs" array gave it away:
+<https://discourse.julialang.org/t/ironic-observation-about-sort-and-sortperm-speed-for-small-integers-vs-r/8715/3>.)
+
+> and if there is easy API to use different ones from C?
+
+No easy ones, I think. You could construct a call to order(..., method
+= 'radix') from R or bundle a sort implementation of your own.
+
+These are all undocumented implementation details. They could change in
+a new version of R (although quite a lot of it hasn't changed in 11-22
+years). Why are you looking for specific sorting algorithms? Could
+there be a better way to solve your problem?
+
+-- 
+Best regards,
+Ivan
+
+
+From ||@t@ @end|ng |rom reve||e@net  Mon Sep 25 19:00:06 2023
+From: ||@t@ @end|ng |rom reve||e@net (William Revelle)
+Date: Mon, 25 Sep 2023 12:00:06 -0500
+Subject: [R-pkg-devel] help with revdep_check
+Message-ID: <2CB3C236-F772-4DE6-968D-27F5BA94DABC@revelle.net>
+
+Dear friends,
+I am trying to release a new update to psych and psychTools and am having problems with revdep_check
+
+The error message from revdep_check is less than helpful:?
+
+fn is 
+
+fn  <-  "/Users/WR/Library/CloudStorage/Dropbox/psychTools/"
+
+revdep_check(fn,num_workers=8)
+?? CHECK ?????????????????????????????????????????????????????????????????????????????? 15 packages ??
+[0/15] 00:00:15 | ETA:  ?s | (8) afex [I], bootnet [I], modnets [I], psych [I], alphaci [D], C...Error: Could not find tools necessary to compile a package
+Call `pkgbuild::check_build_tools(debug = TRUE)` to diagnose the problem.
+> check_build_tools(debug=TRUE)
+Trying to compile a simple C file
+Error: Could not find tools necessary to compile a package
+Call `pkgbuild::check_build_tools(debug = TRUE)` to diagnose the problem.
+rror: Could not find tools necessary to compile a package
+
+Any suggestions would be appreciated. 
+
+William Revelle		           personality-project.org/revelle.html
+Professor			                   personality-project.org
+Department of Psychology         www.wcas.northwestern.edu/psych/
+Northwestern University	           www.northwestern.edu/
+Use R for psychology                 personality-project.org/r
+It is 90 seconds to midnight	   www.thebulletin.org
+
+
+	[[alternative HTML version deleted]]
+
+
+From ||@t@ @end|ng |rom reve||e@net  Mon Sep 25 19:00:06 2023
+From: ||@t@ @end|ng |rom reve||e@net (William Revelle)
+Date: Mon, 25 Sep 2023 12:00:06 -0500
+Subject: [R-pkg-devel] help with revdep_check
+Message-ID: <2CB3C236-F772-4DE6-968D-27F5BA94DABC@revelle.net>
+
+Dear friends,
+I am trying to release a new update to psych and psychTools and am having problems with revdep_check
+
+The error message from revdep_check is less than helpful:?
+
+fn is 
+
+fn  <-  "/Users/WR/Library/CloudStorage/Dropbox/psychTools/"
+
+revdep_check(fn,num_workers=8)
+?? CHECK ?????????????????????????????????????????????????????????????????????????????? 15 packages ??
+[0/15] 00:00:15 | ETA:  ?s | (8) afex [I], bootnet [I], modnets [I], psych [I], alphaci [D], C...Error: Could not find tools necessary to compile a package
+Call `pkgbuild::check_build_tools(debug = TRUE)` to diagnose the problem.
+> check_build_tools(debug=TRUE)
+Trying to compile a simple C file
+Error: Could not find tools necessary to compile a package
+Call `pkgbuild::check_build_tools(debug = TRUE)` to diagnose the problem.
+rror: Could not find tools necessary to compile a package
+
+Any suggestions would be appreciated. 
+
+William Revelle		           personality-project.org/revelle.html
+Professor			                   personality-project.org
+Department of Psychology         www.wcas.northwestern.edu/psych/
+Northwestern University	           www.northwestern.edu/
+Use R for psychology                 personality-project.org/r
+It is 90 seconds to midnight	   www.thebulletin.org
+
+
+	[[alternative HTML version deleted]]
+
+
+From c@@rd|@g@bor @end|ng |rom gm@||@com  Mon Sep 25 19:24:48 2023
+From: c@@rd|@g@bor @end|ng |rom gm@||@com (=?UTF-8?B?R8OhYm9yIENzw6FyZGk=?=)
+Date: Mon, 25 Sep 2023 19:24:48 +0200
+Subject: [R-pkg-devel] help with revdep_check
+In-Reply-To: <2CB3C236-F772-4DE6-968D-27F5BA94DABC@revelle.net>
+References: <2CB3C236-F772-4DE6-968D-27F5BA94DABC@revelle.net>
+Message-ID: <CABtg=KmMDW+kzn+0hThE2wNVkZaJAwrs+1xCsmrLgQe3SH+icQ@mail.gmail.com>
+
+Seems like you are on macOS. You need to install XCode or the Command
+Line Tools to be able to compile packages with C/C++/Fortran code.
+
+Gabor
+
+On Mon, Sep 25, 2023 at 7:02?PM William Revelle <lists at revelle.net> wrote:
+>
+> Dear friends,
+> I am trying to release a new update to psych and psychTools and am having problems with revdep_check
+>
+> The error message from revdep_check is less than helpful:?
+>
+> fn is
+>
+> fn  <-  "/Users/WR/Library/CloudStorage/Dropbox/psychTools/"
+>
+> revdep_check(fn,num_workers=8)
+> ?? CHECK ?????????????????????????????????????????????????????????????????????????????? 15 packages ??
+> [0/15] 00:00:15 | ETA:  ?s | (8) afex [I], bootnet [I], modnets [I], psych [I], alphaci [D], C...Error: Could not find tools necessary to compile a package
+> Call `pkgbuild::check_build_tools(debug = TRUE)` to diagnose the problem.
+> > check_build_tools(debug=TRUE)
+> Trying to compile a simple C file
+> Error: Could not find tools necessary to compile a package
+> Call `pkgbuild::check_build_tools(debug = TRUE)` to diagnose the problem.
+> rror: Could not find tools necessary to compile a package
+>
+> Any suggestions would be appreciated.
+>
+> William Revelle                    personality-project.org/revelle.html
+> Professor                                          personality-project.org
+> Department of Psychology         www.wcas.northwestern.edu/psych/
+> Northwestern University            www.northwestern.edu/
+> Use R for psychology                 personality-project.org/r
+> It is 90 seconds to midnight       www.thebulletin.org
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From ||@t@ @end|ng |rom reve||e@net  Mon Sep 25 21:00:24 2023
+From: ||@t@ @end|ng |rom reve||e@net (William Revelle)
+Date: Mon, 25 Sep 2023 14:00:24 -0500
+Subject: [R-pkg-devel] help with revdep_check
+In-Reply-To: <CABtg=KmMDW+kzn+0hThE2wNVkZaJAwrs+1xCsmrLgQe3SH+icQ@mail.gmail.com>
+References: <2CB3C236-F772-4DE6-968D-27F5BA94DABC@revelle.net>
+ <CABtg=KmMDW+kzn+0hThE2wNVkZaJAwrs+1xCsmrLgQe3SH+icQ@mail.gmail.com>
+Message-ID: <7028EC7F-20B3-4B11-81F0-1D3CA9A7C896@revelle.net>
+
+Thanks.  Although I have had Xtools for quite a while, it had not been activated.  Installing a new copy made all the difference
+
+Bill
+
+
+> On Sep 25, 2023, at 12:24 PM, G?bor Cs?rdi <csardi.gabor at gmail.com> wrote:
+> 
+> Seems like you are on macOS. You need to install XCode or the Command
+> Line Tools to be able to compile packages with C/C++/Fortran code.
+> 
+> Gabor
+> 
+> On Mon, Sep 25, 2023 at 7:02?PM William Revelle <lists at revelle.net> wrote:
+>> 
+>> Dear friends,
+>> I am trying to release a new update to psych and psychTools and am having problems with revdep_check
+>> 
+>> The error message from revdep_check is less than helpful:?
+>> 
+>> fn is
+>> 
+>> fn  <-  "/Users/WR/Library/CloudStorage/Dropbox/psychTools/"
+>> 
+>> revdep_check(fn,num_workers=8)
+>> ?? CHECK ?????????????????????????????????????????????????????????????????????????????? 15 packages ??
+>> [0/15] 00:00:15 | ETA:  ?s | (8) afex [I], bootnet [I], modnets [I], psych [I], alphaci [D], C...Error: Could not find tools necessary to compile a package
+>> Call `pkgbuild::check_build_tools(debug = TRUE)` to diagnose the problem.
+>>> check_build_tools(debug=TRUE)
+>> Trying to compile a simple C file
+>> Error: Could not find tools necessary to compile a package
+>> Call `pkgbuild::check_build_tools(debug = TRUE)` to diagnose the problem.
+>> rror: Could not find tools necessary to compile a package
+>> 
+>> Any suggestions would be appreciated.
+>> 
+>> William Revelle                    personality-project.org/revelle.html
+>> Professor                                          personality-project.org
+>> Department of Psychology         www.wcas.northwestern.edu/psych/
+>> Northwestern University            www.northwestern.edu/
+>> Use R for psychology                 personality-project.org/r
+>> It is 90 seconds to midnight       www.thebulletin.org
+>> 
+>> 
+>>        [[alternative HTML version deleted]]
+>> 
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+William Revelle            personality-project.org/revelle.html
+Professor                    personality-project.org
+Department of Psychology         www.wcas.northwestern.edu/psych/
+Northwestern University            www.northwestern.edu/
+Use R for psychology                 personality-project.org/r
+It is 90 seconds to midnight    www.thebulletin.org
+
+
