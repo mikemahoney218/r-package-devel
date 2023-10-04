@@ -1,0 +1,308 @@
+From ro||turner @end|ng |rom po@teo@net  Sun Oct  1 10:29:18 2023
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Sun,  1 Oct 2023 08:29:18 +0000
+Subject: [R-pkg-devel] Testing.
+Message-ID: <20231001212918.326ab18c@rolf-Latitude-E7470>
+
+
+I'm having a problem .... please excuse the noise.
+
+cheers,
+
+Rolf Turner
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+
+From ro||turner @end|ng |rom po@teo@net  Sun Oct  1 10:31:31 2023
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Sun,  1 Oct 2023 08:31:31 +0000
+Subject: [R-pkg-devel] Problem with "compacting" pdf files.
+Message-ID: <20231001211547.4c46512e@rolf-Latitude-E7470>
+
+
+When I submitted an update of my Iso package a short time ago, it was
+rejected as not passing the incoming checks automatically.  Explicitly,
+I got a WARNING:
+
+> * checking sizes of PDF files under 'inst/doc' ... WARNING
+> 'gs+qpdf' made some significant size reductions:
+>      compacted 'algorithm.pdf' from 394Kb to 99Kb
+>   consider running tools::compactPDF(gs_quality = "ebook") on these
+> files
+
+I did as instructed and ran
+
+    tools::compactPDF("./algorithm.pdf",gs_quality="ebook")
+
+having started R in the inst/vignettes directory, which is where the
+file algorithm.pdf is to be found.
+
+According to "ls -l" the size of algorithm.pdf was about 109 Kb. before
+I ran compactPDF() and about 90 Kb. afterward.
+
+I do not understand:
+
+    * the reference to inst/doc (there is no such directory)
+    * where the sizes 349 Kb and 99 Kb come from
+    * what I have to do to get Iso to pass the required checks
+
+The email that I received from CRAN (under the return address
+ligges at statistik.tu-dortmund.de) said:
+
+> If you are not sure how to fix the problems shown, please ask for
+> help on the R-package-devel mailing list:
+
+Consequently I am asking! Can anyone set me on the path to
+enlightenment?  Thanks.
+
+cheers,
+
+Rolf Turner
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sun Oct  1 14:22:34 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sun, 1 Oct 2023 15:22:34 +0300
+Subject: [R-pkg-devel] Problem with "compacting" pdf files.
+In-Reply-To: <20231001211547.4c46512e@rolf-Latitude-E7470>
+References: <20231001211547.4c46512e@rolf-Latitude-E7470>
+Message-ID: <20231001152234.6bdd40ec@Tarkus>
+
+On Sun,  1 Oct 2023 08:31:31 +0000
+Rolf Turner <rolfturner at posteo.net> wrote:
+
+> I do not understand:
+
+>    * the reference to inst/doc (there is no such directory)
+
+When you run R CMD build in order to produce a new Iso-*.tar.gz, R runs
+Sweave and pdflatex on vignettes/algorithm.Rnw in order to produce
+inst/doc/algorithm.pdf inside the resulting tarball (but not the
+original source tree on your computer).
+
+>    * what I have to do to get Iso to pass the required checks
+
+Does it help to run R CMD build --compact-vignettes=both? This should
+let R run tools::compactPDF on inst/doc/algorithm.pdf it generates
+before placing it inside the package tarball.
+
+I think that R doesn't know anything about files under inst/vignettes
+in the source tree.
+
+-- 
+Best regards,
+Ivan
+
+
+From ro||turner @end|ng |rom po@teo@net  Sun Oct  1 23:01:13 2023
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Sun,  1 Oct 2023 21:01:13 +0000
+Subject: [R-pkg-devel] Problem with "compacting" pdf files.
+In-Reply-To: <20231001152234.6bdd40ec@Tarkus>
+References: <20231001211547.4c46512e@rolf-Latitude-E7470>
+ <20231001152234.6bdd40ec@Tarkus>
+Message-ID: <20231002100113.2ce1c902@rolf-Latitude-E7470>
+
+On Sun, 1 Oct 2023 15:22:34 +0300
+Ivan Krylov <krylov.r00t at gmail.com> wrote:
+
+> On Sun,  1 Oct 2023 08:31:31 +0000
+> Rolf Turner <rolfturner at posteo.net> wrote:
+> 
+> > I do not understand:
+> 
+> >    * the reference to inst/doc (there is no such directory)
+> 
+> When you run R CMD build in order to produce a new Iso-*.tar.gz, R
+> runs Sweave and pdflatex on vignettes/algorithm.Rnw in order to
+> produce inst/doc/algorithm.pdf inside the resulting tarball (but not
+> the original source tree on your computer).
+> 
+> >    * what I have to do to get Iso to pass the required checks
+> 
+> Does it help to run R CMD build --compact-vignettes=both? This should
+> let R run tools::compactPDF on inst/doc/algorithm.pdf it generates
+> before placing it inside the package tarball.
+> 
+> I think that R doesn't know anything about files under inst/vignettes
+> in the source tree.
+
+Thanks Ivan.  That may well be the key.  When I unpacked the tarball
+created without the --compact-vignettes=both flag, I found that
+inst/doc/algorithm.pdf had size 403 Kb, whereas with that flag set
+it had size 108 Kb.
+
+I'll re-submit now and see what happens.
+
+I *really* think that the instructions from CRAN could have been
+clearer!  Without your guidance I'd have been at a total loss.
+
+cheers,
+
+Rolf
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+
+From j@goreck| @end|ng |rom w|t@edu@p|  Tue Oct  3 16:45:26 2023
+From: j@goreck| @end|ng |rom w|t@edu@p| (Jan Gorecki)
+Date: Tue, 3 Oct 2023 16:45:26 +0200
+Subject: [R-pkg-devel] DESCRIPTION file Imports of base R packages
+Message-ID: <CAOO9MKUOviqNjYxC9JgHJOmTqwFUOgLeUWqTMCTbEPw3vQPWXg@mail.gmail.com>
+
+Hello,
+
+I noticed some packages define Imports in DESCRIPTION file listing base R
+packages like methods, utils, etc.
+
+My question is that if it is necessary to list those* dependencies in
+DESCRIPTION file, or is it enough to have them listed in NAMESPACE file?
+
+* by "those" I mean packages listed by:
+
+in tools:::.get_standard_package_names()$base
+
+	[[alternative HTML version deleted]]
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Tue Oct  3 17:50:14 2023
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Tue, 3 Oct 2023 08:50:14 -0700
+Subject: [R-pkg-devel] DESCRIPTION file Imports of base R packages
+In-Reply-To: <CAOO9MKUOviqNjYxC9JgHJOmTqwFUOgLeUWqTMCTbEPw3vQPWXg@mail.gmail.com>
+References: <CAOO9MKUOviqNjYxC9JgHJOmTqwFUOgLeUWqTMCTbEPw3vQPWXg@mail.gmail.com>
+Message-ID: <CAFDcVCQUwQzh8cwKrU7JZfJUc57rzRMY_kLwaUedp+8aqo0FAw@mail.gmail.com>
+
+On Tue, Oct 3, 2023 at 7:46?AM Jan Gorecki <j.gorecki at wit.edu.pl> wrote:
+>
+> Hello,
+>
+> I noticed some packages define Imports in DESCRIPTION file listing base R
+> packages like methods, utils, etc.
+>
+> My question is that if it is necessary to list those* dependencies in
+> DESCRIPTION file, or is it enough to have them listed in NAMESPACE file?
+
+You do *not* have to declare base-R packages as dependencies in the
+DESCRIPTION file.  'R CMD check' and 'R CMD check --as-cran' will not
+complain about them.
+
+I can't speak for others, but, I choose to declare all(*) my base-R
+package dependencies in my DESCRIPTION files for a reason.  This makes
+it explicit what packages my package rely on, including which of the
+base-R packages.  For instance, it's nice to be able to tell when the
+'parallel' or 'tcltk' package is used from the DESCRIPTION file (and
+the online CRAN package page, if on CRAN).
+
+(*) The exception is the 'base' package, because that is such a
+fundamental package in R and is always loaded.  The other base-R
+packages are theoretically optional when it comes to running R, e.g.
+
+$ R_ENABLE_JIT=0 Rscript --vanilla --default-packages=base -e
+"loadedNamespaces()"
+[1] "base"
+
+/Henrik
+
+>
+> * by "those" I mean packages listed by:
+>
+> in tools:::.get_standard_package_names()$base
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From @|j|@ng @end|ng |rom bccrc@c@  Tue Oct  3 19:34:04 2023
+From: @|j|@ng @end|ng |rom bccrc@c@ (Aixiang Jiang)
+Date: Tue, 3 Oct 2023 17:34:04 +0000
+Subject: [R-pkg-devel] DESCRIPTION file Imports of base R packages
+In-Reply-To: <CAFDcVCQUwQzh8cwKrU7JZfJUc57rzRMY_kLwaUedp+8aqo0FAw@mail.gmail.com>
+References: <CAOO9MKUOviqNjYxC9JgHJOmTqwFUOgLeUWqTMCTbEPw3vQPWXg@mail.gmail.com>,
+ <CAFDcVCQUwQzh8cwKrU7JZfJUc57rzRMY_kLwaUedp+8aqo0FAw@mail.gmail.com>
+Message-ID: <1696354445275.65575@bccrc.ca>
+
+Thank you - all!
+
+Aixiang
+________________________________________
+From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Henrik Bengtsson <henrik.bengtsson at gmail.com>
+Sent: Tuesday, October 3, 2023 8:50 AM
+To: Jan Gorecki
+Cc: List r-package-devel
+Subject: Re: [R-pkg-devel] DESCRIPTION file Imports of base R packages
+
+This email came from an EXTERNAL SENDER. If you think this message is suspicious, please do not open any attached files or links, and forward it as an attachment to spammail at bccrc.ca
+
+
+
+On Tue, Oct 3, 2023 at 7:46?AM Jan Gorecki <j.gorecki at wit.edu.pl> wrote:
+>
+> Hello,
+>
+> I noticed some packages define Imports in DESCRIPTION file listing base R
+> packages like methods, utils, etc.
+>
+> My question is that if it is necessary to list those* dependencies in
+> DESCRIPTION file, or is it enough to have them listed in NAMESPACE file?
+
+You do *not* have to declare base-R packages as dependencies in the
+DESCRIPTION file.  'R CMD check' and 'R CMD check --as-cran' will not
+complain about them.
+
+I can't speak for others, but, I choose to declare all(*) my base-R
+package dependencies in my DESCRIPTION files for a reason.  This makes
+it explicit what packages my package rely on, including which of the
+base-R packages.  For instance, it's nice to be able to tell when the
+'parallel' or 'tcltk' package is used from the DESCRIPTION file (and
+the online CRAN package page, if on CRAN).
+
+(*) The exception is the 'base' package, because that is such a
+fundamental package in R and is always loaded.  The other base-R
+packages are theoretically optional when it comes to running R, e.g.
+
+$ R_ENABLE_JIT=0 Rscript --vanilla --default-packages=base -e
+"loadedNamespaces()"
+[1] "base"
+
+/Henrik
+
+>
+> * by "those" I mean packages listed by:
+>
+> in tools:::.get_standard_package_names()$base
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
