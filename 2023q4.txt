@@ -306,3 +306,109 @@ ______________________________________________
 R-package-devel at r-project.org mailing list
 https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
+From v|nhd|zzo @end|ng |rom gm@||@com  Tue Oct  3 23:52:26 2023
+From: v|nhd|zzo @end|ng |rom gm@||@com (Vinh Nguyen)
+Date: Tue, 3 Oct 2023 14:52:26 -0700
+Subject: [R-pkg-devel] Rmarkdown package vignette that reference online
+ images: how to fail gracefully?
+Message-ID: <CA+2Dmwj1LG6+gLTLG1aA7FGourHEQ39r4qPOPBq6SNzSv4v2Vw@mail.gmail.com>
+
+Dear members of R-package-devel,
+
+CRAN has the following policy: Packages which use Internet resources
+should fail gracefully with an informative message if the resource is
+not available or has changed (and not give a check warning nor error).
+
+I have a CRAN-accepted package with vignettes that use Rmarkdown. One
+of the vignettes involves a lot of images, so rather than embed the
+raw images in the vignette, I reference the images on Flickr (to keep
+the package size small enough to be hosted on CRAN). Every half year
+or so, I'll get a message from CRAN maintainers that the package is
+not failing gracefully on one of their servers due to their build and
+testing processes.  The error message looks as follows:
+
+Could not fetch
+https://live.staticflickr.com/65535/52281215570_5f9cc90a12_o.png
+     HttpExceptionRequest Request {
+      host = "live.staticflickr.com"
+      port = 443
+      secure = True
+      requestHeaders = []
+      path = "/65535/52281215570_5f9cc90a12_o.png"
+      queryString = ""
+      method = "GET"
+      proxy = Nothing
+      rawBody = False
+      redirectCount = 10
+      responseTimeout = ResponseTimeoutDefault
+      requestVersion = HTTP/1.1
+     }
+      (ConnectionFailure Network.Socket.getAddrInfo (called with
+preferred socket type/protocol: AddrInfo {addrFlags = [AI_ADDRCONFIG],
+addrFamily = AF_UNSPEC, addrSocketType = Stream, addrProtocol = 0,
+addrAddress = <assumed to be undefined>, addrCanonName = <assumed to be
+undefined>}, host name: Just "live.staticflickr.com", service name: Just
+"443"): does not exist (Name or service not known))
+     Error: processing vignette
+'Ex-04-Webscraping-Online-Data-Files.Rmd' failed with diagnostics:
+     pandoc document conversion failed with error 61
+
+What's the recommended way for making this fail gracefully?  Again, I
+am pointing to the images online.  I am aware of .Rbuildignore, but
+using this would make the vignettes not hosted on the CRAN package
+page.
+
+Thanks in advance for your help.
+
+-- Vinh
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Oct  4 10:34:08 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 4 Oct 2023 11:34:08 +0300
+Subject: [R-pkg-devel] Rmarkdown package vignette that reference online
+ images: how to fail gracefully?
+In-Reply-To: <CA+2Dmwj1LG6+gLTLG1aA7FGourHEQ39r4qPOPBq6SNzSv4v2Vw@mail.gmail.com>
+References: <CA+2Dmwj1LG6+gLTLG1aA7FGourHEQ39r4qPOPBq6SNzSv4v2Vw@mail.gmail.com>
+Message-ID: <20231004113408.2734534a@Tarkus>
+
+On Tue, 3 Oct 2023 14:52:26 -0700
+Vinh Nguyen <vinhdizzo at gmail.com> wrote:
+
+> Could not fetch
+> https://live.staticflickr.com/65535/52281215570_5f9cc90a12_o.png
+
+This is Pandoc failing to bundle external resources from the final
+Markdown file, not your R code.
+
+>      Error: processing vignette
+> 'Ex-04-Webscraping-Online-Data-Files.Rmd' failed with diagnostics:
+>      pandoc document conversion failed with error 61
+
+My psychic debugging powers tell me that this is the vignette you're
+having problems with:
+https://github.com/vinhdizzo/IRexamples/blob/main/vignettes/Ex-04-Webscraping-Online-Data-Files.Rmd
+
+If you look at the vignette as it is on CRAN, you can see that the
+images aren't actually loaded from live.staticflickr.com, but are
+included as base64 PNG blobs in the HTML file. This is much less
+efficient than a plain PNG file. I think that your package will become
+smaller if you disable this bundling and include the original PNG files
+in your package. You may be able to squeeze some more savings by using
+pngcrush / optipng to compress the images further.
+
+The parameter responsible for this base64 encoding is called
+self_contained, which defaults to TRUE in the rmarkdown::html_document
+format, which prettydoc::html_pretty inherits from. Set it to FALSE in
+the YAML header of the vignette.
+
+Note that some other scripts and CSS files may be loaded from external
+sources if you do that. As a user, I would prefer this not to be the
+case, but I don't know enough about rmarkdown to set your vignette up
+to bundle everything except the images.
+
+-- 
+Best regards,
+Ivan
+
+
