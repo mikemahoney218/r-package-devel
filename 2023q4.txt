@@ -2024,3 +2024,1336 @@ On 11/10/2023 3:06 a.m., Tony Wilkes wrote:
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From r@c@rtwr|ght @end|ng |rom gm@||@com  Thu Oct 12 04:51:55 2023
+From: r@c@rtwr|ght @end|ng |rom gm@||@com (Reed A. Cartwright)
+Date: Wed, 11 Oct 2023 19:51:55 -0700
+Subject: [R-pkg-devel] Question about Clang 17 Error
+In-Reply-To: <CALOkxuzmkk5TgXRDEudA-5mdPGX28YLN5EzCKMgfn_BgVFBpZw@mail.gmail.com>
+References: <CALOkxuymN-XZV_G0bx6bLh8RL-pRgWCet8b4hC3NnMfu-ofJNg@mail.gmail.com>
+ <CABtg=KnzPYYyLmyJ2yOwVY5jvOORxU7V9s1T=94pyUD5rSg2UA@mail.gmail.com>
+ <CALOkxuzGgwGk28zRH13YF+5WQr6iXs-5vDFUHbTr7vp8uOW7ig@mail.gmail.com>
+ <A872FAA4-7826-4CE3-ACB9-C15DE56B32F9@R-project.org>
+ <CALOkxuzmkk5TgXRDEudA-5mdPGX28YLN5EzCKMgfn_BgVFBpZw@mail.gmail.com>
+Message-ID: <CALOkxuyGVoBbfZ_BnmMvU8RYnj35ip3nJpv1PoO2qudk3XvH6g@mail.gmail.com>
+
+Update: I submitted a new version of the package, but it did not fix the
+issue. The package has now been archived and I do not have access to the
+error log output anymore from r-devel-linux-x86_64-fedora-clang.
+
+I did reproduce CRAN's configuration in a VM using the information provided
+by CRAN for r-devel-linux-x86_64-fedora-clang. I still cannot reproduce the
+error and at this point I believe that there is a chance that CRAN's
+machine is misconfigured.
+
+The specific error happens after rbedrock has been compiled and linked
+successfully. The specific error is that the symbol
+_ZNSt3__122__libcpp_verbose_abortEPKcz cannot be found when rbedrock.so is
+loaded.This symbol was introduced into libc++ in Clang 15.0. What I believe
+to be happening to cause the error is that Clang++ 17 is adding a reference
+to this symbol when compiling and linking rbedrock.so but the dynamic
+linker is loading an older version of libc++.so when trying to load
+rbedrock.so and the symbol is not found.
+
+If this is the cause, then I think that the CRAN machine needs to configure
+the dynamic linker to use the Clang++ 17 libc++.so, or add the proper
+command line options to R's config variables.
+
+It's possible that the CRAN's r-devel-linux-x86_64-fedora-clang machine is
+fine and I've missed something, and I would be happy if someone could help
+me figure out what it is.
+
+Also, a new issue cropped up when 0.3.1 was tested on the
+r-oldrel-macos-x86_64 machine. /usr/bin/ar seems to have failed to produce
+an archive. The other Mac versions did fine, so I'm not sure if this is a
+random error or something related to my package. The error log is here:
+https://www.r-project.org/nosvn/R.check/r-oldrel-macos-x86_64/rbedrock-00install.html
+
+If anyone can help me resolve this, I'd appreciate it.
+
+
+On Wed, Sep 27, 2023 at 2:54?PM Reed A. Cartwright <racartwright at gmail.com>
+wrote:
+
+> Is there any way to submit packages directly to the CRAN's clang17 setup?
+> I can enable verbose output for CMake and compare the output, but I'd
+> rather not clog up the CRAN incoming queue just to debug a linker error?
+>
+> On Wed, Sep 27, 2023 at 2:43?PM Simon Urbanek <simon.urbanek at r-project.org>
+> wrote:
+>
+>> It looks like a C++ run-time mismatch between what cmake is using to
+>> build the static library and what is used by R. Unfortunately, cmake hides
+>> the actual compiler calls so it's hard to tell the difference, but that
+>> setup relies on the correct sequence of library paths.
+>>
+>> The rhub manually forces -stdlib=libc++ to all its CXX flags
+>>
+>> https://urldefense.com/v3/__https://github.com/r-hub/rhub-linux-builders/blob/master/fedora-clang-devel/Makevars__;!!IKRxdwAv5BmarQ!bAZgiOQaK4hd5BTk_Ldx9IEHgzHKVbC-uMkvYv5GOVkZDvbedcGwS8dQ4MWXRjukFfds7UpiR9NDZfEoUCWeoVnCfrDa$
+>> so it is quite different from the gannet tests-clang-trunk setup (also
+>> note the different library paths), but that's not something you can do
+>> universally in the package, because it strongly depends on the toolchain
+>> setup.
+>>
+>> Cheers,
+>> Simon
+>>
+>>
+>> > On 28/09/2023, at 9:37 AM, Reed A. Cartwright <racartwright at gmail.com>
+>> wrote:
+>> >
+>> > I was unable to reproduce the error on the rhub's clang17 docker image.
+>> >
+>> > I notice that the linking command is slightly different between systems.
+>> > And this suggests that I need to find some way to get CRAN to pass
+>> -stdlib
+>> > flag at the linking stage.
+>> >
+>> > CRAN:
+>> > /usr/local/clang17/bin/clang++ -std=gnu++17 -shared
+>> > -L/usr/local/clang/lib64 -L/usr/local/clang17/lib
+>> -L/usr/local/gcc13/lib64
+>> > -L/usr/local/lib64 -o rbedrock.so actors.o bedrock_leveldb.o dummy.o
+>> init.o
+>> > key_conv.o nbt.o random.o subchunk.o support.o -L./leveldb-mcpe/build
+>> > -pthread -lleveldb -lz
+>> >
+>> > RHUB:
+>> > clang++-17 -stdlib=libc++ -std=gnu++14 -shared -L/opt/R/devel/lib/R/lib
+>> > -L/usr/local/lib -o rbedrock.so actors.o bedrock_leveldb.o dummy.o
+>> init.o
+>> > key_conv.o nbt.o random.o subchunk.o support.o -L./leveldb-mcpe/build
+>> > -pthread -lleveldb -lz -L/opt/R/devel/lib/R/lib -lR
+>> >
+>> > On Wed, Sep 27, 2023 at 11:36?AM G?bor Cs?rdi <csardi.gabor at gmail.com>
+>> > wrote:
+>> >
+>> >> You might be able to reproduce it with the clang17 container here:
+>> >>
+>> >>
+>> https://urldefense.com/v3/__https://r-hub.github.io/containers/__;!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-FoLqhhk9c$
+>> >> You can either run it directly or with the rhub2 package:
+>> >>
+>> >>
+>> https://urldefense.com/v3/__https://github.com/r-hub/rhub2*readme__;Iw!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-FoxPbUQlE$
+>> >>
+>> >> Gabor
+>> >>
+>> >> On Wed, Sep 27, 2023 at 8:29?PM Reed A. Cartwright
+>> >> <racartwright at gmail.com> wrote:
+>> >>>
+>> >>> My package, RBedrock, is now throwing an error when compiled against
+>> >>> Clang17. The error log is here:
+>> >>>
+>> >>>
+>> >>
+>> https://urldefense.com/v3/__https://www.stats.ox.ac.uk/pub/bdr/clang17/rbedrock.log__;!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-FoNhThuZA$
+>> >>>
+>> >>> The important part is
+>> >>> """
+>> >>> Error: package or namespace load failed for ?rbedrock? in
+>> dyn.load(file,
+>> >>> DLLpath = DLLpath, ...):
+>> >>> unable to load shared object
+>> >>>
+>> >>
+>> '/data/gannet/ripley/R/packages/tests-clang-trunk/rbedrock.Rcheck/00LOCK-rbedrock/00new/rbedrock/libs/rbedrock.so':
+>> >>>
+>> >>>
+>> >>
+>> /data/gannet/ripley/R/packages/tests-clang-trunk/rbedrock.Rcheck/00LOCK-rbedrock/00new/rbedrock/libs/rbedrock.so:
+>> >>> undefined symbol: _ZNSt3__122__libcpp_verbose_abortEPKcz
+>> >>> Error: loading failed
+>> >>> """
+>> >>>
+>> >>> From what I can gather through googling, this error can be caused by
+>> >> using
+>> >>> the C linker when one of the dependent libraries is a C++ library.
+>> >>>
+>> >>> I cannot tell if this is an issue with my package (likely) or CRAN's
+>> >>> clang17 setup (less likely).
+>> >>>
+>> >>> Background about the package: rbedrock is written in C but links
+>> against
+>> >> a
+>> >>> C++ library (Mojang's leveldb fork)  via the library's C-API
+>> functions. I
+>> >>> use a dummy .cpp file in the source directory to trigger R into using
+>> the
+>> >>> C++ linker. That does still seem to be happening according to the log.
+>> >>>
+>> >>> Has anyone seen this before and know where I should start looking to
+>> fix
+>> >> it?
+>> >>>
+>> >>> Thanks.
+>> >>>
+>> >>> --
+>> >>> Reed A. Cartwright, PhD
+>> >>> Associate Professor of Genomics, Evolution, and Bioinformatics
+>> >>> School of Life Sciences and The Biodesign Institute
+>> >>> Arizona State University
+>> >>> ==================
+>> >>> Address: The Biodesign Institute, PO Box 876401, Tempe, AZ 85287-6401
+>> USA
+>> >>> Packages: The Biodesign Institute, 1001 S. McAllister Ave, Tempe, AZ
+>> >>> 85287-6401 USA
+>> >>> Office: Biodesign B-220C, 1-480-965-9949
+>> >>> Website:
+>> >>
+>> https://urldefense.com/v3/__http://cartwrig.ht/__;!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-Fo7waq1VI$
+>> >>>
+>> >>>        [[alternative HTML version deleted]]
+>> >>>
+>> >>> ______________________________________________
+>> >>> R-package-devel at r-project.org mailing list
+>> >>>
+>> >>
+>> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-FocAOfF7A$
+>> >>
+>> > ______________________________________________
+>> > R-package-devel at r-project.org mailing list
+>> >
+>> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!IKRxdwAv5BmarQ!bAZgiOQaK4hd5BTk_Ldx9IEHgzHKVbC-uMkvYv5GOVkZDvbedcGwS8dQ4MWXRjukFfds7UpiR9NDZfEoUCWeoZEUmVSQ$
+>> >
+>>
+>>
+
+	[[alternative HTML version deleted]]
+
+
+From r@c@rtwr|ght @end|ng |rom gm@||@com  Thu Oct 12 04:54:19 2023
+From: r@c@rtwr|ght @end|ng |rom gm@||@com (Reed A. Cartwright)
+Date: Wed, 11 Oct 2023 19:54:19 -0700
+Subject: [R-pkg-devel] Question about Clang 17 Error
+In-Reply-To: <CALOkxuyGVoBbfZ_BnmMvU8RYnj35ip3nJpv1PoO2qudk3XvH6g@mail.gmail.com>
+References: <CALOkxuymN-XZV_G0bx6bLh8RL-pRgWCet8b4hC3NnMfu-ofJNg@mail.gmail.com>
+ <CABtg=KnzPYYyLmyJ2yOwVY5jvOORxU7V9s1T=94pyUD5rSg2UA@mail.gmail.com>
+ <CALOkxuzGgwGk28zRH13YF+5WQr6iXs-5vDFUHbTr7vp8uOW7ig@mail.gmail.com>
+ <A872FAA4-7826-4CE3-ACB9-C15DE56B32F9@R-project.org>
+ <CALOkxuzmkk5TgXRDEudA-5mdPGX28YLN5EzCKMgfn_BgVFBpZw@mail.gmail.com>
+ <CALOkxuyGVoBbfZ_BnmMvU8RYnj35ip3nJpv1PoO2qudk3XvH6g@mail.gmail.com>
+Message-ID: <CALOkxuw3cf31BrT0yFyqVMXD815qjEVATbTBVToE3+SqLO=+wQ@mail.gmail.com>
+
+Also the most recent source code tested by CRAN is here:
+
+https://github.com/reedacartwright/rbedrock/tree/v0.3.1
+
+On Wed, Oct 11, 2023 at 7:51?PM Reed A. Cartwright <racartwright at gmail.com>
+wrote:
+
+> Update: I submitted a new version of the package, but it did not fix the
+> issue. The package has now been archived and I do not have access to the
+> error log output anymore from r-devel-linux-x86_64-fedora-clang.
+>
+> I did reproduce CRAN's configuration in a VM using the information
+> provided by CRAN for r-devel-linux-x86_64-fedora-clang. I still cannot
+> reproduce the error and at this point I believe that there is a chance that
+> CRAN's machine is misconfigured.
+>
+> The specific error happens after rbedrock has been compiled and linked
+> successfully. The specific error is that the symbol
+> _ZNSt3__122__libcpp_verbose_abortEPKcz cannot be found when rbedrock.so is
+> loaded.This symbol was introduced into libc++ in Clang 15.0. What I believe
+> to be happening to cause the error is that Clang++ 17 is adding a reference
+> to this symbol when compiling and linking rbedrock.so but the dynamic
+> linker is loading an older version of libc++.so when trying to load
+> rbedrock.so and the symbol is not found.
+>
+> If this is the cause, then I think that the CRAN machine needs to
+> configure the dynamic linker to use the Clang++ 17 libc++.so, or add the
+> proper command line options to R's config variables.
+>
+> It's possible that the CRAN's r-devel-linux-x86_64-fedora-clang machine is
+> fine and I've missed something, and I would be happy if someone could help
+> me figure out what it is.
+>
+> Also, a new issue cropped up when 0.3.1 was tested on the
+> r-oldrel-macos-x86_64 machine. /usr/bin/ar seems to have failed to produce
+> an archive. The other Mac versions did fine, so I'm not sure if this is a
+> random error or something related to my package. The error log is here:
+> https://www.r-project.org/nosvn/R.check/r-oldrel-macos-x86_64/rbedrock-00install.html
+>
+> If anyone can help me resolve this, I'd appreciate it.
+>
+>
+> On Wed, Sep 27, 2023 at 2:54?PM Reed A. Cartwright <racartwright at gmail.com>
+> wrote:
+>
+>> Is there any way to submit packages directly to the CRAN's clang17 setup?
+>> I can enable verbose output for CMake and compare the output, but I'd
+>> rather not clog up the CRAN incoming queue just to debug a linker error?
+>>
+>> On Wed, Sep 27, 2023 at 2:43?PM Simon Urbanek <
+>> simon.urbanek at r-project.org> wrote:
+>>
+>>> It looks like a C++ run-time mismatch between what cmake is using to
+>>> build the static library and what is used by R. Unfortunately, cmake hides
+>>> the actual compiler calls so it's hard to tell the difference, but that
+>>> setup relies on the correct sequence of library paths.
+>>>
+>>> The rhub manually forces -stdlib=libc++ to all its CXX flags
+>>>
+>>> https://urldefense.com/v3/__https://github.com/r-hub/rhub-linux-builders/blob/master/fedora-clang-devel/Makevars__;!!IKRxdwAv5BmarQ!bAZgiOQaK4hd5BTk_Ldx9IEHgzHKVbC-uMkvYv5GOVkZDvbedcGwS8dQ4MWXRjukFfds7UpiR9NDZfEoUCWeoVnCfrDa$
+>>> so it is quite different from the gannet tests-clang-trunk setup (also
+>>> note the different library paths), but that's not something you can do
+>>> universally in the package, because it strongly depends on the toolchain
+>>> setup.
+>>>
+>>> Cheers,
+>>> Simon
+>>>
+>>>
+>>> > On 28/09/2023, at 9:37 AM, Reed A. Cartwright <racartwright at gmail.com>
+>>> wrote:
+>>> >
+>>> > I was unable to reproduce the error on the rhub's clang17 docker image.
+>>> >
+>>> > I notice that the linking command is slightly different between
+>>> systems.
+>>> > And this suggests that I need to find some way to get CRAN to pass
+>>> -stdlib
+>>> > flag at the linking stage.
+>>> >
+>>> > CRAN:
+>>> > /usr/local/clang17/bin/clang++ -std=gnu++17 -shared
+>>> > -L/usr/local/clang/lib64 -L/usr/local/clang17/lib
+>>> -L/usr/local/gcc13/lib64
+>>> > -L/usr/local/lib64 -o rbedrock.so actors.o bedrock_leveldb.o dummy.o
+>>> init.o
+>>> > key_conv.o nbt.o random.o subchunk.o support.o -L./leveldb-mcpe/build
+>>> > -pthread -lleveldb -lz
+>>> >
+>>> > RHUB:
+>>> > clang++-17 -stdlib=libc++ -std=gnu++14 -shared -L/opt/R/devel/lib/R/lib
+>>> > -L/usr/local/lib -o rbedrock.so actors.o bedrock_leveldb.o dummy.o
+>>> init.o
+>>> > key_conv.o nbt.o random.o subchunk.o support.o -L./leveldb-mcpe/build
+>>> > -pthread -lleveldb -lz -L/opt/R/devel/lib/R/lib -lR
+>>> >
+>>> > On Wed, Sep 27, 2023 at 11:36?AM G?bor Cs?rdi <csardi.gabor at gmail.com>
+>>> > wrote:
+>>> >
+>>> >> You might be able to reproduce it with the clang17 container here:
+>>> >>
+>>> >>
+>>> https://urldefense.com/v3/__https://r-hub.github.io/containers/__;!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-FoLqhhk9c$
+>>> >> You can either run it directly or with the rhub2 package:
+>>> >>
+>>> >>
+>>> https://urldefense.com/v3/__https://github.com/r-hub/rhub2*readme__;Iw!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-FoxPbUQlE$
+>>> >>
+>>> >> Gabor
+>>> >>
+>>> >> On Wed, Sep 27, 2023 at 8:29?PM Reed A. Cartwright
+>>> >> <racartwright at gmail.com> wrote:
+>>> >>>
+>>> >>> My package, RBedrock, is now throwing an error when compiled against
+>>> >>> Clang17. The error log is here:
+>>> >>>
+>>> >>>
+>>> >>
+>>> https://urldefense.com/v3/__https://www.stats.ox.ac.uk/pub/bdr/clang17/rbedrock.log__;!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-FoNhThuZA$
+>>> >>>
+>>> >>> The important part is
+>>> >>> """
+>>> >>> Error: package or namespace load failed for ?rbedrock? in
+>>> dyn.load(file,
+>>> >>> DLLpath = DLLpath, ...):
+>>> >>> unable to load shared object
+>>> >>>
+>>> >>
+>>> '/data/gannet/ripley/R/packages/tests-clang-trunk/rbedrock.Rcheck/00LOCK-rbedrock/00new/rbedrock/libs/rbedrock.so':
+>>> >>>
+>>> >>>
+>>> >>
+>>> /data/gannet/ripley/R/packages/tests-clang-trunk/rbedrock.Rcheck/00LOCK-rbedrock/00new/rbedrock/libs/rbedrock.so:
+>>> >>> undefined symbol: _ZNSt3__122__libcpp_verbose_abortEPKcz
+>>> >>> Error: loading failed
+>>> >>> """
+>>> >>>
+>>> >>> From what I can gather through googling, this error can be caused by
+>>> >> using
+>>> >>> the C linker when one of the dependent libraries is a C++ library.
+>>> >>>
+>>> >>> I cannot tell if this is an issue with my package (likely) or CRAN's
+>>> >>> clang17 setup (less likely).
+>>> >>>
+>>> >>> Background about the package: rbedrock is written in C but links
+>>> against
+>>> >> a
+>>> >>> C++ library (Mojang's leveldb fork)  via the library's C-API
+>>> functions. I
+>>> >>> use a dummy .cpp file in the source directory to trigger R into
+>>> using the
+>>> >>> C++ linker. That does still seem to be happening according to the
+>>> log.
+>>> >>>
+>>> >>> Has anyone seen this before and know where I should start looking to
+>>> fix
+>>> >> it?
+>>> >>>
+>>> >>> Thanks.
+>>> >>>
+>>> >>> --
+>>> >>> Reed A. Cartwright, PhD
+>>> >>> Associate Professor of Genomics, Evolution, and Bioinformatics
+>>> >>> School of Life Sciences and The Biodesign Institute
+>>> >>> Arizona State University
+>>> >>> ==================
+>>> >>> Address: The Biodesign Institute, PO Box 876401, Tempe, AZ
+>>> 85287-6401 USA
+>>> >>> Packages: The Biodesign Institute, 1001 S. McAllister Ave, Tempe, AZ
+>>> >>> 85287-6401 USA
+>>> >>> Office: Biodesign B-220C, 1-480-965-9949
+>>> >>> Website:
+>>> >>
+>>> https://urldefense.com/v3/__http://cartwrig.ht/__;!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-Fo7waq1VI$
+>>> >>>
+>>> >>>        [[alternative HTML version deleted]]
+>>> >>>
+>>> >>> ______________________________________________
+>>> >>> R-package-devel at r-project.org mailing list
+>>> >>>
+>>> >>
+>>> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-FocAOfF7A$
+>>> >>
+>>> > ______________________________________________
+>>> > R-package-devel at r-project.org mailing list
+>>> >
+>>> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!IKRxdwAv5BmarQ!bAZgiOQaK4hd5BTk_Ldx9IEHgzHKVbC-uMkvYv5GOVkZDvbedcGwS8dQ4MWXRjukFfds7UpiR9NDZfEoUCWeoZEUmVSQ$
+>>> >
+>>>
+>>>
+
+	[[alternative HTML version deleted]]
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Thu Oct 12 07:22:04 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Thu, 12 Oct 2023 18:22:04 +1300
+Subject: [R-pkg-devel] Question about Clang 17 Error
+In-Reply-To: <CALOkxuyGVoBbfZ_BnmMvU8RYnj35ip3nJpv1PoO2qudk3XvH6g@mail.gmail.com>
+References: <CALOkxuymN-XZV_G0bx6bLh8RL-pRgWCet8b4hC3NnMfu-ofJNg@mail.gmail.com>
+ <CABtg=KnzPYYyLmyJ2yOwVY5jvOORxU7V9s1T=94pyUD5rSg2UA@mail.gmail.com>
+ <CALOkxuzGgwGk28zRH13YF+5WQr6iXs-5vDFUHbTr7vp8uOW7ig@mail.gmail.com>
+ <A872FAA4-7826-4CE3-ACB9-C15DE56B32F9@R-project.org>
+ <CALOkxuzmkk5TgXRDEudA-5mdPGX28YLN5EzCKMgfn_BgVFBpZw@mail.gmail.com>
+ <CALOkxuyGVoBbfZ_BnmMvU8RYnj35ip3nJpv1PoO2qudk3XvH6g@mail.gmail.com>
+Message-ID: <135538DA-BEE6-40EA-91FB-B575B23A0D3D@R-project.org>
+
+Reed,
+
+please contact CRAN - this list can only help with general developer's questions, not specific issues with a particular CRAN setup - only the corresponding member of CRAN running the setup can help. I don't see anything obvious - we can see that it's a mismatch of run-times between the cmake build and the R linking, but from the package alone it's not clear to me why.
+
+Cheers,
+Simon
+
+
+> On Oct 12, 2023, at 3:51 PM, Reed A. Cartwright <racartwright at gmail.com> wrote:
+> 
+> Update: I submitted a new version of the package, but it did not fix the issue. The package has now been archived and I do not have access to the error log output anymore from r-devel-linux-x86_64-fedora-clang.
+> 
+> I did reproduce CRAN's configuration in a VM using the information provided by CRAN for r-devel-linux-x86_64-fedora-clang. I still cannot reproduce the error and at this point I believe that there is a chance that CRAN's machine is misconfigured.
+> 
+> The specific error happens after rbedrock has been compiled and linked successfully. The specific error is that the symbol _ZNSt3__122__libcpp_verbose_abortEPKcz cannot be found when rbedrock.so is loaded.This symbol was introduced into libc++ in Clang 15.0. What I believe to be happening to cause the error is that Clang++ 17 is adding a reference to this symbol when compiling and linking rbedrock.so but the dynamic linker is loading an older version of libc++.so when trying to load rbedrock.so and the symbol is not found.
+> 
+> If this is the cause, then I think that the CRAN machine needs to configure the dynamic linker to use the Clang++ 17 libc++.so, or add the proper command line options to R's config variables.
+> 
+> It's possible that the CRAN's r-devel-linux-x86_64-fedora-clang machine is fine and I've missed something, and I would be happy if someone could help me figure out what it is.
+> 
+> Also, a new issue cropped up when 0.3.1 was tested on the r-oldrel-macos-x86_64 machine. /usr/bin/ar seems to have failed to produce an archive. The other Mac versions did fine, so I'm not sure if this is a random error or something related to my package. The error log is here: https://www.r-project.org/nosvn/R.check/r-oldrel-macos-x86_64/rbedrock-00install.html <https://www.r-project.org/nosvn/R.check/r-oldrel-macos-x86_64/rbedrock-00install.html>
+> 
+> If anyone can help me resolve this, I'd appreciate it.
+> 
+> 
+> On Wed, Sep 27, 2023 at 2:54?PM Reed A. Cartwright <racartwright at gmail.com <mailto:racartwright at gmail.com>> wrote:
+> Is there any way to submit packages directly to the CRAN's clang17 setup? I can enable verbose output for CMake and compare the output, but I'd rather not clog up the CRAN incoming queue just to debug a linker error?
+> 
+> On Wed, Sep 27, 2023 at 2:43?PM Simon Urbanek <simon.urbanek at r-project.org <mailto:simon.urbanek at r-project.org>> wrote:
+> It looks like a C++ run-time mismatch between what cmake is using to build the static library and what is used by R. Unfortunately, cmake hides the actual compiler calls so it's hard to tell the difference, but that setup relies on the correct sequence of library paths.
+> 
+> The rhub manually forces -stdlib=libc++ to all its CXX flags
+> https://urldefense.com/v3/__https://github.com/r-hub/rhub-linux-builders/blob/master/fedora-clang-devel/Makevars__;!!IKRxdwAv5BmarQ!bAZgiOQaK4hd5BTk_Ldx9IEHgzHKVbC-uMkvYv5GOVkZDvbedcGwS8dQ4MWXRjukFfds7UpiR9NDZfEoUCWeoVnCfrDa$ <https://urldefense.com/v3/__https://github.com/r-hub/rhub-linux-builders/blob/master/fedora-clang-devel/Makevars__;!!IKRxdwAv5BmarQ!bAZgiOQaK4hd5BTk_Ldx9IEHgzHKVbC-uMkvYv5GOVkZDvbedcGwS8dQ4MWXRjukFfds7UpiR9NDZfEoUCWeoVnCfrDa$> 
+> so it is quite different from the gannet tests-clang-trunk setup (also note the different library paths), but that's not something you can do universally in the package, because it strongly depends on the toolchain setup.
+> 
+> Cheers,
+> Simon
+> 
+> 
+> > On 28/09/2023, at 9:37 AM, Reed A. Cartwright <racartwright at gmail.com <mailto:racartwright at gmail.com>> wrote:
+> > 
+> > I was unable to reproduce the error on the rhub's clang17 docker image.
+> > 
+> > I notice that the linking command is slightly different between systems.
+> > And this suggests that I need to find some way to get CRAN to pass -stdlib
+> > flag at the linking stage.
+> > 
+> > CRAN:
+> > /usr/local/clang17/bin/clang++ -std=gnu++17 -shared
+> > -L/usr/local/clang/lib64 -L/usr/local/clang17/lib -L/usr/local/gcc13/lib64
+> > -L/usr/local/lib64 -o rbedrock.so actors.o bedrock_leveldb.o dummy.o init.o
+> > key_conv.o nbt.o random.o subchunk.o support.o -L./leveldb-mcpe/build
+> > -pthread -lleveldb -lz
+> > 
+> > RHUB:
+> > clang++-17 -stdlib=libc++ -std=gnu++14 -shared -L/opt/R/devel/lib/R/lib
+> > -L/usr/local/lib -o rbedrock.so actors.o bedrock_leveldb.o dummy.o init.o
+> > key_conv.o nbt.o random.o subchunk.o support.o -L./leveldb-mcpe/build
+> > -pthread -lleveldb -lz -L/opt/R/devel/lib/R/lib -lR
+> > 
+> > On Wed, Sep 27, 2023 at 11:36?AM G?bor Cs?rdi <csardi.gabor at gmail.com <mailto:csardi.gabor at gmail.com>>
+> > wrote:
+> > 
+> >> You might be able to reproduce it with the clang17 container here:
+> >> 
+> >> https://urldefense.com/v3/__https://r-hub.github.io/containers/__;!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-FoLqhhk9c$ <https://urldefense.com/v3/__https://r-hub.github.io/containers/__;!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-FoLqhhk9c$>
+> >> You can either run it directly or with the rhub2 package:
+> >> 
+> >> https://urldefense.com/v3/__https://github.com/r-hub/rhub2*readme__;Iw!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-FoxPbUQlE$ <https://urldefense.com/v3/__https://github.com/r-hub/rhub2*readme__;Iw!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-FoxPbUQlE$>
+> >> 
+> >> Gabor
+> >> 
+> >> On Wed, Sep 27, 2023 at 8:29?PM Reed A. Cartwright
+> >> <racartwright at gmail.com <mailto:racartwright at gmail.com>> wrote:
+> >>> 
+> >>> My package, RBedrock, is now throwing an error when compiled against
+> >>> Clang17. The error log is here:
+> >>> 
+> >>> 
+> >> https://urldefense.com/v3/__https://www.stats.ox.ac.uk/pub/bdr/clang17/rbedrock.log__;!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-FoNhThuZA$ <https://urldefense.com/v3/__https://www.stats.ox.ac.uk/pub/bdr/clang17/rbedrock.log__;!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-FoNhThuZA$>
+> >>> 
+> >>> The important part is
+> >>> """
+> >>> Error: package or namespace load failed for ?rbedrock? in dyn.load(file,
+> >>> DLLpath = DLLpath, ...):
+> >>> unable to load shared object
+> >>> 
+> >> '/data/gannet/ripley/R/packages/tests-clang-trunk/rbedrock.Rcheck/00LOCK-rbedrock/00new/rbedrock/libs/rbedrock.so':
+> >>> 
+> >>> 
+> >> /data/gannet/ripley/R/packages/tests-clang-trunk/rbedrock.Rcheck/00LOCK-rbedrock/00new/rbedrock/libs/rbedrock.so:
+> >>> undefined symbol: _ZNSt3__122__libcpp_verbose_abortEPKcz
+> >>> Error: loading failed
+> >>> """
+> >>> 
+> >>> From what I can gather through googling, this error can be caused by
+> >> using
+> >>> the C linker when one of the dependent libraries is a C++ library.
+> >>> 
+> >>> I cannot tell if this is an issue with my package (likely) or CRAN's
+> >>> clang17 setup (less likely).
+> >>> 
+> >>> Background about the package: rbedrock is written in C but links against
+> >> a
+> >>> C++ library (Mojang's leveldb fork)  via the library's C-API functions. I
+> >>> use a dummy .cpp file in the source directory to trigger R into using the
+> >>> C++ linker. That does still seem to be happening according to the log.
+> >>> 
+> >>> Has anyone seen this before and know where I should start looking to fix
+> >> it?
+> >>> 
+> >>> Thanks.
+> >>> 
+> >>> --
+> >>> Reed A. Cartwright, PhD
+> >>> Associate Professor of Genomics, Evolution, and Bioinformatics
+> >>> School of Life Sciences and The Biodesign Institute
+> >>> Arizona State University
+> >>> ==================
+> >>> Address: The Biodesign Institute, PO Box 876401, Tempe, AZ 85287-6401 USA
+> >>> Packages: The Biodesign Institute, 1001 S. McAllister Ave, Tempe, AZ
+> >>> 85287-6401 USA
+> >>> Office: Biodesign B-220C, 1-480-965-9949
+> >>> Website:
+> >> https://urldefense.com/v3/__http://cartwrig.ht/__;!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-Fo7waq1VI$ <https://urldefense.com/v3/__http://cartwrig.ht/__;!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-Fo7waq1VI$>
+> >>> 
+> >>>        [[alternative HTML version deleted]]
+> >>> 
+> >>> ______________________________________________
+> >>> R-package-devel at r-project.org <mailto:R-package-devel at r-project.org> mailing list
+> >>> 
+> >> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-FocAOfF7A$ <https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-FocAOfF7A$>
+> >> 
+> > ______________________________________________
+> > R-package-devel at r-project.org <mailto:R-package-devel at r-project.org> mailing list
+> > https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!IKRxdwAv5BmarQ!bAZgiOQaK4hd5BTk_Ldx9IEHgzHKVbC-uMkvYv5GOVkZDvbedcGwS8dQ4MWXRjukFfds7UpiR9NDZfEoUCWeoZEUmVSQ$ <https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!IKRxdwAv5BmarQ!bAZgiOQaK4hd5BTk_Ldx9IEHgzHKVbC-uMkvYv5GOVkZDvbedcGwS8dQ4MWXRjukFfds7UpiR9NDZfEoUCWeoZEUmVSQ$> 
+> > 
+> 
+
+
+	[[alternative HTML version deleted]]
+
+
+From r@c@rtwr|ght @end|ng |rom gm@||@com  Thu Oct 12 07:25:35 2023
+From: r@c@rtwr|ght @end|ng |rom gm@||@com (Reed A. Cartwright)
+Date: Wed, 11 Oct 2023 22:25:35 -0700
+Subject: [R-pkg-devel] Question about Clang 17 Error
+In-Reply-To: <135538DA-BEE6-40EA-91FB-B575B23A0D3D@R-project.org>
+References: <CALOkxuymN-XZV_G0bx6bLh8RL-pRgWCet8b4hC3NnMfu-ofJNg@mail.gmail.com>
+ <CABtg=KnzPYYyLmyJ2yOwVY5jvOORxU7V9s1T=94pyUD5rSg2UA@mail.gmail.com>
+ <CALOkxuzGgwGk28zRH13YF+5WQr6iXs-5vDFUHbTr7vp8uOW7ig@mail.gmail.com>
+ <A872FAA4-7826-4CE3-ACB9-C15DE56B32F9@R-project.org>
+ <CALOkxuzmkk5TgXRDEudA-5mdPGX28YLN5EzCKMgfn_BgVFBpZw@mail.gmail.com>
+ <CALOkxuyGVoBbfZ_BnmMvU8RYnj35ip3nJpv1PoO2qudk3XvH6g@mail.gmail.com>
+ <135538DA-BEE6-40EA-91FB-B575B23A0D3D@R-project.org>
+Message-ID: <CALOkxuxSOOiPkZLSNim58-3eYvqirnZge0tJdG=TkZJJiCfsTQ@mail.gmail.com>
+
+Okay, I'll reach out to the CRAN team shortly.
+
+I wanted to run it by the group here first because my interactions with the
+CRAN team haven't always been positive and I need to make sure that I'm not
+missing something "obvious".
+
+On Wed, Oct 11, 2023, 22:22 Simon Urbanek <simon.urbanek at r-project.org>
+wrote:
+
+> Reed,
+>
+> please contact CRAN - this list can only help with general developer's
+> questions, not specific issues with a particular CRAN setup - only the
+> corresponding member of CRAN running the setup can help. I don't see
+> anything obvious - we can see that it's a mismatch of run-times between the
+> cmake build and the R linking, but from the package alone it's not clear to
+> me why.
+>
+> Cheers,
+> Simon
+>
+>
+> On Oct 12, 2023, at 3:51 PM, Reed A. Cartwright <racartwright at gmail.com>
+> wrote:
+>
+> Update: I submitted a new version of the package, but it did not fix the
+> issue. The package has now been archived and I do not have access to the
+> error log output anymore from r-devel-linux-x86_64-fedora-clang.
+>
+> I did reproduce CRAN's configuration in a VM using the information
+> provided by CRAN for r-devel-linux-x86_64-fedora-clang. I still cannot
+> reproduce the error and at this point I believe that there is a chance that
+> CRAN's machine is misconfigured.
+>
+> The specific error happens after rbedrock has been compiled and linked
+> successfully. The specific error is that the symbol
+> _ZNSt3__122__libcpp_verbose_abortEPKcz cannot be found when rbedrock.so is
+> loaded.This symbol was introduced into libc++ in Clang 15.0. What I believe
+> to be happening to cause the error is that Clang++ 17 is adding a reference
+> to this symbol when compiling and linking rbedrock.so but the dynamic
+> linker is loading an older version of libc++.so when trying to load
+> rbedrock.so and the symbol is not found.
+>
+> If this is the cause, then I think that the CRAN machine needs to
+> configure the dynamic linker to use the Clang++ 17 libc++.so, or add the
+> proper command line options to R's config variables.
+>
+> It's possible that the CRAN's r-devel-linux-x86_64-fedora-clang machine is
+> fine and I've missed something, and I would be happy if someone could help
+> me figure out what it is.
+>
+> Also, a new issue cropped up when 0.3.1 was tested on the
+> r-oldrel-macos-x86_64 machine. /usr/bin/ar seems to have failed to produce
+> an archive. The other Mac versions did fine, so I'm not sure if this is a
+> random error or something related to my package. The error log is here:
+> https://www.r-project.org/nosvn/R.check/r-oldrel-macos-x86_64/rbedrock-00install.html
+> <https://urldefense.com/v3/__https://www.r-project.org/nosvn/R.check/r-oldrel-macos-x86_64/rbedrock-00install.html__;!!IKRxdwAv5BmarQ!bn6F_bNAOxSfAFbevyOMVGtmTQT-u-wuccyvwupscx__4Spd0Z8C0FoUWbCPQ8QfDC_9g64_bzdKRZTTqo2U99WvIfoR$>
+>
+> If anyone can help me resolve this, I'd appreciate it.
+>
+>
+> On Wed, Sep 27, 2023 at 2:54?PM Reed A. Cartwright <racartwright at gmail.com>
+> wrote:
+>
+>> Is there any way to submit packages directly to the CRAN's clang17 setup?
+>> I can enable verbose output for CMake and compare the output, but I'd
+>> rather not clog up the CRAN incoming queue just to debug a linker error?
+>>
+>> On Wed, Sep 27, 2023 at 2:43?PM Simon Urbanek <
+>> simon.urbanek at r-project.org> wrote:
+>>
+>>> It looks like a C++ run-time mismatch between what cmake is using to
+>>> build the static library and what is used by R. Unfortunately, cmake hides
+>>> the actual compiler calls so it's hard to tell the difference, but that
+>>> setup relies on the correct sequence of library paths.
+>>>
+>>> The rhub manually forces -stdlib=libc++ to all its CXX flags
+>>>
+>>> https://urldefense.com/v3/__https://github.com/r-hub/rhub-linux-builders/blob/master/fedora-clang-devel/Makevars__;!!IKRxdwAv5BmarQ!bAZgiOQaK4hd5BTk_Ldx9IEHgzHKVbC-uMkvYv5GOVkZDvbedcGwS8dQ4MWXRjukFfds7UpiR9NDZfEoUCWeoVnCfrDa$
+>>> so it is quite different from the gannet tests-clang-trunk setup (also
+>>> note the different library paths), but that's not something you can do
+>>> universally in the package, because it strongly depends on the toolchain
+>>> setup.
+>>>
+>>> Cheers,
+>>> Simon
+>>>
+>>>
+>>> > On 28/09/2023, at 9:37 AM, Reed A. Cartwright <racartwright at gmail.com>
+>>> wrote:
+>>> >
+>>> > I was unable to reproduce the error on the rhub's clang17 docker image.
+>>> >
+>>> > I notice that the linking command is slightly different between
+>>> systems.
+>>> > And this suggests that I need to find some way to get CRAN to pass
+>>> -stdlib
+>>> > flag at the linking stage.
+>>> >
+>>> > CRAN:
+>>> > /usr/local/clang17/bin/clang++ -std=gnu++17 -shared
+>>> > -L/usr/local/clang/lib64 -L/usr/local/clang17/lib
+>>> -L/usr/local/gcc13/lib64
+>>> > -L/usr/local/lib64 -o rbedrock.so actors.o bedrock_leveldb.o dummy.o
+>>> init.o
+>>> > key_conv.o nbt.o random.o subchunk.o support.o -L./leveldb-mcpe/build
+>>> > -pthread -lleveldb -lz
+>>> >
+>>> > RHUB:
+>>> > clang++-17 -stdlib=libc++ -std=gnu++14 -shared -L/opt/R/devel/lib/R/lib
+>>> > -L/usr/local/lib -o rbedrock.so actors.o bedrock_leveldb.o dummy.o
+>>> init.o
+>>> > key_conv.o nbt.o random.o subchunk.o support.o -L./leveldb-mcpe/build
+>>> > -pthread -lleveldb -lz -L/opt/R/devel/lib/R/lib -lR
+>>> >
+>>> > On Wed, Sep 27, 2023 at 11:36?AM G?bor Cs?rdi <csardi.gabor at gmail.com>
+>>> > wrote:
+>>> >
+>>> >> You might be able to reproduce it with the clang17 container here:
+>>> >>
+>>> >>
+>>> https://urldefense.com/v3/__https://r-hub.github.io/containers/__;!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-FoLqhhk9c$
+>>> >> You can either run it directly or with the rhub2 package:
+>>> >>
+>>> >>
+>>> https://urldefense.com/v3/__https://github.com/r-hub/rhub2*readme__;Iw!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-FoxPbUQlE$
+>>> >>
+>>> >> Gabor
+>>> >>
+>>> >> On Wed, Sep 27, 2023 at 8:29?PM Reed A. Cartwright
+>>> >> <racartwright at gmail.com> wrote:
+>>> >>>
+>>> >>> My package, RBedrock, is now throwing an error when compiled against
+>>> >>> Clang17. The error log is here:
+>>> >>>
+>>> >>>
+>>> >>
+>>> https://urldefense.com/v3/__https://www.stats.ox.ac.uk/pub/bdr/clang17/rbedrock.log__;!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-FoNhThuZA$
+>>> >>>
+>>> >>> The important part is
+>>> >>> """
+>>> >>> Error: package or namespace load failed for ?rbedrock? in
+>>> dyn.load(file,
+>>> >>> DLLpath = DLLpath, ...):
+>>> >>> unable to load shared object
+>>> >>>
+>>> >>
+>>> '/data/gannet/ripley/R/packages/tests-clang-trunk/rbedrock.Rcheck/00LOCK-rbedrock/00new/rbedrock/libs/rbedrock.so':
+>>> >>>
+>>> >>>
+>>> >>
+>>> /data/gannet/ripley/R/packages/tests-clang-trunk/rbedrock.Rcheck/00LOCK-rbedrock/00new/rbedrock/libs/rbedrock.so:
+>>> >>> undefined symbol: _ZNSt3__122__libcpp_verbose_abortEPKcz
+>>> >>> Error: loading failed
+>>> >>> """
+>>> >>>
+>>> >>> From what I can gather through googling, this error can be caused by
+>>> >> using
+>>> >>> the C linker when one of the dependent libraries is a C++ library.
+>>> >>>
+>>> >>> I cannot tell if this is an issue with my package (likely) or CRAN's
+>>> >>> clang17 setup (less likely).
+>>> >>>
+>>> >>> Background about the package: rbedrock is written in C but links
+>>> against
+>>> >> a
+>>> >>> C++ library (Mojang's leveldb fork)  via the library's C-API
+>>> functions. I
+>>> >>> use a dummy .cpp file in the source directory to trigger R into
+>>> using the
+>>> >>> C++ linker. That does still seem to be happening according to the
+>>> log.
+>>> >>>
+>>> >>> Has anyone seen this before and know where I should start looking to
+>>> fix
+>>> >> it?
+>>> >>>
+>>> >>> Thanks.
+>>> >>>
+>>> >>> --
+>>> >>> Reed A. Cartwright, PhD
+>>> >>> Associate Professor of Genomics, Evolution, and Bioinformatics
+>>> >>> School of Life Sciences and The Biodesign Institute
+>>> >>> Arizona State University
+>>> >>> ==================
+>>> >>> Address: The Biodesign Institute, PO Box 876401, Tempe, AZ
+>>> 85287-6401 USA
+>>> >>> Packages: The Biodesign Institute, 1001 S. McAllister Ave, Tempe, AZ
+>>> >>> 85287-6401 USA
+>>> >>> Office: Biodesign B-220C, 1-480-965-9949
+>>> >>> Website:
+>>> >>
+>>> https://urldefense.com/v3/__http://cartwrig.ht/__;!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-Fo7waq1VI$
+>>> >>>
+>>> >>>        [[alternative HTML version deleted]]
+>>> >>>
+>>> >>> ______________________________________________
+>>> >>> R-package-devel at r-project.org mailing list
+>>> >>>
+>>> >>
+>>> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-FocAOfF7A$
+>>> >>
+>>> > ______________________________________________
+>>> > R-package-devel at r-project.org mailing list
+>>> >
+>>> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!IKRxdwAv5BmarQ!bAZgiOQaK4hd5BTk_Ldx9IEHgzHKVbC-uMkvYv5GOVkZDvbedcGwS8dQ4MWXRjukFfds7UpiR9NDZfEoUCWeoZEUmVSQ$
+>>> >
+>>>
+>>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Thu Oct 12 09:35:11 2023
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Thu, 12 Oct 2023 09:35:11 +0200
+Subject: [R-pkg-devel] Question about Clang 17 Error
+In-Reply-To: <CALOkxuxSOOiPkZLSNim58-3eYvqirnZge0tJdG=TkZJJiCfsTQ@mail.gmail.com>
+References: <CALOkxuymN-XZV_G0bx6bLh8RL-pRgWCet8b4hC3NnMfu-ofJNg@mail.gmail.com>
+ <CABtg=KnzPYYyLmyJ2yOwVY5jvOORxU7V9s1T=94pyUD5rSg2UA@mail.gmail.com>
+ <CALOkxuzGgwGk28zRH13YF+5WQr6iXs-5vDFUHbTr7vp8uOW7ig@mail.gmail.com>
+ <A872FAA4-7826-4CE3-ACB9-C15DE56B32F9@R-project.org>
+ <CALOkxuzmkk5TgXRDEudA-5mdPGX28YLN5EzCKMgfn_BgVFBpZw@mail.gmail.com>
+ <CALOkxuyGVoBbfZ_BnmMvU8RYnj35ip3nJpv1PoO2qudk3XvH6g@mail.gmail.com>
+ <135538DA-BEE6-40EA-91FB-B575B23A0D3D@R-project.org>
+ <CALOkxuxSOOiPkZLSNim58-3eYvqirnZge0tJdG=TkZJJiCfsTQ@mail.gmail.com>
+Message-ID: <25895.41391.656822.288527@stat.math.ethz.ch>
+
+>>>>> Reed A Cartwright 
+>>>>>     on Wed, 11 Oct 2023 22:25:35 -0700 writes:
+
+    > Okay, I'll reach out to the CRAN team shortly.
+    > I wanted to run it by the group here first because my interactions with the
+    > CRAN team haven't always been positive and I need to make sure that I'm not
+    > missing something "obvious".
+
+well..  one thing not enough obvious:  Simon Urbanek _is_
+part of the CRAN team (*).   So at least you had a positive
+interaction with "them", now ! ;-)
+
+---
+*) https://cran.r-project.org/CRAN_team.htm
+  (which is the *first* hit when I web search "CRAN team" {with
+  DuckDuckGo, a reasonable non-prying Google-alternative I})
+
+
+Best,
+Martin
+
+
+    > On Wed, Oct 11, 2023, 22:22 Simon Urbanek <simon.urbanek at r-project.org>
+    > wrote:
+
+    >> Reed,
+    >> 
+    >> please contact CRAN - this list can only help with general developer's
+    >> questions, not specific issues with a particular CRAN setup - only the
+    >> corresponding member of CRAN running the setup can help. I don't see
+    >> anything obvious - we can see that it's a mismatch of run-times between the
+    >> cmake build and the R linking, but from the package alone it's not clear to
+    >> me why.
+    >> 
+    >> Cheers,
+    >> Simon
+    >> 
+    >> 
+    >> On Oct 12, 2023, at 3:51 PM, Reed A. Cartwright <racartwright at gmail.com>
+    >> wrote:
+    >> 
+    >> Update: I submitted a new version of the package, but it did not fix the
+    >> issue. The package has now been archived and I do not have access to the
+    >> error log output anymore from r-devel-linux-x86_64-fedora-clang.
+    >> 
+    >> I did reproduce CRAN's configuration in a VM using the information
+    >> provided by CRAN for r-devel-linux-x86_64-fedora-clang. I still cannot
+    >> reproduce the error and at this point I believe that there is a chance that
+    >> CRAN's machine is misconfigured.
+    >> 
+    >> The specific error happens after rbedrock has been compiled and linked
+    >> successfully. The specific error is that the symbol
+    >> _ZNSt3__122__libcpp_verbose_abortEPKcz cannot be found when rbedrock.so is
+    >> loaded.This symbol was introduced into libc++ in Clang 15.0. What I believe
+    >> to be happening to cause the error is that Clang++ 17 is adding a reference
+    >> to this symbol when compiling and linking rbedrock.so but the dynamic
+    >> linker is loading an older version of libc++.so when trying to load
+    >> rbedrock.so and the symbol is not found.
+    >> 
+    >> If this is the cause, then I think that the CRAN machine needs to
+    >> configure the dynamic linker to use the Clang++ 17 libc++.so, or add the
+    >> proper command line options to R's config variables.
+    >> 
+    >> It's possible that the CRAN's r-devel-linux-x86_64-fedora-clang machine is
+    >> fine and I've missed something, and I would be happy if someone could help
+    >> me figure out what it is.
+    >> 
+    >> Also, a new issue cropped up when 0.3.1 was tested on the
+    >> r-oldrel-macos-x86_64 machine. /usr/bin/ar seems to have failed to produce
+    >> an archive. The other Mac versions did fine, so I'm not sure if this is a
+    >> random error or something related to my package. The error log is here:
+    >> https://www.r-project.org/nosvn/R.check/r-oldrel-macos-x86_64/rbedrock-00install.html
+    >> <https://urldefense.com/v3/__https://www.r-project.org/nosvn/R.check/r-oldrel-macos-x86_64/rbedrock-00install.html__;!!IKRxdwAv5BmarQ!bn6F_bNAOxSfAFbevyOMVGtmTQT-u-wuccyvwupscx__4Spd0Z8C0FoUWbCPQ8QfDC_9g64_bzdKRZTTqo2U99WvIfoR$>
+    >> 
+    >> If anyone can help me resolve this, I'd appreciate it.
+    >> 
+    >> 
+    >> On Wed, Sep 27, 2023 at 2:54?PM Reed A. Cartwright <racartwright at gmail.com>
+    >> wrote:
+    >> 
+    >>> Is there any way to submit packages directly to the CRAN's clang17 setup?
+    >>> I can enable verbose output for CMake and compare the output, but I'd
+    >>> rather not clog up the CRAN incoming queue just to debug a linker error?
+    >>> 
+    >>> On Wed, Sep 27, 2023 at 2:43?PM Simon Urbanek <
+    >>> simon.urbanek at r-project.org> wrote:
+    >>> 
+    >>>> It looks like a C++ run-time mismatch between what cmake is using to
+    >>>> build the static library and what is used by R. Unfortunately, cmake hides
+    >>>> the actual compiler calls so it's hard to tell the difference, but that
+    >>>> setup relies on the correct sequence of library paths.
+    >>>> 
+    >>>> The rhub manually forces -stdlib=libc++ to all its CXX flags
+    >>>> 
+    >>>> https://urldefense.com/v3/__https://github.com/r-hub/rhub-linux-builders/blob/master/fedora-clang-devel/Makevars__;!!IKRxdwAv5BmarQ!bAZgiOQaK4hd5BTk_Ldx9IEHgzHKVbC-uMkvYv5GOVkZDvbedcGwS8dQ4MWXRjukFfds7UpiR9NDZfEoUCWeoVnCfrDa$
+    >>>> so it is quite different from the gannet tests-clang-trunk setup (also
+    >>>> note the different library paths), but that's not something you can do
+    >>>> universally in the package, because it strongly depends on the toolchain
+    >>>> setup.
+    >>>> 
+    >>>> Cheers,
+    >>>> Simon
+    >>>> 
+    >>>> 
+    >>>> > On 28/09/2023, at 9:37 AM, Reed A. Cartwright <racartwright at gmail.com>
+    >>>> wrote:
+    >>>> >
+    >>>> > I was unable to reproduce the error on the rhub's clang17 docker image.
+    >>>> >
+    >>>> > I notice that the linking command is slightly different between
+    >>>> systems.
+    >>>> > And this suggests that I need to find some way to get CRAN to pass
+    >>>> -stdlib
+    >>>> > flag at the linking stage.
+    >>>> >
+    >>>> > CRAN:
+    >>>> > /usr/local/clang17/bin/clang++ -std=gnu++17 -shared
+    >>>> > -L/usr/local/clang/lib64 -L/usr/local/clang17/lib
+    >>>> -L/usr/local/gcc13/lib64
+    >>>> > -L/usr/local/lib64 -o rbedrock.so actors.o bedrock_leveldb.o dummy.o
+    >>>> init.o
+    >>>> > key_conv.o nbt.o random.o subchunk.o support.o -L./leveldb-mcpe/build
+    >>>> > -pthread -lleveldb -lz
+    >>>> >
+    >>>> > RHUB:
+    >>>> > clang++-17 -stdlib=libc++ -std=gnu++14 -shared -L/opt/R/devel/lib/R/lib
+    >>>> > -L/usr/local/lib -o rbedrock.so actors.o bedrock_leveldb.o dummy.o
+    >>>> init.o
+    >>>> > key_conv.o nbt.o random.o subchunk.o support.o -L./leveldb-mcpe/build
+    >>>> > -pthread -lleveldb -lz -L/opt/R/devel/lib/R/lib -lR
+    >>>> >
+    >>>> > On Wed, Sep 27, 2023 at 11:36?AM G?bor Cs?rdi <csardi.gabor at gmail.com>
+    >>>> > wrote:
+    >>>> >
+    >>>> >> You might be able to reproduce it with the clang17 container here:
+    >>>> >>
+    >>>> >>
+    >>>> https://urldefense.com/v3/__https://r-hub.github.io/containers/__;!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-FoLqhhk9c$
+    >>>> >> You can either run it directly or with the rhub2 package:
+    >>>> >>
+    >>>> >>
+    >>>> https://urldefense.com/v3/__https://github.com/r-hub/rhub2*readme__;Iw!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-FoxPbUQlE$
+    >>>> >>
+    >>>> >> Gabor
+    >>>> >>
+    >>>> >> On Wed, Sep 27, 2023 at 8:29?PM Reed A. Cartwright
+    >>>> >> <racartwright at gmail.com> wrote:
+    >>>> >>>
+    >>>> >>> My package, RBedrock, is now throwing an error when compiled against
+    >>>> >>> Clang17. The error log is here:
+    >>>> >>>
+    >>>> >>>
+    >>>> >>
+    >>>> https://urldefense.com/v3/__https://www.stats.ox.ac.uk/pub/bdr/clang17/rbedrock.log__;!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-FoNhThuZA$
+    >>>> >>>
+    >>>> >>> The important part is
+    >>>> >>> """
+    >>>> >>> Error: package or namespace load failed for ?rbedrock? in
+    >>>> dyn.load(file,
+    >>>> >>> DLLpath = DLLpath, ...):
+    >>>> >>> unable to load shared object
+    >>>> >>>
+    >>>> >>
+    >>>> '/data/gannet/ripley/R/packages/tests-clang-trunk/rbedrock.Rcheck/00LOCK-rbedrock/00new/rbedrock/libs/rbedrock.so':
+    >>>> >>>
+    >>>> >>>
+    >>>> >>
+    >>>> /data/gannet/ripley/R/packages/tests-clang-trunk/rbedrock.Rcheck/00LOCK-rbedrock/00new/rbedrock/libs/rbedrock.so:
+    >>>> >>> undefined symbol: _ZNSt3__122__libcpp_verbose_abortEPKcz
+    >>>> >>> Error: loading failed
+    >>>> >>> """
+    >>>> >>>
+    >>>> >>> From what I can gather through googling, this error can be caused by
+    >>>> >> using
+    >>>> >>> the C linker when one of the dependent libraries is a C++ library.
+    >>>> >>>
+    >>>> >>> I cannot tell if this is an issue with my package (likely) or CRAN's
+    >>>> >>> clang17 setup (less likely).
+    >>>> >>>
+    >>>> >>> Background about the package: rbedrock is written in C but links
+    >>>> against
+    >>>> >> a
+    >>>> >>> C++ library (Mojang's leveldb fork)  via the library's C-API
+    >>>> functions. I
+    >>>> >>> use a dummy .cpp file in the source directory to trigger R into
+    >>>> using the
+    >>>> >>> C++ linker. That does still seem to be happening according to the
+    >>>> log.
+    >>>> >>>
+    >>>> >>> Has anyone seen this before and know where I should start looking to
+    >>>> fix
+    >>>> >> it?
+    >>>> >>>
+    >>>> >>> Thanks.
+    >>>> >>>
+    >>>> >>> --
+    >>>> >>> Reed A. Cartwright, PhD
+    >>>> >>> Associate Professor of Genomics, Evolution, and Bioinformatics
+    >>>> >>> School of Life Sciences and The Biodesign Institute
+    >>>> >>> Arizona State University
+    >>>> >>> ==================
+    >>>> >>> Address: The Biodesign Institute, PO Box 876401, Tempe, AZ
+    >>>> 85287-6401 USA
+    >>>> >>> Packages: The Biodesign Institute, 1001 S. McAllister Ave, Tempe, AZ
+    >>>> >>> 85287-6401 USA
+    >>>> >>> Office: Biodesign B-220C, 1-480-965-9949
+    >>>> >>> Website:
+    >>>> >>
+    >>>> https://urldefense.com/v3/__http://cartwrig.ht/__;!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-Fo7waq1VI$
+    >>>> >>>
+    >>>> >>>        [[alternative HTML version deleted]]
+    >>>> >>>
+    >>>> >>> ______________________________________________
+    >>>> >>> R-package-devel at r-project.org mailing list
+    >>>> >>>
+    >>>> >>
+    >>>> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!IKRxdwAv5BmarQ!a5vkX68B5unua6_Zsh92b99AXfbJiewU7Mp0nqAKE0JDT8v3g2d08JZ8Yq_0ubp0j4GeTWWLjLVAN-FocAOfF7A$
+    >>>> >>
+    >>>> > ______________________________________________
+    >>>> > R-package-devel at r-project.org mailing list
+    >>>> >
+    >>>> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!IKRxdwAv5BmarQ!bAZgiOQaK4hd5BTk_Ldx9IEHgzHKVbC-uMkvYv5GOVkZDvbedcGwS8dQ4MWXRjukFfds7UpiR9NDZfEoUCWeoZEUmVSQ$
+    >>>> >
+    >>>> 
+    >>>> 
+    >> 
+
+    > [[alternative HTML version deleted]]
+
+    > ______________________________________________
+    > R-package-devel at r-project.org mailing list
+    > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From tony_@_w||ke@ @end|ng |rom out|ook@com  Thu Oct 12 14:34:12 2023
+From: tony_@_w||ke@ @end|ng |rom out|ook@com (Tony Wilkes)
+Date: Thu, 12 Oct 2023 12:34:12 +0000
+Subject: [R-pkg-devel] Question regarding listing base and recommended
+ packages programmatically and efficiently
+Message-ID: <AS4P195MB1430D1753ED9AB1C34FDDD7DBED3A@AS4P195MB1430.EURP195.PROD.OUTLOOK.COM>
+
+Dear all,
+
+In my R package that I'm developing, I use `installed.packages(priority = "base")` to programmatically get all core/base R packages (i.e. base, stats, etc.). And similarly, I use installed.packages(priority = "recommended")?` to programmatically get the recommended R packages (i.e. mgcv, lattice, etc.).
+
+However, CRAN has requested to not use `installed.packages()`, as it is slow. I fully get and agree with that assesment. I used installed.packages()?` anyway because I could not find a better, fool-proof alternative.
+
+Nonetheless, I was asked to change this code for optimalisation. So I would like to ask: how do I programmatically get all base/core R packages safely and efficiently, but without using `installed.packages()`? And the same question for recommended R packages. I have of course Googled it, and looked at R's documentation (though R's documentation is large, so it's easy to miss something); no solution found. So if any of you has a smart idea: I'm all ears.
+
+Thank you in advance.
+
+Kind regards,
+
+Tony.
+
+	[[alternative HTML version deleted]]
+
+
+From th|erry@onke||nx @end|ng |rom |nbo@be  Thu Oct 12 14:39:07 2023
+From: th|erry@onke||nx @end|ng |rom |nbo@be (Thierry Onkelinx)
+Date: Thu, 12 Oct 2023 14:39:07 +0200
+Subject: [R-pkg-devel] Question regarding listing base and recommended
+ packages programmatically and efficiently
+In-Reply-To: <AS4P195MB1430D1753ED9AB1C34FDDD7DBED3A@AS4P195MB1430.EURP195.PROD.OUTLOOK.COM>
+References: <AS4P195MB1430D1753ED9AB1C34FDDD7DBED3A@AS4P195MB1430.EURP195.PROD.OUTLOOK.COM>
+Message-ID: <CAJuCY5z9GquTQMWPHbq9i=chungVzJHzAauL1_J+hf1BWMRprA@mail.gmail.com>
+
+Dear Tony,
+
+Much will depend on what information you need from the output of
+installed.packages()?
+
+Best regards,
+
+ir. Thierry Onkelinx
+Statisticus / Statistician
+
+Vlaamse Overheid / Government of Flanders
+INSTITUUT VOOR NATUUR- EN BOSONDERZOEK / RESEARCH INSTITUTE FOR NATURE AND
+FOREST
+Team Biometrie & Kwaliteitszorg / Team Biometrics & Quality Assurance
+thierry.onkelinx at inbo.be
+Havenlaan 88 bus 73, 1000 Brussel
+www.inbo.be
+
+///////////////////////////////////////////////////////////////////////////////////////////
+To call in the statistician after the experiment is done may be no more
+than asking him to perform a post-mortem examination: he may be able to say
+what the experiment died of. ~ Sir Ronald Aylmer Fisher
+The plural of anecdote is not data. ~ Roger Brinner
+The combination of some data and an aching desire for an answer does not
+ensure that a reasonable answer can be extracted from a given body of data.
+~ John Tukey
+///////////////////////////////////////////////////////////////////////////////////////////
+
+<https://www.inbo.be>
+
+
+Op do 12 okt 2023 om 14:34 schreef Tony Wilkes <tony_a_wilkes at outlook.com>:
+
+> Dear all,
+>
+> In my R package that I'm developing, I use `installed.packages(priority =
+> "base")` to programmatically get all core/base R packages (i.e. base,
+> stats, etc.). And similarly, I use installed.packages(priority =
+> "recommended")?` to programmatically get the recommended R packages (i.e.
+> mgcv, lattice, etc.).
+>
+> However, CRAN has requested to not use `installed.packages()`, as it is
+> slow. I fully get and agree with that assesment. I used
+> installed.packages()?` anyway because I could not find a better, fool-proof
+> alternative.
+>
+> Nonetheless, I was asked to change this code for optimalisation. So I
+> would like to ask: how do I programmatically get all base/core R packages
+> safely and efficiently, but without using `installed.packages()`? And the
+> same question for recommended R packages. I have of course Googled it, and
+> looked at R's documentation (though R's documentation is large, so it's
+> easy to miss something); no solution found. So if any of you has a smart
+> idea: I'm all ears.
+>
+> Thank you in advance.
+>
+> Kind regards,
+>
+> Tony.
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Oct 12 14:46:36 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 12 Oct 2023 08:46:36 -0400
+Subject: [R-pkg-devel] Question regarding listing base and recommended
+ packages programmatically and efficiently
+In-Reply-To: <AS4P195MB1430D1753ED9AB1C34FDDD7DBED3A@AS4P195MB1430.EURP195.PROD.OUTLOOK.COM>
+References: <AS4P195MB1430D1753ED9AB1C34FDDD7DBED3A@AS4P195MB1430.EURP195.PROD.OUTLOOK.COM>
+Message-ID: <0ac268d8-161c-4c4d-b38c-8f296cc271a3@gmail.com>
+
+It would be much faster (but slightly less reliable) to use 
+list.files(.libPaths()) to get the names of all installed packages, and 
+then filter them to the known list of base and recommended packages, 
+which changes very rarely.
+
+Duncan Murdoch
+
+On 12/10/2023 8:34 a.m., Tony Wilkes wrote:
+> Dear all,
+> 
+> In my R package that I'm developing, I use `installed.packages(priority = "base")` to programmatically get all core/base R packages (i.e. base, stats, etc.). And similarly, I use installed.packages(priority = "recommended")?` to programmatically get the recommended R packages (i.e. mgcv, lattice, etc.).
+> 
+> However, CRAN has requested to not use `installed.packages()`, as it is slow. I fully get and agree with that assesment. I used installed.packages()?` anyway because I could not find a better, fool-proof alternative.
+> 
+> Nonetheless, I was asked to change this code for optimalisation. So I would like to ask: how do I programmatically get all base/core R packages safely and efficiently, but without using `installed.packages()`? And the same question for recommended R packages. I have of course Googled it, and looked at R's documentation (though R's documentation is large, so it's easy to miss something); no solution found. So if any of you has a smart idea: I'm all ears.
+> 
+> Thank you in advance.
+> 
+> Kind regards,
+> 
+> Tony.
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From cdr|ver@@u@ @end|ng |rom gm@||@com  Thu Oct 12 15:32:28 2023
+From: cdr|ver@@u@ @end|ng |rom gm@||@com (Charles Driver)
+Date: Thu, 12 Oct 2023 15:32:28 +0200
+Subject: [R-pkg-devel] 
+ pkg check: SyntaxError: break must be inside loop or switch
+In-Reply-To: <20231011104032.47cd0f47@Tarkus>
+References: <CAAhN7=pjA=3CRfCW8i3P9-QtGqAo0pW0B5QKTA7M-PE9ZcGEwQ@mail.gmail.com>
+ <20231011104032.47cd0f47@Tarkus>
+Message-ID: <940063f5-7f33-4a92-b709-d0418515f1e3@gmail.com>
+
+So apparently there is a corrupted file in the current Stanheaders, 
+which is hopefully fixed soon...
+
+On 11/10/2023 9:40 am, Ivan Krylov wrote:
+> ? Tue, 10 Oct 2023 16:36:31 +0200
+> Charles Driver<cdriver.aus at gmail.com>  ?????:
+>
+>>    SyntaxError: break must be inside loop or switch
+> This looks like an error coming from a JavaScript engine or from a
+> JavaScript-derived language:
+>
+> https://github.com/blld/libecc/blob/88877a46ba9b0a47567aa999a4380b9e793783a8/src/main.c#L714
+> https://github.com/ynezz/openwrt-ucode/blob/5163867269fc04fa01ec5e9f8df3384c933339f2/compiler.c#L2930https://github.com/Bobris/Njsast/blob/930f59a9694432580a7b1367680c56672cfe4cd2/Njsast/Compress/LoopControlFinderTreeWalker.cs#L34
+>
+> (Most modern implementations say "_unlabeled_ break must be inside loop
+> or switch", but this may come from an older version.)
+>
+> This seems to have nothing to do with Stan either; at the very least I
+> cannot find this exact error message inhttps://github.com/stan-dev.
+> When R complains about a wrongly placed `break`, it also looks
+> differently:
+>
+> break
+> # Error: no loop for break/next, jumping to top level
+>
+> An infrastructure hiccup on Win-Builder?
+>
+
+	[[alternative HTML version deleted]]
+
+
+From j@g@nmn2 @end|ng |rom gm@||@com  Thu Oct 12 17:32:24 2023
+From: j@g@nmn2 @end|ng |rom gm@||@com (Mikael Jagan)
+Date: Thu, 12 Oct 2023 11:32:24 -0400
+Subject: [R-pkg-devel] Question regarding listing base and recommended
+ packages programmatically and efficiently
+In-Reply-To: <0ac268d8-161c-4c4d-b38c-8f296cc271a3@gmail.com>
+References: <0ac268d8-161c-4c4d-b38c-8f296cc271a3@gmail.com>
+Message-ID: <22242b80-c8ad-4ccf-8396-b4a22c4dd33d@gmail.com>
+
+Maybe something like this:
+
+     > isRecommendedPkg <- utils:::isBasePkg
+     > body(isRecommendedPkg)[[c(3L, 3L)]] <- "recommended"
+     > installed <- unique(list.files(.libPaths()))
+     > installed[vapply(installed, isRecommendedPkg, NA)]
+      [1] "KernSmooth" "MASS"       "Matrix"     "boot"       "class"
+      [6] "cluster"    "codetools"  "foreign"    "lattice"    "mgcv"
+     [11] "nlme"       "nnet"       "rpart"      "spatial"    "survival"
+
+where in your package you would define isRecommendedPkg "manually".
+
+Another (but quite undocumented and so maybe not "recommended" :-))
+possibility is this:
+
+     > mk <- file.path(R.home("share"), "make", "vars.mk")
+     > pp <- sub("^.*= +", "", grep("^R_PKGS_RECOMMENDED", readLines(mk), value 
+= TRUE))
+     > sort(strsplit(pp, " ")[[1L]])
+      [1] "KernSmooth" "MASS"       "Matrix"     "boot"       "class"
+      [6] "cluster"    "codetools"  "foreign"    "lattice"    "mgcv"
+     [11] "nlme"       "nnet"       "rpart"      "spatial"    "survival"
+
+I grepped around and did not find variables in any base namespace containing
+the names of these packages.  It wouldn't be too hard to define such variables
+when R is configured/built, but maybe there are "reasons" to not do that ... ?
+
+Mikael
+
+ > It would be much faster (but slightly less reliable) to use
+ > list.files(.libPaths()) to get the names of all installed packages, and
+ > then filter them to the known list of base and recommended packages,
+ > which changes very rarely.
+ >
+ > Duncan Murdoch
+ >
+ > On 12/10/2023 8:34 a.m., Tony Wilkes wrote:
+ > > Dear all,
+ > >
+ > > In my R package that I'm developing, I use `installed.packages(priority = 
+"base")` to programmatically get all core/base R packages (i.e. base, stats, 
+etc.). And similarly, I use installed.packages(priority = "recommended")?` to 
+programmatically get the recommended R packages (i.e. mgcv, lattice, etc.).
+ > >
+ > > However, CRAN has requested to not use `installed.packages()`, as it is 
+slow. I fully get and agree with that assesment. I used installed.packages()?` 
+anyway because I could not find a better, fool-proof alternative.
+ > >
+ > > Nonetheless, I was asked to change this code for optimalisation. So I would 
+like to ask: how do I programmatically get all base/core R packages safely and 
+efficiently, but without using `installed.packages()`? And the same question for 
+recommended R packages. I have of course Googled it, and looked at R's 
+documentation (though R's documentation is large, so it's easy to miss 
+something); no solution found. So if any of you has a smart idea: I'm all ears.
+ > >
+ > > Thank you in advance.
+ > >
+ > > Kind regards,
+ > >
+ > > Tony.
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Oct 12 17:50:30 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 12 Oct 2023 18:50:30 +0300
+Subject: [R-pkg-devel] Question regarding listing base and recommended
+ packages programmatically and efficiently
+In-Reply-To: <22242b80-c8ad-4ccf-8396-b4a22c4dd33d@gmail.com>
+References: <0ac268d8-161c-4c4d-b38c-8f296cc271a3@gmail.com>
+ <22242b80-c8ad-4ccf-8396-b4a22c4dd33d@gmail.com>
+Message-ID: <20231012185030.14a43f26@Tarkus>
+
+On Thu, 12 Oct 2023 11:32:24 -0400
+Mikael Jagan <jaganmn2 at gmail.com> wrote:
+
+>      > mk <- file.path(R.home("share"), "make", "vars.mk")
+>      > pp <- sub("^.*= +", "", grep("^R_PKGS_RECOMMENDED",
+>      > readLines(mk), value = TRUE))
+>      > sort(strsplit(pp, " ")[[1L]])  
+>       [1] "KernSmooth" "MASS"       "Matrix"     "boot"       "class"
+>       [6] "cluster"    "codetools"  "foreign"    "lattice"    "mgcv"
+>      [11] "nlme"       "nnet"       "rpart"      "spatial" "survival"
+> 
+> I grepped around and did not find variables in any base namespace
+> containing the names of these packages.  It wouldn't be too hard to
+> define such variables when R is configured/built, but maybe there are
+> "reasons" to not do that ... ?
+
+tools:::.get_standard_package_names does that at package installation
+time, but it's still not public API.
+
+A call to installed.packages() may take a long while because it has to
+list files in every library (some of which can be large and/or
+network-mounted) and parse each Meta/package.rds file, but at least
+list.files() is faster than that.
+
+If I had to make a choice at this point, I would hard-code the list of
+packages, but a better option may surface once we know what Tony needs
+the package lists for.
+
+-- 
+Best regards,
+Ivan
+
+
