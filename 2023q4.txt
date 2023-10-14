@@ -3357,3 +3357,124 @@ Best regards,
 Ivan
 
 
+From tony_@_w||ke@ @end|ng |rom out|ook@com  Fri Oct 13 11:11:20 2023
+From: tony_@_w||ke@ @end|ng |rom out|ook@com (Tony Wilkes)
+Date: Fri, 13 Oct 2023 09:11:20 +0000
+Subject: [R-pkg-devel] published CRAN check results give error for only
+ r-oldrel-macos-arm64
+Message-ID: <AS4P195MB143061979866A2C583D4BEB2BED2A@AS4P195MB1430.EURP195.PROD.OUTLOOK.COM>
+
+Dear all,
+
+My R package has yesterday been accepted by CRAN. I'm super happy about this, of course.
+But when I look at the package's CRAN check results (see https://cran.r-project.org/web/checks/check_results_tinycodet.html), I see that r-oldrel-macos-arm64 has latex errors.
+I find it very odd that the package runs fine on all OS, except this particular one. And I don't see why latex errors would be OS-specific. (Btw: I actually checked my R package personally on Mac OS before giving to CRAN, and there were no errors then.)
+
+As stated, my package is published, so it's not the end of the world. But I don't want certain people to be left out, so I would prefer to fix this particular error also. The latex errors are not very enlightening.
+
+Can anyone please explain why these latex errors are there, and how I could fix them in the future?
+
+Thank you in advance.
+
+Kind regards,
+
+Tony.
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Oct 13 12:01:50 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 13 Oct 2023 13:01:50 +0300
+Subject: [R-pkg-devel] published CRAN check results give error for only
+ r-oldrel-macos-arm64
+In-Reply-To: <AS4P195MB143061979866A2C583D4BEB2BED2A@AS4P195MB1430.EURP195.PROD.OUTLOOK.COM>
+References: <AS4P195MB143061979866A2C583D4BEB2BED2A@AS4P195MB1430.EURP195.PROD.OUTLOOK.COM>
+Message-ID: <20231013130150.04323d1e@Tarkus>
+
+On Fri, 13 Oct 2023 09:11:20 +0000
+Tony Wilkes <tony_a_wilkes at outlook.com> wrote:
+
+> My R package has yesterday been accepted by CRAN. I'm super happy
+> about this, of course. But when I look at the package's CRAN check
+> results (see
+> https://cran.r-project.org/web/checks/check_results_tinycodet.html),
+> I see that r-oldrel-macos-arm64 has latex errors.
+
+The difference is that the r-oldrel-windows-x86_64 checks are running
+R-4.2.3, but r-oldrel-macos-arm64 are running R-4.2.0. I can reproduce
+the issue with R-4.2.0, and it's in the s_regex help page. Here's the
+relevant difference in the intermediate *.tex files:
+
+ The \LinkA{\Rpercent{}s-\Rpercent{}}{.Rpcent.s.Rdash..Rpcent.} and \LinkA{\Rpercent{}s/\Rpercent{}}{.Rpcent.s/.Rpcent.} operators,
+-as well as the string detection operators (\LinkA{\Rpercent{}s\textbraceleft{\textbraceright{}\textbraceright{}\Rpercent{}}{.Rpcent.s.Rlbrace..Rrbrace..Rpcent.}, \LinkA{\Rpercent{}s!\textbraceleft{\textbraceright{}\textbraceright{}\Rpercent{}}{.Rpcent.s!.Rlbrace..Rrbrace..Rpcent.}),
++as well as the string detection operators (\LinkA{\Rpercent{}s\{\}\Rpercent{}}{.Rpcent.s.Rlbrace..Rrbrace..Rpcent.}, \LinkA{\Rpercent{}s!\{\}\Rpercent{}}{.Rpcent.s!.Rlbrace..Rrbrace..Rpcent.}),
+ perform pattern matching for some purpose,
+ where the pattern is given on the right hand side. \\{}
+ When a character vector or string is given on the right hand side,
+
+This seems to correspond to R-devel revision 82224 made on 2022-04-20
+that fixed the use of {} inside \code{\link{}}.
+
+If you'd like a clean PDF manual build on R-4.2.0 and older, it may
+help to give a different \alias to the %s{}% help page and use that
+inside \link.
+
+-- 
+Best regards,
+Ivan
+
+
+From bbo|ker @end|ng |rom gm@||@com  Fri Oct 13 21:05:11 2023
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Fri, 13 Oct 2023 15:05:11 -0400
+Subject: [R-pkg-devel] What happened to mlr3proba on CRAN?
+In-Reply-To: <GV1PR10MB629246246478337805FE5430FBCFA@GV1PR10MB6292.EURPRD10.PROD.OUTLOOK.COM>
+References: <GV1PR10MB629246246478337805FE5430FBCFA@GV1PR10MB6292.EURPRD10.PROD.OUTLOOK.COM>
+Message-ID: <4ff3d6c8-bc8d-4849-8682-bad27162b91e@gmail.com>
+
+Based on 
+https://cran-archive.r-project.org/web/checks/2022/2022-05-16_check_results_mlr3proba.html
+
+   it looks like there were problems with the code (possibly harmless, 
+but very unlikely to be exactly as intended) when R started throwing an 
+error when vectors of length >1 were used with the && operator; this 
+happened with R 4.3.0
+
+https://cran-archive.r-project.org/web/checks/2022/2022-05-16_check_results_mlr3proba.html
+
+\subsection{SIGNIFICANT USER-VISIBLE CHANGES}{
+     \itemize{
+       \item Calling \code{&&} or \code{||} with LHS or (if evaluated) 
+RHS of
+       length greater than one is now always an error, with a report of
+       the form
+\preformatted{    'length = 4' in coercion to 'logical(1)'}
+
+   Since the errors weren't corrected, the package was archived.
+
+   You can find the maintainer's email in the DESCRIPTION file here: 
+https://cran.r-project.org/src/contrib/Archive/mlr3proba/mlr3proba_0.4.9.tar.gz 
+   if you want to follow up with them ...
+
+   cheers
+    Ben Bolker
+
+
+On 2023-10-08 5:28 p.m., Dr. Franz Kir?ly wrote:
+> Dear all,
+> 
+> can someone explain to me what exactly happened to mlr3proba on CRAN?
+> https://cran.r-project.org/web/packages/mlr3proba/index.html
+> 
+> Thanks
+> Franz
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
