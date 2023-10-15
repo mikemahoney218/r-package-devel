@@ -3478,3 +3478,294 @@ On 2023-10-08 5:28 p.m., Dr. Franz Kir?ly wrote:
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Sat Oct 14 14:25:40 2023
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Sat, 14 Oct 2023 14:25:40 +0200
+Subject: [R-pkg-devel] Question regarding listing base and recommended
+ packages programmatically and efficiently
+In-Reply-To: <20231012185030.14a43f26@Tarkus>
+References: <0ac268d8-161c-4c4d-b38c-8f296cc271a3@gmail.com>
+ <22242b80-c8ad-4ccf-8396-b4a22c4dd33d@gmail.com>
+ <20231012185030.14a43f26@Tarkus>
+Message-ID: <25898.35012.379629.459153@stat.math.ethz.ch>
+
+>>>>> Ivan Krylov 
+>>>>>     on Thu, 12 Oct 2023 18:50:30 +0300 writes:
+
+    > On Thu, 12 Oct 2023 11:32:24 -0400
+    > Mikael Jagan <jaganmn2 at gmail.com> wrote:
+
+    >> > mk <- file.path(R.home("share"), "make", "vars.mk")
+    >> > pp <- sub("^.*= +", "", grep("^R_PKGS_RECOMMENDED",
+    >> > readLines(mk), value = TRUE))
+    >> > sort(strsplit(pp, " ")[[1L]])  
+    >> [1] "KernSmooth" "MASS"       "Matrix"     "boot"       "class"
+    >> [6] "cluster"    "codetools"  "foreign"    "lattice"    "mgcv"
+    >> [11] "nlme"       "nnet"       "rpart"      "spatial" "survival"
+    >> 
+    >> I grepped around and did not find variables in any base namespace
+    >> containing the names of these packages.  It wouldn't be too hard to
+    >> define such variables when R is configured/built, but maybe there are
+    >> "reasons" to not do that ... ?
+
+    > tools:::.get_standard_package_names does that at package installation
+    > time, but it's still not public API.
+
+Within R-core, we have somewhat discussed this, and a few
+minutes ago I committed a "public API" version of the above,
+called
+   standard_package_names()
+
+to R-devel (svn rev 85329), and hence probably in next year's
+April release of R.
+
+
+    > A call to installed.packages() may take a long while because it has to
+    > list files in every library (some of which can be large and/or
+    > network-mounted) and parse each Meta/package.rds file, but at least
+    > list.files() is faster than that.
+
+The above is another issue that we've wanted to improve, as some
+of you are aware,  notably thinking about caching the result
+.. there has been work on this during the R Sprint @ Warwick a
+couple of weeks ago,
+
+ ==> https://github.com/r-devel/r-project-sprint-2023/issues/78
+
+involving smart people and promising proposals (my personal view).
+
+  > If I had to make a choice at this point, I would hard-code the list of
+  > packages, but a better option may surface once we know what Tony needs
+  > the package lists for.
+
+  > -- 
+  > Best regards,
+  > Ivan
+
+
+With thanks to the discussants here on R-devel,
+and best regards,
+Martin
+
+--
+Martin Maechler
+ETH Zurich  and  R Core team
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Sat Oct 14 19:37:14 2023
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Sat, 14 Oct 2023 10:37:14 -0700
+Subject: [R-pkg-devel] Question regarding listing base and recommended
+ packages programmatically and efficiently
+In-Reply-To: <25898.35012.379629.459153@stat.math.ethz.ch>
+References: <0ac268d8-161c-4c4d-b38c-8f296cc271a3@gmail.com>
+ <22242b80-c8ad-4ccf-8396-b4a22c4dd33d@gmail.com>
+ <20231012185030.14a43f26@Tarkus>
+ <25898.35012.379629.459153@stat.math.ethz.ch>
+Message-ID: <CAFDcVCR79tNah1LFBwUthc_67Dy1hKufAO8pXuC78v7qSE=uGw@mail.gmail.com>
+
+On Sat, Oct 14, 2023 at 5:25?AM Martin Maechler
+<maechler at stat.math.ethz.ch> wrote:
+>
+> >>>>> Ivan Krylov
+> >>>>>     on Thu, 12 Oct 2023 18:50:30 +0300 writes:
+>
+>     > On Thu, 12 Oct 2023 11:32:24 -0400
+>     > Mikael Jagan <jaganmn2 at gmail.com> wrote:
+>
+>     >> > mk <- file.path(R.home("share"), "make", "vars.mk")
+>     >> > pp <- sub("^.*= +", "", grep("^R_PKGS_RECOMMENDED",
+>     >> > readLines(mk), value = TRUE))
+>     >> > sort(strsplit(pp, " ")[[1L]])
+>     >> [1] "KernSmooth" "MASS"       "Matrix"     "boot"       "class"
+>     >> [6] "cluster"    "codetools"  "foreign"    "lattice"    "mgcv"
+>     >> [11] "nlme"       "nnet"       "rpart"      "spatial" "survival"
+>     >>
+>     >> I grepped around and did not find variables in any base namespace
+>     >> containing the names of these packages.  It wouldn't be too hard to
+>     >> define such variables when R is configured/built, but maybe there are
+>     >> "reasons" to not do that ... ?
+>
+>     > tools:::.get_standard_package_names does that at package installation
+>     > time, but it's still not public API.
+>
+> Within R-core, we have somewhat discussed this, and a few
+> minutes ago I committed a "public API" version of the above,
+> called
+>    standard_package_names()
+>
+> to R-devel (svn rev 85329), and hence probably in next year's
+> April release of R.
+
+Excellent. Will it be supported on all OSes?  Because, there's
+currently a source code comment saying the current implementation
+might not work on MS Windows:
+
+## we cannot assume that file.path(R.home("share"), "make", "vars.mk")
+## is installed, as it is not on Windows
+standard_package_names <-
+.get_standard_package_names <-
+local({
+    lines <- readLines(file.path(R.home("share"), "make", "vars.mk"))
+    lines <- grep("^R_PKGS_[[:upper:]]+ *=", lines, value = TRUE)
+    out <- strsplit(sub("^R_PKGS_[[:upper:]]+ *= *", "", lines), " +")
+    names(out) <-
+        tolower(sub("^R_PKGS_([[:upper:]]+) *=.*", "\\1", lines))
+    eval(substitute(function() {out}, list(out=out)), envir = topenv())
+    })
+
+/Henrik
+
+>
+>
+>     > A call to installed.packages() may take a long while because it has to
+>     > list files in every library (some of which can be large and/or
+>     > network-mounted) and parse each Meta/package.rds file, but at least
+>     > list.files() is faster than that.
+>
+> The above is another issue that we've wanted to improve, as some
+> of you are aware,  notably thinking about caching the result
+> .. there has been work on this during the R Sprint @ Warwick a
+> couple of weeks ago,
+>
+>  ==> https://github.com/r-devel/r-project-sprint-2023/issues/78
+>
+> involving smart people and promising proposals (my personal view).
+>
+>   > If I had to make a choice at this point, I would hard-code the list of
+>   > packages, but a better option may surface once we know what Tony needs
+>   > the package lists for.
+>
+>   > --
+>   > Best regards,
+>   > Ivan
+>
+>
+> With thanks to the discussants here on R-devel,
+> and best regards,
+> Martin
+>
+> --
+> Martin Maechler
+> ETH Zurich  and  R Core team
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Sat Oct 14 20:29:17 2023
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Sat, 14 Oct 2023 20:29:17 +0200
+Subject: [R-pkg-devel] Question regarding listing base and recommended
+ packages programmatically and efficiently
+In-Reply-To: <CAFDcVCR79tNah1LFBwUthc_67Dy1hKufAO8pXuC78v7qSE=uGw@mail.gmail.com>
+References: <0ac268d8-161c-4c4d-b38c-8f296cc271a3@gmail.com>
+ <22242b80-c8ad-4ccf-8396-b4a22c4dd33d@gmail.com>
+ <20231012185030.14a43f26@Tarkus>
+ <25898.35012.379629.459153@stat.math.ethz.ch>
+ <CAFDcVCR79tNah1LFBwUthc_67Dy1hKufAO8pXuC78v7qSE=uGw@mail.gmail.com>
+Message-ID: <25898.56829.617453.730504@stat.math.ethz.ch>
+
+>>>>> Henrik Bengtsson 
+>>>>>     on Sat, 14 Oct 2023 10:37:14 -0700 writes:
+
+    > On Sat, Oct 14, 2023 at 5:25?AM Martin Maechler
+    > <maechler at stat.math.ethz.ch> wrote:
+    >> 
+    >> >>>>> Ivan Krylov
+    >> >>>>>     on Thu, 12 Oct 2023 18:50:30 +0300 writes:
+    >> 
+    >> > On Thu, 12 Oct 2023 11:32:24 -0400
+    >> > Mikael Jagan <jaganmn2 at gmail.com> wrote:
+    >> 
+    >> >> > mk <- file.path(R.home("share"), "make", "vars.mk")
+    >> >> > pp <- sub("^.*= +", "", grep("^R_PKGS_RECOMMENDED",
+    >> >> > readLines(mk), value = TRUE))
+    >> >> > sort(strsplit(pp, " ")[[1L]])
+    >> >> [1] "KernSmooth" "MASS"       "Matrix"     "boot"       "class"
+    >> >> [6] "cluster"    "codetools"  "foreign"    "lattice"    "mgcv"
+    >> >> [11] "nlme"       "nnet"       "rpart"      "spatial" "survival"
+    >> >>
+    >> >> I grepped around and did not find variables in any base namespace
+    >> >> containing the names of these packages.  It wouldn't be too hard to
+    >> >> define such variables when R is configured/built, but maybe there are
+    >> >> "reasons" to not do that ... ?
+    >> 
+    >> > tools:::.get_standard_package_names does that at package installation
+    >> > time, but it's still not public API.
+    >> 
+    >> Within R-core, we have somewhat discussed this, and a few
+    >> minutes ago I committed a "public API" version of the above,
+    >> called
+    >> standard_package_names()
+    >> 
+    >> to R-devel (svn rev 85329), and hence probably in next year's
+    >> April release of R.
+
+    > Excellent. Will it be supported on all OSes?  Because, there's
+    > currently a source code comment saying the current implementation
+    > might not work on MS Windows:
+
+    > ## we cannot assume that file.path(R.home("share"), "make", "vars.mk")
+    > ## is installed, as it is not on Windows
+
+Well, it does work nowadays on Windows {just checked}.
+So the comment should probably be removed.
+
+{{ I'm definitely not the expert, but AFAIK, the Windows
+   installation of R has become considerably closer to the other platform
+   ones, recently }}
+
+
+    > standard_package_names <-
+    > .get_standard_package_names <-
+    > local({
+    > lines <- readLines(file.path(R.home("share"), "make", "vars.mk"))
+    > lines <- grep("^R_PKGS_[[:upper:]]+ *=", lines, value = TRUE)
+    > out <- strsplit(sub("^R_PKGS_[[:upper:]]+ *= *", "", lines), " +")
+    > names(out) <-
+    > tolower(sub("^R_PKGS_([[:upper:]]+) *=.*", "\\1", lines))
+    > eval(substitute(function() {out}, list(out=out)), envir = topenv())
+    > })
+
+    > /Henrik
+
+    >> 
+    >> 
+    >> > A call to installed.packages() may take a long while because it has to
+    >> > list files in every library (some of which can be large and/or
+    >> > network-mounted) and parse each Meta/package.rds file, but at least
+    >> > list.files() is faster than that.
+    >> 
+    >> The above is another issue that we've wanted to improve, as some
+    >> of you are aware,  notably thinking about caching the result
+    >> .. there has been work on this during the R Sprint @ Warwick a
+    >> couple of weeks ago,
+    >> 
+    >> ==> https://github.com/r-devel/r-project-sprint-2023/issues/78
+    >> 
+    >> involving smart people and promising proposals (my personal view).
+    >> 
+    >> > If I had to make a choice at this point, I would hard-code the list of
+    >> > packages, but a better option may surface once we know what Tony needs
+    >> > the package lists for.
+    >> 
+    >> > --
+    >> > Best regards,
+    >> > Ivan
+    >> 
+    >> 
+    >> With thanks to the discussants here on R-devel,
+    >> and best regards,
+    >> Martin
+    >> 
+    >> --
+    >> Martin Maechler
+    >> ETH Zurich  and  R Core team
+    >> 
+    >> ______________________________________________
+    >> R-package-devel at r-project.org mailing list
+    >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
