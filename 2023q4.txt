@@ -6682,3 +6682,728 @@ On 17.10.2023 20:45, Ivan Krylov wrote:
 >
 
 
+From @hu|@|@cheung @end|ng |rom gm@||@com  Wed Oct 18 03:25:51 2023
+From: @hu|@|@cheung @end|ng |rom gm@||@com (Shu Fai Cheung)
+Date: Wed, 18 Oct 2023 09:25:51 +0800
+Subject: [R-pkg-devel] Suppressing long-running vignette code in CRAN
+ submission
+In-Reply-To: <1ca51da7-6243-45d6-b3cd-811130b52ec2@mcmaster.ca>
+References: <55cac1c9-9f59-4ada-bdc5-273e12f83430@mcmaster.ca>
+ <ddc26b1a-94b0-4de5-9cb8-14a991dcf842@gmail.com>
+ <25902.16306.681621.578024@rob.eddelbuettel.com>
+ <c6c4842c-679e-457c-8081-bf96f69a0f74@mcmaster.ca>
+ <4D65DAA7-BF42-4DBF-80DC-F6B7D09751F3@R-project.org>
+ <25903.1227.152942.179691@rob.eddelbuettel.com>
+ <CANAiAiXk7TeX9ndA+Q+kLtWd7dbdJh-LQqU+MpgusWX_efO46Q@mail.gmail.com>
+ <1ca51da7-6243-45d6-b3cd-811130b52ec2@mcmaster.ca>
+Message-ID: <CAPVJd2Xt=RoyL=iUO05cVGY-66pjKwOHt6dOjKvVpfCB4b83KA@mail.gmail.com>
+
+Please pardon me if I suggest something unrelated below. Many experts
+have made suggestions that I would also like to consider because I
+also have a similar issue with some packages.
+
+This is an approach I found, for Rmarkdown vignettes:
+
+https://www.kloppenborg.ca/2021/06/long-running-vignettes/
+
+This is similar to some of the suggestions. The vignette is rendered
+locally. It uses the trick that, If we render the vignette by calling
+knitr::knit() directly, the extension of the source file does not
+matter. The output, although with the extension ".Rmd", actually
+contains the results of the code, in chunks starting with "```r", not
+"```{r}".
+
+When this pre-buiult .Rmd file is built again, it will just convert
+the file to an HTML file, with no need to rerun the code.
+
+The method uses an extension for the source Rmd file (".orig" in the
+post) to make sure the "real" source files are ignored when building
+the vignettes.
+
+Perhaps this is also a feasible solution for long running vignettes?
+
+Regards,
+Shu Fai
+
+On Wed, Oct 18, 2023 at 6:51?AM John Fox <jfox at mcmaster.ca> wrote:
+>
+> Dear John,
+>
+> Unless I'm mistaken, the *installation* time of the package isn't really
+> at issue. If a user installs a package from a tarball provided by CRAN,
+> the vignettes aren't normally rebuilt.
+>
+> Best,
+>   John
+>
+> On 2023-10-17 6:30 p.m., John Harrold wrote:
+> > Caution: External email.
+> >
+> >
+> > I ask myself the question: Who is the vignette for?  It does server two
+> > purposes. One is testing but primarily it's for the users to learn how to
+> > use a package. I think the testing is secondary, and if it slows down
+> > installation or general usability I'd sacrifice the testing. If it's that
+> > important, then the tests can be added explicitly in tests/.
+> >
+> > On Tue, Oct 17, 2023 at 3:04?PM Dirk Eddelbuettel <edd at debian.org> wrote:
+> >
+> >>
+> >> On 18 October 2023 at 08:51, Simon Urbanek wrote:
+> >> | John,
+> >> |
+> >> | the short answer is it won't work (it defeats the purpose of vignettes).
+> >>
+> >> Not exactly. Everything is under our (i.e. package author) control, and
+> >> when
+> >> we want to replace 'computed' values with cached values we can.
+> >>
+> >> All this is somewhat of a charade. "Of course" we want vignettes to run
+> >> tests. But then we don't want to fall over random missing .sty files or
+> >> fonts
+> >> (macOS machines have been less forgiving than others), not to mention
+> >> compile
+> >> time.
+> >>
+> >> So for simplicity I often pre-make pdf vignettes that get included in other
+> >> latex code as source. Works great, never fails, CRAN never complained --
+> >> which is somewhat contrary to your statement.
+> >>
+> >> It is effectively the same with tests. We all want maximum test surfaces.
+> >> But
+> >> when tests fail, or when they run too long, or [insert many other reasons
+> >> here] so many packages run tests conditionally.  Such is life.
+> >>
+> >> Dirk
+> >>
+> >>
+> >> | However, this sounds like a purely hypothetical question - CRAN policies
+> >> allow long-running vignettes if they declared.
+> >> |
+> >> | Cheers,
+> >> | Simon
+> >> |
+> >> |
+> >> | > On 18/10/2023, at 3:02 AM, John Fox <jfox at mcmaster.ca> wrote:
+> >> | >
+> >> | > Hello Dirk,
+> >> | >
+> >> | > Thank you (and Kevin and John) for addressing my questions.
+> >> | >
+> >> | > No one directly answered my first question, however, which was whether
+> >> the approach that I suggested would work. I guess that the implication is
+> >> that it won't, but it would be nice to confirm that before I try something
+> >> else, specifically using R.rsp.
+> >> | >
+> >> | > Best,
+> >> | > John
+> >> | >
+> >> | > On 2023-10-17 4:02 a.m., Dirk Eddelbuettel wrote:
+> >> | >> Caution: External email.
+> >> | >> On 16 October 2023 at 10:42, Kevin R Coombes wrote:
+> >> | >> | Produce a PDF file yourself, then use the "as.is" feature of the
+> >> R.rsp
+> >> | >> | package.
+> >> | >> For completeness, that approach also works directly with Sweave.
+> >> Described in
+> >> | >> a blog post by Mark van der Loo in 2019, and used in a number of
+> >> packages
+> >> | >> including a few of mine.
+> >> | >> That said, I also used the approach described by John Harrold and
+> >> cached
+> >> | >> results myself.
+> >> | >> Dirk
+> >> | >> --
+> >> | >> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> >> | >> ______________________________________________
+> >> | >> R-package-devel at r-project.org mailing list
+> >> | >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >> | >
+> >> | > ______________________________________________
+> >> | > R-package-devel at r-project.org mailing list
+> >> | > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >> | >
+> >> |
+> >> | ______________________________________________
+> >> | R-package-devel at r-project.org mailing list
+> >> | https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >>
+> >> --
+> >> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> >>
+> >> ______________________________________________
+> >> R-package-devel at r-project.org mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >>
+> >
+> >          [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From j|ox @end|ng |rom mcm@@ter@c@  Wed Oct 18 16:13:01 2023
+From: j|ox @end|ng |rom mcm@@ter@c@ (John Fox)
+Date: Wed, 18 Oct 2023 10:13:01 -0400
+Subject: [R-pkg-devel] Suppressing long-running vignette code in CRAN
+ submission
+In-Reply-To: <CAPVJd2Xt=RoyL=iUO05cVGY-66pjKwOHt6dOjKvVpfCB4b83KA@mail.gmail.com>
+References: <55cac1c9-9f59-4ada-bdc5-273e12f83430@mcmaster.ca>
+ <ddc26b1a-94b0-4de5-9cb8-14a991dcf842@gmail.com>
+ <25902.16306.681621.578024@rob.eddelbuettel.com>
+ <c6c4842c-679e-457c-8081-bf96f69a0f74@mcmaster.ca>
+ <4D65DAA7-BF42-4DBF-80DC-F6B7D09751F3@R-project.org>
+ <25903.1227.152942.179691@rob.eddelbuettel.com>
+ <CANAiAiXk7TeX9ndA+Q+kLtWd7dbdJh-LQqU+MpgusWX_efO46Q@mail.gmail.com>
+ <1ca51da7-6243-45d6-b3cd-811130b52ec2@mcmaster.ca>
+ <CAPVJd2Xt=RoyL=iUO05cVGY-66pjKwOHt6dOjKvVpfCB4b83KA@mail.gmail.com>
+Message-ID: <3b86619b-88a2-4fe9-9b67-208e5772fb3f@mcmaster.ca>
+
+Dear Shu Fai,
+
+This approach is certainly relevant, and I think it is slightly better 
+than using R.rsp. My preference is still to include the original .Rmd 
+file along with a note to CRAN about the long-running vignette.
+
+Thank you,
+  John
+
+
+On 2023-10-17 9:25 p.m., Shu Fai Cheung wrote:
+> Caution: External email.
+> 
+> 
+> Please pardon me if I suggest something unrelated below. Many experts
+> have made suggestions that I would also like to consider because I
+> also have a similar issue with some packages.
+> 
+> This is an approach I found, for Rmarkdown vignettes:
+> 
+> https://www.kloppenborg.ca/2021/06/long-running-vignettes/
+> 
+> This is similar to some of the suggestions. The vignette is rendered
+> locally. It uses the trick that, If we render the vignette by calling
+> knitr::knit() directly, the extension of the source file does not
+> matter. The output, although with the extension ".Rmd", actually
+> contains the results of the code, in chunks starting with "```r", not
+> "```{r}".
+> 
+> When this pre-buiult .Rmd file is built again, it will just convert
+> the file to an HTML file, with no need to rerun the code.
+> 
+> The method uses an extension for the source Rmd file (".orig" in the
+> post) to make sure the "real" source files are ignored when building
+> the vignettes.
+> 
+> Perhaps this is also a feasible solution for long running vignettes?
+> 
+> Regards,
+> Shu Fai
+> 
+> On Wed, Oct 18, 2023 at 6:51?AM John Fox <jfox at mcmaster.ca> wrote:
+>>
+>> Dear John,
+>>
+>> Unless I'm mistaken, the *installation* time of the package isn't really
+>> at issue. If a user installs a package from a tarball provided by CRAN,
+>> the vignettes aren't normally rebuilt.
+>>
+>> Best,
+>>    John
+>>
+>> On 2023-10-17 6:30 p.m., John Harrold wrote:
+>>> Caution: External email.
+>>>
+>>>
+>>> I ask myself the question: Who is the vignette for?  It does server two
+>>> purposes. One is testing but primarily it's for the users to learn how to
+>>> use a package. I think the testing is secondary, and if it slows down
+>>> installation or general usability I'd sacrifice the testing. If it's that
+>>> important, then the tests can be added explicitly in tests/.
+>>>
+>>> On Tue, Oct 17, 2023 at 3:04?PM Dirk Eddelbuettel <edd at debian.org> wrote:
+>>>
+>>>>
+>>>> On 18 October 2023 at 08:51, Simon Urbanek wrote:
+>>>> | John,
+>>>> |
+>>>> | the short answer is it won't work (it defeats the purpose of vignettes).
+>>>>
+>>>> Not exactly. Everything is under our (i.e. package author) control, and
+>>>> when
+>>>> we want to replace 'computed' values with cached values we can.
+>>>>
+>>>> All this is somewhat of a charade. "Of course" we want vignettes to run
+>>>> tests. But then we don't want to fall over random missing .sty files or
+>>>> fonts
+>>>> (macOS machines have been less forgiving than others), not to mention
+>>>> compile
+>>>> time.
+>>>>
+>>>> So for simplicity I often pre-make pdf vignettes that get included in other
+>>>> latex code as source. Works great, never fails, CRAN never complained --
+>>>> which is somewhat contrary to your statement.
+>>>>
+>>>> It is effectively the same with tests. We all want maximum test surfaces.
+>>>> But
+>>>> when tests fail, or when they run too long, or [insert many other reasons
+>>>> here] so many packages run tests conditionally.  Such is life.
+>>>>
+>>>> Dirk
+>>>>
+>>>>
+>>>> | However, this sounds like a purely hypothetical question - CRAN policies
+>>>> allow long-running vignettes if they declared.
+>>>> |
+>>>> | Cheers,
+>>>> | Simon
+>>>> |
+>>>> |
+>>>> | > On 18/10/2023, at 3:02 AM, John Fox <jfox at mcmaster.ca> wrote:
+>>>> | >
+>>>> | > Hello Dirk,
+>>>> | >
+>>>> | > Thank you (and Kevin and John) for addressing my questions.
+>>>> | >
+>>>> | > No one directly answered my first question, however, which was whether
+>>>> the approach that I suggested would work. I guess that the implication is
+>>>> that it won't, but it would be nice to confirm that before I try something
+>>>> else, specifically using R.rsp.
+>>>> | >
+>>>> | > Best,
+>>>> | > John
+>>>> | >
+>>>> | > On 2023-10-17 4:02 a.m., Dirk Eddelbuettel wrote:
+>>>> | >> Caution: External email.
+>>>> | >> On 16 October 2023 at 10:42, Kevin R Coombes wrote:
+>>>> | >> | Produce a PDF file yourself, then use the "as.is" feature of the
+>>>> R.rsp
+>>>> | >> | package.
+>>>> | >> For completeness, that approach also works directly with Sweave.
+>>>> Described in
+>>>> | >> a blog post by Mark van der Loo in 2019, and used in a number of
+>>>> packages
+>>>> | >> including a few of mine.
+>>>> | >> That said, I also used the approach described by John Harrold and
+>>>> cached
+>>>> | >> results myself.
+>>>> | >> Dirk
+>>>> | >> --
+>>>> | >> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>>>> | >> ______________________________________________
+>>>> | >> R-package-devel at r-project.org mailing list
+>>>> | >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>> | >
+>>>> | > ______________________________________________
+>>>> | > R-package-devel at r-project.org mailing list
+>>>> | > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>> | >
+>>>> |
+>>>> | ______________________________________________
+>>>> | R-package-devel at r-project.org mailing list
+>>>> | https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>
+>>>> --
+>>>> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>>>>
+>>>> ______________________________________________
+>>>> R-package-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>
+>>>
+>>>           [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From roy@mende|@@ohn @end|ng |rom no@@@gov  Wed Oct 18 17:16:39 2023
+From: roy@mende|@@ohn @end|ng |rom no@@@gov (Roy Mendelssohn - NOAA Federal)
+Date: Wed, 18 Oct 2023 08:16:39 -0700
+Subject: [R-pkg-devel] winbuilder
+Message-ID: <0BFBC22B-ED80-4957-B7DE-8A2F5AC9D724@noaa.gov>
+
+I am not sure who is the appropriate person to contact,  but thought I would try here since WInbuilder is a big help in package testing.  Winbuilder appears to be down at the moment.
+
+Thanks,
+
+-Roy
+
+**********************
+"The contents of this message do not reflect any position of the U.S. Government or NOAA."
+**********************
+Roy Mendelssohn
+Supervisory Operations Research Analyst
+NOAA/NMFS
+Environmental Research Division
+Southwest Fisheries Science Center
+***Note new street address***
+110 McAllister Way
+Santa Cruz, CA 95060
+Phone: (831)-420-3666
+Fax: (831) 420-3980
+e-mail: Roy.Mendelssohn at noaa.gov www: https://www.pfeg.noaa.gov/
+
+"Old age and treachery will overcome youth and skill."
+"From those who have been given much, much will be expected" 
+"the arc of the moral universe is long, but it bends toward justice" -MLK Jr.
+
+
+From ||@t@ @end|ng |rom dewey@myzen@co@uk  Wed Oct 18 17:39:30 2023
+From: ||@t@ @end|ng |rom dewey@myzen@co@uk (Michael Dewey)
+Date: Wed, 18 Oct 2023 16:39:30 +0100
+Subject: [R-pkg-devel] winbuilder
+In-Reply-To: <0BFBC22B-ED80-4957-B7DE-8A2F5AC9D724@noaa.gov>
+References: <0BFBC22B-ED80-4957-B7DE-8A2F5AC9D724@noaa.gov>
+Message-ID: <2068ab07-695c-aa4c-ab17-9d3b2c09f9bf@dewey.myzen.co.uk>
+
+Dear Roy
+
+When I just checked using the winbuilder_queue function from the foghorn 
+package it seemed to respond and had one package in the queue. Not sure 
+that is definitive evicence.
+
+Michael
+
+On 18/10/2023 16:16, Roy Mendelssohn - NOAA Federal via R-package-devel 
+wrote:
+> I am not sure who is the appropriate person to contact,  but thought I would try here since WInbuilder is a big help in package testing.  Winbuilder appears to be down at the moment.
+> 
+> Thanks,
+> 
+> -Roy
+> 
+> **********************
+> "The contents of this message do not reflect any position of the U.S. Government or NOAA."
+> **********************
+> Roy Mendelssohn
+> Supervisory Operations Research Analyst
+> NOAA/NMFS
+> Environmental Research Division
+> Southwest Fisheries Science Center
+> ***Note new street address***
+> 110 McAllister Way
+> Santa Cruz, CA 95060
+> Phone: (831)-420-3666
+> Fax: (831) 420-3980
+> e-mail: Roy.Mendelssohn at noaa.gov www: https://www.pfeg.noaa.gov/
+> 
+> "Old age and treachery will overcome youth and skill."
+> "From those who have been given much, much will be expected"
+> "the arc of the moral universe is long, but it bends toward justice" -MLK Jr.
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+-- 
+Michael
+
+
+From roy@mende|@@ohn @end|ng |rom no@@@gov  Wed Oct 18 20:32:45 2023
+From: roy@mende|@@ohn @end|ng |rom no@@@gov (Roy Mendelssohn - NOAA Federal)
+Date: Wed, 18 Oct 2023 11:32:45 -0700
+Subject: [R-pkg-devel] winbuilder
+In-Reply-To: <2068ab07-695c-aa4c-ab17-9d3b2c09f9bf@dewey.myzen.co.uk>
+References: <0BFBC22B-ED80-4957-B7DE-8A2F5AC9D724@noaa.gov>
+ <2068ab07-695c-aa4c-ab17-9d3b2c09f9bf@dewey.myzen.co.uk>
+Message-ID: <05CAB6F4-B01C-47F5-A2D2-7F111D0722AE@noaa.gov>
+
+Not too long after I sent the message it came back up. 
+
+Thanks!  
+
+-Roy
+
+> On Oct 18, 2023, at 8:39 AM, Michael Dewey <lists at dewey.myzen.co.uk> wrote:
+> 
+> Dear Roy
+> 
+> When I just checked using the winbuilder_queue function from the foghorn package it seemed to respond and had one package in the queue. Not sure that is definitive evicence.
+> 
+> Michael
+> 
+> On 18/10/2023 16:16, Roy Mendelssohn - NOAA Federal via R-package-devel wrote:
+>> I am not sure who is the appropriate person to contact,  but thought I would try here since WInbuilder is a big help in package testing.  Winbuilder appears to be down at the moment.
+>> Thanks,
+>> -Roy
+>> **********************
+>> "The contents of this message do not reflect any position of the U.S. Government or NOAA."
+>> **********************
+>> Roy Mendelssohn
+>> Supervisory Operations Research Analyst
+>> NOAA/NMFS
+>> Environmental Research Division
+>> Southwest Fisheries Science Center
+>> ***Note new street address***
+>> 110 McAllister Way
+>> Santa Cruz, CA 95060
+>> Phone: (831)-420-3666
+>> Fax: (831) 420-3980
+>> e-mail: Roy.Mendelssohn at noaa.gov www: https://www.pfeg.noaa.gov/
+>> "Old age and treachery will overcome youth and skill."
+>> "From those who have been given much, much will be expected"
+>> "the arc of the moral universe is long, but it bends toward justice" -MLK Jr.
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+> -- 
+> Michael
+
+
+From drj|m|emon @end|ng |rom gm@||@com  Thu Oct 19 01:43:23 2023
+From: drj|m|emon @end|ng |rom gm@||@com (Jim Lemon)
+Date: Thu, 19 Oct 2023 10:43:23 +1100
+Subject: [R-pkg-devel] winbuilder
+In-Reply-To: <0BFBC22B-ED80-4957-B7DE-8A2F5AC9D724@noaa.gov>
+References: <0BFBC22B-ED80-4957-B7DE-8A2F5AC9D724@noaa.gov>
+Message-ID: <CA+8X3fUeJoBWz87egayW0yyWGs2W+y6CVYzkrdqRSSagpwVSJg@mail.gmail.com>
+
+Please delete drjimlemon at gmail.com from your mailing list. He passed away a
+month ago.
+Regards,
+Juel
+Wife
+
+On Thu, 19 Oct 2023, 02:17 Roy Mendelssohn - NOAA Federal via
+R-package-devel <r-package-devel at r-project.org wrote:
+
+> I am not sure who is the appropriate person to contact,  but thought I
+> would try here since WInbuilder is a big help in package testing.
+> Winbuilder appears to be down at the moment.
+>
+> Thanks,
+>
+> -Roy
+>
+> **********************
+> "The contents of this message do not reflect any position of the U.S.
+> Government or NOAA."
+> **********************
+> Roy Mendelssohn
+> Supervisory Operations Research Analyst
+> NOAA/NMFS
+> Environmental Research Division
+> Southwest Fisheries Science Center
+> ***Note new street address***
+> 110 McAllister Way
+> Santa Cruz, CA 95060
+> Phone: (831)-420-3666
+> Fax: (831) 420-3980
+> e-mail: Roy.Mendelssohn at noaa.gov www: https://www.pfeg.noaa.gov/
+>
+> "Old age and treachery will overcome youth and skill."
+> "From those who have been given much, much will be expected"
+> "the arc of the moral universe is long, but it bends toward justice" -MLK
+> Jr.
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From drj|m|emon @end|ng |rom gm@||@com  Thu Oct 19 01:45:10 2023
+From: drj|m|emon @end|ng |rom gm@||@com (Jim Lemon)
+Date: Thu, 19 Oct 2023 10:45:10 +1100
+Subject: [R-pkg-devel] Suppressing long-running vignette code in CRAN
+ submission
+In-Reply-To: <55cac1c9-9f59-4ada-bdc5-273e12f83430@mcmaster.ca>
+References: <55cac1c9-9f59-4ada-bdc5-273e12f83430@mcmaster.ca>
+Message-ID: <CA+8X3fWEMTu3cGQrJOu0Q9x_EtTg48mbdq=C9bWNj4Zd7oeL5Q@mail.gmail.com>
+
+Please delete drjimlemon at gmail.com from your mailing list. He passed away a
+month ago.
+Regards,
+Juel
+Wife
+
+On Tue, 17 Oct 2023, 01:15 John Fox <jfox at mcmaster.ca wrote:
+
+> Dear list members,
+>
+> I believe that this issue has been discussed previously, but I'm not
+> sure that I have the solution right.
+>
+> Georges Monette and I have developed a package that we intend to submit
+> soon to CRAN which has a vignette including code that takes a long time
+> to run. The sources for the package are available at
+> <https://github.com/gmonette/cv>.
+>
+> We figure that we have to suppress running the code the vignette when
+> CRAN checks the package or the check time will be excessive.
+>
+> The vignette is written as a .Rmd file to be compiled by knitr,
+> producing an HTML vignette. The top of the .Rmd file looks like this:
+>
+> ------- snip -------
+>
+> ---
+> title: "Cross-validation of regression models"
+> author: "John Fox and Georges Monette"
+> date: "`r Sys.Date()`"
+> package: cv
+> output:
+>    rmarkdown::html_vignette:
+>    fig_caption: yes
+> bibliography: ["cv.bib"]
+> csl: apa.csl
+> vignette: >
+>    %\VignetteIndexEntry{Cross-validation of regression models}
+>    %\VignetteEngine{knitr::rmarkdown}
+>    %\VignetteEncoding{UTF-8}
+> ---
+>
+> ```{r setup, include = FALSE}
+> knitr::opts_chunk$set(
+>    collapse = TRUE,
+>    message = TRUE,
+>    warning = TRUE,
+>    fig.align = "center",
+>    fig.height = 6,
+>    fig.width = 7,
+>    fig.path = "fig/",
+>    dev = "png",
+>    comment = "#>",
+>    eval = nzchar(Sys.getenv("REBUILD_CV_VIGNETTES"))
+> )
+>
+> ### other irrelevant setup code not shown ###
+>
+> ```
+>
+> ------- snip -------
+>
+> So (near the bottom), if the environment variable REBUILD_CV_VIGNETTES
+> isn't empty, the code blocks in the vignette are evaluated, otherwise
+> not. To build the tarball for the package to be submitted to CRAN, we
+> will set REBUILD_CV_VIGNETTES to "true". That works as intended.
+>
+> If we submit the tarball to CRAN, I believe that the package as
+> distributed by CRAN will include the HTML vignette from our tarball,
+> showing the evaluated code blocks, but when CRAN checks the package,
+> these long-running code blocks will not be executed (because
+> REBUILD_CV_VIGNETTES will not exist on the CRAN check machines).
+>
+> My questions:
+>
+> Is that correct?
+>
+> If not, how can we ensure that the complete vignette is distributed by
+> CRAN without causing an overly long CRAN check time?
+>
+> In particular, we don't want CRAN to rebuild and distribute the
+> vignette, because the resulting HTML file won't show the evaluated code.
+>
+> Any assistance would be appreciated.
+>
+> Thank you,
+>   John
+> --
+> John Fox, Professor Emeritus
+> McMaster University
+> Hamilton, Ontario, Canada
+> web: https://www.john-fox.ca/
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From drj|m|emon @end|ng |rom gm@||@com  Thu Oct 19 01:46:41 2023
+From: drj|m|emon @end|ng |rom gm@||@com (Jim Lemon)
+Date: Thu, 19 Oct 2023 10:46:41 +1100
+Subject: [R-pkg-devel] CMD check: Examples vs DEPENDS pkg
+In-Reply-To: <7ea981c3-faec-490f-841d-4ce8fce8e5cb@syonic.eu>
+References: <7ea981c3-faec-490f-841d-4ce8fce8e5cb@syonic.eu>
+Message-ID: <CA+8X3fX9nxyyTc9g_AAqvDvPG=D_PPuX28PvCC2Ngk2ZzWLOMg@mail.gmail.com>
+
+Please delete drjimlemon at gmail.com from your mailing list. He passed away a
+month ago.
+Regards,
+Juel
+Wife
+
+On Wed, 18 Oct 2023, 06:35 Leonard Mada via R-package-devel <
+r-package-devel at r-project.org wrote:
+
+> Dear List members,
+>
+> Package Rpdf depends on package rgl. Multiple examples will call
+> internally the rgl package to visualize the pdb molecule.
+>
+> When performing the CMD check:
+> 1) Is the rgl package loaded each time anew for any of those examples?
+>
+> 2) If this is the case:
+> Is it possible to load it only once per CMD check?
+>
+> Sincerely,
+>
+> Leonard
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From drj|m|emon @end|ng |rom gm@||@com  Thu Oct 19 01:50:45 2023
+From: drj|m|emon @end|ng |rom gm@||@com (Jim Lemon)
+Date: Thu, 19 Oct 2023 10:50:45 +1100
+Subject: [R-pkg-devel] CartogRaflow submission
+In-Reply-To: <1550121052.16258628.1697492339014@mail.yahoo.com>
+References: <1550121052.16258628.1697492339014.ref@mail.yahoo.com>
+ <1550121052.16258628.1697492339014@mail.yahoo.com>
+Message-ID: <CA+8X3fXQ9033rVPWrmGDEkD9UwqW-zqh32mGS+5JfA91cBT91A@mail.gmail.com>
+
+Please delete drjimlemon at gmail.com from your mailing list. He passed away a
+month ago.
+Regards,
+Juel
+Wife
+
+On Tue, 17 Oct 2023, 18:13 cartograflow at gmail.com <cartograflow at gmail.com
+wrote:
+
+> Hi, I've put an update version of the package cartogRaflow 1.0.4 in CRAN
+> today.
+> There are 2 errors
+> Last released version's CRAN status: OK: 11, ERROR: 2
+> See: <
+> https://cran-archive.r-project.org/web/checks/2023/2023-10-16_check_results_cartograflow.html
+> >
+>
+> The version 1.0.3 was archived today.
+> I would like to know if these errors are due to the version 1.0.3 was
+> archived. If yes, is it possible to fix these errors? Thanks in
+> advance Sylvain
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
