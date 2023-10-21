@@ -7453,3 +7453,213 @@ Stats. Dep't. (secretaries) phone:
 Home phone: +64-9-480-4619
 
 
+From joun|@he|@ke @end|ng |rom jyu@||  Thu Oct 19 07:57:54 2023
+From: joun|@he|@ke @end|ng |rom jyu@|| (Helske, Jouni)
+Date: Thu, 19 Oct 2023 05:57:54 +0000
+Subject: [R-pkg-devel] Too many cores used in examples (not caused by
+ data.table)
+Message-ID: <PAXPR05MB8650BE166314CEAA80059BBEF8D4A@PAXPR05MB8650.eurprd05.prod.outlook.com>
+
+Hi,
+
+I am having difficulties in getting the latest version of the bssm (https://github.com/helske/bssm) package to CRAN, as the pretest issues a NOTE that the package uses too many cores in some of the examples ("Examples with CPU time > 2.5 times elapsed time"). I've seen plenty of discussion about this issue in relation to the data.table package, but bssm does not use it. Also, while bssm uses OpenMP in some functions, these are not called in the example in question (?exchange), and by default the number of threads in the parallelisable functions is set to 1.
+
+But I just realised that bssm uses Armadillo via RcppArmadillo, which uses OpenMP by default for some elementwise operations. So, I wonder if that could be the culprit? However, I would think that in such case there would be many other packages with RcppArmadillo encountering the same CRAN issues. Has anyone experienced this with their packages which use RcppArmadillo but not data.table, or can say whether my guess is correct? I haven't been able to reproduce the issue myself on r-hub or my own linux, so I can't really test whether setting #define ARMA_DONT_USE_OPENMP helps.
+
+Best,
+Jouni
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Oct 20 11:34:26 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 20 Oct 2023 05:34:26 -0400
+Subject: [R-pkg-devel] Switch between \dontrun{ } and \donttest{ }.
+In-Reply-To: <20231020131701.7f354741@rolf-Latitude-E7470>
+References: <20231020131701.7f354741@rolf-Latitude-E7470>
+Message-ID: <571b3880-c950-4433-a17a-37295c0031e5@gmail.com>
+
+On 19/10/2023 8:17 p.m., Rolf Turner wrote:
+> 
+> In a package that I maintain, there are examples, in the *.Rd files,
+> that take an excruciatingly long time to run.  This makes package
+> checking extremely tedious.  There is no question of errors being
+> thrown from these examples, they are simply time consuming.  (The check
+> is being run to look for possible errors elsewhere.)
+> 
+> I therefore would like to wrap these examples in \dontrun{ }.
+> 
+> However when the package is submitted to CRAN, it is expedient to wrap
+> the examples in \donttest{ } rather than \dontrun{ }.
+> 
+> I would therefore like to find a means of effecting the following
+> logical structure:
+> 
+>      if(package is being checked by CRAN) {
+>          Use \donttest{ }
+>      } else {
+>          Use \dontrun{ }
+>      }
+> 
+> Is there a reasonably straightforward means of detecting whether
+> the package is being checked by CRAN, and thereby setting up such a
+> logical structure? Perhaps based on environment variables?
+> 
+> Can anyone give me any guidance?  Thanks.
+
+I think the method used by the testthat package is best:  assume it is 
+being run by CRAN, unless an environment variable named NOT_CRAN is set 
+to "true" (or some string like that).  Then set the environment variable 
+at home, where you know you are not on CRAN.
+
+Duncan
+
+
+From edd @end|ng |rom deb|@n@org  Fri Oct 20 12:41:20 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 20 Oct 2023 05:41:20 -0500
+Subject: [R-pkg-devel] Too many cores used in examples (not caused by
+ data.table)
+In-Reply-To: <PAXPR05MB8650BE166314CEAA80059BBEF8D4A@PAXPR05MB8650.eurprd05.prod.outlook.com>
+References: <PAXPR05MB8650BE166314CEAA80059BBEF8D4A@PAXPR05MB8650.eurprd05.prod.outlook.com>
+Message-ID: <25906.22864.328940.547868@rob.eddelbuettel.com>
+
+
+On 19 October 2023 at 05:57, Helske, Jouni wrote:
+| I am having difficulties in getting the latest version of the bssm (https://github.com/helske/bssm) package to CRAN, as the pretest issues a NOTE that the package uses too many cores in some of the examples ("Examples with CPU time > 2.5 times elapsed time"). I've seen plenty of discussion about this issue in relation to the data.table package, but bssm does not use it. Also, while bssm uses OpenMP in some functions, these are not called in the example in question (?exchange), and by default the number of threads in the parallelisable functions is set to 1.
+| 
+| But I just realised that bssm uses Armadillo via RcppArmadillo, which uses OpenMP by default for some elementwise operations. So, I wonder if that could be the culprit? However, I would think that in such case there would be many other packages with RcppArmadillo encountering the same CRAN issues. Has anyone experienced this with their packages which use RcppArmadillo but not data.table, or can say whether my guess is correct? I haven't been able to reproduce the issue myself on r-hub or my own linux, so I can't really test whether setting #define ARMA_DONT_USE_OPENMP helps.
+
+You have some options to control OpenMP.
+
+There is an environment variable (OMP_THREAD_LIMIT), and there is an CRAN
+add-on package (RhpcBLASctl) which, if memory serves, also sets this. Looking
+at the Armadillo documentation we see another variable (ARMA_OPENMP_THREADS).
+
+I really think CRAN made a mistake here pushing this down on all package
+maintainers.  It is too much work, some will get frustrated, some will get it
+wrong and I fear in aggregate we end up with less performant software (as
+some will 'cave in' and hard-wire single threaded computes). 
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Oct 20 15:54:37 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 20 Oct 2023 16:54:37 +0300
+Subject: [R-pkg-devel] Too many cores used in examples (not caused by
+ data.table)
+In-Reply-To: <PAXPR05MB8650BE166314CEAA80059BBEF8D4A@PAXPR05MB8650.eurprd05.prod.outlook.com>
+References: <PAXPR05MB8650BE166314CEAA80059BBEF8D4A@PAXPR05MB8650.eurprd05.prod.outlook.com>
+Message-ID: <20231020165437.31a89982@arachnoid>
+
+? Thu, 19 Oct 2023 05:57:54 +0000
+"Helske, Jouni" <jouni.helske at jyu.fi> ?????:
+
+> But I just realised that bssm uses Armadillo via RcppArmadillo, which
+> uses OpenMP by default for some elementwise operations. So, I wonder
+> if that could be the culprit?
+
+I wasn't able to reproduce the NOTE either, despite manually setting
+the environment variable
+_R_CHECK_EXAMPLE_TIMING_CPU_TO_ELAPSED_THRESHOLD=2 before running R CMD
+check, but I think I can see the code using OpenMP. Here's what I did:
+
+0. Temporarily lower the system protections against capturing
+performance traces of potentially sensitive parts:
+
+echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid
+
+(Set it back to 3 after you're done.)
+
+1. Run the following command with the development version of the
+package installed:
+
+env OPENBLAS_NUM_THREADS=1 \
+ perf record --call-graph drawf,4096 \
+ R -e 'library(bssm); system.time(replicate(100, example(exchange)))'
+
+OPENBLAS_NUM_THREADS=1 will prevent OpenBLAS from spawning worker
+threads if you have it installed. (A different BLAS may need different
+environment variables.)
+
+2. Run `perf report` and browse collected call stack information.
+
+The call stacks are hard to navigate, but I think they are not pointing
+towards Armadillo. At least, setting ARMA_OPENMP_THREADS=1 doesn't
+help, but setting OMP_THREAD_LIMIT=1 does.
+
+-- 
+Best regards,
+Ivan
+
+
+From ro||turner @end|ng |rom po@teo@net  Sat Oct 21 00:43:39 2023
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Fri, 20 Oct 2023 22:43:39 +0000
+Subject: [R-pkg-devel] Switch between \dontrun{ } and \donttest{ }.
+In-Reply-To: <571b3880-c950-4433-a17a-37295c0031e5@gmail.com>
+References: <20231020131701.7f354741@rolf-Latitude-E7470>
+ <571b3880-c950-4433-a17a-37295c0031e5@gmail.com>
+Message-ID: <20231021114339.13f87329@rolf-Latitude-E7470>
+
+
+On Fri, 20 Oct 2023 05:34:26 -0400
+Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+
+> On 19/10/2023 8:17 p.m., Rolf Turner wrote:
+> > 
+> > In a package that I maintain, there are examples, in the *.Rd files,
+> > that take an excruciatingly long time to run.  This makes package
+> > checking extremely tedious.  There is no question of errors being
+> > thrown from these examples, they are simply time consuming.  (The
+> > check is being run to look for possible errors elsewhere.)
+> > 
+> > I therefore would like to wrap these examples in \dontrun{ }.
+> > 
+> > However when the package is submitted to CRAN, it is expedient to
+> > wrap the examples in \donttest{ } rather than \dontrun{ }.
+> > 
+> > I would therefore like to find a means of effecting the following
+> > logical structure:
+> > 
+> >      if(package is being checked by CRAN) {
+> >          Use \donttest{ }
+> >      } else {
+> >          Use \dontrun{ }
+> >      }
+> > 
+> > Is there a reasonably straightforward means of detecting whether
+> > the package is being checked by CRAN, and thereby setting up such a
+> > logical structure? Perhaps based on environment variables?
+> > 
+> > Can anyone give me any guidance?  Thanks.
+> 
+> I think the method used by the testthat package is best:  assume it
+> is being run by CRAN, unless an environment variable named NOT_CRAN
+> is set to "true" (or some string like that).  Then set the
+> environment variable at home, where you know you are not on CRAN.
+> 
+> Duncan
+> 
+
+Ah-ha!  Good thinking!  Thanks, Duncan.
+
+cheers,
+
+Rolf
+
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+
