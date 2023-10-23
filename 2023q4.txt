@@ -7663,3 +7663,230 @@ Stats. Dep't. (secretaries) phone:
 Home phone: +64-9-480-4619
 
 
+From pro|jcn@@h @end|ng |rom gm@||@com  Sun Oct 22 16:43:08 2023
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Sun, 22 Oct 2023 10:43:08 -0400
+Subject: [R-pkg-devel] Issue of itemize in man file
+Message-ID: <5be6435c-56ab-4742-a31c-e7a86ae23aed@gmail.com>
+
+I'm doing a major update of the optimx package and things were going relatively
+smoothly until this weekend when files that have passed win-builder gave NOTEs
+on r-devel for several manual (.Rd) files.
+The NOTE is of the form
+
+> * checking Rd files ... NOTE
+> checkRd: (-1) fnchk.Rd:40-41: Lost braces in \itemize; \value handles \item{}{} directly
+> checkRd: (-1) fnchk.Rd:43: Lost braces in \itemize; \value handles \item{}{} directly
+> checkRd: (-1) fnchk.Rd:45: Lost braces in \itemize; \value handles \item{}{} directly
+
+
+The source of this looks like
+
+   \item{msg}{A text string giving information about the result of the function check: Messages and
+     the corresponding values of \code{excode} are:
+       \itemize{
+         \item{fnchk OK;}{ \code{excode} = 0;
+                        \code{infeasible} = FALSE}
+         \item{Function returns INADMISSIBLE;}
+                     { \code{excode} = -1; \code{infeasible} = TRUE}
+      ...
+     }
+
+I've not seen this before, nor does a search give any hits.
+
+Does anyone have any ideas? Or is this a glitch in r-devel as things are tried out.?
+
+I don't get the NOTE on win-builder R-release nor on local R CMD check. Note that the
+\itemize is to give a second-level list i.e., for expanding output of one of the
+\value objects returned, namely the return codes.
+
+Best,
+
+John Nash
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sun Oct 22 16:52:58 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sun, 22 Oct 2023 17:52:58 +0300
+Subject: [R-pkg-devel] Issue of itemize in man file
+In-Reply-To: <5be6435c-56ab-4742-a31c-e7a86ae23aed@gmail.com>
+References: <5be6435c-56ab-4742-a31c-e7a86ae23aed@gmail.com>
+Message-ID: <20231022175258.6bebcaff@Tarkus>
+
+On Sun, 22 Oct 2023 10:43:08 -0400
+J C Nash <profjcnash at gmail.com> wrote:
+
+>        \itemize{
+>          \item{fnchk OK;}{ \code{excode} = 0;
+>                         \code{infeasible} = FALSE}
+
+The \item command inside \itemize{} lists doesn't take arguments.
+Did you mean \describe{} instead of \itemize{}?
+
+-- 
+Best regards,
+Ivan
+
+
+From v|ncentv@nhee@ @end|ng |rom gm@||@com  Sun Oct 22 17:18:05 2023
+From: v|ncentv@nhee@ @end|ng |rom gm@||@com (Vincent van Hees)
+Date: Sun, 22 Oct 2023 17:18:05 +0200
+Subject: [R-pkg-devel] Issue of itemize in man file
+In-Reply-To: <20231022175258.6bebcaff@Tarkus>
+References: <5be6435c-56ab-4742-a31c-e7a86ae23aed@gmail.com>
+ <20231022175258.6bebcaff@Tarkus>
+Message-ID: <CALnEB16LYVoSY4DrEhYGSx--jWct0c4HJ9KsEgS+A+n9u8pz9g@mail.gmail.com>
+
+I ran into the same issue last week with .Rd files that were
+previously accepted on CRAN and concluded that the package checks are
+becoming more critical about this aspect of Rd syntax, which is good.
+
+To reproduce the note outside R-devel and by that identify which files
+in your package are affected you could run for every Rd file in your
+man folder:
+
+tools::checkRd(Rd = file, listOK = FALSE)
+
+Vincent
+
+On Sun, 22 Oct 2023 at 16:53, Ivan Krylov <krylov.r00t at gmail.com> wrote:
+>
+> On Sun, 22 Oct 2023 10:43:08 -0400
+> J C Nash <profjcnash at gmail.com> wrote:
+>
+> >        \itemize{
+> >          \item{fnchk OK;}{ \code{excode} = 0;
+> >                         \code{infeasible} = FALSE}
+>
+> The \item command inside \itemize{} lists doesn't take arguments.
+> Did you mean \describe{} instead of \itemize{}?
+>
+> --
+> Best regards,
+> Ivan
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From pro|jcn@@h @end|ng |rom gm@||@com  Sun Oct 22 17:37:02 2023
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Sun, 22 Oct 2023 11:37:02 -0400
+Subject: [R-pkg-devel] Issue of itemize in man file
+In-Reply-To: <20231022175258.6bebcaff@Tarkus>
+References: <5be6435c-56ab-4742-a31c-e7a86ae23aed@gmail.com>
+ <20231022175258.6bebcaff@Tarkus>
+Message-ID: <e2737db8-5a78-4079-984c-4fd42ae6a02b@gmail.com>
+
+Thanks. That seems to be the issue. Also vincent's suggestion of checkRd.
+
+JN
+
+On 2023-10-22 10:52, Ivan Krylov wrote:
+> On Sun, 22 Oct 2023 10:43:08 -0400
+> J C Nash <profjcnash at gmail.com> wrote:
+> 
+>>         \itemize{
+>>           \item{fnchk OK;}{ \code{excode} = 0;
+>>                          \code{infeasible} = FALSE}
+> 
+> The \item command inside \itemize{} lists doesn't take arguments.
+> Did you mean \describe{} instead of \itemize{}?
+>
+
+
+From kke@h@v @end|ng |rom u||@edu  Sun Oct 22 18:52:50 2023
+From: kke@h@v @end|ng |rom u||@edu (Keshav, Krishna)
+Date: Sun, 22 Oct 2023 16:52:50 +0000
+Subject: [R-pkg-devel] Failing to write config file in linux
+Message-ID: <CO6PR22MB243368A25EC7FECF64DFDE6FB6D9A@CO6PR22MB2433.namprd22.prod.outlook.com>
+
+Hi,
+
+My package is failing on linux based systems because of an attempt to write in a location of package. One of the core features that we would like user to have is to modify the values in the config file, for which package has a function for user to provide modified config. In future, they should be able to provide individual parameters for the config for which also we will be writing to config in package directory /inst/ so that it can later be fetched. I understand that policy doesn?t allow writing to home directory. Is there a workaround for this? Or what could be other potential solutions to explore.
+
+Snippet ?
+https://github.com/GarrettLab/CroplandConnectivity/blob/923a4a0ca4a0ce8376068ee80986df228ea21d80/geohabnet/R/params.R#L57
+
+Error ?
+     ?? Failure ('test-parameters.R:38:3'): Test 6: Test to set new parameters.yaml ??
+     Expected `set_parameters(new_param_file)` to run without any conditions.
+     ? Actually got a <simpleWarning> with text:
+     cannot create file '/home/hornik/tmp/R.check/r-release-gcc/Work/build/Packages/geohabnet/parameters.yaml', reason 'Read-only file system'
+
+
+Best Regards,
+Krishna Keshav
+
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sun Oct 22 19:15:32 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sun, 22 Oct 2023 20:15:32 +0300
+Subject: [R-pkg-devel] Failing to write config file in linux
+In-Reply-To: <CO6PR22MB243368A25EC7FECF64DFDE6FB6D9A@CO6PR22MB2433.namprd22.prod.outlook.com>
+References: <CO6PR22MB243368A25EC7FECF64DFDE6FB6D9A@CO6PR22MB2433.namprd22.prod.outlook.com>
+Message-ID: <20231022201532.447d9089@Tarkus>
+
+On Sun, 22 Oct 2023 16:52:50 +0000
+"Keshav, Krishna" <kkeshav at ufl.edu> wrote:
+
+> My package is failing on linux based systems because of an attempt to
+> write in a location of package. One of the core features that we
+> would like user to have is to modify the values in the config file
+
+Can you place the edited configuration file under
+tools::R_user_dir('geohabnet', 'config') instead of the package
+directory?
+
+-- 
+Best regards,
+Ivan
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Sun Oct 22 19:16:08 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Sun, 22 Oct 2023 10:16:08 -0700
+Subject: [R-pkg-devel] Failing to write config file in linux
+In-Reply-To: <CO6PR22MB243368A25EC7FECF64DFDE6FB6D9A@CO6PR22MB2433.namprd22.prod.outlook.com>
+References: <CO6PR22MB243368A25EC7FECF64DFDE6FB6D9A@CO6PR22MB2433.namprd22.prod.outlook.com>
+Message-ID: <8B913BCB-37FE-4840-A1A8-FECF81EE5A90@dcn.davis.ca.us>
+
+Installed packages may not be modified because they are permitted to be installed with read-only access. You have no option to proceed in this direction.
+
+Configuration files are normally stored in the user's working directory. Dotfiles are a common convention in *nix operating systems, but in Windows the conventions are a bit different. The most general solution is to allow the user to specify an R option in .Rprofile [1], but you can setup defaults depending on the user's OS to back that up in case they don't actually take the steps to do that.
+
+[1] https://stat.ethz.ch/R-manual/R-devel/library/base/html/options.html
+
+On October 22, 2023 9:52:50 AM PDT, "Keshav, Krishna" <kkeshav at ufl.edu> wrote:
+>Hi,
+>
+>My package is failing on linux based systems because of an attempt to write in a location of package. One of the core features that we would like user to have is to modify the values in the config file, for which package has a function for user to provide modified config. In future, they should be able to provide individual parameters for the config for which also we will be writing to config in package directory /inst/ so that it can later be fetched. I understand that policy doesn?t allow writing to home directory. Is there a workaround for this? Or what could be other potential solutions to explore.
+>
+>Snippet ?
+>https://github.com/GarrettLab/CroplandConnectivity/blob/923a4a0ca4a0ce8376068ee80986df228ea21d80/geohabnet/R/params.R#L57
+>
+>Error ?
+>     ?? Failure ('test-parameters.R:38:3'): Test 6: Test to set new parameters.yaml ??
+>     Expected `set_parameters(new_param_file)` to run without any conditions.
+>     ? Actually got a <simpleWarning> with text:
+>     cannot create file '/home/hornik/tmp/R.check/r-release-gcc/Work/build/Packages/geohabnet/parameters.yaml', reason 'Read-only file system'
+>
+>
+>Best Regards,
+>Krishna Keshav
+>
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-package-devel at r-project.org mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
