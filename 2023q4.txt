@@ -7936,3 +7936,687 @@ For R version 4.0 or later (hence a version dependency is required or only condi
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From joun|@he|@ke @end|ng |rom jyu@||  Tue Oct 24 12:37:48 2023
+From: joun|@he|@ke @end|ng |rom jyu@|| (Helske, Jouni)
+Date: Tue, 24 Oct 2023 10:37:48 +0000
+Subject: [R-pkg-devel] Too many cores used in examples (not caused by
+ data.table)
+In-Reply-To: <20231020165437.31a89982@arachnoid>
+References: <PAXPR05MB8650BE166314CEAA80059BBEF8D4A@PAXPR05MB8650.eurprd05.prod.outlook.com>
+ <20231020165437.31a89982@arachnoid>
+Message-ID: <DB9PR05MB8654939D929CAAB4108487D3F8D8A@DB9PR05MB8654.eurprd05.prod.outlook.com>
+
+Thanks for the help, I now tried resubmitting with Sys.setenv("OMP_THREAD_LIMIT" = 2) at the top of the exchange example, but I still get the same note:
+
+Examples with CPU time > 2.5 times elapsed time
+          user system elapsed ratio
+exchange 1.196   0.04   0.159 7.774
+
+Not sure what to try next.
+
+Best,
+Jouni
+________________________________
+From: Ivan Krylov <krylov.r00t at gmail.com>
+Sent: Friday, October 20, 2023 16:54
+To: Helske, Jouni <jouni.helske at jyu.fi>
+Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Too many cores used in examples (not caused by data.table)
+
+? Thu, 19 Oct 2023 05:57:54 +0000
+"Helske, Jouni" <jouni.helske at jyu.fi> ?????:
+
+> But I just realised that bssm uses Armadillo via RcppArmadillo, which
+> uses OpenMP by default for some elementwise operations. So, I wonder
+> if that could be the culprit?
+
+I wasn't able to reproduce the NOTE either, despite manually setting
+the environment variable
+_R_CHECK_EXAMPLE_TIMING_CPU_TO_ELAPSED_THRESHOLD=2 before running R CMD
+check, but I think I can see the code using OpenMP. Here's what I did:
+
+0. Temporarily lower the system protections against capturing
+performance traces of potentially sensitive parts:
+
+echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid
+
+(Set it back to 3 after you're done.)
+
+1. Run the following command with the development version of the
+package installed:
+
+env OPENBLAS_NUM_THREADS=1 \
+ perf record --call-graph drawf,4096 \
+ R -e 'library(bssm); system.time(replicate(100, example(exchange)))'
+
+OPENBLAS_NUM_THREADS=1 will prevent OpenBLAS from spawning worker
+threads if you have it installed. (A different BLAS may need different
+environment variables.)
+
+2. Run `perf report` and browse collected call stack information.
+
+The call stacks are hard to navigate, but I think they are not pointing
+towards Armadillo. At least, setting ARMA_OPENMP_THREADS=1 doesn't
+help, but setting OMP_THREAD_LIMIT=1 does.
+
+--
+Best regards,
+Ivan
+
+	[[alternative HTML version deleted]]
+
+
+From greg @end|ng |rom ||rm@n@y@h@com  Tue Oct 24 13:03:10 2023
+From: greg @end|ng |rom ||rm@n@y@h@com (Greg Hunt)
+Date: Tue, 24 Oct 2023 22:03:10 +1100
+Subject: [R-pkg-devel] Too many cores used in examples (not caused by
+ data.table)
+In-Reply-To: <DB9PR05MB8654939D929CAAB4108487D3F8D8A@DB9PR05MB8654.eurprd05.prod.outlook.com>
+References: <PAXPR05MB8650BE166314CEAA80059BBEF8D4A@PAXPR05MB8650.eurprd05.prod.outlook.com>
+ <20231020165437.31a89982@arachnoid>
+ <DB9PR05MB8654939D929CAAB4108487D3F8D8A@DB9PR05MB8654.eurprd05.prod.outlook.com>
+Message-ID: <CAAS8PALAFNJNEB+i79XGziJ7VBtBOAJpAKhqdiv+bSm0-FwmqQ@mail.gmail.com>
+
+In my case recently, after an hour or so?s messing about I disabled some
+tests and example executions to get rid of the offending times. I doubt
+that i am the only one to do that.
+
+On Tue, 24 Oct 2023 at 9:38 pm, Helske, Jouni <jouni.helske at jyu.fi> wrote:
+
+> Thanks for the help, I now tried resubmitting with
+> Sys.setenv("OMP_THREAD_LIMIT" = 2) at the top of the exchange example, but
+> I still get the same note:
+>
+> Examples with CPU time > 2.5 times elapsed time
+>           user system elapsed ratio
+> exchange 1.196   0.04   0.159 7.774
+>
+> Not sure what to try next.
+>
+> Best,
+> Jouni
+> ________________________________
+> From: Ivan Krylov <krylov.r00t at gmail.com>
+> Sent: Friday, October 20, 2023 16:54
+> To: Helske, Jouni <jouni.helske at jyu.fi>
+> Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+> Subject: Re: [R-pkg-devel] Too many cores used in examples (not caused by
+> data.table)
+>
+> ? Thu, 19 Oct 2023 05:57:54 +0000
+> "Helske, Jouni" <jouni.helske at jyu.fi> ?????:
+>
+> > But I just realised that bssm uses Armadillo via RcppArmadillo, which
+> > uses OpenMP by default for some elementwise operations. So, I wonder
+> > if that could be the culprit?
+>
+> I wasn't able to reproduce the NOTE either, despite manually setting
+> the environment variable
+> _R_CHECK_EXAMPLE_TIMING_CPU_TO_ELAPSED_THRESHOLD=2 before running R CMD
+> check, but I think I can see the code using OpenMP. Here's what I did:
+>
+> 0. Temporarily lower the system protections against capturing
+> performance traces of potentially sensitive parts:
+>
+> echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid
+>
+> (Set it back to 3 after you're done.)
+>
+> 1. Run the following command with the development version of the
+> package installed:
+>
+> env OPENBLAS_NUM_THREADS=1 \
+>  perf record --call-graph drawf,4096 \
+>  R -e 'library(bssm); system.time(replicate(100, example(exchange)))'
+>
+> OPENBLAS_NUM_THREADS=1 will prevent OpenBLAS from spawning worker
+> threads if you have it installed. (A different BLAS may need different
+> environment variables.)
+>
+> 2. Run `perf report` and browse collected call stack information.
+>
+> The call stacks are hard to navigate, but I think they are not pointing
+> towards Armadillo. At least, setting ARMA_OPENMP_THREADS=1 doesn't
+> help, but setting OMP_THREAD_LIMIT=1 does.
+>
+> --
+> Best regards,
+> Ivan
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Oct 24 14:55:16 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 24 Oct 2023 15:55:16 +0300
+Subject: [R-pkg-devel] Too many cores used in examples (not caused by
+ data.table)
+In-Reply-To: <DB9PR05MB8654939D929CAAB4108487D3F8D8A@DB9PR05MB8654.eurprd05.prod.outlook.com>
+References: <PAXPR05MB8650BE166314CEAA80059BBEF8D4A@PAXPR05MB8650.eurprd05.prod.outlook.com>
+ <20231020165437.31a89982@arachnoid>
+ <DB9PR05MB8654939D929CAAB4108487D3F8D8A@DB9PR05MB8654.eurprd05.prod.outlook.com>
+Message-ID: <20231024155516.3b45000f@arachnoid>
+
+? Tue, 24 Oct 2023 10:37:48 +0000
+"Helske, Jouni" <jouni.helske at jyu.fi> ?????:
+
+> Examples with CPU time > 2.5 times elapsed time
+>           user system elapsed ratio
+> exchange 1.196   0.04   0.159 7.774
+
+I've downloaded the archived copy of the package from the CRAN FTP
+server, installed it and tried:
+
+library(bssm)
+Sys.setenv("OMP_THREAD_LIMIT" = 2)
+data("exchange")
+model <- svm(
+ exchange, rho = uniform(0.97,-0.999,0.999),
+ sd_ar = halfnormal(0.175, 2), mu = normal(-0.87, 0, 2)
+)
+system.time(particle_smoother(model, particles = 500))
+#    user  system elapsed
+#   0.515   0.000   0.073
+
+I set a breakpoint on clone() [*] and got quite a few calls creating
+OpenMP threads with the following call stack:
+
+#0  clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:52
+<...>
+#4  0x00007ffff7314e0a in GOMP_parallel () from
+/usr/lib/x86_64-linux-gnu/libgomp.so.1
+ <-- RcppArmadillo code below
+#5 0x00007ffff38f5f00 in
+arma::eglue_core<arma::eglue_div>::apply<arma::Mat<double>,
+arma::eOp<arma::eOp<arma::Col<double>, arma::eop_exp>,
+arma::eop_scalar_times>, arma::eOp<arma::eOp<arma::Col<double>,
+arma::eop_scalar_div_post>, arma::eop_square> > (outP=..., x=...) at
+.../library/RcppArmadillo/include/armadillo_bits/mp_misc.hpp:69
+#6 0x00007ffff3a31246 in
+arma::Mat<double>::operator=<arma::eOp<arma::eOp<arma::Col<double>,
+arma::eop_exp>, arma::eop_scalar_times>,
+arma::eOp<arma::eOp<arma::Col<double>, arma::eop_scalar_div_post>,
+arma::eop_square>, arma::eglue_div> (X=..., this=0x7fffffff36f0) at
+.../library/RcppArmadillo/include/armadillo_bits/Proxy.hpp:226
+#7
+arma::Col<double>::operator=<arma::eGlue<arma::eOp<arma::eOp<arma::Col<double>,
+arma::eop_exp>, arma::eop_scalar_times>,
+arma::eOp<arma::eOp<arma::Col<double>, arma::eop_scalar_div_post>,
+arma::eop_square>, arma::eglue_div> > ( X=..., this=0x7fffffff36f0) at
+.../library/RcppArmadillo/include/armadillo_bits/Col_meat.hpp:535
+ <-- bssm code below
+#8  ssm_ung::laplace_iter (this=0x7fffffff15e0, signal=...) at
+model_ssm_ung.cpp:310
+#9  0x00007ffff3a36e9e in ssm_ung::approximate (this=0x7fffffff15e0) at
+.../library/RcppArmadillo/include/armadillo_bits/arrayops_meat.hpp:27
+#10 0x00007ffff3a3b3d3 in ssm_ung::psi_filter
+(this=this at entry=0x7fffffff15e0, nsim=nsim at entry=500, alpha=...,
+weights=..., indices=...) at model_ssm_ung.cpp:517
+#11 0x00007ffff3948cd7 in psi_smoother (model_=..., nsim=nsim at entry=500,
+seed=seed at entry=1092825895, model_type=model_type at entry=3) at
+R_psi.cpp:131
+
+What does arma::eglue_core do?
+
+(gdb) list
+/* reformatted a bit */
+library/RcppArmadillo/include/armadillo_bits/mp_misc.hpp:64
+ int n_threads = (std::min)(
+  int(arma_config::mp_threads),
+  int((std::max)(int(1), int(omp_get_max_threads())))
+ );
+(gdb) p arma_config::mp_threads
+$3 = 8
+(gdb) p (int)omp_get_max_threads()
+$4 = 16
+(gdb) p (char*)getenv("OMP_THREAD_LIMIT")
+$7 = 0x555556576b91 "2"
+(gdb) p /x (int)omp_get_thread_limit()
+$9 = 0x7fffffff
+
+Sorry for misinforming you about the OMP_THREAD_LIMIT environment
+variable: the OpenMP specification requires the program to ignore
+modifications to the environment variables after the program has
+started [**], so it only works if R is started with OMP_THREAD_LIMIT
+set. Additionally, the OpenMP thread limit is not supposed to be
+adjusted at runtime at all [***].
+
+Unfortunately for our situation, Armadillo is very insistent in setting
+its own number of threads from arma_config::mp_threads (which is
+constexpr 8 unless you set preprocessor directives while compiling it)
+and omp_get_max_threads (which is the upper bound on the number of
+threads that cannot be adjusted at runtime).
+
+What I'm about to suggest is a terrible hack, but since Armadillo seems
+to lack the option to set the number of threads at runtime, there might
+be no other option.
+
+Before you #include an Armadillo header, every time:
+
+1. #include <omp.h> so that the OpenMP functions are declared and the
+#include guard is set
+
+2. Define a static inline function get_number_of_threads returning the
+desired number of threads as an int (e.g. referencing an extern int
+number_of_threads stored elsewhere)
+
+3. #define omp_get_max_threads get_number_of_threads
+
+Now if you provide an API for the R code to get and set this number, it
+should be possible to control the number of threads used by OpenMP code
+in Armadillo. Basically, a data.table::setDTthreads() for the copy of
+Armadillo inlined inside your package.
+
+If you then compile your package with a large #define
+ARMA_OPENMP_THREADS, it will both be able to use more than 8 threads
+*and* limit itself when needed.
+
+An alternative course of action is compiling your package with #define
+ARMA_OPENMP_THREADS 2 and giving up on more OpenMP threads inside calls
+to Armadillo.
+
+-- 
+Best regards,
+Ivan
+
+[*]
+https://github.com/tidymodels/textrecipes/pull/251#issuecomment-1775549814
+
+[**]
+https://www.openmp.org/spec-html/5.2/openmpch21.html#x432-59000021
+
+[***]
+https://www.openmp.org/wp-content/uploads/OpenMPRefCard-5-2-web.pdf#page=15
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Tue Oct 24 15:04:10 2023
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Tue, 24 Oct 2023 08:04:10 -0500
+Subject: [R-pkg-devel] Too many cores used in examples (not caused by
+ data.table)
+In-Reply-To: <CAAS8PALAFNJNEB+i79XGziJ7VBtBOAJpAKhqdiv+bSm0-FwmqQ@mail.gmail.com>
+References: <PAXPR05MB8650BE166314CEAA80059BBEF8D4A@PAXPR05MB8650.eurprd05.prod.outlook.com>
+ <20231020165437.31a89982@arachnoid>
+ <DB9PR05MB8654939D929CAAB4108487D3F8D8A@DB9PR05MB8654.eurprd05.prod.outlook.com>
+ <CAAS8PALAFNJNEB+i79XGziJ7VBtBOAJpAKhqdiv+bSm0-FwmqQ@mail.gmail.com>
+Message-ID: <ab24248a-a6df-4cd7-8574-03a8fe03188a@effectivedefense.org>
+
+	  Chapter 15 in Wickham and Bryan, R Packages, discuss "Advanced 
+Testing Techniques". Their current section "15.4.1 Skip a test" includes 
+the following:
+
+
+test_that("some long-running thing works", {
+   skip_on_cran()
+   # test code that can potentially take "a while" to run
+})
+
+
+	  Have you tried writing directly to Jennifer Bryan 
+<jenny at rstudio.com>? She and Hadley might be able to get help from the 
+CRAN maintainers in getting help with this particular problem AND 
+getting more documentation on this in their book ;-)
+
+
+	  hope this helps.
+	  spencer graves
+	
+
+On 10/24/23 6:03 AM, Greg Hunt wrote:
+> In my case recently, after an hour or so?s messing about I disabled some
+> tests and example executions to get rid of the offending times. I doubt
+> that i am the only one to do that.
+> 
+> On Tue, 24 Oct 2023 at 9:38 pm, Helske, Jouni <jouni.helske at jyu.fi> wrote:
+> 
+>> Thanks for the help, I now tried resubmitting with
+>> Sys.setenv("OMP_THREAD_LIMIT" = 2) at the top of the exchange example, but
+>> I still get the same note:
+>>
+>> Examples with CPU time > 2.5 times elapsed time
+>>            user system elapsed ratio
+>> exchange 1.196   0.04   0.159 7.774
+>>
+>> Not sure what to try next.
+>>
+>> Best,
+>> Jouni
+>> ________________________________
+>> From: Ivan Krylov <krylov.r00t at gmail.com>
+>> Sent: Friday, October 20, 2023 16:54
+>> To: Helske, Jouni <jouni.helske at jyu.fi>
+>> Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+>> Subject: Re: [R-pkg-devel] Too many cores used in examples (not caused by
+>> data.table)
+>>
+>> ? Thu, 19 Oct 2023 05:57:54 +0000
+>> "Helske, Jouni" <jouni.helske at jyu.fi> ?????:
+>>
+>>> But I just realised that bssm uses Armadillo via RcppArmadillo, which
+>>> uses OpenMP by default for some elementwise operations. So, I wonder
+>>> if that could be the culprit?
+>>
+>> I wasn't able to reproduce the NOTE either, despite manually setting
+>> the environment variable
+>> _R_CHECK_EXAMPLE_TIMING_CPU_TO_ELAPSED_THRESHOLD=2 before running R CMD
+>> check, but I think I can see the code using OpenMP. Here's what I did:
+>>
+>> 0. Temporarily lower the system protections against capturing
+>> performance traces of potentially sensitive parts:
+>>
+>> echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid
+>>
+>> (Set it back to 3 after you're done.)
+>>
+>> 1. Run the following command with the development version of the
+>> package installed:
+>>
+>> env OPENBLAS_NUM_THREADS=1 \
+>>   perf record --call-graph drawf,4096 \
+>>   R -e 'library(bssm); system.time(replicate(100, example(exchange)))'
+>>
+>> OPENBLAS_NUM_THREADS=1 will prevent OpenBLAS from spawning worker
+>> threads if you have it installed. (A different BLAS may need different
+>> environment variables.)
+>>
+>> 2. Run `perf report` and browse collected call stack information.
+>>
+>> The call stacks are hard to navigate, but I think they are not pointing
+>> towards Armadillo. At least, setting ARMA_OPENMP_THREADS=1 doesn't
+>> help, but setting OMP_THREAD_LIMIT=1 does.
+>>
+>> --
+>> Best regards,
+>> Ivan
+>>
+>>          [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From edd @end|ng |rom deb|@n@org  Tue Oct 24 15:15:40 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 24 Oct 2023 08:15:40 -0500
+Subject: [R-pkg-devel] Too many cores used in examples (not caused by
+ data.table)
+In-Reply-To: <20231024155516.3b45000f@arachnoid>
+References: <PAXPR05MB8650BE166314CEAA80059BBEF8D4A@PAXPR05MB8650.eurprd05.prod.outlook.com>
+ <20231020165437.31a89982@arachnoid>
+ <DB9PR05MB8654939D929CAAB4108487D3F8D8A@DB9PR05MB8654.eurprd05.prod.outlook.com>
+ <20231024155516.3b45000f@arachnoid>
+Message-ID: <25911.50044.191576.935725@rob.eddelbuettel.com>
+
+
+On 24 October 2023 at 15:55, Ivan Krylov wrote:
+| ? Tue, 24 Oct 2023 10:37:48 +0000
+| "Helske, Jouni" <jouni.helske at jyu.fi> ?????:
+| 
+| > Examples with CPU time > 2.5 times elapsed time
+| >           user system elapsed ratio
+| > exchange 1.196   0.04   0.159 7.774
+| 
+| I've downloaded the archived copy of the package from the CRAN FTP
+| server, installed it and tried:
+| 
+| library(bssm)
+| Sys.setenv("OMP_THREAD_LIMIT" = 2)
+| data("exchange")
+| model <- svm(
+|  exchange, rho = uniform(0.97,-0.999,0.999),
+|  sd_ar = halfnormal(0.175, 2), mu = normal(-0.87, 0, 2)
+| )
+| system.time(particle_smoother(model, particles = 500))
+| #    user  system elapsed
+| #   0.515   0.000   0.073
+| 
+| I set a breakpoint on clone() [*] and got quite a few calls creating
+| OpenMP threads with the following call stack:
+| 
+| #0  clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:52
+| <...>
+| #4  0x00007ffff7314e0a in GOMP_parallel () from
+| /usr/lib/x86_64-linux-gnu/libgomp.so.1
+|  <-- RcppArmadillo code below
+| #5 0x00007ffff38f5f00 in
+| arma::eglue_core<arma::eglue_div>::apply<arma::Mat<double>,
+| arma::eOp<arma::eOp<arma::Col<double>, arma::eop_exp>,
+| arma::eop_scalar_times>, arma::eOp<arma::eOp<arma::Col<double>,
+| arma::eop_scalar_div_post>, arma::eop_square> > (outP=..., x=...) at
+| .../library/RcppArmadillo/include/armadillo_bits/mp_misc.hpp:69
+| #6 0x00007ffff3a31246 in
+| arma::Mat<double>::operator=<arma::eOp<arma::eOp<arma::Col<double>,
+| arma::eop_exp>, arma::eop_scalar_times>,
+| arma::eOp<arma::eOp<arma::Col<double>, arma::eop_scalar_div_post>,
+| arma::eop_square>, arma::eglue_div> (X=..., this=0x7fffffff36f0) at
+| .../library/RcppArmadillo/include/armadillo_bits/Proxy.hpp:226
+| #7
+| arma::Col<double>::operator=<arma::eGlue<arma::eOp<arma::eOp<arma::Col<double>,
+| arma::eop_exp>, arma::eop_scalar_times>,
+| arma::eOp<arma::eOp<arma::Col<double>, arma::eop_scalar_div_post>,
+| arma::eop_square>, arma::eglue_div> > ( X=..., this=0x7fffffff36f0) at
+| .../library/RcppArmadillo/include/armadillo_bits/Col_meat.hpp:535
+|  <-- bssm code below
+| #8  ssm_ung::laplace_iter (this=0x7fffffff15e0, signal=...) at
+| model_ssm_ung.cpp:310
+| #9  0x00007ffff3a36e9e in ssm_ung::approximate (this=0x7fffffff15e0) at
+| .../library/RcppArmadillo/include/armadillo_bits/arrayops_meat.hpp:27
+| #10 0x00007ffff3a3b3d3 in ssm_ung::psi_filter
+| (this=this at entry=0x7fffffff15e0, nsim=nsim at entry=500, alpha=...,
+| weights=..., indices=...) at model_ssm_ung.cpp:517
+| #11 0x00007ffff3948cd7 in psi_smoother (model_=..., nsim=nsim at entry=500,
+| seed=seed at entry=1092825895, model_type=model_type at entry=3) at
+| R_psi.cpp:131
+| 
+| What does arma::eglue_core do?
+| 
+| (gdb) list
+| /* reformatted a bit */
+| library/RcppArmadillo/include/armadillo_bits/mp_misc.hpp:64
+|  int n_threads = (std::min)(
+|   int(arma_config::mp_threads),
+|   int((std::max)(int(1), int(omp_get_max_threads())))
+|  );
+| (gdb) p arma_config::mp_threads
+| $3 = 8
+| (gdb) p (int)omp_get_max_threads()
+| $4 = 16
+| (gdb) p (char*)getenv("OMP_THREAD_LIMIT")
+| $7 = 0x555556576b91 "2"
+| (gdb) p /x (int)omp_get_thread_limit()
+| $9 = 0x7fffffff
+| 
+| Sorry for misinforming you about the OMP_THREAD_LIMIT environment
+| variable: the OpenMP specification requires the program to ignore
+| modifications to the environment variables after the program has
+| started [**], so it only works if R is started with OMP_THREAD_LIMIT
+| set. Additionally, the OpenMP thread limit is not supposed to be
+| adjusted at runtime at all [***].
+| 
+| Unfortunately for our situation, Armadillo is very insistent in setting
+| its own number of threads from arma_config::mp_threads (which is
+| constexpr 8 unless you set preprocessor directives while compiling it)
+| and omp_get_max_threads (which is the upper bound on the number of
+| threads that cannot be adjusted at runtime).
+| 
+| What I'm about to suggest is a terrible hack, but since Armadillo seems
+| to lack the option to set the number of threads at runtime, there might
+| be no other option.
+| 
+| Before you #include an Armadillo header, every time:
+| 
+| 1. #include <omp.h> so that the OpenMP functions are declared and the
+| #include guard is set
+| 
+| 2. Define a static inline function get_number_of_threads returning the
+| desired number of threads as an int (e.g. referencing an extern int
+| number_of_threads stored elsewhere)
+| 
+| 3. #define omp_get_max_threads get_number_of_threads
+| 
+| Now if you provide an API for the R code to get and set this number, it
+| should be possible to control the number of threads used by OpenMP code
+| in Armadillo. Basically, a data.table::setDTthreads() for the copy of
+| Armadillo inlined inside your package.
+| 
+| If you then compile your package with a large #define
+| ARMA_OPENMP_THREADS, it will both be able to use more than 8 threads
+| *and* limit itself when needed.
+| 
+| An alternative course of action is compiling your package with #define
+| ARMA_OPENMP_THREADS 2 and giving up on more OpenMP threads inside calls
+| to Armadillo.
+
+We should work on adding such a run-time setter of the number of cores to
+RcppArmadillo so that examples can dial down to 2 cores.  I have been doing
+just that in package tiledb (via a setting internal to the TileDB Core
+library) for 'ages' now and RcppArmadillo could and should offer the same.
+
+Dirk
+
+| -- 
+| Best regards,
+| Ivan
+| 
+| [*]
+| https://github.com/tidymodels/textrecipes/pull/251#issuecomment-1775549814
+| 
+| [**]
+| https://www.openmp.org/spec-html/5.2/openmpch21.html#x432-59000021
+| 
+| [***]
+| https://www.openmp.org/wp-content/uploads/OpenMPRefCard-5-2-web.pdf#page=15
+| 
+| ______________________________________________
+| R-package-devel at r-project.org mailing list
+| https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From rhe|p @end|ng |rom eoo@@dd@@n|  Tue Oct 24 17:01:24 2023
+From: rhe|p @end|ng |rom eoo@@dd@@n| (Jan van der Laan)
+Date: Tue, 24 Oct 2023 17:01:24 +0200
+Subject: [R-pkg-devel] Too many cores used in examples (not caused by
+ data.table)
+In-Reply-To: <CAAS8PALAFNJNEB+i79XGziJ7VBtBOAJpAKhqdiv+bSm0-FwmqQ@mail.gmail.com>
+References: <PAXPR05MB8650BE166314CEAA80059BBEF8D4A@PAXPR05MB8650.eurprd05.prod.outlook.com>
+ <20231020165437.31a89982@arachnoid>
+ <DB9PR05MB8654939D929CAAB4108487D3F8D8A@DB9PR05MB8654.eurprd05.prod.outlook.com>
+ <CAAS8PALAFNJNEB+i79XGziJ7VBtBOAJpAKhqdiv+bSm0-FwmqQ@mail.gmail.com>
+Message-ID: <9dcffb17-778c-4f28-98f6-3309dfb627fb@eoos.dds.nl>
+
+You are not the only one; I did the same with some of my examples.
+
+Would it be an option to ask for a default R-option, 'max.ncores', that 
+specifies the maximum number of cores a process is allowed to use? CRAN 
+could then require that that examples, tests and vignettes respect this 
+option. That way there would be one uniform option to specify the 
+maximum number of cores processes could use. That would also make it 
+easier for system administrators to set default values for this (use the 
+entire system; or use one code by default on a shared system).
+
+Of course, we package maintainers could do this without involvement of 
+R-code or CRAN. We only need to agree on a name and a default value for 
+when the option is missing (0 = use all cores; 1 or 2; or ncores-1 ...).
+
+Jan
+
+
+On 24-10-2023 13:03, Greg Hunt wrote:
+> In my case recently, after an hour or so?s messing about I disabled some
+> tests and example executions to get rid of the offending times. I doubt
+> that i am the only one to do that.
+> 
+> On Tue, 24 Oct 2023 at 9:38 pm, Helske, Jouni <jouni.helske at jyu.fi> wrote:
+> 
+>> Thanks for the help, I now tried resubmitting with
+>> Sys.setenv("OMP_THREAD_LIMIT" = 2) at the top of the exchange example, but
+>> I still get the same note:
+>>
+>> Examples with CPU time > 2.5 times elapsed time
+>>            user system elapsed ratio
+>> exchange 1.196   0.04   0.159 7.774
+>>
+>> Not sure what to try next.
+>>
+>> Best,
+>> Jouni
+>> ________________________________
+>> From: Ivan Krylov <krylov.r00t at gmail.com>
+>> Sent: Friday, October 20, 2023 16:54
+>> To: Helske, Jouni <jouni.helske at jyu.fi>
+>> Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+>> Subject: Re: [R-pkg-devel] Too many cores used in examples (not caused by
+>> data.table)
+>>
+>> ? Thu, 19 Oct 2023 05:57:54 +0000
+>> "Helske, Jouni" <jouni.helske at jyu.fi> ?????:
+>>
+>>> But I just realised that bssm uses Armadillo via RcppArmadillo, which
+>>> uses OpenMP by default for some elementwise operations. So, I wonder
+>>> if that could be the culprit?
+>>
+>> I wasn't able to reproduce the NOTE either, despite manually setting
+>> the environment variable
+>> _R_CHECK_EXAMPLE_TIMING_CPU_TO_ELAPSED_THRESHOLD=2 before running R CMD
+>> check, but I think I can see the code using OpenMP. Here's what I did:
+>>
+>> 0. Temporarily lower the system protections against capturing
+>> performance traces of potentially sensitive parts:
+>>
+>> echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid
+>>
+>> (Set it back to 3 after you're done.)
+>>
+>> 1. Run the following command with the development version of the
+>> package installed:
+>>
+>> env OPENBLAS_NUM_THREADS=1 \
+>>   perf record --call-graph drawf,4096 \
+>>   R -e 'library(bssm); system.time(replicate(100, example(exchange)))'
+>>
+>> OPENBLAS_NUM_THREADS=1 will prevent OpenBLAS from spawning worker
+>> threads if you have it installed. (A different BLAS may need different
+>> environment variables.)
+>>
+>> 2. Run `perf report` and browse collected call stack information.
+>>
+>> The call stacks are hard to navigate, but I think they are not pointing
+>> towards Armadillo. At least, setting ARMA_OPENMP_THREADS=1 doesn't
+>> help, but setting OMP_THREAD_LIMIT=1 does.
+>>
+>> --
+>> Best regards,
+>> Ivan
+>>
+>>          [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
