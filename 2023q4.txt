@@ -8620,3 +8620,747 @@ On 24-10-2023 13:03, Greg Hunt wrote:
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From edd @end|ng |rom deb|@n@org  Wed Oct 25 12:27:46 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 25 Oct 2023 05:27:46 -0500
+Subject: [R-pkg-devel] Too many cores used in examples (not caused by
+ data.table)
+In-Reply-To: <25911.50044.191576.935725@rob.eddelbuettel.com>
+References: <PAXPR05MB8650BE166314CEAA80059BBEF8D4A@PAXPR05MB8650.eurprd05.prod.outlook.com>
+ <20231020165437.31a89982@arachnoid>
+ <DB9PR05MB8654939D929CAAB4108487D3F8D8A@DB9PR05MB8654.eurprd05.prod.outlook.com>
+ <20231024155516.3b45000f@arachnoid>
+ <25911.50044.191576.935725@rob.eddelbuettel.com>
+Message-ID: <25912.60834.927280.904009@rob.eddelbuettel.com>
+
+
+On 24 October 2023 at 08:15, Dirk Eddelbuettel wrote:
+| 
+| On 24 October 2023 at 15:55, Ivan Krylov wrote:
+| | ? Tue, 24 Oct 2023 10:37:48 +0000
+| | "Helske, Jouni" <jouni.helske at jyu.fi> ?????:
+| | 
+| | > Examples with CPU time > 2.5 times elapsed time
+| | >           user system elapsed ratio
+| | > exchange 1.196   0.04   0.159 7.774
+| | 
+| | I've downloaded the archived copy of the package from the CRAN FTP
+| | server, installed it and tried:
+| | 
+| | library(bssm)
+| | Sys.setenv("OMP_THREAD_LIMIT" = 2)
+| | data("exchange")
+| | model <- svm(
+| |  exchange, rho = uniform(0.97,-0.999,0.999),
+| |  sd_ar = halfnormal(0.175, 2), mu = normal(-0.87, 0, 2)
+| | )
+| | system.time(particle_smoother(model, particles = 500))
+| | #    user  system elapsed
+| | #   0.515   0.000   0.073
+| | 
+| | I set a breakpoint on clone() [*] and got quite a few calls creating
+| | OpenMP threads with the following call stack:
+| | 
+| | #0  clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:52
+| | <...>
+| | #4  0x00007ffff7314e0a in GOMP_parallel () from
+| | /usr/lib/x86_64-linux-gnu/libgomp.so.1
+| |  <-- RcppArmadillo code below
+| | #5 0x00007ffff38f5f00 in
+| | arma::eglue_core<arma::eglue_div>::apply<arma::Mat<double>,
+| | arma::eOp<arma::eOp<arma::Col<double>, arma::eop_exp>,
+| | arma::eop_scalar_times>, arma::eOp<arma::eOp<arma::Col<double>,
+| | arma::eop_scalar_div_post>, arma::eop_square> > (outP=..., x=...) at
+| | .../library/RcppArmadillo/include/armadillo_bits/mp_misc.hpp:69
+| | #6 0x00007ffff3a31246 in
+| | arma::Mat<double>::operator=<arma::eOp<arma::eOp<arma::Col<double>,
+| | arma::eop_exp>, arma::eop_scalar_times>,
+| | arma::eOp<arma::eOp<arma::Col<double>, arma::eop_scalar_div_post>,
+| | arma::eop_square>, arma::eglue_div> (X=..., this=0x7fffffff36f0) at
+| | .../library/RcppArmadillo/include/armadillo_bits/Proxy.hpp:226
+| | #7
+| | arma::Col<double>::operator=<arma::eGlue<arma::eOp<arma::eOp<arma::Col<double>,
+| | arma::eop_exp>, arma::eop_scalar_times>,
+| | arma::eOp<arma::eOp<arma::Col<double>, arma::eop_scalar_div_post>,
+| | arma::eop_square>, arma::eglue_div> > ( X=..., this=0x7fffffff36f0) at
+| | .../library/RcppArmadillo/include/armadillo_bits/Col_meat.hpp:535
+| |  <-- bssm code below
+| | #8  ssm_ung::laplace_iter (this=0x7fffffff15e0, signal=...) at
+| | model_ssm_ung.cpp:310
+| | #9  0x00007ffff3a36e9e in ssm_ung::approximate (this=0x7fffffff15e0) at
+| | .../library/RcppArmadillo/include/armadillo_bits/arrayops_meat.hpp:27
+| | #10 0x00007ffff3a3b3d3 in ssm_ung::psi_filter
+| | (this=this at entry=0x7fffffff15e0, nsim=nsim at entry=500, alpha=...,
+| | weights=..., indices=...) at model_ssm_ung.cpp:517
+| | #11 0x00007ffff3948cd7 in psi_smoother (model_=..., nsim=nsim at entry=500,
+| | seed=seed at entry=1092825895, model_type=model_type at entry=3) at
+| | R_psi.cpp:131
+| | 
+| | What does arma::eglue_core do?
+| | 
+| | (gdb) list
+| | /* reformatted a bit */
+| | library/RcppArmadillo/include/armadillo_bits/mp_misc.hpp:64
+| |  int n_threads = (std::min)(
+| |   int(arma_config::mp_threads),
+| |   int((std::max)(int(1), int(omp_get_max_threads())))
+| |  );
+| | (gdb) p arma_config::mp_threads
+| | $3 = 8
+| | (gdb) p (int)omp_get_max_threads()
+| | $4 = 16
+| | (gdb) p (char*)getenv("OMP_THREAD_LIMIT")
+| | $7 = 0x555556576b91 "2"
+| | (gdb) p /x (int)omp_get_thread_limit()
+| | $9 = 0x7fffffff
+| | 
+| | Sorry for misinforming you about the OMP_THREAD_LIMIT environment
+| | variable: the OpenMP specification requires the program to ignore
+| | modifications to the environment variables after the program has
+| | started [**], so it only works if R is started with OMP_THREAD_LIMIT
+| | set. Additionally, the OpenMP thread limit is not supposed to be
+| | adjusted at runtime at all [***].
+| | 
+| | Unfortunately for our situation, Armadillo is very insistent in setting
+| | its own number of threads from arma_config::mp_threads (which is
+| | constexpr 8 unless you set preprocessor directives while compiling it)
+| | and omp_get_max_threads (which is the upper bound on the number of
+| | threads that cannot be adjusted at runtime).
+| | 
+| | What I'm about to suggest is a terrible hack, but since Armadillo seems
+| | to lack the option to set the number of threads at runtime, there might
+| | be no other option.
+| | 
+| | Before you #include an Armadillo header, every time:
+| | 
+| | 1. #include <omp.h> so that the OpenMP functions are declared and the
+| | #include guard is set
+| | 
+| | 2. Define a static inline function get_number_of_threads returning the
+| | desired number of threads as an int (e.g. referencing an extern int
+| | number_of_threads stored elsewhere)
+| | 
+| | 3. #define omp_get_max_threads get_number_of_threads
+| | 
+| | Now if you provide an API for the R code to get and set this number, it
+| | should be possible to control the number of threads used by OpenMP code
+| | in Armadillo. Basically, a data.table::setDTthreads() for the copy of
+| | Armadillo inlined inside your package.
+| | 
+| | If you then compile your package with a large #define
+| | ARMA_OPENMP_THREADS, it will both be able to use more than 8 threads
+| | *and* limit itself when needed.
+| | 
+| | An alternative course of action is compiling your package with #define
+| | ARMA_OPENMP_THREADS 2 and giving up on more OpenMP threads inside calls
+| | to Armadillo.
+| 
+| We should work on adding such a run-time setter of the number of cores to
+| RcppArmadillo so that examples can dial down to 2 cores.  I have been doing
+| just that in package tiledb (via a setting internal to the TileDB Core
+| library) for 'ages' now and RcppArmadillo could and should offer the same.
+
+A run-time setter won't work, Armadillo uses a constexpr. But we may have
+looked in error at the _wrong_ OpenMP environment variable.  Can you please
+try with OMP_NUM_THREADS=2 (instead of OMP_THREAD_LIMIT) ?  
+
+Dirk
+ 
+| Dirk
+| 
+| | -- 
+| | Best regards,
+| | Ivan
+| | 
+| | [*]
+| | https://github.com/tidymodels/textrecipes/pull/251#issuecomment-1775549814
+| | 
+| | [**]
+| | https://www.openmp.org/spec-html/5.2/openmpch21.html#x432-59000021
+| | 
+| | [***]
+| | https://www.openmp.org/wp-content/uploads/OpenMPRefCard-5-2-web.pdf#page=15
+| | 
+| | ______________________________________________
+| | R-package-devel at r-project.org mailing list
+| | https://stat.ethz.ch/mailman/listinfo/r-package-devel
+| 
+| -- 
+| dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+| 
+| ______________________________________________
+| R-package-devel at r-project.org mailing list
+| https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From joun|@he|@ke @end|ng |rom jyu@||  Wed Oct 25 14:04:38 2023
+From: joun|@he|@ke @end|ng |rom jyu@|| (Helske, Jouni)
+Date: Wed, 25 Oct 2023 12:04:38 +0000
+Subject: [R-pkg-devel] Too many cores used in examples (not caused by
+ data.table)
+In-Reply-To: <25912.60834.927280.904009@rob.eddelbuettel.com>
+References: <PAXPR05MB8650BE166314CEAA80059BBEF8D4A@PAXPR05MB8650.eurprd05.prod.outlook.com>
+ <20231020165437.31a89982@arachnoid>
+ <DB9PR05MB8654939D929CAAB4108487D3F8D8A@DB9PR05MB8654.eurprd05.prod.outlook.com>
+ <20231024155516.3b45000f@arachnoid>
+ <25911.50044.191576.935725@rob.eddelbuettel.com>
+ <25912.60834.927280.904009@rob.eddelbuettel.com>
+Message-ID: <PAXPR05MB86503FBDDAD830F994370F15F8DEA@PAXPR05MB8650.eurprd05.prod.outlook.com>
+
+Thanks,
+
+I tried with  OMP_NUM_THREADS=2 but unfortunately got the same NOTE as before.
+
+Best,
+Jouni
+________________________________
+From: Dirk Eddelbuettel <edd at debian.org>
+Sent: Wednesday, October 25, 2023 13:27
+To: Dirk Eddelbuettel <edd at debian.org>; Helske, Jouni <jouni.helske at jyu.fi>
+Cc: Ivan Krylov <krylov.r00t at gmail.com>; r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Too many cores used in examples (not caused by data.table)
+
+
+On 24 October 2023 at 08:15, Dirk Eddelbuettel wrote:
+|
+| On 24 October 2023 at 15:55, Ivan Krylov wrote:
+| | ? Tue, 24 Oct 2023 10:37:48 +0000
+| | "Helske, Jouni" <jouni.helske at jyu.fi> ?????:
+| |
+| | > Examples with CPU time > 2.5 times elapsed time
+| | >           user system elapsed ratio
+| | > exchange 1.196   0.04   0.159 7.774
+| |
+| | I've downloaded the archived copy of the package from the CRAN FTP
+| | server, installed it and tried:
+| |
+| | library(bssm)
+| | Sys.setenv("OMP_THREAD_LIMIT" = 2)
+| | data("exchange")
+| | model <- svm(
+| |  exchange, rho = uniform(0.97,-0.999,0.999),
+| |  sd_ar = halfnormal(0.175, 2), mu = normal(-0.87, 0, 2)
+| | )
+| | system.time(particle_smoother(model, particles = 500))
+| | #    user  system elapsed
+| | #   0.515   0.000   0.073
+| |
+| | I set a breakpoint on clone() [*] and got quite a few calls creating
+| | OpenMP threads with the following call stack:
+| |
+| | #0  clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:52
+| | <...>
+| | #4  0x00007ffff7314e0a in GOMP_parallel () from
+| | /usr/lib/x86_64-linux-gnu/libgomp.so.1
+| |  <-- RcppArmadillo code below
+| | #5 0x00007ffff38f5f00 in
+| | arma::eglue_core<arma::eglue_div>::apply<arma::Mat<double>,
+| | arma::eOp<arma::eOp<arma::Col<double>, arma::eop_exp>,
+| | arma::eop_scalar_times>, arma::eOp<arma::eOp<arma::Col<double>,
+| | arma::eop_scalar_div_post>, arma::eop_square> > (outP=..., x=...) at
+| | .../library/RcppArmadillo/include/armadillo_bits/mp_misc.hpp:69
+| | #6 0x00007ffff3a31246 in
+| | arma::Mat<double>::operator=<arma::eOp<arma::eOp<arma::Col<double>,
+| | arma::eop_exp>, arma::eop_scalar_times>,
+| | arma::eOp<arma::eOp<arma::Col<double>, arma::eop_scalar_div_post>,
+| | arma::eop_square>, arma::eglue_div> (X=..., this=0x7fffffff36f0) at
+| | .../library/RcppArmadillo/include/armadillo_bits/Proxy.hpp:226
+| | #7
+| | arma::Col<double>::operator=<arma::eGlue<arma::eOp<arma::eOp<arma::Col<double>,
+| | arma::eop_exp>, arma::eop_scalar_times>,
+| | arma::eOp<arma::eOp<arma::Col<double>, arma::eop_scalar_div_post>,
+| | arma::eop_square>, arma::eglue_div> > ( X=..., this=0x7fffffff36f0) at
+| | .../library/RcppArmadillo/include/armadillo_bits/Col_meat.hpp:535
+| |  <-- bssm code below
+| | #8  ssm_ung::laplace_iter (this=0x7fffffff15e0, signal=...) at
+| | model_ssm_ung.cpp:310
+| | #9  0x00007ffff3a36e9e in ssm_ung::approximate (this=0x7fffffff15e0) at
+| | .../library/RcppArmadillo/include/armadillo_bits/arrayops_meat.hpp:27
+| | #10 0x00007ffff3a3b3d3 in ssm_ung::psi_filter
+| | (this=this at entry=0x7fffffff15e0, nsim=nsim at entry=500, alpha=...,
+| | weights=..., indices=...) at model_ssm_ung.cpp:517
+| | #11 0x00007ffff3948cd7 in psi_smoother (model_=..., nsim=nsim at entry=500,
+| | seed=seed at entry=1092825895, model_type=model_type at entry=3) at
+| | R_psi.cpp:131
+| |
+| | What does arma::eglue_core do?
+| |
+| | (gdb) list
+| | /* reformatted a bit */
+| | library/RcppArmadillo/include/armadillo_bits/mp_misc.hpp:64
+| |  int n_threads = (std::min)(
+| |   int(arma_config::mp_threads),
+| |   int((std::max)(int(1), int(omp_get_max_threads())))
+| |  );
+| | (gdb) p arma_config::mp_threads
+| | $3 = 8
+| | (gdb) p (int)omp_get_max_threads()
+| | $4 = 16
+| | (gdb) p (char*)getenv("OMP_THREAD_LIMIT")
+| | $7 = 0x555556576b91 "2"
+| | (gdb) p /x (int)omp_get_thread_limit()
+| | $9 = 0x7fffffff
+| |
+| | Sorry for misinforming you about the OMP_THREAD_LIMIT environment
+| | variable: the OpenMP specification requires the program to ignore
+| | modifications to the environment variables after the program has
+| | started [**], so it only works if R is started with OMP_THREAD_LIMIT
+| | set. Additionally, the OpenMP thread limit is not supposed to be
+| | adjusted at runtime at all [***].
+| |
+| | Unfortunately for our situation, Armadillo is very insistent in setting
+| | its own number of threads from arma_config::mp_threads (which is
+| | constexpr 8 unless you set preprocessor directives while compiling it)
+| | and omp_get_max_threads (which is the upper bound on the number of
+| | threads that cannot be adjusted at runtime).
+| |
+| | What I'm about to suggest is a terrible hack, but since Armadillo seems
+| | to lack the option to set the number of threads at runtime, there might
+| | be no other option.
+| |
+| | Before you #include an Armadillo header, every time:
+| |
+| | 1. #include <omp.h> so that the OpenMP functions are declared and the
+| | #include guard is set
+| |
+| | 2. Define a static inline function get_number_of_threads returning the
+| | desired number of threads as an int (e.g. referencing an extern int
+| | number_of_threads stored elsewhere)
+| |
+| | 3. #define omp_get_max_threads get_number_of_threads
+| |
+| | Now if you provide an API for the R code to get and set this number, it
+| | should be possible to control the number of threads used by OpenMP code
+| | in Armadillo. Basically, a data.table::setDTthreads() for the copy of
+| | Armadillo inlined inside your package.
+| |
+| | If you then compile your package with a large #define
+| | ARMA_OPENMP_THREADS, it will both be able to use more than 8 threads
+| | *and* limit itself when needed.
+| |
+| | An alternative course of action is compiling your package with #define
+| | ARMA_OPENMP_THREADS 2 and giving up on more OpenMP threads inside calls
+| | to Armadillo.
+|
+| We should work on adding such a run-time setter of the number of cores to
+| RcppArmadillo so that examples can dial down to 2 cores.  I have been doing
+| just that in package tiledb (via a setting internal to the TileDB Core
+| library) for 'ages' now and RcppArmadillo could and should offer the same.
+
+A run-time setter won't work, Armadillo uses a constexpr. But we may have
+looked in error at the _wrong_ OpenMP environment variable.  Can you please
+try with OMP_NUM_THREADS=2 (instead of OMP_THREAD_LIMIT) ?
+
+Dirk
+
+| Dirk
+|
+| | --
+| | Best regards,
+| | Ivan
+| |
+| | [*]
+| | https://eur03.safelinks.protection.outlook.com/?url=https%3A%2F%2Fgithub.com%2Ftidymodels%2Ftextrecipes%2Fpull%2F251%23issuecomment-1775549814&data=05%7C01%7Cjovetale%40jyu.mail.onmicrosoft.com%7C10f4432f57304393f6aa08dbd5450b40%7Ce9662d58caa44bc1b138c8b1acab5a11%7C1%7C0%7C638338264751478030%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=PmuX0x1eRky1TFSwmq7O2cJwCoS87v72xh0ydzHOsA4%3D&reserved=0<https://github.com/tidymodels/textrecipes/pull/251#issuecomment-1775549814>
+| |
+| | [**]
+| | https://eur03.safelinks.protection.outlook.com/?url=https%3A%2F%2Fwww.openmp.org%2Fspec-html%2F5.2%2Fopenmpch21.html%23x432-59000021&data=05%7C01%7Cjovetale%40jyu.mail.onmicrosoft.com%7C10f4432f57304393f6aa08dbd5450b40%7Ce9662d58caa44bc1b138c8b1acab5a11%7C1%7C0%7C638338264751478030%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=cTZKytn22QvL%2FOoP7EOm4bqXG%2FUgke%2BhTNT2Mhd6l0k%3D&reserved=0<https://www.openmp.org/spec-html/5.2/openmpch21.html#x432-59000021>
+| |
+| | [***]
+| | https://eur03.safelinks.protection.outlook.com/?url=https%3A%2F%2Fwww.openmp.org%2Fwp-content%2Fuploads%2FOpenMPRefCard-5-2-web.pdf%23page%3D15&data=05%7C01%7Cjovetale%40jyu.mail.onmicrosoft.com%7C10f4432f57304393f6aa08dbd5450b40%7Ce9662d58caa44bc1b138c8b1acab5a11%7C1%7C0%7C638338264751478030%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=vYfueL7%2FvEWcPTQZ2Tjivys2kxEXhyDRCkF0u0IHaPg%3D&reserved=0<https://www.openmp.org/wp-content/uploads/OpenMPRefCard-5-2-web.pdf#page=15>
+| |
+| | ______________________________________________
+| | R-package-devel at r-project.org mailing list
+| | https://eur03.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-package-devel&data=05%7C01%7Cjovetale%40jyu.mail.onmicrosoft.com%7C10f4432f57304393f6aa08dbd5450b40%7Ce9662d58caa44bc1b138c8b1acab5a11%7C1%7C0%7C638338264751478030%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=fWW%2BqMTeoQpg3%2BeNw%2Fuptmdy9PXsgHMfVijyTv0pdng%3D&reserved=0<https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+|
+| --
+| dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+|
+| ______________________________________________
+| R-package-devel at r-project.org mailing list
+| https://eur03.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-package-devel&data=05%7C01%7Cjovetale%40jyu.mail.onmicrosoft.com%7C10f4432f57304393f6aa08dbd5450b40%7Ce9662d58caa44bc1b138c8b1acab5a11%7C1%7C0%7C638338264751478030%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=fWW%2BqMTeoQpg3%2BeNw%2Fuptmdy9PXsgHMfVijyTv0pdng%3D&reserved=0<https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+
+--
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Oct 25 14:55:29 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 25 Oct 2023 15:55:29 +0300
+Subject: [R-pkg-devel] RFC: an interface to manage use of parallelism in
+ packages
+Message-ID: <20231025155529.0f83fc93@arachnoid>
+
+Summary: at the end of this message is a link to an R package
+implementing an interface for managing the use of execution units in R
+packages. As a package maintainer, would you agree to use something
+like this? Does it look sufficiently reasonable to become a part of R?
+Read on for why I made these particular interface choices.
+
+My understanding of the problem stated by Simon Urbanek and Uwe Ligges
+[1,2] is that we need a way to set and distribute the CPU core
+allowance between multiple packages that could be using very different
+methods to achieve parallel execution on the local machine, including
+threads and child processes. We could have multiple well-meaning
+packages, each of them calling each other using a different parallelism
+technology: imagine parallel::makeCluster(getOption('mc.cores'))
+combined with parallel::mclapply(mc.cores = getOption('mc.cores')) and
+with an OpenMP program that also spawns getOption('mc.cores') threads.
+A parallel BLAS or custom multi-threading using std::thread could add
+more fuel to the fire.
+
+Workarounds applied by the package maintainers nowadays are both
+cumbersome (sometimes one has to talk to some package that lives
+downstream in the call stack and isn't even an explicit dependency,
+because it's the one responsible for the threads) and not really enough
+(most maintainers forget to restore the state after they are done, so a
+single example() may slow down the operations that follow).
+
+The problem is complicated by the fact that not every parallel
+operation can explicitly accept the CPU core limit as a parameter. For
+example, data.table's implicit parallelism is very convenient, and so
+are parallel BLASes (which don't have a standard interface to change
+the number of threads), so we shouldn't be prohibiting implicit
+parallelism.
+
+It's also not always obvious how to split the cores between the
+potentially parallel sections. While it's typically best to start with
+the outer loop (e.g. better have 16 R processes solving relatively
+small linear algebra problems back to back than have one R process
+spinning 15 of its 16 OpenBLAS threads in sched_yield()), it may be
+more efficient to give all 16 threads back to BLAS (and save on
+transferring the problems and solutions between processes) once the
+problems become large enough to give enough work to all of the cores.
+
+So as a user, I would like an interface that would both let me give all
+of the cores to the program if that's what I need (something like
+setCPUallowance(parallelly::availableCores())) _and_ let me be more
+detailed when necessary (something like setCPUallowance(overall = 7,
+packages = c(foobar = 1), BLAS = 2) to limit BLAS threads to 2,
+disallow parallelism in the foobar package because it wastes too much
+time, and limit R as a whole to 7 cores because I want to surf the 'net
+on the remaining one while the Monte-Carlo simulation is going on). As
+a package developer, I'd rather not think about any of that and just
+use a function call like getCPUallowance() for the default number of
+cores in every situation.
+
+Can we implement such an interface? The main obstacle here is not being
+able to know when each parallel region beings and ends. Does the
+package call fork()? std::thread{}? Start a local mirai cluster? We
+have to trust (and verify during R CMD check) the package to create the
+given number of units of execution and tells us when they are done.
+
+The closest interface that I see being implementable is a system of
+tokens with reference semantics: getCPUallowance() returns a special
+object containing the number of tokens the caller is allowed to use and
+sets an environment variable with the remaining number of cores. Any R
+child processes pick up the number of cores from the environment
+variable. Any downstream calls to getCPUallowance(), aware of the
+tokens already handed out, return a reduced number of remaining CPU
+cores. Once the package is done executing a parallel section, it
+returns the CPU allowance back to R by calling something like
+close(token), which updates the internal allowance value (and the
+environment variable). (A finalizer can also be set on the tokens to
+ensure that CPU cores won't be lost.)
+
+Here's a package implementing this idea:
+<https://codeberg.org/aitap/R-CPUallowance>. Currently missing are
+terrible hacks to determine the BLAS type at runtime and resolve the
+necessary symbols to set the number of BLAS threads, depending on
+whether it's OpenBLAS, flexiblas, MKL, or something else. Does it feel
+over-engineered? I hope that, even if not a good solution, this would
+let us move towards a unified solution that could just work? on
+everything ranging from laptops to CRAN testing machines to HPCs.
+
+-- 
+Best regards,
+Ivan
+
+[1] https://stat.ethz.ch/pipermail/r-package-devel/2023q3/009484.html
+
+[2] https://stat.ethz.ch/pipermail/r-package-devel/2023q3/009513.html
+
+
+From p|@men@m|r@zch|y@k| @end|ng |rom |ner|@org  Wed Oct 25 21:02:00 2023
+From: p|@men@m|r@zch|y@k| @end|ng |rom |ner|@org (Plamen Mirazchiyski)
+Date: Wed, 25 Oct 2023 21:02:00 +0200
+Subject: [R-pkg-devel] "crossprod" is not a BUILTIN function
+Message-ID: <f4cabddb-c2a7-4bfb-a012-18e09b06296a@ineri.org>
+
+Dear All,
+
+Today I was preparing a new version for the RALSA package. I have built 
+a Windows package using "devtools::check_win_devel()". I took the built 
+Windows package and tested it on a Windows 10 machine to see if 
+everything works as intended before submitting the source to CRAN. The 
+machine has R 4.3.1, the latest official release. After I load the test 
+RALSA package, R displays a message saying "Package RALSA built under R 
+version 4.4.0", I guess this is what the win-builder uses when the 
+source is sent via "devtools::check_win_devel()".
+
+When testing one of the functions of the newly built RALSA package 
+(lsa.corsstabs"), it crashes with the following message:
+
+     Error in crossprod(x = sweep(x = as.matrix(replicated.averages),
+     MARGIN = 2, : "crossprod" is not a BUILTIN function
+
+I checked if it is a builtin by:
+
+     grep(pattern = "cross", x = builtins(), value = TRUE)
+
+This returned:
+
+     [1] "tcrossprod" "crossprod"
+
+I am not sure I understand, the "crossprod" function is in the base 
+package and is builtin in 4.3.1, is it dropped in 4.4.0? If yes, how to 
+overcome this?
+
+Please advise.
+
+Best,
+Plamen
+
+
+-- 
+======================
+Plamen Mirazchiyski, PhD
+International Educational Research and Evaluation Institute
+24 Tehnolo?ki park
+SI-1000 Ljubljana
+Slovenia
+tel.: +386 51 303 817
+email: plamen.mirazchiyski at ineri.org
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Oct 25 21:19:43 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 25 Oct 2023 15:19:43 -0400
+Subject: [R-pkg-devel] "crossprod" is not a BUILTIN function
+In-Reply-To: <f4cabddb-c2a7-4bfb-a012-18e09b06296a@ineri.org>
+References: <f4cabddb-c2a7-4bfb-a012-18e09b06296a@ineri.org>
+Message-ID: <11c7a422-de08-4ac2-8f39-79ba8e402196@gmail.com>
+
+The sources show that crossprod has become a primitive function. I don't 
+think this should affect any R code that calls crossprod(); are you 
+trying to call .Internal(crossprod( ... )) directly?
+
+This was in the news a few weeks ago:
+
+"The matrix multiplication functions ?crossprod()? and ?tcrossprod()? 
+are now also primitive and S3 generic, as ?%*%? had become in R 4.3.0."
+
+Duncan Murdoch
+
+On 25/10/2023 3:02 p.m., Plamen Mirazchiyski wrote:
+> Dear All,
+> 
+> Today I was preparing a new version for the RALSA package. I have built
+> a Windows package using "devtools::check_win_devel()". I took the built
+> Windows package and tested it on a Windows 10 machine to see if
+> everything works as intended before submitting the source to CRAN. The
+> machine has R 4.3.1, the latest official release. After I load the test
+> RALSA package, R displays a message saying "Package RALSA built under R
+> version 4.4.0", I guess this is what the win-builder uses when the
+> source is sent via "devtools::check_win_devel()".
+> 
+> When testing one of the functions of the newly built RALSA package
+> (lsa.corsstabs"), it crashes with the following message:
+> 
+>       Error in crossprod(x = sweep(x = as.matrix(replicated.averages),
+>       MARGIN = 2, : "crossprod" is not a BUILTIN function
+> 
+> I checked if it is a builtin by:
+> 
+>       grep(pattern = "cross", x = builtins(), value = TRUE)
+> 
+> This returned:
+> 
+>       [1] "tcrossprod" "crossprod"
+> 
+> I am not sure I understand, the "crossprod" function is in the base
+> package and is builtin in 4.3.1, is it dropped in 4.4.0? If yes, how to
+> overcome this?
+> 
+> Please advise.
+> 
+> Best,
+> Plamen
+> 
+>
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Oct 25 21:26:06 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 25 Oct 2023 22:26:06 +0300
+Subject: [R-pkg-devel] "crossprod" is not a BUILTIN function
+In-Reply-To: <f4cabddb-c2a7-4bfb-a012-18e09b06296a@ineri.org>
+References: <f4cabddb-c2a7-4bfb-a012-18e09b06296a@ineri.org>
+Message-ID: <20231025222606.75c1441b@Tarkus>
+
+? Wed, 25 Oct 2023 21:02:00 +0200
+Plamen Mirazchiyski <plamen.mirazchiyski at ineri.org> ?????:
+
+> Today I was preparing a new version for the RALSA package. I have
+> built a Windows package using "devtools::check_win_devel()".
+
+> The machine has R 4.3.1, the latest official release. After I load the
+> test RALSA package, R displays a message saying "Package RALSA built
+> under R version 4.4.0"
+
+Can you use R CMD build to make a .tar.gz source package and then
+install that on the Windows 10 machine running R 4.3.1? There is
+convenience and a lot of added value in both Win-Builder and devtools,
+but it shouldn't be necessary to rely on 96 CRAN packages and an online
+service just to build a package.
+
+crossprod(x,y) has indeed been recently changed from
+.Internal(crossprod(x, y)) to .Primitive("crossprod"). This makes it
+possible for a binary package prepared using R-devel (with a call to
+.Primitive('crossprod')) to misbehave on a released version of R (which
+does have .Internal(crossprod(...)) but not .Primitive('crossprod')).
+
+Installing from source will avoid this problem. So will building the
+binary package using R-4.3.1 to run it on a different machine with
+R-4.3.1.
+
+
+
+-- 
+Best regards,
+Ivan
+
+
+From r@c@rtwr|ght @end|ng |rom gm@||@com  Wed Oct 25 22:54:53 2023
+From: r@c@rtwr|ght @end|ng |rom gm@||@com (Reed A. Cartwright)
+Date: Wed, 25 Oct 2023 13:54:53 -0700
+Subject: [R-pkg-devel] RFC: an interface to manage use of parallelism in
+ packages
+In-Reply-To: <20231025155529.0f83fc93@arachnoid>
+References: <20231025155529.0f83fc93@arachnoid>
+Message-ID: <CALOkxuyHdA+=ywL5LFhsXbDrtaMz7m2bC8bs8XFmLRjdvT0ssw@mail.gmail.com>
+
+Hi Ivan,
+
+Interesting package, and I'll provide more feedback later. For a
+comparison, I'd recommend looking at how GNU make does parallel processing.
+It uses the concept of job server and job slots. What I like about it is
+that it is implemented at the OS level because make needs to support
+interacting with non-make processes. On Windows it uses a named semaphore,
+and on Unix-like system it uses named pipes or simple pipes to pass tokens
+around.
+
+https://www.gnu.org/software/make/manual/make.html#Job-Slots
+
+Cheers,
+Reed
+
+
+On Wed, Oct 25, 2023 at 5:55?AM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+
+> Summary: at the end of this message is a link to an R package
+> implementing an interface for managing the use of execution units in R
+> packages. As a package maintainer, would you agree to use something
+> like this? Does it look sufficiently reasonable to become a part of R?
+> Read on for why I made these particular interface choices.
+>
+> My understanding of the problem stated by Simon Urbanek and Uwe Ligges
+> [1,2] is that we need a way to set and distribute the CPU core
+> allowance between multiple packages that could be using very different
+> methods to achieve parallel execution on the local machine, including
+> threads and child processes. We could have multiple well-meaning
+> packages, each of them calling each other using a different parallelism
+> technology: imagine parallel::makeCluster(getOption('mc.cores'))
+> combined with parallel::mclapply(mc.cores = getOption('mc.cores')) and
+> with an OpenMP program that also spawns getOption('mc.cores') threads.
+> A parallel BLAS or custom multi-threading using std::thread could add
+> more fuel to the fire.
+>
+> Workarounds applied by the package maintainers nowadays are both
+> cumbersome (sometimes one has to talk to some package that lives
+> downstream in the call stack and isn't even an explicit dependency,
+> because it's the one responsible for the threads) and not really enough
+> (most maintainers forget to restore the state after they are done, so a
+> single example() may slow down the operations that follow).
+>
+> The problem is complicated by the fact that not every parallel
+> operation can explicitly accept the CPU core limit as a parameter. For
+> example, data.table's implicit parallelism is very convenient, and so
+> are parallel BLASes (which don't have a standard interface to change
+> the number of threads), so we shouldn't be prohibiting implicit
+> parallelism.
+>
+> It's also not always obvious how to split the cores between the
+> potentially parallel sections. While it's typically best to start with
+> the outer loop (e.g. better have 16 R processes solving relatively
+> small linear algebra problems back to back than have one R process
+> spinning 15 of its 16 OpenBLAS threads in sched_yield()), it may be
+> more efficient to give all 16 threads back to BLAS (and save on
+> transferring the problems and solutions between processes) once the
+> problems become large enough to give enough work to all of the cores.
+>
+> So as a user, I would like an interface that would both let me give all
+> of the cores to the program if that's what I need (something like
+> setCPUallowance(parallelly::availableCores())) _and_ let me be more
+> detailed when necessary (something like setCPUallowance(overall = 7,
+> packages = c(foobar = 1), BLAS = 2) to limit BLAS threads to 2,
+> disallow parallelism in the foobar package because it wastes too much
+> time, and limit R as a whole to 7 cores because I want to surf the 'net
+> on the remaining one while the Monte-Carlo simulation is going on). As
+> a package developer, I'd rather not think about any of that and just
+> use a function call like getCPUallowance() for the default number of
+> cores in every situation.
+>
+> Can we implement such an interface? The main obstacle here is not being
+> able to know when each parallel region beings and ends. Does the
+> package call fork()? std::thread{}? Start a local mirai cluster? We
+> have to trust (and verify during R CMD check) the package to create the
+> given number of units of execution and tells us when they are done.
+>
+> The closest interface that I see being implementable is a system of
+> tokens with reference semantics: getCPUallowance() returns a special
+> object containing the number of tokens the caller is allowed to use and
+> sets an environment variable with the remaining number of cores. Any R
+> child processes pick up the number of cores from the environment
+> variable. Any downstream calls to getCPUallowance(), aware of the
+> tokens already handed out, return a reduced number of remaining CPU
+> cores. Once the package is done executing a parallel section, it
+> returns the CPU allowance back to R by calling something like
+> close(token), which updates the internal allowance value (and the
+> environment variable). (A finalizer can also be set on the tokens to
+> ensure that CPU cores won't be lost.)
+>
+> Here's a package implementing this idea:
+> <
+> https://urldefense.com/v3/__https://codeberg.org/aitap/R-CPUallowance__;!!IKRxdwAv5BmarQ!YKbTjFJ7y9HrRl3jgCC0ouo8C5sMSCIkKuIWlUjSZz_B2rehUKl6JefgeeuKrP-46slSQW0dO1VOOWVObOy5GQ$
+> >. Currently missing are
+> terrible hacks to determine the BLAS type at runtime and resolve the
+> necessary symbols to set the number of BLAS threads, depending on
+> whether it's OpenBLAS, flexiblas, MKL, or something else. Does it feel
+> over-engineered? I hope that, even if not a good solution, this would
+> let us move towards a unified solution that could just work? on
+> everything ranging from laptops to CRAN testing machines to HPCs.
+>
+> --
+> Best regards,
+> Ivan
+>
+> [1]
+> https://urldefense.com/v3/__https://stat.ethz.ch/pipermail/r-package-devel/2023q3/009484.html__;!!IKRxdwAv5BmarQ!YKbTjFJ7y9HrRl3jgCC0ouo8C5sMSCIkKuIWlUjSZz_B2rehUKl6JefgeeuKrP-46slSQW0dO1VOOWUAUyE0DQ$
+>
+> [2]
+> https://urldefense.com/v3/__https://stat.ethz.ch/pipermail/r-package-devel/2023q3/009513.html__;!!IKRxdwAv5BmarQ!YKbTjFJ7y9HrRl3jgCC0ouo8C5sMSCIkKuIWlUjSZz_B2rehUKl6JefgeeuKrP-46slSQW0dO1VOOWWuNYr1EQ$
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+>
+> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!IKRxdwAv5BmarQ!YKbTjFJ7y9HrRl3jgCC0ouo8C5sMSCIkKuIWlUjSZz_B2rehUKl6JefgeeuKrP-46slSQW0dO1VOOWXoVH6F-Q$
+>
+
+	[[alternative HTML version deleted]]
+
+
