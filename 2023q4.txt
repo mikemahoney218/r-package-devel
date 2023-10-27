@@ -9364,3 +9364,391 @@ On Wed, Oct 25, 2023 at 5:55?AM Ivan Krylov <krylov.r00t at gmail.com> wrote:
 	[[alternative HTML version deleted]]
 
 
+From p|@men@m|r@zch|y@k| @end|ng |rom |ner|@org  Thu Oct 26 15:43:54 2023
+From: p|@men@m|r@zch|y@k| @end|ng |rom |ner|@org (Plamen Mirazchiyski)
+Date: Thu, 26 Oct 2023 15:43:54 +0200
+Subject: [R-pkg-devel] "crossprod" is not a BUILTIN function
+In-Reply-To: <20231025222606.75c1441b@Tarkus>
+References: <f4cabddb-c2a7-4bfb-a012-18e09b06296a@ineri.org>
+ <20231025222606.75c1441b@Tarkus>
+Message-ID: <5e18d662-4f16-4f78-afa9-533fe779cd75@ineri.org>
+
+Thank you very much for your responses Duncan and Ivan.
+
+I do not call .Internal(crossprod( ... )) directly. I use crossprod() 
+just once in the entire package, the actual line of code is
+
+unname(obj = crossprod(x = sweep(x = as.matrix(replicated.averages), 
+MARGIN = 2, mean.replicate.averages, FUN = "-"))*des.scale.fac)
+
+I followed Ivan's advice, built a binary package from source in R 4.3.1 
+on Windows 10, then tested it on another Windows 10 machine with R 
+4.3.1. The problem did not occur et all.
+
+If I understand Ivan's email, my package should work on R 4.3.1, but 
+what about newer versions? I checked some packages that were released 
+today, e.g. abn, these were built by CRAN "using R Under development 
+(unstable) (2023-10-24 r85407 ucrt)". Does this mean mine will fail on 
+the current released version (4.3.1) if built by CRAN. As far as I see 
+from the R Developer Page (https://developer.r-project.org), there is a 
+new version (4.3.2) scheduled for October 31, 2023. Should I better wait 
+until then?
+
+Best,
+Plamen
+
+On 10/25/23 21:26, Ivan Krylov wrote:
+> ? Wed, 25 Oct 2023 21:02:00 +0200
+> Plamen Mirazchiyski <plamen.mirazchiyski at ineri.org> ?????:
+> 
+>> Today I was preparing a new version for the RALSA package. I have
+>> built a Windows package using "devtools::check_win_devel()".
+> 
+>> The machine has R 4.3.1, the latest official release. After I load the
+>> test RALSA package, R displays a message saying "Package RALSA built
+>> under R version 4.4.0"
+> 
+> Can you use R CMD build to make a .tar.gz source package and then
+> install that on the Windows 10 machine running R 4.3.1? There is
+> convenience and a lot of added value in both Win-Builder and devtools,
+> but it shouldn't be necessary to rely on 96 CRAN packages and an online
+> service just to build a package.
+> 
+> crossprod(x,y) has indeed been recently changed from
+> .Internal(crossprod(x, y)) to .Primitive("crossprod"). This makes it
+> possible for a binary package prepared using R-devel (with a call to
+> .Primitive('crossprod')) to misbehave on a released version of R (which
+> does have .Internal(crossprod(...)) but not .Primitive('crossprod')).
+> 
+> Installing from source will avoid this problem. So will building the
+> binary package using R-4.3.1 to run it on a different machine with
+> R-4.3.1.
+> 
+> 
+> 
+
+-- 
+======================
+Plamen Mirazchiyski, PhD
+International Educational Research and Evaluation Institute
+24 Tehnolo?ki park
+SI-1000 Ljubljana
+Slovenia
+tel.: +386 51 303 817
+email: plamen.mirazchiyski at ineri.org
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Oct 26 16:10:20 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 26 Oct 2023 10:10:20 -0400
+Subject: [R-pkg-devel] "crossprod" is not a BUILTIN function
+In-Reply-To: <5e18d662-4f16-4f78-afa9-533fe779cd75@ineri.org>
+References: <f4cabddb-c2a7-4bfb-a012-18e09b06296a@ineri.org>
+ <20231025222606.75c1441b@Tarkus>
+ <5e18d662-4f16-4f78-afa9-533fe779cd75@ineri.org>
+Message-ID: <456f84d8-e665-4269-9ab4-496b5cc06528@gmail.com>
+
+There are two kinds of builds:  source builds (producing the .tar.gz 
+file) and binary builds (producing the .zip file on Windows).  Binary 
+builds are specific to R minor versions:  if you build on R version 
+x.y.z, you can't expect the package to work if either x or y changes.
+
+Source builds should work on other R versions, though sometimes moving 
+to earlier versions will cause problems (because the format of files in 
+the .tar.gz file may have changed), or your package relies on features 
+that weren't present earlier.  Generally .tar.gz files will work on 
+later versions (though changes in R might break it).
+
+So if you did a binary build on R 4.4.x and tested it on R 4.3.1, it's 
+not at all surprising that it failed.  If you did a source build on R 
+4.4.x and it failed on R 4.3.1, that's more surprising.
+
+Duncan Murdoch
+
+On 26/10/2023 9:43 a.m., Plamen Mirazchiyski wrote:
+> Thank you very much for your responses Duncan and Ivan.
+> 
+> I do not call .Internal(crossprod( ... )) directly. I use crossprod()
+> just once in the entire package, the actual line of code is
+> 
+> unname(obj = crossprod(x = sweep(x = as.matrix(replicated.averages),
+> MARGIN = 2, mean.replicate.averages, FUN = "-"))*des.scale.fac)
+> 
+> I followed Ivan's advice, built a binary package from source in R 4.3.1
+> on Windows 10, then tested it on another Windows 10 machine with R
+> 4.3.1. The problem did not occur et all.
+> 
+> If I understand Ivan's email, my package should work on R 4.3.1, but
+> what about newer versions? I checked some packages that were released
+> today, e.g. abn, these were built by CRAN "using R Under development
+> (unstable) (2023-10-24 r85407 ucrt)". Does this mean mine will fail on
+> the current released version (4.3.1) if built by CRAN. As far as I see
+> from the R Developer Page (https://developer.r-project.org), there is a
+> new version (4.3.2) scheduled for October 31, 2023. Should I better wait
+> until then?
+> 
+> Best,
+> Plamen
+> 
+> On 10/25/23 21:26, Ivan Krylov wrote:
+>> ? Wed, 25 Oct 2023 21:02:00 +0200
+>> Plamen Mirazchiyski <plamen.mirazchiyski at ineri.org> ?????:
+>>
+>>> Today I was preparing a new version for the RALSA package. I have
+>>> built a Windows package using "devtools::check_win_devel()".
+>>
+>>> The machine has R 4.3.1, the latest official release. After I load the
+>>> test RALSA package, R displays a message saying "Package RALSA built
+>>> under R version 4.4.0"
+>>
+>> Can you use R CMD build to make a .tar.gz source package and then
+>> install that on the Windows 10 machine running R 4.3.1? There is
+>> convenience and a lot of added value in both Win-Builder and devtools,
+>> but it shouldn't be necessary to rely on 96 CRAN packages and an online
+>> service just to build a package.
+>>
+>> crossprod(x,y) has indeed been recently changed from
+>> .Internal(crossprod(x, y)) to .Primitive("crossprod"). This makes it
+>> possible for a binary package prepared using R-devel (with a call to
+>> .Primitive('crossprod')) to misbehave on a released version of R (which
+>> does have .Internal(crossprod(...)) but not .Primitive('crossprod')).
+>>
+>> Installing from source will avoid this problem. So will building the
+>> binary package using R-4.3.1 to run it on a different machine with
+>> R-4.3.1.
+>>
+>>
+>>
+>
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Oct 26 16:20:29 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 26 Oct 2023 17:20:29 +0300
+Subject: [R-pkg-devel] "crossprod" is not a BUILTIN function
+In-Reply-To: <5e18d662-4f16-4f78-afa9-533fe779cd75@ineri.org>
+References: <f4cabddb-c2a7-4bfb-a012-18e09b06296a@ineri.org>
+ <20231025222606.75c1441b@Tarkus>
+ <5e18d662-4f16-4f78-afa9-533fe779cd75@ineri.org>
+Message-ID: <20231026172029.70d39e6a@arachnoid>
+
+? Thu, 26 Oct 2023 15:43:54 +0200
+Plamen Mirazchiyski <plamen.mirazchiyski at ineri.org> ?????:
+
+> If I understand Ivan's email, my package should work on R 4.3.1, but 
+> what about newer versions?
+
+The source package (the .tar.gz file obtained using R CMD build) will
+keep working fine on both R 4.3 and R 4.4.
+
+The binary package (the .zip file obtained using R CMD INSTALL --build
+and produced on Win-Builder) is only guaranteed to work with the R
+version that was used to build the binary package.
+
+This is the reason why https://CRAN.R-project.org/package=RALSA offers
+a single download of the source package...
+
+>> Package source: 	RALSA_1.3.5.tar.gz
+
+...but multiple, separate downloads of binary versions of the package,
+for R-4.4, R-4.3, and R-4.2:
+
+>> Windows binaries: 	r-devel: RALSA_1.3.5.zip, r-release:
+>> RALSA_1.3.5.zip, r-oldrel: RALSA_1.3.5.zip
+
+-- 
+Best regards,
+Ivan
+
+
+From p|@men@m|r@zch|y@k| @end|ng |rom |ner|@org  Thu Oct 26 17:12:43 2023
+From: p|@men@m|r@zch|y@k| @end|ng |rom |ner|@org (Plamen Mirazchiyski)
+Date: Thu, 26 Oct 2023 17:12:43 +0200
+Subject: [R-pkg-devel] "crossprod" is not a BUILTIN function
+In-Reply-To: <20231026172029.70d39e6a@arachnoid>
+References: <f4cabddb-c2a7-4bfb-a012-18e09b06296a@ineri.org>
+ <20231025222606.75c1441b@Tarkus>
+ <5e18d662-4f16-4f78-afa9-533fe779cd75@ineri.org>
+ <20231026172029.70d39e6a@arachnoid>
+Message-ID: <008ede18-04ec-4a68-91cd-82b46ccfad56@ineri.org>
+
+I apologize for misreading Ivan's first email. I now installed from the 
+tar.gz source file, everything worked as expected.
+
+Thank you both for the thorough explanations.
+
+Best,
+Plamen
+
+On 10/26/23 16:20, Ivan Krylov wrote:
+> ? Thu, 26 Oct 2023 15:43:54 +0200
+> Plamen Mirazchiyski <plamen.mirazchiyski at ineri.org> ?????:
+> 
+>> If I understand Ivan's email, my package should work on R 4.3.1, but
+>> what about newer versions?
+> 
+> The source package (the .tar.gz file obtained using R CMD build) will
+> keep working fine on both R 4.3 and R 4.4.
+> 
+> The binary package (the .zip file obtained using R CMD INSTALL --build
+> and produced on Win-Builder) is only guaranteed to work with the R
+> version that was used to build the binary package.
+> 
+> This is the reason why https://CRAN.R-project.org/package=RALSA offers
+> a single download of the source package...
+> 
+>>> Package source: 	RALSA_1.3.5.tar.gz
+> 
+> ...but multiple, separate downloads of binary versions of the package,
+> for R-4.4, R-4.3, and R-4.2:
+> 
+>>> Windows binaries: 	r-devel: RALSA_1.3.5.zip, r-release:
+>>> RALSA_1.3.5.zip, r-oldrel: RALSA_1.3.5.zip
+> 
+
+-- 
+======================
+Plamen Mirazchiyski, PhD
+International Educational Research and Evaluation Institute
+24 Tehnolo?ki park
+SI-1000 Ljubljana
+Slovenia
+tel.: +386 51 303 817
+email: plamen.mirazchiyski at ineri.org
+
+
+From co|denjoh@n@on @end|ng |rom gm@||@com  Thu Oct 26 17:14:15 2023
+From: co|denjoh@n@on @end|ng |rom gm@||@com (Cole Johanson)
+Date: Thu, 26 Oct 2023 11:14:15 -0400
+Subject: [R-pkg-devel] API client package failing due to API authentication
+Message-ID: <CABm0ymkJvxQPL7eqOjbhvJJHrPYzQc8dJcMmvQJUsRD0GOqLqg@mail.gmail.com>
+
+Hello,
+
+My package https://github.com/cole-johanson/smartsheetr requires an
+environment variable, the API access token, to run most of the functions.
+The steps for setting this are documented in the README, but my package is
+being auto-rejected by CRAN for failing the examples.
+
+I have wrapped the examples with the roxygen2 tag *\dontrun*, but it is
+still attempting to run the examples.
+
+Should I report this as a false positive, or is there a step I am missing?
+
+Thank you!
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Oct 26 18:30:29 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 26 Oct 2023 19:30:29 +0300
+Subject: [R-pkg-devel] 
+ API client package failing due to API authentication
+In-Reply-To: <CABm0ymkJvxQPL7eqOjbhvJJHrPYzQc8dJcMmvQJUsRD0GOqLqg@mail.gmail.com>
+References: <CABm0ymkJvxQPL7eqOjbhvJJHrPYzQc8dJcMmvQJUsRD0GOqLqg@mail.gmail.com>
+Message-ID: <20231026193029.7c685302@arachnoid>
+
+? Thu, 26 Oct 2023 11:14:15 -0400
+Cole Johanson <coldenjohanson at gmail.com> ?????:
+
+> I have wrapped the examples with the roxygen2 tag *\dontrun*, but it
+> is still attempting to run the examples.
+
+Judging by the latest commit at
+<https://github.com/cole-johanson/smartsheetr/commit/5e4f8fb23b1f9d91c5941d9f116f7f076d785d8f>,
+you forgot to run roxygen2::roxygenise() to regenerate the man/*.Rd
+files (which is what R cares about). Your use of the Rd tag \dontrun{}
+is otherwise fine and should prevent the code from being run.
+
+I am not sure whether it's acceptable to \dontrun{} every possible test
+and example, but if the code useless without a valid API key, so be it.
+Maybe you could write your examples in
+if(nzchar(getenv('SMARTSHEET_API_TOKEN'))) withAutoprint({ ... })
+instead to make it possible to run
+
+SMARTSHEET_API_TOKEN=YOURTOKEN R CMD check shartsheetr*.tar.gz
+
+...and have all the tests run, the way your CI is currently set up.
+
+-- 
+Best regards,
+Ivan
+
+
+From edd @end|ng |rom deb|@n@org  Thu Oct 26 18:37:37 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 26 Oct 2023 11:37:37 -0500
+Subject: [R-pkg-devel] 
+ API client package failing due to API authentication
+In-Reply-To: <CABm0ymkJvxQPL7eqOjbhvJJHrPYzQc8dJcMmvQJUsRD0GOqLqg@mail.gmail.com>
+References: <CABm0ymkJvxQPL7eqOjbhvJJHrPYzQc8dJcMmvQJUsRD0GOqLqg@mail.gmail.com>
+Message-ID: <25914.38353.610417.230351@rob.eddelbuettel.com>
+
+
+On 26 October 2023 at 11:14, Cole Johanson wrote:
+| My package https://github.com/cole-johanson/smartsheetr requires an
+| environment variable, the API access token, to run most of the functions.
+| The steps for setting this are documented in the README, but my package is
+| being auto-rejected by CRAN for failing the examples.
+| 
+| I have wrapped the examples with the roxygen2 tag *\dontrun*, but it is
+| still attempting to run the examples.
+| 
+| Should I report this as a false positive, or is there a step I am missing?
+
+You should not attempt to run the examples when they could fail e.g. when no
+API key is present as it the case for CRAN.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From co|denjoh@n@on @end|ng |rom gm@||@com  Thu Oct 26 19:32:32 2023
+From: co|denjoh@n@on @end|ng |rom gm@||@com (Cole Johanson)
+Date: Thu, 26 Oct 2023 13:32:32 -0400
+Subject: [R-pkg-devel] 
+ API client package failing due to API authentication
+In-Reply-To: <20231026193029.7c685302@arachnoid>
+References: <CABm0ymkJvxQPL7eqOjbhvJJHrPYzQc8dJcMmvQJUsRD0GOqLqg@mail.gmail.com>
+ <20231026193029.7c685302@arachnoid>
+Message-ID: <CABm0ymkbL-sGSoan7V_HkcewA=YA_AZJ6_SoKe0ShvnFZZON3g@mail.gmail.com>
+
+Thank you. I did forget to re-document. I appreciate the help!
+
+On Thu, Oct 26, 2023 at 12:30?PM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+
+> ? Thu, 26 Oct 2023 11:14:15 -0400
+> Cole Johanson <coldenjohanson at gmail.com> ?????:
+>
+> > I have wrapped the examples with the roxygen2 tag *\dontrun*, but it
+> > is still attempting to run the examples.
+>
+> Judging by the latest commit at
+> <
+> https://github.com/cole-johanson/smartsheetr/commit/5e4f8fb23b1f9d91c5941d9f116f7f076d785d8f
+> >,
+> you forgot to run roxygen2::roxygenise() to regenerate the man/*.Rd
+> files (which is what R cares about). Your use of the Rd tag \dontrun{}
+> is otherwise fine and should prevent the code from being run.
+>
+> I am not sure whether it's acceptable to \dontrun{} every possible test
+> and example, but if the code useless without a valid API key, so be it.
+> Maybe you could write your examples in
+> if(nzchar(getenv('SMARTSHEET_API_TOKEN'))) withAutoprint({ ... })
+> instead to make it possible to run
+>
+> SMARTSHEET_API_TOKEN=YOURTOKEN R CMD check shartsheetr*.tar.gz
+>
+> ...and have all the tests run, the way your CI is currently set up.
+>
+> --
+> Best regards,
+> Ivan
+>
+
+	[[alternative HTML version deleted]]
+
+
