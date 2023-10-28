@@ -9752,3 +9752,171 @@ On Thu, Oct 26, 2023 at 12:30?PM Ivan Krylov <krylov.r00t at gmail.com> wrote:
 	[[alternative HTML version deleted]]
 
 
+From edd @end|ng |rom deb|@n@org  Fri Oct 27 14:42:33 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 27 Oct 2023 07:42:33 -0500
+Subject: [R-pkg-devel] Too many cores used in examples (not caused by
+ data.table)
+In-Reply-To: <PAXPR05MB86503FBDDAD830F994370F15F8DEA@PAXPR05MB8650.eurprd05.prod.outlook.com>
+References: <PAXPR05MB8650BE166314CEAA80059BBEF8D4A@PAXPR05MB8650.eurprd05.prod.outlook.com>
+ <20231020165437.31a89982@arachnoid>
+ <DB9PR05MB8654939D929CAAB4108487D3F8D8A@DB9PR05MB8654.eurprd05.prod.outlook.com>
+ <20231024155516.3b45000f@arachnoid>
+ <25911.50044.191576.935725@rob.eddelbuettel.com>
+ <25912.60834.927280.904009@rob.eddelbuettel.com>
+ <PAXPR05MB86503FBDDAD830F994370F15F8DEA@PAXPR05MB8650.eurprd05.prod.outlook.com>
+Message-ID: <25915.45113.620644.457220@rob.eddelbuettel.com>
+
+
+Jouni,
+
+My CRANberriesFeed reports a new bssm package at CRAN, congratulations for
+sorting this out. [1,2] The OMP_NUM_THREADS setting is indeed all it takes,
+and it _does_ seem to be read even from a running session: i.e. you can set
+this inside an R session and the OpenMP code considers it in the same
+process. Good!
+
+As some of us mentioned, your usage pattern of setting
+'Sys.setenv("OMP_NUM_THREADS" = 2)' everywhere _leaves_ that value so you
+permanently ham-string the behaviour of a session which runs an example or
+test of your package: the same session will never get back to 'all cores' by
+itself so adding a resetter to the initial value (maybe via on.exit()) may be
+a good idea for the next package revision if you have any energy left for
+this question :)
+
+Again, congrats for sorting it out, and sorry for the trouble. I long argued
+CRAN should set the behaviour-defining environment variable, that
+OMP_NUM_THREADS, for the tests and examples it wants to run under reduced
+load.  Alas, that's not where we ended up.
+
+Cheers,  Dirk
+
+[1] http://dirk.eddelbuettel.com/cranberries/2023/10/27#bssm_2.0.2
+
+[2] Your NEWS file calls this 'fix weird CRAN issues with parallelisation on
+Debian.'. There is nothing 'weird' here (it behaves as designed, computers do
+that to us), and it is not just on Debian but on any system where the build
+has a) access to OpenMP so uses it and b) measures real time to elapsed time
+with a cap of 2 as CRAN does.
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From joun|@he|@ke @end|ng |rom jyu@||  Fri Oct 27 15:02:35 2023
+From: joun|@he|@ke @end|ng |rom jyu@|| (Helske, Jouni)
+Date: Fri, 27 Oct 2023 13:02:35 +0000
+Subject: [R-pkg-devel] Too many cores used in examples (not caused by
+ data.table)
+In-Reply-To: <25915.45113.620644.457220@rob.eddelbuettel.com>
+References: <PAXPR05MB8650BE166314CEAA80059BBEF8D4A@PAXPR05MB8650.eurprd05.prod.outlook.com>
+ <20231020165437.31a89982@arachnoid>
+ <DB9PR05MB8654939D929CAAB4108487D3F8D8A@DB9PR05MB8654.eurprd05.prod.outlook.com>
+ <20231024155516.3b45000f@arachnoid>
+ <25911.50044.191576.935725@rob.eddelbuettel.com>
+ <25912.60834.927280.904009@rob.eddelbuettel.com>
+ <PAXPR05MB86503FBDDAD830F994370F15F8DEA@PAXPR05MB8650.eurprd05.prod.outlook.com>
+ <25915.45113.620644.457220@rob.eddelbuettel.com>
+Message-ID: <PAXPR05MB8650D20B7B03525921A0C625F8DCA@PAXPR05MB8650.eurprd05.prod.outlook.com>
+
+Hi Dirk,
+
+Actually, the OMP_NUM_THREADS worked for vignettes and testthat tests, but didn't help with the examples. However, I just wrapped the problematic example with \donttest as for some reason this issue only happened with a single seemingly simple example (hence the "weird" in the earlier NEWS due to frustration, I changed this to the CRAN version).
+
+Thanks for reminding me about the resetting the number of cores, will fix that to the next version.
+
+Best,
+Jouni
+
+
+________________________________
+From: Dirk Eddelbuettel <edd at debian.org>
+Sent: Friday, October 27, 2023 15:42
+To: Helske, Jouni <jouni.helske at jyu.fi>
+Cc: Dirk Eddelbuettel <edd at debian.org>; Ivan Krylov <krylov.r00t at gmail.com>; r-package-devel at r-project.org <r-package-devel at r-project.org>; Conrad Sanderson <conradsand at gmail.com>
+Subject: Re: [R-pkg-devel] Too many cores used in examples (not caused by data.table)
+
+
+Jouni,
+
+My CRANberriesFeed reports a new bssm package at CRAN, congratulations for
+sorting this out. [1,2] The OMP_NUM_THREADS setting is indeed all it takes,
+and it _does_ seem to be read even from a running session: i.e. you can set
+this inside an R session and the OpenMP code considers it in the same
+process. Good!
+
+As some of us mentioned, your usage pattern of setting
+'Sys.setenv("OMP_NUM_THREADS" = 2)' everywhere _leaves_ that value so you
+permanently ham-string the behaviour of a session which runs an example or
+test of your package: the same session will never get back to 'all cores' by
+itself so adding a resetter to the initial value (maybe via on.exit()) may be
+a good idea for the next package revision if you have any energy left for
+this question :)
+
+Again, congrats for sorting it out, and sorry for the trouble. I long argued
+CRAN should set the behaviour-defining environment variable, that
+OMP_NUM_THREADS, for the tests and examples it wants to run under reduced
+load.  Alas, that's not where we ended up.
+
+Cheers,  Dirk
+
+[1] https://eur03.safelinks.protection.outlook.com/?url=http%3A%2F%2Fdirk.eddelbuettel.com%2Fcranberries%2F2023%2F10%2F27%23bssm_2.0.2&data=05%7C01%7Cjovetale%40jyu.mail.onmicrosoft.com%7Caf8b71968c244eb46b6f08dbd6ea3439%7Ce9662d58caa44bc1b138c8b1acab5a11%7C1%7C0%7C638340073635955909%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=mokRvujnBW6XNQPi3fSw6MNJt3Qi2BgNGRwF3dlzNyo%3D&reserved=0<http://dirk.eddelbuettel.com/cranberries/2023/10/27#bssm_2.0.2>
+
+[2] Your NEWS file calls this 'fix weird CRAN issues with parallelisation on
+Debian.'. There is nothing 'weird' here (it behaves as designed, computers do
+that to us), and it is not just on Debian but on any system where the build
+has a) access to OpenMP so uses it and b) measures real time to elapsed time
+with a cap of 2 as CRAN does.
+
+--
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Fri Oct 27 15:28:37 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 27 Oct 2023 08:28:37 -0500
+Subject: [R-pkg-devel] Too many cores used in examples (not caused by
+ data.table)
+In-Reply-To: <PAXPR05MB8650D20B7B03525921A0C625F8DCA@PAXPR05MB8650.eurprd05.prod.outlook.com>
+References: <PAXPR05MB8650BE166314CEAA80059BBEF8D4A@PAXPR05MB8650.eurprd05.prod.outlook.com>
+ <20231020165437.31a89982@arachnoid>
+ <DB9PR05MB8654939D929CAAB4108487D3F8D8A@DB9PR05MB8654.eurprd05.prod.outlook.com>
+ <20231024155516.3b45000f@arachnoid>
+ <25911.50044.191576.935725@rob.eddelbuettel.com>
+ <25912.60834.927280.904009@rob.eddelbuettel.com>
+ <PAXPR05MB86503FBDDAD830F994370F15F8DEA@PAXPR05MB8650.eurprd05.prod.outlook.com>
+ <25915.45113.620644.457220@rob.eddelbuettel.com>
+ <PAXPR05MB8650D20B7B03525921A0C625F8DCA@PAXPR05MB8650.eurprd05.prod.outlook.com>
+Message-ID: <25915.47877.682477.358138@rob.eddelbuettel.com>
+
+
+Hi Jouni,
+
+On 27 October 2023 at 13:02, Helske, Jouni wrote:
+| Actually, the OMP_NUM_THREADS worked for vignettes and testthat tests, but
+| didn't help with the examples. However, I just wrapped the problematic example
+
+Now I am confused.
+
+What is your understanding of why it helps in one place and not the other?
+
+| with \donttest as for some reason this issue only happened with a single
+| seemingly simple example (hence the "weird" in the earlier NEWS due to
+| frustration, I changed this to the CRAN version).
+| 
+| Thanks for reminding me about the resetting the number of cores, will fix that
+| to the next version.
+
+I have an idea for a RcppArmadillo-based helper function. We can save the
+initial values of the environment variable in .onLoad and cache it. A simple
+helper function pair can then dial the environment variable down and reset it
+to the cached value.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
