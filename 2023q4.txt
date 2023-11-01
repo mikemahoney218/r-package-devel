@@ -9920,3 +9920,493 @@ Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From joun|@he|@ke @end|ng |rom jyu@||  Mon Oct 30 09:18:55 2023
+From: joun|@he|@ke @end|ng |rom jyu@|| (Helske, Jouni)
+Date: Mon, 30 Oct 2023 08:18:55 +0000
+Subject: [R-pkg-devel] Too many cores used in examples (not caused by
+ data.table)
+In-Reply-To: <25915.47877.682477.358138@rob.eddelbuettel.com>
+References: <PAXPR05MB8650BE166314CEAA80059BBEF8D4A@PAXPR05MB8650.eurprd05.prod.outlook.com>
+ <20231020165437.31a89982@arachnoid>
+ <DB9PR05MB8654939D929CAAB4108487D3F8D8A@DB9PR05MB8654.eurprd05.prod.outlook.com>
+ <20231024155516.3b45000f@arachnoid>
+ <25911.50044.191576.935725@rob.eddelbuettel.com>
+ <25912.60834.927280.904009@rob.eddelbuettel.com>
+ <PAXPR05MB86503FBDDAD830F994370F15F8DEA@PAXPR05MB8650.eurprd05.prod.outlook.com>
+ <25915.45113.620644.457220@rob.eddelbuettel.com>
+ <PAXPR05MB8650D20B7B03525921A0C625F8DCA@PAXPR05MB8650.eurprd05.prod.outlook.com>
+ <25915.47877.682477.358138@rob.eddelbuettel.com>
+Message-ID: <PAXPR05MB8650D4DCD7E8CE6B81BF656FF8A1A@PAXPR05MB8650.eurprd05.prod.outlook.com>
+
+Hi Dirk,
+
+Looking more closely earlier failures, vignettes have always worked fine but the note on tests said that the CPU time was only 2.7 times over elapsed time, so maybe I was just lucky this time and got under 2.5. ;) Or testthat does something special...
+
+Jouni
+________________________________
+From: Dirk Eddelbuettel <edd at debian.org>
+Sent: Friday, October 27, 2023 16:28
+To: Helske, Jouni <jouni.helske at jyu.fi>
+Cc: Dirk Eddelbuettel <edd at debian.org>; Ivan Krylov <krylov.r00t at gmail.com>; r-package-devel at r-project.org <r-package-devel at r-project.org>; Conrad Sanderson <conradsand at gmail.com>
+Subject: Re: [R-pkg-devel] Too many cores used in examples (not caused by data.table)
+
+
+Hi Jouni,
+
+On 27 October 2023 at 13:02, Helske, Jouni wrote:
+| Actually, the OMP_NUM_THREADS worked for vignettes and testthat tests, but
+| didn't help with the examples. However, I just wrapped the problematic example
+
+Now I am confused.
+
+What is your understanding of why it helps in one place and not the other?
+
+| with \donttest as for some reason this issue only happened with a single
+| seemingly simple example (hence the "weird" in the earlier NEWS due to
+| frustration, I changed this to the CRAN version).
+|
+| Thanks for reminding me about the resetting the number of cores, will fix that
+| to the next version.
+
+I have an idea for a RcppArmadillo-based helper function. We can save the
+initial values of the environment variable in .onLoad and cache it. A simple
+helper function pair can then dial the environment variable down and reset it
+to the cached value.
+
+Dirk
+
+--
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Mon Oct 30 14:51:41 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Mon, 30 Oct 2023 08:51:41 -0500
+Subject: [R-pkg-devel] Too many cores used in examples (not caused by
+ data.table)
+In-Reply-To: <PAXPR05MB8650D4DCD7E8CE6B81BF656FF8A1A@PAXPR05MB8650.eurprd05.prod.outlook.com>
+References: <PAXPR05MB8650BE166314CEAA80059BBEF8D4A@PAXPR05MB8650.eurprd05.prod.outlook.com>
+ <20231020165437.31a89982@arachnoid>
+ <DB9PR05MB8654939D929CAAB4108487D3F8D8A@DB9PR05MB8654.eurprd05.prod.outlook.com>
+ <20231024155516.3b45000f@arachnoid>
+ <25911.50044.191576.935725@rob.eddelbuettel.com>
+ <25912.60834.927280.904009@rob.eddelbuettel.com>
+ <PAXPR05MB86503FBDDAD830F994370F15F8DEA@PAXPR05MB8650.eurprd05.prod.outlook.com>
+ <25915.45113.620644.457220@rob.eddelbuettel.com>
+ <PAXPR05MB8650D20B7B03525921A0C625F8DCA@PAXPR05MB8650.eurprd05.prod.outlook.com>
+ <25915.47877.682477.358138@rob.eddelbuettel.com>
+ <PAXPR05MB8650D4DCD7E8CE6B81BF656FF8A1A@PAXPR05MB8650.eurprd05.prod.outlook.com>
+Message-ID: <25919.46317.114330.265229@rob.eddelbuettel.com>
+
+
+I have some better news.  While we established that 'in theory' setting the
+environment variable OMP_NUM_THREADS would help (and I maintain that it is a
+great PITA that CRAN does not do so as a general fix for this issue) it does
+*not help* once R is started.  OpenMP only considers the variable once at
+startup and does not re-read it.  So we cannot set from R once R has started.
+
+But OpenMP offers a setter (and a getter) for the thread count value.
+
+And using it addresses the issue.  I created a demo package [1] which, when
+running on a system with both OpenMP and 'enough cores' (any modern machine
+will do) exhibits the warning from R CMD check --as-cran with timing enabled
+(i.e. env vars set).  When an additional environment variable 'SHOWME' is set
+to 'yes', it successfully throttles via the exposed OpenMP setter.  In our
+example, Armadillo uses it to calibrate its thread use, a lower setting is
+followed, and the warning is gone.
+
+I will add more convenient wrappers to RcppArmadillo itself. These are
+currently in a branch [2] and their use is illustrated in the help page and
+example of fastLm demo function [3].  I plan to make a new RcppArmadillo
+release with this change in the coming days, the setter and re-setter will
+work for any OpenMP threading changes. So if you use RcppArmadillo, this
+should help. (And of course there always was RhpcBLASctl doing this too.)
+
+Dirk
+
+[1] https://github.com/eddelbuettel/rcpparmadilloopenmpex
+[2] https://github.com/RcppCore/RcppArmadillo/tree/feature/thread_throttle\
+[3] https://github.com/RcppCore/RcppArmadillo/blob/a8db424bd6aaeda2ceb897142d3c366d9c6591c7/man/fastLm.Rd#L72-L98
+[4] https://cran.r-project.org/package=RhpcBLASctl
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From rom@|n@p|er|ot @end|ng |rom u-borde@ux@|r  Mon Oct 30 15:58:31 2023
+From: rom@|n@p|er|ot @end|ng |rom u-borde@ux@|r (Romain Pierlot)
+Date: Mon, 30 Oct 2023 15:58:31 +0100 (CET)
+Subject: [R-pkg-devel] Issue with R Package on CRAN - OpenMP and clang17
+Message-ID: <246366687.35114098.1698677911336.JavaMail.zimbra@u-bordeaux.fr>
+
+Hi there, 
+
+I'm sorry to disturb, I hope I send a mail at the right place. 
+
+
+
+
+
+I have been encountering a challenge with an R package that I've been working on, which was recently removed from CRAN due to some issues in Fortran. 
+
+It appears that I have addressed the Fortran issues, but upon resubmission to CRAN, the package was not accepted, and the following error was returned : 
+
+
+''With clang17 it still fails to install: 
+
+error: loc("/data/gannet/ripley/R/packages/incoming/frailtypack.Rcheck/00_pkg_src/frailtypack/src/Integrale_mult_scl.f90":1811:17): 'omp.reduction' op must be used within an operation supporting reduction clause interface 
+error: verification of lowering to FIR failed 
+
+LLVM trunk gives the same error. 
+'' 
+
+
+
+
+I have attached the portion of the code where this issue is reported. From my understanding, it appears to be related to parallelization, but I have been unable to resolve it on my own. 
+
+I would greatly appreciate any assistance or advice that you might be able to offer. If you require any additional information, please do not hesitate to let me know. 
+
+
+
+
+Moreover, I don't know if it is normal or not, but when I check my package with R CMD chech --as-cran, I don't have any error or note message. But when I submit the package to the CRAN, they return errors and notes. 
+
+
+
+
+
+
+
+
+Thank you very much for your time and consideration. 
+
+
+
+
+Best regards, 
+
+
+
+
+Romain Pierlot 
+
+
+-- 
+[ https://www.u-bordeaux.fr/ ] [ http://www.aquitaine-poitou-charentes.inserm.fr/ ] 
+
+[ mailto: | Romain Pierlot ] 
+Ing?nieur de recherches Bio-Informatique 
+?quipe BIOSTAT 
+
+
+[ https://www.u-bordeaux.fr/ | https://www.u-bordeaux.fr ] 
+
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: Fortran error frailtypack.png
+Type: image/png
+Size: 157561 bytes
+Desc: not available
+URL: <https://stat.ethz.ch/pipermail/r-package-devel/attachments/20231030/e6abc3d3/attachment.png>
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Mon Oct 30 16:52:29 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Mon, 30 Oct 2023 18:52:29 +0300
+Subject: [R-pkg-devel] Issue with R Package on CRAN - OpenMP and clang17
+In-Reply-To: <246366687.35114098.1698677911336.JavaMail.zimbra@u-bordeaux.fr>
+References: <246366687.35114098.1698677911336.JavaMail.zimbra@u-bordeaux.fr>
+Message-ID: <20231030185229.385fe389@arachnoid>
+
+? Mon, 30 Oct 2023 15:58:31 +0100 (CET)
+Romain Pierlot <romain.pierlot at u-bordeaux.fr> ?????:
+
+> I'm sorry to disturb, I hope I send a mail at the right place. 
+
+This is exactly the right place to ask. Welcome to R-package-devel!
+
+> It appears that I have addressed the Fortran issues, but upon
+> resubmission to CRAN, the package was not accepted, and the following
+> error was returned : 
+> 
+> 
+> ''With clang17 it still fails to install: 
+> 
+> error:
+> loc("/data/gannet/ripley/R/packages/incoming/frailtypack.Rcheck/00_pkg_src/frailtypack/src/Integrale_mult_scl.f90":1811:17):
+> 'omp.reduction' op must be used within an operation supporting
+> reduction clause interface error: verification of lowering to FIR
+> failed 
+> 
+> LLVM trunk gives the same error. 
+> '' 
+
+I'm not 100% sure, but I currently think that this is a compiler bug.
+
+You have a variable, ss, declared inside a function.
+
+If nb_procs==1, you start an OpenMP parallel region with a reduction on
+that variable. The OpenMP parallel region starts and ends inside that
+if clause. Outside the parallel region, in another branch, you add to
+it as usual.
+
+Flang-new complains about your use of the 'ss' variable outside the
+parallel region, alleging that it's not valid for an OpenMP reduction.
+There is no OpenMP reduction in sight where the error is reported. I
+think that Flang-new is wrong to signal an error here.
+
+Unfortunately, proving that this is a compiler bug might be hard. I'll
+try to reproduce your problem, starting by downloading and compiling
+flang from https://github.com/llvm/llvm-project.git commit
+092b6c5ee3707ea10b9f10d0a674e8d12395369b (as stated at
+<https://www.stats.ox.ac.uk/pub/bdr/clang17/frailtypack.log>). I hope
+it will be possible to simplify Integrale_mult_scl.f90 until it looks
+manageable for their bug tracker.
+
+> Moreover, I don't know if it is normal or not, but when I check my
+> package with R CMD chech --as-cran, I don't have any error or note
+> message. But when I submit the package to the CRAN, they return
+> errors and notes. 
+
+These errors only happen with the "flang-new" Fortran compiler that's
+part of the LLVM compiler infrastructure. You're probably using
+gfortran or some other, more well-polished Fortran compiler.
+
+-- 
+Best regards,
+Ivan
+
+
+From m@rku@joch|m @end|ng |rom phonet|k@un|-muenchen@de  Mon Oct 30 17:12:50 2023
+From: m@rku@joch|m @end|ng |rom phonet|k@un|-muenchen@de (Markus Jochim)
+Date: Mon, 30 Oct 2023 17:12:50 +0100
+Subject: [R-pkg-devel] Recent dev version of R CMD check fails when a
+ package function named X also has a parameter named X
+Message-ID: <fb6e9cba-df63-4d02-96b2-83e7b0f66955@phonetik.uni-muenchen.de>
+
+Hi R people,
+
+I am the maintainer of the emuR package and I am having a problem with 
+recent versions of R CMD check.
+
+CRAN?s r-devel test suites [1] have started to emit a NOTE about the 
+HTML version of the manual:
+
+> Version: 2.4.1
+> Check: HTML version of manual
+> Result: NOTE
+> ??? Found the following HTML validation problems:
+> ??? query.html:50:9 (query.Rd:22): Warning: <code> anchor "query" 
+> already defined
+> Flavors: r-devel-linux-x86_64-debian-clang, 
+> r-devel-linux-x86_64-debian-gcc, r-devel-linux-x86_64-fedora-clang, 
+> r-devel-linux-x86_64-fedora-gcc, r-devel-windows-x86_64
+>
+This is caused by one of my package?s functions that is named query and 
+also has a parameter named query.
+
+I think I have tracked this down to SVN revision r85407 of R. With 
+earlier versions:
+
+R CMD Rdconv -t html query.Rd
+
+would output (line 50, as referenced by the NOTE):
+
+<tr><td><code id="query_:_query">query</code></td>
+
+But newer versions output:
+
+<tr><td><code id="query">query</code></td>
+
+Notice the difference in id. The id "query" appears both here and 
+further up in the file, specifically in the h2 heading. This triggers 
+the HTML validation problem. I suppose this is a bug in the experimental 
+table of contents feature? As such, should I rather post this to R-devel?
+
+Unfortunately, this also prevents me from uploading a new version of my 
+package, since it does not get past CRAN?s automatic pretest. Can I 
+resubmit my new version and simply state in the comments that I cannot 
+fix the NOTE from r-devel at this point? Or should I rather wait until 
+this is changed upstream? (the described NOTE is the only complaint from 
+the pretest). Changing the function or parameter name is not an option, 
+they have been used in this package ever since it was released a couple 
+of years ago.
+
+This NOTE can also be reproduced with a minimal R package that has 
+nothing but a hello function with a parameter named hello.
+
+Thanks for reading this. I appreciate any help.
+
+Markus
+
+
+Institute for Phonetics and Speech Processing
+
+Ludwig-Maximilians-Universit?t M?nchen
+
+https://www.phonetik.uni-muenchen.de
+
+
+[1] https://cran.rstudio.com//web/checks/check_results_emuR.html
+
+
+From deep@y@n@@@rk@r @end|ng |rom gm@||@com  Mon Oct 30 19:42:14 2023
+From: deep@y@n@@@rk@r @end|ng |rom gm@||@com (Deepayan Sarkar)
+Date: Mon, 30 Oct 2023 14:42:14 -0400
+Subject: [R-pkg-devel] Recent dev version of R CMD check fails when a
+ package function named X also has a parameter named X
+In-Reply-To: <fb6e9cba-df63-4d02-96b2-83e7b0f66955@phonetik.uni-muenchen.de>
+References: <fb6e9cba-df63-4d02-96b2-83e7b0f66955@phonetik.uni-muenchen.de>
+Message-ID: <CADfFDC4goQOcgUih=K85r_npeAzyTyP9mENDLKBYo6eGofcPyQ@mail.gmail.com>
+
+On Mon, 30 Oct 2023 at 12:48, Markus Jochim
+<markusjochim at phonetik.uni-muenchen.de> wrote:
+>
+> Hi R people,
+>
+> I am the maintainer of the emuR package and I am having a problem with
+> recent versions of R CMD check.
+>
+> CRAN?s r-devel test suites [1] have started to emit a NOTE about the
+> HTML version of the manual:
+>
+> > Version: 2.4.1
+> > Check: HTML version of manual
+> > Result: NOTE
+> >     Found the following HTML validation problems:
+> >     query.html:50:9 (query.Rd:22): Warning: <code> anchor "query"
+> > already defined
+> > Flavors: r-devel-linux-x86_64-debian-clang,
+> > r-devel-linux-x86_64-debian-gcc, r-devel-linux-x86_64-fedora-clang,
+> > r-devel-linux-x86_64-fedora-gcc, r-devel-windows-x86_64
+> >
+> This is caused by one of my package?s functions that is named query and
+> also has a parameter named query.
+>
+> I think I have tracked this down to SVN revision r85407 of R. With
+> earlier versions:
+>
+> R CMD Rdconv -t html query.Rd
+>
+> would output (line 50, as referenced by the NOTE):
+>
+> <tr><td><code id="query_:_query">query</code></td>
+>
+> But newer versions output:
+>
+> <tr><td><code id="query">query</code></td>
+
+Yes, sorry, my bad.
+
+r85440 (just committed) should have a temporary fix by omitting the id
+from the <h2> title. Please let me know if problems still persist.
+
+Best,
+-Deepayan
+
+> Notice the difference in id. The id "query" appears both here and
+> further up in the file, specifically in the h2 heading. This triggers
+> the HTML validation problem. I suppose this is a bug in the experimental
+> table of contents feature? As such, should I rather post this to R-devel?
+>
+> Unfortunately, this also prevents me from uploading a new version of my
+> package, since it does not get past CRAN?s automatic pretest. Can I
+> resubmit my new version and simply state in the comments that I cannot
+> fix the NOTE from r-devel at this point? Or should I rather wait until
+> this is changed upstream? (the described NOTE is the only complaint from
+> the pretest). Changing the function or parameter name is not an option,
+> they have been used in this package ever since it was released a couple
+> of years ago.
+>
+> This NOTE can also be reproduced with a minimal R package that has
+> nothing but a hello function with a parameter named hello.
+>
+> Thanks for reading this. I appreciate any help.
+>
+> Markus
+>
+>
+> Institute for Phonetics and Speech Processing
+>
+> Ludwig-Maximilians-Universit?t M?nchen
+>
+> https://www.phonetik.uni-muenchen.de
+>
+>
+> [1] https://cran.rstudio.com//web/checks/check_results_emuR.html
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From m@rku@joch|m @end|ng |rom phonet|k@un|-muenchen@de  Mon Oct 30 22:36:25 2023
+From: m@rku@joch|m @end|ng |rom phonet|k@un|-muenchen@de (Markus Jochim)
+Date: Mon, 30 Oct 2023 22:36:25 +0100
+Subject: [R-pkg-devel] Recent dev version of R CMD check fails when a
+ package function named X also has a parameter named X
+In-Reply-To: <CADfFDC4goQOcgUih=K85r_npeAzyTyP9mENDLKBYo6eGofcPyQ@mail.gmail.com>
+References: <fb6e9cba-df63-4d02-96b2-83e7b0f66955@phonetik.uni-muenchen.de>
+ <CADfFDC4goQOcgUih=K85r_npeAzyTyP9mENDLKBYo6eGofcPyQ@mail.gmail.com>
+Message-ID: <0360d814-7be7-43bb-807f-90e456c42e08@phonetik.uni-muenchen.de>
+
+Thank you, Deepayan. Commit r85440 appears to solve the problem in emuR.
+
+Markus
+
+
+From pb@||ey @end|ng |rom @|r@org  Mon Oct 30 23:26:43 2023
+From: pb@||ey @end|ng |rom @|r@org (Bailey, Paul)
+Date: Mon, 30 Oct 2023 22:26:43 +0000
+Subject: [R-pkg-devel] Matrix and Mac OS
+Message-ID: <BLAPR05MB7235EEB2A9E6BC5DB6117972BEA1A@BLAPR05MB7235.namprd05.prod.outlook.com>
+
+Hi,
+
+I'm the maintainer for a few packages, one of which is currently failing CRAN checks on Mac OS because Matrix is not available in my required version (the latest). I had to fix a few things due to changes in the latest Matrix package because of how qr works and I thought, given the apparent API change, I should then require the latest version. My error is, "Package required and available but unsuitable version: 'Matrix'"
+
+When I look at the NEWS in Matrix there is no mention of Mac OS issues, what the latest stable version of Matrix is, nor when a fix is expected. What version do MacOS version test Matrix with by default? Where is this documented? I assumes it always tested with the latest version on CRAN, so I'm a bit surprised. Or will this be resolved soon and I shouldn't bother CRAN maintainers with a new version of my package?
+
+Best,
+Paul
+
+	[[alternative HTML version deleted]]
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Mon Oct 30 23:44:26 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Tue, 31 Oct 2023 11:44:26 +1300
+Subject: [R-pkg-devel] Matrix and Mac OS
+In-Reply-To: <BLAPR05MB7235EEB2A9E6BC5DB6117972BEA1A@BLAPR05MB7235.namprd05.prod.outlook.com>
+References: <BLAPR05MB7235EEB2A9E6BC5DB6117972BEA1A@BLAPR05MB7235.namprd05.prod.outlook.com>
+Message-ID: <3FD3705E-593E-4A8E-A126-EB7B558E5DAF@R-project.org>
+
+Paul,
+
+can you give us a bit more detail? Which package, which build and where you got the errors? Older builds may not have the latest Matrix.
+
+Cheers,
+Simon
+
+
+> On 31/10/2023, at 11:26 AM, Bailey, Paul via R-package-devel <r-package-devel at r-project.org> wrote:
+> 
+> Hi,
+> 
+> I'm the maintainer for a few packages, one of which is currently failing CRAN checks on Mac OS because Matrix is not available in my required version (the latest). I had to fix a few things due to changes in the latest Matrix package because of how qr works and I thought, given the apparent API change, I should then require the latest version. My error is, "Package required and available but unsuitable version: 'Matrix'"
+> 
+> When I look at the NEWS in Matrix there is no mention of Mac OS issues, what the latest stable version of Matrix is, nor when a fix is expected. What version do MacOS version test Matrix with by default? Where is this documented? I assumes it always tested with the latest version on CRAN, so I'm a bit surprised. Or will this be resolved soon and I shouldn't bother CRAN maintainers with a new version of my package?
+> 
+> Best,
+> Paul
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
