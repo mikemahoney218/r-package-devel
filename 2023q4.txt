@@ -10410,3 +10410,699 @@ Simon
 > 
 
 
+From @|j|@ng @end|ng |rom bccrc@c@  Tue Oct 31 08:31:12 2023
+From: @|j|@ng @end|ng |rom bccrc@c@ (Aixiang Jiang)
+Date: Tue, 31 Oct 2023 07:31:12 +0000
+Subject: [R-pkg-devel] DLL requires the use of native symbols
+Message-ID: <1698737473271.88494@bccrc.ca>
+
+Hello everyone,
+
+I recently submitted my NMRphasing R package. While most of the check results are fine, I encountered two issues on macOS. The major error is:
+
+'DLL requires the use of native symbols'
+
+I'm wondering how I can resolve this issue. Any help or suggestions would be greatly appreciated.
+
+Thank you in advance!?
+
+
+Best,
+Aixiang
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Oct 31 09:36:54 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 31 Oct 2023 11:36:54 +0300
+Subject: [R-pkg-devel] DLL requires the use of native symbols
+In-Reply-To: <1698737473271.88494@bccrc.ca>
+References: <1698737473271.88494@bccrc.ca>
+Message-ID: <20231031113654.43e19a31@Tarkus>
+
+Dear Simon,
+
+Could you please look into this? The machines running r-release-macos-*
+checks seem to have MassSpecWavelet < 1.66 installed instead of the
+current version, 1.68. I think that MassSpecWavelet >= 1.66 would be
+version-appropriate for R-4.3 (Bioconductor >= 3.17).
+
+On Tue, 31 Oct 2023 07:31:12 +0000
+Aixiang Jiang <aijiang at bccrc.ca> wrote:
+
+> 'DLL requires the use of native symbols'
+
+Interesting. It's not you, it's the MassSpecWavelet package, but the
+error has already been fixed there. Look at the traceback produced for
+the error:
+
+>> Error in localMaximumSlidingWindow(x, winSize) :
+>>  DLL requires the use of native symbols
+>> Calls: MPC_DANM ... getLocalMaximumCWT -> localMaximum ->
+>>        localMaximumSlidingWindow
+
+The error happens in a function called 'localMaximumSlidingWindow',
+called from 'localMaximum', called from 'getLocalMaximumCWT'.
+'getLocalMaximumCWT' belongs to the MassSpecWavelet package.
+
+The problem is that the maintainer sets R_forceSymbols(info, TRUE)
+but then uses .Call() with a string containing the name of the function
+instead of a special object that directly refers to that function. The
+fix for that has been committed half a year ago
+<https://code.bioconductor.org/browse/MassSpecWavelet/commit/496de2969b2f43f8be00f1966611497fa3053937>
+and became part of the 1.66.0 release and the following versions of the
+package. The fixed package versions went into Bioconductor 3.17 (for
+R-4.3) but not 3.16 (for R-4.2).
+
+-- 
+Best regards,
+Ivan
+
+
+From kke@h@v @end|ng |rom u||@edu  Tue Oct 31 10:03:41 2023
+From: kke@h@v @end|ng |rom u||@edu (Keshav, Krishna)
+Date: Tue, 31 Oct 2023 09:03:41 +0000
+Subject: [R-pkg-devel] Failing to write config file in linux
+In-Reply-To: <DC4ED4AC-B5A6-4926-A8CA-7328FE20B774@R-project.org>
+References: <CO6PR22MB243368A25EC7FECF64DFDE6FB6D9A@CO6PR22MB2433.namprd22.prod.outlook.com>
+ <DC4ED4AC-B5A6-4926-A8CA-7328FE20B774@R-project.org>
+Message-ID: <SJ0PR22MB24484D702515C9EB9A5CD84DB6A0A@SJ0PR22MB2448.namprd22.prod.outlook.com>
+
+Hello,
+
+Thanks for suggesting tools::R_user_dir(). I was able to implement and resubmit. This issue prompted me to read the policies thoroughly here - https://r-pkgs.org/release.html .
+
+Best Regards,
+Krishna Keshav
+
+From: Simon Urbanek <simon.urbanek at R-project.org>
+Date: Monday, October 23, 2023 at 3:07?PM
+To: Keshav, Krishna <kkeshav at ufl.edu>
+Cc: List r-package-devel <r-package-devel at r-project.org>, Kurt.Hornik at wu.ac.at <Kurt.Hornik at wu.ac.at>
+Subject: Re: [R-pkg-devel] Failing to write config file in linux
+[External Email]
+
+From CRAN policy (which you agreed to when you submitted your package) - note in particular the "nor anywhere else on the file system" part and also note that it tells you what to do in your case:
+
+
+Packages should not write in the user?s home filespace (including clipboards), nor anywhere else on the file system apart from the R session?s temporary directory (or during installation in the location pointed to by TMPDIR: and such usage should be cleaned up). Installing into the system?s R installation (e.g., scripts to its bin directory) is not allowed.
+Limited exceptions may be allowed in interactive sessions if the package obtains confirmation from the user.
+
+For R version 4.0 or later (hence a version dependency is required or only conditional use is possible), packages may store user-specific data, configuration and cache files in their respective user directories obtained from tools::R_user_dir(), provided that by default sizes are kept as small as possible and the contents are actively managed (including removing outdated material).
+
+
+
+
+> On Oct 23, 2023, at 5:52 AM, Keshav, Krishna <kkeshav at ufl.edu> wrote:
+>
+> Hi,
+>
+> My package is failing on linux based systems because of an attempt to write in a location of package. One of the core features that we would like user to have is to modify the values in the config file, for which package has a function for user to provide modified config. In future, they should be able to provide individual parameters for the config for which also we will be writing to config in package directory /inst/ so that it can later be fetched. I understand that policy doesn?t allow writing to home directory. Is there a workaround for this? Or what could be other potential solutions to explore.
+>
+> Snippet ?
+> https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fgithub.com%2FGarrettLab%2FCroplandConnectivity%2Fblob%2F923a4a0ca4a0ce8376068ee80986df228ea21d80%2Fgeohabnet%2FR%2Fparams.R%23L57&data=05%7C01%7Ckkeshav%40ufl.edu%7C8e20f2cfc4064895404c08dbd3fb5131%7C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C638336848586995860%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=zrjs7IXdoOJU%2BTyAZLUotDP3PGzTexKvDBBXCy10tRo%3D&reserved=0<https://github.com/GarrettLab/CroplandConnectivity/blob/923a4a0ca4a0ce8376068ee80986df228ea21d80/geohabnet/R/params.R#L57>
+>
+> Error ?
+>     ?? Failure ('test-parameters.R:38:3'): Test 6: Test to set new parameters.yaml ??
+>     Expected `set_parameters(new_param_file)` to run without any conditions.
+>     ? Actually got a <simpleWarning> with text:
+>     cannot create file '/home/hornik/tmp/R.check/r-release-gcc/Work/build/Packages/geohabnet/parameters.yaml', reason 'Read-only file system'
+>
+>
+> Best Regards,
+> Krishna Keshav
+>
+>
+>       [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-package-devel&data=05%7C01%7Ckkeshav%40ufl.edu%7C8e20f2cfc4064895404c08dbd3fb5131%7C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C638336848586995860%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=LA140Pw6t4xGXGJV60Zedj7CNpkDjsYlTS%2FHSc162fo%3D&reserved=0<https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+
+	[[alternative HTML version deleted]]
+
+
+From j@g@nmn2 @end|ng |rom gm@||@com  Tue Oct 31 16:05:55 2023
+From: j@g@nmn2 @end|ng |rom gm@||@com (Mikael Jagan)
+Date: Tue, 31 Oct 2023 11:05:55 -0400
+Subject: [R-pkg-devel] R-package-devel Digest, Vol 102, Issue 27
+In-Reply-To: <mailman.9798.11.1698750002.49509.r-package-devel@r-project.org>
+References: <mailman.9798.11.1698750002.49509.r-package-devel@r-project.org>
+Message-ID: <6f90cb89-8362-49ad-85f4-befd187c60e9@gmail.com>
+
+I am guessing that they mean EdSurvey:
+
+     https://cran.r-project.org/web/checks/check_results_EdSurvey.html
+
+Probably Matrix 1.6-1.1 is not installed on r-oldrel-macos-arm64,
+even though it can be, because it was not released until R 4.3-z.
+
+AFAIK, methods for 'qr' have not been touched since Matrix 1.6-0, and
+even those changes should have been backwards compatible, modulo handling
+of dimnames (class sparseQR gained a Dimnames slot in 1.6-0).
+
+So I don't see a clear reason for requiring 1.6-1.1.  Requiring 1.6-0
+might make sense, if somehow EdSurvey depends on how class sparseQR
+preserves dimnames.  But IIRC our rev. dep. checks at that time did not
+reveal problems with EdSurvey.
+
+Mikael
+
+On 2023-10-31 7:00 am, r-package-devel-request at r-project.org wrote:
+> Paul,
+> 
+> can you give us a bit more detail? Which package, which build and where you got the errors? Older builds may not have the latest Matrix.
+> 
+> Cheers,
+> Simon
+> 
+> 
+>> On 31/10/2023, at 11:26 AM, Bailey, Paul via R-package-devel<r-package-devel at r-project.org>  wrote:
+>>
+>> Hi,
+>>
+>> I'm the maintainer for a few packages, one of which is currently failing CRAN checks on Mac OS because Matrix is not available in my required version (the latest). I had to fix a few things due to changes in the latest Matrix package because of how qr works and I thought, given the apparent API change, I should then require the latest version. My error is, "Package required and available but unsuitable version: 'Matrix'"
+>>
+>> When I look at the NEWS in Matrix there is no mention of Mac OS issues, what the latest stable version of Matrix is, nor when a fix is expected. What version do MacOS version test Matrix with by default? Where is this documented? I assumes it always tested with the latest version on CRAN, so I'm a bit surprised. Or will this be resolved soon and I shouldn't bother CRAN maintainers with a new version of my package?
+>>
+>> Best,
+>> Paul
+>>
+>> 	[[alternative HTML version deleted]]
+
+
+From j@g@nmn2 @end|ng |rom gm@||@com  Tue Oct 31 16:10:17 2023
+From: j@g@nmn2 @end|ng |rom gm@||@com (Mikael Jagan)
+Date: Tue, 31 Oct 2023 11:10:17 -0400
+Subject: [R-pkg-devel] Matrix and Mac OS
+In-Reply-To: <6f90cb89-8362-49ad-85f4-befd187c60e9@gmail.com>
+References: <mailman.9798.11.1698750002.49509.r-package-devel@r-project.org>
+ <6f90cb89-8362-49ad-85f4-befd187c60e9@gmail.com>
+Message-ID: <b831e0f6-6136-463c-a603-fbd877ad2350@gmail.com>
+
+Re-sending to the list with correct subject line ...
+
+I should undigest myself ...
+
+Mikael
+
+On 2023-10-31 11:05 am, Mikael Jagan wrote:
+> I am guessing that they mean EdSurvey:
+> 
+>       https://cran.r-project.org/web/checks/check_results_EdSurvey.html
+> 
+> Probably Matrix 1.6-1.1 is not installed on r-oldrel-macos-arm64,
+> even though it can be, because it was not released until R 4.3-z.
+> 
+> AFAIK, methods for 'qr' have not been touched since Matrix 1.6-0, and
+> even those changes should have been backwards compatible, modulo handling
+> of dimnames (class sparseQR gained a Dimnames slot in 1.6-0).
+> 
+> So I don't see a clear reason for requiring 1.6-1.1.  Requiring 1.6-0
+> might make sense, if somehow EdSurvey depends on how class sparseQR
+> preserves dimnames.  But IIRC our rev. dep. checks at that time did not
+> reveal problems with EdSurvey.
+> 
+> Mikael
+> 
+> On 2023-10-31 7:00 am, r-package-devel-request at r-project.org wrote:
+>> Paul,
+>>
+>> can you give us a bit more detail? Which package, which build and where you got the errors? Older builds may not have the latest Matrix.
+>>
+>> Cheers,
+>> Simon
+>>
+>>
+>>> On 31/10/2023, at 11:26 AM, Bailey, Paul via R-package-devel<r-package-devel at r-project.org>  wrote:
+>>>
+>>> Hi,
+>>>
+>>> I'm the maintainer for a few packages, one of which is currently failing CRAN checks on Mac OS because Matrix is not available in my required version (the latest). I had to fix a few things due to changes in the latest Matrix package because of how qr works and I thought, given the apparent API change, I should then require the latest version. My error is, "Package required and available but unsuitable version: 'Matrix'"
+>>>
+>>> When I look at the NEWS in Matrix there is no mention of Mac OS issues, what the latest stable version of Matrix is, nor when a fix is expected. What version do MacOS version test Matrix with by default? Where is this documented? I assumes it always tested with the latest version on CRAN, so I'm a bit surprised. Or will this be resolved soon and I shouldn't bother CRAN maintainers with a new version of my package?
+>>>
+>>> Best,
+>>> Paul
+>>>
+>>> 	[[alternative HTML version deleted]]
+
+
+From @|j|@ng @end|ng |rom bccrc@c@  Tue Oct 31 16:42:30 2023
+From: @|j|@ng @end|ng |rom bccrc@c@ (Aixiang Jiang)
+Date: Tue, 31 Oct 2023 15:42:30 +0000
+Subject: [R-pkg-devel] DLL requires the use of native symbols
+In-Reply-To: <20231031113654.43e19a31@Tarkus>
+References: <1698737473271.88494@bccrc.ca>,<20231031113654.43e19a31@Tarkus>
+Message-ID: <1698766949986.55299@bccrc.ca>
+
+Thank you so much - Ivan!
+
+I think that I need to update R to the latest version then.
+
+Have a great day!
+
+Best,
+Aixiang
+
+________________________________________
+From: Ivan Krylov <krylov.r00t at gmail.com>
+Sent: Tuesday, October 31, 2023 1:36 AM
+To: Aixiang Jiang
+Cc: List r-package-devel; Simon Urbanek
+Subject: Re: [R-pkg-devel] DLL requires the use of native symbols
+
+This email came from an EXTERNAL SENDER. If you think this message is suspicious, please do not open any attached files or links, and forward it as an attachment to spammail at bccrc.ca
+
+
+
+Dear Simon,
+
+Could you please look into this? The machines running r-release-macos-*
+checks seem to have MassSpecWavelet < 1.66 installed instead of the
+current version, 1.68. I think that MassSpecWavelet >= 1.66 would be
+version-appropriate for R-4.3 (Bioconductor >= 3.17).
+
+On Tue, 31 Oct 2023 07:31:12 +0000
+Aixiang Jiang <aijiang at bccrc.ca> wrote:
+
+> 'DLL requires the use of native symbols'
+
+Interesting. It's not you, it's the MassSpecWavelet package, but the
+error has already been fixed there. Look at the traceback produced for
+the error:
+
+>> Error in localMaximumSlidingWindow(x, winSize) :
+>>  DLL requires the use of native symbols
+>> Calls: MPC_DANM ... getLocalMaximumCWT -> localMaximum ->
+>>        localMaximumSlidingWindow
+
+The error happens in a function called 'localMaximumSlidingWindow',
+called from 'localMaximum', called from 'getLocalMaximumCWT'.
+'getLocalMaximumCWT' belongs to the MassSpecWavelet package.
+
+The problem is that the maintainer sets R_forceSymbols(info, TRUE)
+but then uses .Call() with a string containing the name of the function
+instead of a special object that directly refers to that function. The
+fix for that has been committed half a year ago
+<https://code.bioconductor.org/browse/MassSpecWavelet/commit/496de2969b2f43f8be00f1966611497fa3053937>
+and became part of the 1.66.0 release and the following versions of the
+package. The fixed package versions went into Bioconductor 3.17 (for
+R-4.3) but not 3.16 (for R-4.2).
+
+--
+Best regards,
+Ivan
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Oct 31 17:58:05 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 31 Oct 2023 19:58:05 +0300
+Subject: [R-pkg-devel] Issue with R Package on CRAN - OpenMP and clang17
+In-Reply-To: <20231030185229.385fe389@arachnoid>
+References: <246366687.35114098.1698677911336.JavaMail.zimbra@u-bordeaux.fr>
+ <20231030185229.385fe389@arachnoid>
+Message-ID: <20231031195805.015bd26a@arachnoid>
+
+? Mon, 30 Oct 2023 18:52:29 +0300
+Ivan Krylov <krylov.r00t at gmail.com> ?????:
+
+> I'll try to reproduce your problem, starting by downloading and
+> compiling flang from https://github.com/llvm/llvm-project.git commit
+> 092b6c5ee3707ea10b9f10d0a674e8d12395369b (as stated at
+> <https://www.stats.ox.ac.uk/pub/bdr/clang17/frailtypack.log>)
+
+Wow. Building LLVM is an adventure, and I don't mean it in a good way.
+I had to patch flang/include/flang/Semantics/symbol.h because it
+declares `friend class std::array` while my copy of the C++ standard
+library has a `struct std::array`, which makes the friend declaration
+an error. Naively thinking that I would be helping debug the problem, I
+tried compiling a debugging build of LLVM, only to watch in horror as
+it consumed all disk space I could offer it. I eventually ran out of
+things to delete after the build directory reached 100 gigabytes in
+size, while the build still had 1000 out of 6000 targets to compile and
+link. Even the release build failed at 410 remaining targets because of
+a missing -fPIC somewhere in the compiler command line. Thankfully, it
+still produced a working `flang-new` executable.
+
+A release build of LLVM + flang-new takes a relatively reasonable 
+8.2 GBytes of storage. The computers that helped launch the first
+people into space had 2 kWords of memory, but nowadays you need more
+than 256 MBytes of RAM to launch a bird into a pig and 10 GBytes of
+storage in order to compile a compiler. This is what progress looks
+like.
+
+I was able to reduce the example to the following program:
+
+program main
+    implicit none
+
+    real :: sum = 0
+    integer :: i, n = 10
+
+    sum = sum + 1. ! <-- error here if followed by OpenMP reduction
+
+    !$OMP PARALLEL DO default(none) PRIVATE (i) SHARED(n) &
+    !$OMP REDUCTION(+:sum) SCHEDULE(Dynamic,1)
+    do i=1,n
+        sum = sum + real(i)
+    end do
+    !$OMP END PARALLEL DO
+
+    print *, sum
+end
+
+% flang-new -c -o /dev/null src.f90 -fopenmp
+error: loc("src.f90":7:5): 'omp.reduction' op must be used within an
+operation supporting reduction clause interface
+error: verification of lowering to FIR failed
+
+gfortran raises no errors or warnings for the test program. Bug
+reported at <https://github.com/llvm/llvm-project/issues/70828>.
+
+Would that be enough proof of a compiler bug, or do we need a
+confirmation from the developers?
+
+-- 
+Best regards,
+Ivan
+
+
+From edd @end|ng |rom deb|@n@org  Tue Oct 31 18:16:10 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 31 Oct 2023 12:16:10 -0500
+Subject: [R-pkg-devel] Fortune candidate Re: Issue with R Package on CRAN -
+ OpenMP and clang17
+In-Reply-To: <20231031195805.015bd26a@arachnoid>
+References: <246366687.35114098.1698677911336.JavaMail.zimbra@u-bordeaux.fr>
+ <20231030185229.385fe389@arachnoid>
+ <20231031195805.015bd26a@arachnoid>
+Message-ID: <25921.13914.177311.462376@rob.eddelbuettel.com>
+
+
+On 31 October 2023 at 19:58, Ivan Krylov wrote:
+| [...] The computers that helped launch the first
+| people into space had 2 kWords of memory, but nowadays you need more
+| than 256 MBytes of RAM to launch a bird into a pig and 10 GBytes of
+| storage in order to compile a compiler. This is what progress looks
+| like.
+
+Fortune!!
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Tue Oct 31 20:33:24 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Wed, 1 Nov 2023 08:33:24 +1300
+Subject: [R-pkg-devel] Matrix and Mac OS
+In-Reply-To: <6f90cb89-8362-49ad-85f4-befd187c60e9@gmail.com>
+References: <mailman.9798.11.1698750002.49509.r-package-devel@r-project.org>
+ <6f90cb89-8362-49ad-85f4-befd187c60e9@gmail.com>
+Message-ID: <71D3531C-EA60-4688-83E5-CB2DD64227B1@R-project.org>
+
+Mikael,
+
+current Matrix fails checks on R-oldrel so that's why only the last working version is installed:
+https://cran.r-project.org/web/checks/check_results_Matrix.html
+
+Cheers,
+Simon
+
+
+
+> On 1/11/2023, at 4:05 AM, Mikael Jagan <jaganmn2 at gmail.com> wrote:
+> 
+> I am guessing that they mean EdSurvey:
+> 
+>    https://cran.r-project.org/web/checks/check_results_EdSurvey.html
+> 
+> Probably Matrix 1.6-1.1 is not installed on r-oldrel-macos-arm64,
+> even though it can be, because it was not released until R 4.3-z.
+> 
+> AFAIK, methods for 'qr' have not been touched since Matrix 1.6-0, and
+> even those changes should have been backwards compatible, modulo handling
+> of dimnames (class sparseQR gained a Dimnames slot in 1.6-0).
+> 
+> So I don't see a clear reason for requiring 1.6-1.1.  Requiring 1.6-0
+> might make sense, if somehow EdSurvey depends on how class sparseQR
+> preserves dimnames.  But IIRC our rev. dep. checks at that time did not
+> reveal problems with EdSurvey.
+> 
+> Mikael
+> 
+> On 2023-10-31 7:00 am, r-package-devel-request at r-project.org wrote:
+>> Paul,
+>> can you give us a bit more detail? Which package, which build and where you got the errors? Older builds may not have the latest Matrix.
+>> Cheers,
+>> Simon
+>>> On 31/10/2023, at 11:26 AM, Bailey, Paul via R-package-devel<r-package-devel at r-project.org>  wrote:
+>>> 
+>>> Hi,
+>>> 
+>>> I'm the maintainer for a few packages, one of which is currently failing CRAN checks on Mac OS because Matrix is not available in my required version (the latest). I had to fix a few things due to changes in the latest Matrix package because of how qr works and I thought, given the apparent API change, I should then require the latest version. My error is, "Package required and available but unsuitable version: 'Matrix'"
+>>> 
+>>> When I look at the NEWS in Matrix there is no mention of Mac OS issues, what the latest stable version of Matrix is, nor when a fix is expected. What version do MacOS version test Matrix with by default? Where is this documented? I assumes it always tested with the latest version on CRAN, so I'm a bit surprised. Or will this be resolved soon and I shouldn't bother CRAN maintainers with a new version of my package?
+>>> 
+>>> Best,
+>>> Paul
+>>> 
+>>> 	[[alternative HTML version deleted]]
+> 
+
+
+From j@g@nmn2 @end|ng |rom gm@||@com  Tue Oct 31 21:19:40 2023
+From: j@g@nmn2 @end|ng |rom gm@||@com (Mikael Jagan)
+Date: Tue, 31 Oct 2023 16:19:40 -0400
+Subject: [R-pkg-devel] Matrix and Mac OS
+In-Reply-To: <71D3531C-EA60-4688-83E5-CB2DD64227B1@R-project.org>
+References: <mailman.9798.11.1698750002.49509.r-package-devel@r-project.org>
+ <6f90cb89-8362-49ad-85f4-befd187c60e9@gmail.com>
+ <71D3531C-EA60-4688-83E5-CB2DD64227B1@R-project.org>
+Message-ID: <f9454540-b0f8-41a2-b3f4-ef6da1052708@gmail.com>
+
+Thanks.  We did see those ERRORs, stemming from use (since Matrix 1.6-0)
+of amsmath commands in Rd files.  These have been supported since R 4.2.2,
+but r-oldrel-macos-* (unlike r-oldrel-windows-*) continues to run R 4.2.0.
+My expectation was that those machines would begin running R >= 4.2.2 well
+before the R 4.4.0 release, but apparently that was wrong.
+
+I am hesitant to complicate our Rd files with conditions on R versions
+only to support PDF output for R < 4.2.2, but maybe we can consider it
+for the Matrix 1.6-2 release if it is really a barrier for others ...
+
+Mikael
+
+On 2023-10-31 3:33 pm, Simon Urbanek wrote:
+> Mikael,
+> 
+> current Matrix fails checks on R-oldrel so that's why only the last working version is installed:
+> https://cran.r-project.org/web/checks/check_results_Matrix.html
+> 
+> Cheers,
+> Simon
+> 
+> 
+> 
+>> On 1/11/2023, at 4:05 AM, Mikael Jagan <jaganmn2 at gmail.com> wrote:
+>>
+>> I am guessing that they mean EdSurvey:
+>>
+>>     https://cran.r-project.org/web/checks/check_results_EdSurvey.html
+>>
+>> Probably Matrix 1.6-1.1 is not installed on r-oldrel-macos-arm64,
+>> even though it can be, because it was not released until R 4.3-z.
+>>
+>> AFAIK, methods for 'qr' have not been touched since Matrix 1.6-0, and
+>> even those changes should have been backwards compatible, modulo handling
+>> of dimnames (class sparseQR gained a Dimnames slot in 1.6-0).
+>>
+>> So I don't see a clear reason for requiring 1.6-1.1.  Requiring 1.6-0
+>> might make sense, if somehow EdSurvey depends on how class sparseQR
+>> preserves dimnames.  But IIRC our rev. dep. checks at that time did not
+>> reveal problems with EdSurvey.
+>>
+>> Mikael
+>>
+>> On 2023-10-31 7:00 am, r-package-devel-request at r-project.org wrote:
+>>> Paul,
+>>> can you give us a bit more detail? Which package, which build and where you got the errors? Older builds may not have the latest Matrix.
+>>> Cheers,
+>>> Simon
+>>>> On 31/10/2023, at 11:26 AM, Bailey, Paul via R-package-devel<r-package-devel at r-project.org>  wrote:
+>>>>
+>>>> Hi,
+>>>>
+>>>> I'm the maintainer for a few packages, one of which is currently failing CRAN checks on Mac OS because Matrix is not available in my required version (the latest). I had to fix a few things due to changes in the latest Matrix package because of how qr works and I thought, given the apparent API change, I should then require the latest version. My error is, "Package required and available but unsuitable version: 'Matrix'"
+>>>>
+>>>> When I look at the NEWS in Matrix there is no mention of Mac OS issues, what the latest stable version of Matrix is, nor when a fix is expected. What version do MacOS version test Matrix with by default? Where is this documented? I assumes it always tested with the latest version on CRAN, so I'm a bit surprised. Or will this be resolved soon and I shouldn't bother CRAN maintainers with a new version of my package?
+>>>>
+>>>> Best,
+>>>> Paul
+>>>>
+>>>> 	[[alternative HTML version deleted]]
+>>
+>
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Wed Nov  1 01:17:31 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Wed, 1 Nov 2023 13:17:31 +1300
+Subject: [R-pkg-devel] Matrix and Mac OS
+In-Reply-To: <f9454540-b0f8-41a2-b3f4-ef6da1052708@gmail.com>
+References: <mailman.9798.11.1698750002.49509.r-package-devel@r-project.org>
+ <6f90cb89-8362-49ad-85f4-befd187c60e9@gmail.com>
+ <71D3531C-EA60-4688-83E5-CB2DD64227B1@R-project.org>
+ <f9454540-b0f8-41a2-b3f4-ef6da1052708@gmail.com>
+Message-ID: <17E1FF10-6C44-468F-9E55-C67F792F12C6@R-project.org>
+
+Mikael,
+
+in that case I think your requirements are wrong - Matrix says R >= 3.5.0 which is apparently incorrect - from what you say it should be 4.2.2?. I can certainly update to 4.2.3 if necessary.
+
+Cheers,
+Simon
+
+
+
+> On 1/11/2023, at 9:19 AM, Mikael Jagan <jaganmn2 at gmail.com> wrote:
+> 
+> Thanks.  We did see those ERRORs, stemming from use (since Matrix 1.6-0)
+> of amsmath commands in Rd files.  These have been supported since R 4.2.2,
+> but r-oldrel-macos-* (unlike r-oldrel-windows-*) continues to run R 4.2.0.
+> My expectation was that those machines would begin running R >= 4.2.2 well
+> before the R 4.4.0 release, but apparently that was wrong.
+> 
+> I am hesitant to complicate our Rd files with conditions on R versions
+> only to support PDF output for R < 4.2.2, but maybe we can consider it
+> for the Matrix 1.6-2 release if it is really a barrier for others ...
+> 
+> Mikael
+> 
+> On 2023-10-31 3:33 pm, Simon Urbanek wrote:
+>> Mikael,
+>> current Matrix fails checks on R-oldrel so that's why only the last working version is installed:
+>> https://cran.r-project.org/web/checks/check_results_Matrix.html
+>> Cheers,
+>> Simon
+>>> On 1/11/2023, at 4:05 AM, Mikael Jagan <jaganmn2 at gmail.com> wrote:
+>>> 
+>>> I am guessing that they mean EdSurvey:
+>>> 
+>>>    https://cran.r-project.org/web/checks/check_results_EdSurvey.html
+>>> 
+>>> Probably Matrix 1.6-1.1 is not installed on r-oldrel-macos-arm64,
+>>> even though it can be, because it was not released until R 4.3-z.
+>>> 
+>>> AFAIK, methods for 'qr' have not been touched since Matrix 1.6-0, and
+>>> even those changes should have been backwards compatible, modulo handling
+>>> of dimnames (class sparseQR gained a Dimnames slot in 1.6-0).
+>>> 
+>>> So I don't see a clear reason for requiring 1.6-1.1.  Requiring 1.6-0
+>>> might make sense, if somehow EdSurvey depends on how class sparseQR
+>>> preserves dimnames.  But IIRC our rev. dep. checks at that time did not
+>>> reveal problems with EdSurvey.
+>>> 
+>>> Mikael
+>>> 
+>>> On 2023-10-31 7:00 am, r-package-devel-request at r-project.org wrote:
+>>>> Paul,
+>>>> can you give us a bit more detail? Which package, which build and where you got the errors? Older builds may not have the latest Matrix.
+>>>> Cheers,
+>>>> Simon
+>>>>> On 31/10/2023, at 11:26 AM, Bailey, Paul via R-package-devel<r-package-devel at r-project.org>  wrote:
+>>>>> 
+>>>>> Hi,
+>>>>> 
+>>>>> I'm the maintainer for a few packages, one of which is currently failing CRAN checks on Mac OS because Matrix is not available in my required version (the latest). I had to fix a few things due to changes in the latest Matrix package because of how qr works and I thought, given the apparent API change, I should then require the latest version. My error is, "Package required and available but unsuitable version: 'Matrix'"
+>>>>> 
+>>>>> When I look at the NEWS in Matrix there is no mention of Mac OS issues, what the latest stable version of Matrix is, nor when a fix is expected. What version do MacOS version test Matrix with by default? Where is this documented? I assumes it always tested with the latest version on CRAN, so I'm a bit surprised. Or will this be resolved soon and I shouldn't bother CRAN maintainers with a new version of my package?
+>>>>> 
+>>>>> Best,
+>>>>> Paul
+>>>>> 
+>>>>> 	[[alternative HTML version deleted]]
+>>> 
+> 
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Wed Nov  1 01:43:30 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Tue, 31 Oct 2023 17:43:30 -0700
+Subject: [R-pkg-devel] 
+ Fortune candidate Re: Issue with R Package on CRAN -
+ OpenMP and clang17
+In-Reply-To: <25921.13914.177311.462376@rob.eddelbuettel.com>
+References: <246366687.35114098.1698677911336.JavaMail.zimbra@u-bordeaux.fr>
+ <20231030185229.385fe389@arachnoid> <20231031195805.015bd26a@arachnoid>
+ <25921.13914.177311.462376@rob.eddelbuettel.com>
+Message-ID: <9FDCCB92-F9A2-4FB7-A773-F7A662A62880@dcn.davis.ca.us>
+
+ROFL! Seconded!
+
+The quote itself has a bit of greybeard smell to it, but the "ran out of stuff to delete at 100GB with 1000 out of 6000 targets compiled" had me in stitches.
+
+On October 31, 2023 10:16:10 AM PDT, Dirk Eddelbuettel <edd at debian.org> wrote:
+>
+>On 31 October 2023 at 19:58, Ivan Krylov wrote:
+>| [...] The computers that helped launch the first
+>| people into space had 2 kWords of memory, but nowadays you need more
+>| than 256 MBytes of RAM to launch a bird into a pig and 10 GBytes of
+>| storage in order to compile a compiler. This is what progress looks
+>| like.
+>
+>Fortune!!
+>
+>Dirk
+>
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From greg @end|ng |rom ||rm@n@y@h@com  Wed Nov  1 01:57:58 2023
+From: greg @end|ng |rom ||rm@n@y@h@com (Greg Hunt)
+Date: Tue, 31 Oct 2023 19:57:58 -0500
+Subject: [R-pkg-devel] 
+ Fortune candidate Re: Issue with R Package on CRAN -
+ OpenMP and clang17
+In-Reply-To: <25921.13914.177311.462376@rob.eddelbuettel.com>
+References: <246366687.35114098.1698677911336.JavaMail.zimbra@u-bordeaux.fr>
+ <20231030185229.385fe389@arachnoid> <20231031195805.015bd26a@arachnoid>
+ <25921.13914.177311.462376@rob.eddelbuettel.com>
+Message-ID: <CAAS8PALk2zaCFcg6uSoq+t7GQ3tN8q=R04nG-vrJ+PouiJ_gAQ@mail.gmail.com>
+
+If i remember rightly one of the early Algol compilers for the IBM
+mainframe couldnt be compiled on an IBM mainframe because it was too memory
+hungry (it had to be cross compiled). The numbers change, but the problems
+don?t, except that i haven?t run a compile lately that ran out of memory
+like that.
+
+
+On Tue, 31 Oct 2023 at 12:24 pm, Dirk Eddelbuettel <edd at debian.org> wrote:
+
+>
+> On 31 October 2023 at 19:58, Ivan Krylov wrote:
+> | [...] The computers that helped launch the first
+> | people into space had 2 kWords of memory, but nowadays you need more
+> | than 256 MBytes of RAM to launch a bird into a pig and 10 GBytes of
+> | storage in order to compile a compiler. This is what progress looks
+> | like.
+>
+> Fortune!!
+>
+> Dirk
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
