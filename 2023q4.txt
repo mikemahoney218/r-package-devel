@@ -11106,3 +11106,870 @@ On Tue, 31 Oct 2023 at 12:24 pm, Dirk Eddelbuettel <edd at debian.org> wrote:
 	[[alternative HTML version deleted]]
 
 
+From j@g@nmn2 @end|ng |rom gm@||@com  Wed Nov  1 03:51:54 2023
+From: j@g@nmn2 @end|ng |rom gm@||@com (Mikael Jagan)
+Date: Tue, 31 Oct 2023 22:51:54 -0400
+Subject: [R-pkg-devel] Matrix and Mac OS
+In-Reply-To: <17E1FF10-6C44-468F-9E55-C67F792F12C6@R-project.org>
+References: <mailman.9798.11.1698750002.49509.r-package-devel@r-project.org>
+ <6f90cb89-8362-49ad-85f4-befd187c60e9@gmail.com>
+ <71D3531C-EA60-4688-83E5-CB2DD64227B1@R-project.org>
+ <f9454540-b0f8-41a2-b3f4-ef6da1052708@gmail.com>
+ <17E1FF10-6C44-468F-9E55-C67F792F12C6@R-project.org>
+Message-ID: <577444ff-2481-4a39-9e05-ea8939b3f5a5@gmail.com>
+
+Thanks.  It seems that we were mistaken in our feeling (IIRC) that it would
+be "OK" to implicitly require '--no-manual' on versions of R from 3.5.0 to
+4.2.1, not changing our Depends.
+
+We will fix this in Matrix 1.6-2, probably by conditionalizing or otherwise
+replacing the amsmath commands and probably _not_ by changing to depend on
+R >= 4.2.2.  Martin may have more to say in "the morning".
+
+In the mean time (i.e., while we are stuck with Matrix 1.6-1.1), it may help
+to update to R 4.2.3 on r-oldrel-macos-* and/or to have EdSurvey revert its
+strict version requirement, unless there are clear examples justifying one.
+
+Mikael
+
+
+On 2023-10-31 8:17 pm, Simon Urbanek wrote:
+> Mikael,
+> 
+> in that case I think your requirements are wrong - Matrix says R >= 3.5.0 which is apparently incorrect - from what you say it should be 4.2.2?. I can certainly update to 4.2.3 if necessary.
+> 
+> Cheers,
+> Simon
+> 
+> 
+> 
+>> On 1/11/2023, at 9:19 AM, Mikael Jagan <jaganmn2 at gmail.com> wrote:
+>>
+>> Thanks.  We did see those ERRORs, stemming from use (since Matrix 1.6-0)
+>> of amsmath commands in Rd files.  These have been supported since R 4.2.2,
+>> but r-oldrel-macos-* (unlike r-oldrel-windows-*) continues to run R 4.2.0.
+>> My expectation was that those machines would begin running R >= 4.2.2 well
+>> before the R 4.4.0 release, but apparently that was wrong.
+>>
+>> I am hesitant to complicate our Rd files with conditions on R versions
+>> only to support PDF output for R < 4.2.2, but maybe we can consider it
+>> for the Matrix 1.6-2 release if it is really a barrier for others ...
+>>
+>> Mikael
+>>
+>> On 2023-10-31 3:33 pm, Simon Urbanek wrote:
+>>> Mikael,
+>>> current Matrix fails checks on R-oldrel so that's why only the last working version is installed:
+>>> https://cran.r-project.org/web/checks/check_results_Matrix.html
+>>> Cheers,
+>>> Simon
+>>>> On 1/11/2023, at 4:05 AM, Mikael Jagan <jaganmn2 at gmail.com> wrote:
+>>>>
+>>>> I am guessing that they mean EdSurvey:
+>>>>
+>>>>     https://cran.r-project.org/web/checks/check_results_EdSurvey.html
+>>>>
+>>>> Probably Matrix 1.6-1.1 is not installed on r-oldrel-macos-arm64,
+>>>> even though it can be, because it was not released until R 4.3-z.
+>>>>
+>>>> AFAIK, methods for 'qr' have not been touched since Matrix 1.6-0, and
+>>>> even those changes should have been backwards compatible, modulo handling
+>>>> of dimnames (class sparseQR gained a Dimnames slot in 1.6-0).
+>>>>
+>>>> So I don't see a clear reason for requiring 1.6-1.1.  Requiring 1.6-0
+>>>> might make sense, if somehow EdSurvey depends on how class sparseQR
+>>>> preserves dimnames.  But IIRC our rev. dep. checks at that time did not
+>>>> reveal problems with EdSurvey.
+>>>>
+>>>> Mikael
+>>>>
+>>>> On 2023-10-31 7:00 am, r-package-devel-request at r-project.org wrote:
+>>>>> Paul,
+>>>>> can you give us a bit more detail? Which package, which build and where you got the errors? Older builds may not have the latest Matrix.
+>>>>> Cheers,
+>>>>> Simon
+>>>>>> On 31/10/2023, at 11:26 AM, Bailey, Paul via R-package-devel<r-package-devel at r-project.org>  wrote:
+>>>>>>
+>>>>>> Hi,
+>>>>>>
+>>>>>> I'm the maintainer for a few packages, one of which is currently failing CRAN checks on Mac OS because Matrix is not available in my required version (the latest). I had to fix a few things due to changes in the latest Matrix package because of how qr works and I thought, given the apparent API change, I should then require the latest version. My error is, "Package required and available but unsuitable version: 'Matrix'"
+>>>>>>
+>>>>>> When I look at the NEWS in Matrix there is no mention of Mac OS issues, what the latest stable version of Matrix is, nor when a fix is expected. What version do MacOS version test Matrix with by default? Where is this documented? I assumes it always tested with the latest version on CRAN, so I'm a bit surprised. Or will this be resolved soon and I shouldn't bother CRAN maintainers with a new version of my package?
+>>>>>>
+>>>>>> Best,
+>>>>>> Paul
+>>>>>>
+>>>>>> 	[[alternative HTML version deleted]]
+>>>>
+>>
+>
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Wed Nov  1 06:26:23 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Wed, 1 Nov 2023 06:26:23 +0100
+Subject: [R-pkg-devel] Matrix and Mac OS
+In-Reply-To: <577444ff-2481-4a39-9e05-ea8939b3f5a5@gmail.com>
+References: <mailman.9798.11.1698750002.49509.r-package-devel@r-project.org>
+ <6f90cb89-8362-49ad-85f4-befd187c60e9@gmail.com>
+ <71D3531C-EA60-4688-83E5-CB2DD64227B1@R-project.org>
+ <f9454540-b0f8-41a2-b3f4-ef6da1052708@gmail.com>
+ <17E1FF10-6C44-468F-9E55-C67F792F12C6@R-project.org>
+ <577444ff-2481-4a39-9e05-ea8939b3f5a5@gmail.com>
+Message-ID: <05d496e1-18af-e406-08fe-9c62c6c6540f@statistik.tu-dortmund.de>
+
+
+
+On 01.11.2023 03:51, Mikael Jagan wrote:
+> Thanks.? It seems that we were mistaken in our feeling (IIRC) that it would
+> be "OK" to implicitly require '--no-manual' on versions of R from 3.5.0 to
+> 4.2.1, not changing our Depends.
+> 
+> We will fix this in Matrix 1.6-2, probably by conditionalizing or otherwise
+> replacing the amsmath commands and probably _not_ by changing to depend on
+> R >= 4.2.2.? Martin may have more to say in "the morning".
+
+Note that dependin on R >= 4.2.2 does not work. We need dependencies of 
+the form R >= x.y.0. This is also part of the checks.
+
+Reason is that we have only one binary repository for one R-x.y.? 
+series. On WIndows, where we check with R-4.2.3, a binary would be 
+created and hence R-4.2.[0-1] would not see any valid Matrix binaries.
+
+So please either make this work on R >= 4.2.0 or require R >= 4.3.0. If 
+the latter, ideally with an interim version that works for R >= 4.2.0, 
+so that we valid binaries with correct dependency declarations again.
+
+Best,
+Uwe
+
+> In the mean time (i.e., while we are stuck with Matrix 1.6-1.1), it may 
+> help
+> to update to R 4.2.3 on r-oldrel-macos-* and/or to have EdSurvey revert its
+> strict version requirement, unless there are clear examples justifying one.
+> 
+> Mikael
+> 
+> 
+> On 2023-10-31 8:17 pm, Simon Urbanek wrote:
+>> Mikael,
+>>
+>> in that case I think your requirements are wrong - Matrix says R >= 
+>> 3.5.0 which is apparently incorrect - from what you say it should be 
+>> 4.2.2?. I can certainly update to 4.2.3 if necessary.
+>>
+>> Cheers,
+>> Simon
+>>
+>>
+>>
+>>> On 1/11/2023, at 9:19 AM, Mikael Jagan <jaganmn2 at gmail.com> wrote:
+>>>
+>>> Thanks.? We did see those ERRORs, stemming from use (since Matrix 1.6-0)
+>>> of amsmath commands in Rd files.? These have been supported since R 
+>>> 4.2.2,
+>>> but r-oldrel-macos-* (unlike r-oldrel-windows-*) continues to run R 
+>>> 4.2.0.
+>>> My expectation was that those machines would begin running R >= 4.2.2 
+>>> well
+>>> before the R 4.4.0 release, but apparently that was wrong.
+>>>
+>>> I am hesitant to complicate our Rd files with conditions on R versions
+>>> only to support PDF output for R < 4.2.2, but maybe we can consider it
+>>> for the Matrix 1.6-2 release if it is really a barrier for others ...
+>>>
+>>> Mikael
+>>>
+>>> On 2023-10-31 3:33 pm, Simon Urbanek wrote:
+>>>> Mikael,
+>>>> current Matrix fails checks on R-oldrel so that's why only the last 
+>>>> working version is installed:
+>>>> https://cran.r-project.org/web/checks/check_results_Matrix.html
+>>>> Cheers,
+>>>> Simon
+>>>>> On 1/11/2023, at 4:05 AM, Mikael Jagan <jaganmn2 at gmail.com> wrote:
+>>>>>
+>>>>> I am guessing that they mean EdSurvey:
+>>>>>
+>>>>> ??? https://cran.r-project.org/web/checks/check_results_EdSurvey.html
+>>>>>
+>>>>> Probably Matrix 1.6-1.1 is not installed on r-oldrel-macos-arm64,
+>>>>> even though it can be, because it was not released until R 4.3-z.
+>>>>>
+>>>>> AFAIK, methods for 'qr' have not been touched since Matrix 1.6-0, and
+>>>>> even those changes should have been backwards compatible, modulo 
+>>>>> handling
+>>>>> of dimnames (class sparseQR gained a Dimnames slot in 1.6-0).
+>>>>>
+>>>>> So I don't see a clear reason for requiring 1.6-1.1.? Requiring 1.6-0
+>>>>> might make sense, if somehow EdSurvey depends on how class sparseQR
+>>>>> preserves dimnames.? But IIRC our rev. dep. checks at that time did 
+>>>>> not
+>>>>> reveal problems with EdSurvey.
+>>>>>
+>>>>> Mikael
+>>>>>
+>>>>> On 2023-10-31 7:00 am, r-package-devel-request at r-project.org wrote:
+>>>>>> Paul,
+>>>>>> can you give us a bit more detail? Which package, which build and 
+>>>>>> where you got the errors? Older builds may not have the latest 
+>>>>>> Matrix.
+>>>>>> Cheers,
+>>>>>> Simon
+>>>>>>> On 31/10/2023, at 11:26 AM, Bailey, Paul via 
+>>>>>>> R-package-devel<r-package-devel at r-project.org>? wrote:
+>>>>>>>
+>>>>>>> Hi,
+>>>>>>>
+>>>>>>> I'm the maintainer for a few packages, one of which is currently 
+>>>>>>> failing CRAN checks on Mac OS because Matrix is not available in 
+>>>>>>> my required version (the latest). I had to fix a few things due 
+>>>>>>> to changes in the latest Matrix package because of how qr works 
+>>>>>>> and I thought, given the apparent API change, I should then 
+>>>>>>> require the latest version. My error is, "Package required and 
+>>>>>>> available but unsuitable version: 'Matrix'"
+>>>>>>>
+>>>>>>> When I look at the NEWS in Matrix there is no mention of Mac OS 
+>>>>>>> issues, what the latest stable version of Matrix is, nor when a 
+>>>>>>> fix is expected. What version do MacOS version test Matrix with 
+>>>>>>> by default? Where is this documented? I assumes it always tested 
+>>>>>>> with the latest version on CRAN, so I'm a bit surprised. Or will 
+>>>>>>> this be resolved soon and I shouldn't bother CRAN maintainers 
+>>>>>>> with a new version of my package?
+>>>>>>>
+>>>>>>> Best,
+>>>>>>> Paul
+>>>>>>>
+>>>>>>> ????[[alternative HTML version deleted]]
+>>>>>
+>>>
+>>
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Wed Nov  1 10:06:59 2023
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Wed, 1 Nov 2023 10:06:59 +0100
+Subject: [R-pkg-devel] Matrix and Mac OS
+In-Reply-To: <05d496e1-18af-e406-08fe-9c62c6c6540f@statistik.tu-dortmund.de>
+References: <mailman.9798.11.1698750002.49509.r-package-devel@r-project.org>
+ <6f90cb89-8362-49ad-85f4-befd187c60e9@gmail.com>
+ <71D3531C-EA60-4688-83E5-CB2DD64227B1@R-project.org>
+ <f9454540-b0f8-41a2-b3f4-ef6da1052708@gmail.com>
+ <17E1FF10-6C44-468F-9E55-C67F792F12C6@R-project.org>
+ <577444ff-2481-4a39-9e05-ea8939b3f5a5@gmail.com>
+ <05d496e1-18af-e406-08fe-9c62c6c6540f@statistik.tu-dortmund.de>
+Message-ID: <25922.5427.225938.135970@stat.math.ethz.ch>
+
+>>>>> Uwe Ligges 
+>>>>>     on Wed, 1 Nov 2023 06:26:23 +0100 writes:
+
+    > On 01.11.2023 03:51, Mikael Jagan wrote:
+    >> Thanks.? It seems that we were mistaken in our feeling (IIRC) that it would
+    >> be "OK" to implicitly require '--no-manual' on versions of R from 3.5.0 to
+    >> 4.2.1, not changing our Depends.
+    >> 
+    >> We will fix this in Matrix 1.6-2, probably by conditionalizing or otherwise
+    >> replacing the amsmath commands and probably _not_ by changing to depend on
+    >> R >= 4.2.2.? Martin may have more to say in "the morning".
+
+I agree (*not* to raise Matrix pkg's R version dependency).
+
+    > Note that dependin on R >= 4.2.2 does not work. We need dependencies of 
+    > the form R >= x.y.0. This is also part of the checks.
+
+Yes, indeed.
+And as we learned, R >= 4.2.0 would not help for r-oldrel-macos
+
+I (am unhappy but) agree to take the responsibility for our
+decision to go ahead and use much nicer LaTeX formula for
+matrices etc, in our help pages {thinking that indeed people who'd
+install Matrix on an old R version would always be able to read
+Matrix manual pages via web search (as it seems to me 95% of
+people do nowadays) ... or then have someone in their
+organization to figure out how to use a newer amsmath (latex) package if
+ they really really want the Matrix pdf manual offline}.
+
+Martin
+
+    > Reason is that we have only one binary repository for one R-x.y.? 
+    > series. On WIndows, where we check with R-4.2.3, a binary would be 
+    > created and hence R-4.2.[0-1] would not see any valid Matrix binaries.
+
+    > So please either make this work on R >= 4.2.0 or require R >= 4.3.0. If 
+    > the latter, ideally with an interim version that works for R >= 4.2.0, 
+    > so that we valid binaries with correct dependency declarations again.
+
+    > Best,
+    > Uwe
+
+    >> In the mean time (i.e., while we are stuck with Matrix 1.6-1.1), it may 
+    >> help
+    >> to update to R 4.2.3 on r-oldrel-macos-* and/or to have EdSurvey revert its
+    >> strict version requirement, unless there are clear examples justifying one.
+    >> 
+    >> Mikael
+    >> 
+    >> 
+    >> On 2023-10-31 8:17 pm, Simon Urbanek wrote:
+    >>> Mikael,
+    >>> 
+    >>> in that case I think your requirements are wrong - Matrix says R >= 
+    >>> 3.5.0 which is apparently incorrect - from what you say it should be 
+    >>> 4.2.2?. I can certainly update to 4.2.3 if necessary.
+    >>> 
+    >>> Cheers,
+    >>> Simon
+    >>> 
+    >>> 
+    >>> 
+    >>>> On 1/11/2023, at 9:19 AM, Mikael Jagan <jaganmn2 at gmail.com> wrote:
+    >>>> 
+    >>>> Thanks.? We did see those ERRORs, stemming from use (since Matrix 1.6-0)
+    >>>> of amsmath commands in Rd files.? These have been supported since R 
+    >>>> 4.2.2,
+    >>>> but r-oldrel-macos-* (unlike r-oldrel-windows-*) continues to run R 
+    >>>> 4.2.0.
+    >>>> My expectation was that those machines would begin running R >= 4.2.2 
+    >>>> well
+    >>>> before the R 4.4.0 release, but apparently that was wrong.
+    >>>> 
+    >>>> I am hesitant to complicate our Rd files with conditions on R versions
+    >>>> only to support PDF output for R < 4.2.2, but maybe we can consider it
+    >>>> for the Matrix 1.6-2 release if it is really a barrier for others ...
+    >>>> 
+    >>>> Mikael
+    >>>> 
+    >>>> On 2023-10-31 3:33 pm, Simon Urbanek wrote:
+    >>>>> Mikael,
+    >>>>> current Matrix fails checks on R-oldrel so that's why only the last 
+    >>>>> working version is installed:
+    >>>>> https://cran.r-project.org/web/checks/check_results_Matrix.html
+    >>>>> Cheers,
+    >>>>> Simon
+>>>>> On 1/11/2023, at 4:05 AM, Mikael Jagan <jaganmn2 at gmail.com> wrote:
+    >>>>>> 
+>>>>> I am guessing that they mean EdSurvey:
+    >>>>>> 
+>>>>> ??? https://cran.r-project.org/web/checks/check_results_EdSurvey.html
+    >>>>>> 
+>>>>> Probably Matrix 1.6-1.1 is not installed on r-oldrel-macos-arm64,
+>>>>> even though it can be, because it was not released until R 4.3-z.
+    >>>>>> 
+>>>>> AFAIK, methods for 'qr' have not been touched since Matrix 1.6-0, and
+>>>>> even those changes should have been backwards compatible, modulo 
+>>>>> handling
+>>>>> of dimnames (class sparseQR gained a Dimnames slot in 1.6-0).
+    >>>>>> 
+>>>>> So I don't see a clear reason for requiring 1.6-1.1.? Requiring 1.6-0
+>>>>> might make sense, if somehow EdSurvey depends on how class sparseQR
+>>>>> preserves dimnames.? But IIRC our rev. dep. checks at that time did 
+>>>>> not
+>>>>> reveal problems with EdSurvey.
+    >>>>>> 
+>>>>> Mikael
+    >>>>>> 
+>>>>> On 2023-10-31 7:00 am, r-package-devel-request at r-project.org wrote:
+    >>>>>>> Paul,
+    >>>>>>> can you give us a bit more detail? Which package, which build and 
+    >>>>>>> where you got the errors? Older builds may not have the latest 
+    >>>>>>> Matrix.
+    >>>>>>> Cheers,
+    >>>>>>> Simon
+    >>>>>>>> On 31/10/2023, at 11:26 AM, Bailey, Paul via 
+    >>>>>>>> R-package-devel<r-package-devel at r-project.org>? wrote:
+    >>>>>>>> 
+    >>>>>>>> Hi,
+    >>>>>>>> 
+    >>>>>>>> I'm the maintainer for a few packages, one of which is currently 
+    >>>>>>>> failing CRAN checks on Mac OS because Matrix is not available in 
+    >>>>>>>> my required version (the latest). I had to fix a few things due 
+    >>>>>>>> to changes in the latest Matrix package because of how qr works 
+    >>>>>>>> and I thought, given the apparent API change, I should then 
+    >>>>>>>> require the latest version. My error is, "Package required and 
+    >>>>>>>> available but unsuitable version: 'Matrix'"
+    >>>>>>>> 
+    >>>>>>>> When I look at the NEWS in Matrix there is no mention of Mac OS 
+    >>>>>>>> issues, what the latest stable version of Matrix is, nor when a 
+    >>>>>>>> fix is expected. What version do MacOS version test Matrix with 
+    >>>>>>>> by default? Where is this documented? I assumes it always tested 
+    >>>>>>>> with the latest version on CRAN, so I'm a bit surprised. Or will 
+    >>>>>>>> this be resolved soon and I shouldn't bother CRAN maintainers 
+    >>>>>>>> with a new version of my package?
+    >>>>>>>> 
+    >>>>>>>> Best,
+    >>>>>>>> Paul
+    >>>>>>>> 
+    >>>>>>>> ????[[alternative HTML version deleted]]
+    >>>>>> 
+    >>>> 
+    >>> 
+    >> 
+    >> ______________________________________________
+    >> R-package-devel at r-project.org mailing list
+    >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+    > ______________________________________________
+    > R-package-devel at r-project.org mailing list
+    > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From g@rre@@|berto @end|ng |rom gm@||@com  Wed Nov  1 12:15:02 2023
+From: g@rre@@|berto @end|ng |rom gm@||@com (Alberto Garre)
+Date: Wed, 1 Nov 2023 12:15:02 +0100
+Subject: [R-pkg-devel] Package bioOED has been removed from CRAN just for
+ personal reasons
+Message-ID: <CAMo5YQYHZkedU6On_576c2J8MXK4DjfmBoHC2dYRjcVGWJHkVQ@mail.gmail.com>
+
+Dear community,
+
+I feel dismay for having to write this email, but the issue must be brought
+up. On the 20th of October, I received an email from CRAN warning me of an
+issue with one of the packages I maintain (bioOED). The package depended on
+MEIGOR, a package that was no longer available in Bioconductor. I was given
+until 2023-11-03 to fix the issue.
+
+I contacted the MEIGOR maintainers and they told me they were migrating to
+CRAN. Yesterday, they contacted me again, telling me they needed more time
+for the migration. Hence, I responded to the email I received from CRAN,
+asking for an extension of the previous deadline (2023-11-03).
+
+To my surprise, it is not just that the extension was not granted, but the
+package has been removed from CRAN today (2023-11-01). Two days before the
+deadline (2023-11-03): https://cran.r-project.org/package=bioOED
+
+Then, I checked my inbox and I saw an email from one of the CRAN
+maintainers, showing that the package was removed because he had felt
+offended by my email. I copy-paste the email below.
+
+I understand that maintaining CRAN must be a huge work. I also work in
+academia, so I am totally aware of all the extra work that is required from
+us. But it is unreasonable that a package can be removed just because a
+maintainer throws a tantrum
+
+Again, I am really sorry I had to write this email, but CRAN cannot work if
+we allow this type of situation.
+
+Kind regards,
+Alberto Garre
+
+## Mail from ripley at stats.ox.ac.uk on 2023-11-01 8:28
+
+On 31/10/2023 17:21, Alberto Garre wrote:
+> Dear Brian,
+
+Do be respectful whoever you are (you lack the manners to use a
+signature block but send HTML when you agreed not to!).  What exactly
+have you done for me that would allow you treat me as if I were your peer?
+
+Your ingratitude (for CRAN and R) is deafening.
+
+> I have talked to the MEIGOR developers and they need a bit more time to
+> update their package. Would it be possible to get a 4 weeks extension for
+> the update of bioOED?
+
+No one can even install it in current R, so it has been removed.
+
+"The time of the volunteers is CRAN?s most precious resource"
+
+Professor Ripley
+
+>
+> Thank you very much,
+> Alberto
+>
+>
+> El vie, 20 oct 2023 a las 9:24, Alberto Garre (<garre.alberto at gmail.com>)
+> escribi?:
+>
+>> Thank you very much, Brian.
+>>
+>> I have just contacted the developers of MEIGOR because I think they were
+>> planning a migration to CRAN. I will update the package asap.
+>>
+>> Best,
+>> Alberto
+>>
+>>
+>> El vie, 20 oct 2023 a las 9:22, Prof Brian Ripley (<ripley at stats.ox.ac.uk
+>)
+>> escribi?:
+>>
+>>> On 20/10/2023 08:17, Prof Brian Ripley wrote:
+>>>> Dear maintainer,
+>>>>
+>>>> Please see the problems shown on
+>>>> <https://cran.r-project.org/web/checks/check_results_bioOED.html>.
+>>>>
+>>>> Please correct before 2023-11-03 to safely retain your package on CRAN.
+>>>>
+>>>> The CRAN Team
+>>>>
+>>> This requires package MEIGOR which is not part of BioC 3.18 and has been
+>>> deprecated so it very unlikely to be part of the final release next
+week.
+>>>
+>>>
+>>> --
+>>> Brian D. Ripley,                  ripley at stats.ox.ac.uk
+>>> Emeritus Professor of Applied Statistics, University of Oxford
+>>>
+>>>
+
+	[[alternative HTML version deleted]]
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Wed Nov  1 13:35:22 2023
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Wed, 1 Nov 2023 13:35:22 +0100
+Subject: [R-pkg-devel] 
+ Package bioOED has been removed from CRAN just for personal reasons
+In-Reply-To: <CAMo5YQYHZkedU6On_576c2J8MXK4DjfmBoHC2dYRjcVGWJHkVQ@mail.gmail.com>
+References: <CAMo5YQYHZkedU6On_576c2J8MXK4DjfmBoHC2dYRjcVGWJHkVQ@mail.gmail.com>
+Message-ID: <4a046c02-7851-4b21-8a35-ebbfad393e4d@gmail.com>
+
+
+On 11/1/23 12:15, Alberto Garre wrote:
+> Dear community,
+>
+> I feel dismay for having to write this email, but the issue must be brought
+> up. On the 20th of October, I received an email from CRAN warning me of an
+> issue with one of the packages I maintain (bioOED). The package depended on
+> MEIGOR, a package that was no longer available in Bioconductor. I was given
+> until 2023-11-03 to fix the issue.
+>
+> I contacted the MEIGOR maintainers and they told me they were migrating to
+> CRAN. Yesterday, they contacted me again, telling me they needed more time
+> for the migration. Hence, I responded to the email I received from CRAN,
+> asking for an extension of the previous deadline (2023-11-03).
+>
+> To my surprise, it is not just that the extension was not granted, but the
+> package has been removed from CRAN today (2023-11-01). Two days before the
+> deadline (2023-11-03): https://cran.r-project.org/package=bioOED
+>
+> Then, I checked my inbox and I saw an email from one of the CRAN
+> maintainers, showing that the package was removed because he had felt
+> offended by my email. I copy-paste the email below.
+
+I don't think this is true. The reason is that your package depends on 
+an unavailable package, so cannot be installed. See 
+https://cran.r-project.org/web/packages/bioOED/index.html where the 
+reason is publicly stated.
+
+If I were you I'd simply wait once MEIGOR is on CRAN and then publish 
+the archived package again.
+
+Best,
+Tomas
+
+>
+> I understand that maintaining CRAN must be a huge work. I also work in
+> academia, so I am totally aware of all the extra work that is required from
+> us. But it is unreasonable that a package can be removed just because a
+> maintainer throws a tantrum
+>
+> Again, I am really sorry I had to write this email, but CRAN cannot work if
+> we allow this type of situation.
+>
+> Kind regards,
+> Alberto Garre
+>
+> ## Mail from ripley at stats.ox.ac.uk on 2023-11-01 8:28
+>
+> On 31/10/2023 17:21, Alberto Garre wrote:
+>> Dear Brian,
+> Do be respectful whoever you are (you lack the manners to use a
+> signature block but send HTML when you agreed not to!).  What exactly
+> have you done for me that would allow you treat me as if I were your peer?
+>
+> Your ingratitude (for CRAN and R) is deafening.
+>
+>> I have talked to the MEIGOR developers and they need a bit more time to
+>> update their package. Would it be possible to get a 4 weeks extension for
+>> the update of bioOED?
+> No one can even install it in current R, so it has been removed.
+>
+> "The time of the volunteers is CRAN?s most precious resource"
+>
+> Professor Ripley
+>
+>> Thank you very much,
+>> Alberto
+>>
+>>
+>> El vie, 20 oct 2023 a las 9:24, Alberto Garre (<garre.alberto at gmail.com>)
+>> escribi?:
+>>
+>>> Thank you very much, Brian.
+>>>
+>>> I have just contacted the developers of MEIGOR because I think they were
+>>> planning a migration to CRAN. I will update the package asap.
+>>>
+>>> Best,
+>>> Alberto
+>>>
+>>>
+>>> El vie, 20 oct 2023 a las 9:22, Prof Brian Ripley (<ripley at stats.ox.ac.uk
+>> )
+>>> escribi?:
+>>>
+>>>> On 20/10/2023 08:17, Prof Brian Ripley wrote:
+>>>>> Dear maintainer,
+>>>>>
+>>>>> Please see the problems shown on
+>>>>> <https://cran.r-project.org/web/checks/check_results_bioOED.html>.
+>>>>>
+>>>>> Please correct before 2023-11-03 to safely retain your package on CRAN.
+>>>>>
+>>>>> The CRAN Team
+>>>>>
+>>>> This requires package MEIGOR which is not part of BioC 3.18 and has been
+>>>> deprecated so it very unlikely to be part of the final release next
+> week.
+>>>>
+>>>> --
+>>>> Brian D. Ripley,                  ripley at stats.ox.ac.uk
+>>>> Emeritus Professor of Applied Statistics, University of Oxford
+>>>>
+>>>>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Nov  1 14:04:33 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 1 Nov 2023 09:04:33 -0400
+Subject: [R-pkg-devel] 
+ Package bioOED has been removed from CRAN just for personal reasons
+In-Reply-To: <4a046c02-7851-4b21-8a35-ebbfad393e4d@gmail.com>
+References: <CAMo5YQYHZkedU6On_576c2J8MXK4DjfmBoHC2dYRjcVGWJHkVQ@mail.gmail.com>
+ <4a046c02-7851-4b21-8a35-ebbfad393e4d@gmail.com>
+Message-ID: <23df54fc-0e63-470e-a649-7bcee8eabcbd@gmail.com>
+
+On 01/11/2023 8:35 a.m., Tomas Kalibera wrote:
+> 
+> On 11/1/23 12:15, Alberto Garre wrote:
+>> Dear community,
+>>
+>> I feel dismay for having to write this email, but the issue must be brought
+>> up. On the 20th of October, I received an email from CRAN warning me of an
+>> issue with one of the packages I maintain (bioOED). The package depended on
+>> MEIGOR, a package that was no longer available in Bioconductor. I was given
+>> until 2023-11-03 to fix the issue.
+>>
+>> I contacted the MEIGOR maintainers and they told me they were migrating to
+>> CRAN. Yesterday, they contacted me again, telling me they needed more time
+>> for the migration. Hence, I responded to the email I received from CRAN,
+>> asking for an extension of the previous deadline (2023-11-03).
+>>
+>> To my surprise, it is not just that the extension was not granted, but the
+>> package has been removed from CRAN today (2023-11-01). Two days before the
+>> deadline (2023-11-03): https://cran.r-project.org/package=bioOED
+>>
+>> Then, I checked my inbox and I saw an email from one of the CRAN
+>> maintainers, showing that the package was removed because he had felt
+>> offended by my email. I copy-paste the email below.
+> 
+> I don't think this is true. The reason is that your package depends on
+> an unavailable package, so cannot be installed. See
+> https://cran.r-project.org/web/packages/bioOED/index.html where the
+> reason is publicly stated.
+> 
+> If I were you I'd simply wait once MEIGOR is on CRAN and then publish
+> the archived package again.
+
+I agree with that interpretation.  A possibly faster alternative would 
+be to remove the dependence on MEIGOR, and resubmit once that is done 
+and the package is working again.
+
+Duncan Murdoch
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Wed Nov  1 17:30:19 2023
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Wed, 1 Nov 2023 09:30:19 -0700
+Subject: [R-pkg-devel] CRAN archival: Does CRAN un-archive some packages
+ automatically?
+Message-ID: <CAFDcVCQwVMSZXKXROyP8EUQJr57Cjppfam+Q6Ca=quzopn-VWg@mail.gmail.com>
+
+I'm asking here to spare the CRAN Team a direct message, but also
+because the answer is of interest to others:
+
+Consider a package PkgA that was archived on CRAN, because it fails
+checks and errors that were not corrected in time.  At the moment when
+package PkgA is archived, it will trigger automatic archiving of other
+CRAN packages that has a hard dependency on it. Say, packages PkgB and
+PkgC were archived automatically, because of their dependency on PkgA.
+
+Question: If PkgA is at a later point revived on CRAN, will CRAN
+unarchive PkgB and PkgC automatically? Or, should the maintainers of
+PkgB and PkgC resubmit? If they have to resubmit, should they submit
+identical versions and tarballs as before, or do they have to bump the
+version?
+
+/Henrik
+
+
+From @p@@nder@on @end|ng |rom gm@||@com  Wed Nov  1 17:48:15 2023
+From: @p@@nder@on @end|ng |rom gm@||@com (Steven P Sanderson II)
+Date: Wed, 1 Nov 2023 12:48:15 -0400
+Subject: [R-pkg-devel] CRAN archival: Does CRAN un-archive some packages
+ automatically?
+In-Reply-To: <CAFDcVCQwVMSZXKXROyP8EUQJr57Cjppfam+Q6Ca=quzopn-VWg@mail.gmail.com>
+References: <CAFDcVCQwVMSZXKXROyP8EUQJr57Cjppfam+Q6Ca=quzopn-VWg@mail.gmail.com>
+Message-ID: <CALXsb3KCJ1_4EgGaQt1cQvA98yyu59MgVAJjPfg6HMaWNYuktA@mail.gmail.com>
+
+I believe the version must be bumped and pushed. This was the case for me
+as my package was not un-archived.
+
+On Wed, Nov 1, 2023 at 12:31?PM Henrik Bengtsson <henrik.bengtsson at gmail.com>
+wrote:
+
+> I'm asking here to spare the CRAN Team a direct message, but also
+> because the answer is of interest to others:
+>
+> Consider a package PkgA that was archived on CRAN, because it fails
+> checks and errors that were not corrected in time.  At the moment when
+> package PkgA is archived, it will trigger automatic archiving of other
+> CRAN packages that has a hard dependency on it. Say, packages PkgB and
+> PkgC were archived automatically, because of their dependency on PkgA.
+>
+> Question: If PkgA is at a later point revived on CRAN, will CRAN
+> unarchive PkgB and PkgC automatically? Or, should the maintainers of
+> PkgB and PkgC resubmit? If they have to resubmit, should they submit
+> identical versions and tarballs as before, or do they have to bump the
+> version?
+>
+> /Henrik
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+-- 
+Steven P Sanderson II, MPH
+Book on Lulu <http://goo.gl/lmrlFI>
+Personal Site <http://www.spsanderson.com>
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Nov  1 17:51:56 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 1 Nov 2023 12:51:56 -0400
+Subject: [R-pkg-devel] CRAN archival: Does CRAN un-archive some packages
+ automatically?
+In-Reply-To: <CAFDcVCQwVMSZXKXROyP8EUQJr57Cjppfam+Q6Ca=quzopn-VWg@mail.gmail.com>
+References: <CAFDcVCQwVMSZXKXROyP8EUQJr57Cjppfam+Q6Ca=quzopn-VWg@mail.gmail.com>
+Message-ID: <62c94746-fee6-4192-8d5e-31c8f193806a@gmail.com>
+
+On 01/11/2023 12:30 p.m., Henrik Bengtsson wrote:
+> I'm asking here to spare the CRAN Team a direct message, but also
+> because the answer is of interest to others:
+> 
+> Consider a package PkgA that was archived on CRAN, because it fails
+> checks and errors that were not corrected in time.  At the moment when
+> package PkgA is archived, it will trigger automatic archiving of other
+> CRAN packages that has a hard dependency on it. Say, packages PkgB and
+> PkgC were archived automatically, because of their dependency on PkgA.
+> 
+> Question: If PkgA is at a later point revived on CRAN, will CRAN
+> unarchive PkgB and PkgC automatically? Or, should the maintainers of
+> PkgB and PkgC resubmit? If they have to resubmit, should they submit
+> identical versions and tarballs as before, or do they have to bump the
+> version?
+
+I don't know the answer to your first question, but I'd guess "no".  The 
+maintainers of PkgB and PkgC should have already resubmitted, demoting 
+PkgA to a "Suggests:" dependency or dropping it completely.
+
+If they chose not to do that, then at the hypothetical time when PkgA is 
+revived, each of PkgB and PkgC would need full testing to see if they 
+were passing the current versions of the CRAN checks with the new 
+version of PkgA.  That's something for their maintainers to do, not CRAN.
+
+Regarding your last question:  if it turns out the original version 
+still passes with the new PkgA, then I think it's still better to bump 
+the version number.  It would need an exception to the usual "new 
+submissions need new version numbers" rule.  Exceptions waste CRAN's time.
+
+Duncan Murdoch
+
+
+From m@rku@joch|m @end|ng |rom phonet|k@un|-muenchen@de  Wed Nov  1 19:54:28 2023
+From: m@rku@joch|m @end|ng |rom phonet|k@un|-muenchen@de (Markus Jochim)
+Date: Wed, 1 Nov 2023 19:54:28 +0100
+Subject: [R-pkg-devel] 
+ Package bioOED has been removed from CRAN just for personal reasons
+In-Reply-To: <23df54fc-0e63-470e-a649-7bcee8eabcbd@gmail.com>
+References: <CAMo5YQYHZkedU6On_576c2J8MXK4DjfmBoHC2dYRjcVGWJHkVQ@mail.gmail.com>
+ <4a046c02-7851-4b21-8a35-ebbfad393e4d@gmail.com>
+ <23df54fc-0e63-470e-a649-7bcee8eabcbd@gmail.com>
+Message-ID: <b7a9e926-04fe-4bbd-8f83-f1a353b5d35f@phonetik.uni-muenchen.de>
+
+Dear Alberto,
+
+I have had a small number of CRAN-related email exchanges with Brian 
+Ripley that made it clear that his idea of politeness and my idea of 
+politeness are incompatible. The email you are quoting reminds me very 
+much of these exchanges.
+
+But I try to be pragmatic about it. It?s not the end of the world if my 
+packages are not on CRAN for a couple of weeks. In the end, they were 
+archived because tests were failing and they were always (re-)accepted 
+into CRAN once the automatic tests passed again. No personal matters 
+involved.
+
+Brian Ripley has certainly contributed a lot to R. As a package 
+maintainer, I am also contributing my share, especially towards my own 
+discipline, and so are you. That is why there is contact in the first 
+place. I wouldn't care too much whether or not that allows either of us 
+to consider the other a peer.
+
+I don?t know why your package appears to have been archived two days 
+early. But otherwise I agree with Tomas and Duncan. There is a clear 
+path forward for your package. Based on my own experience, there is no 
+reason to believe that it will be rejected by CRAN on personal grounds, 
+once the automatic tests pass.
+
+Best
+
+Markus
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Nov  1 22:39:39 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 1 Nov 2023 17:39:39 -0400
+Subject: [R-pkg-devel] 
+ Package bioOED has been removed from CRAN just for personal reasons
+In-Reply-To: <b7a9e926-04fe-4bbd-8f83-f1a353b5d35f@phonetik.uni-muenchen.de>
+References: <CAMo5YQYHZkedU6On_576c2J8MXK4DjfmBoHC2dYRjcVGWJHkVQ@mail.gmail.com>
+ <4a046c02-7851-4b21-8a35-ebbfad393e4d@gmail.com>
+ <23df54fc-0e63-470e-a649-7bcee8eabcbd@gmail.com>
+ <b7a9e926-04fe-4bbd-8f83-f1a353b5d35f@phonetik.uni-muenchen.de>
+Message-ID: <82f58a3d-0457-4478-a7ca-6916249fa57a@gmail.com>
+
+On 01/11/2023 2:54 p.m., Markus Jochim wrote:
+> Dear Alberto,
+> 
+> I have had a small number of CRAN-related email exchanges with Brian
+> Ripley that made it clear that his idea of politeness and my idea of
+> politeness are incompatible. The email you are quoting reminds me very
+> much of these exchanges.
+> 
+
+My idea of politeness, and I think also Prof. Ripley's, is that you 
+don't discuss private discussions in public without agreement from all 
+parties.
+
+Duncan Murdoch
+
+
