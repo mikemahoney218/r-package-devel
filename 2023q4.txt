@@ -15437,3 +15437,44 @@ On 09/11/2023 9:47 a.m., Liam J. Revell wrote:
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From j@g@nmn2 @end|ng |rom gm@||@com  Fri Nov 10 23:04:00 2023
+From: j@g@nmn2 @end|ng |rom gm@||@com (Mikael Jagan)
+Date: Fri, 10 Nov 2023 17:04:00 -0500
+Subject: [R-pkg-devel] Note to repository maintainers about ABI change in
+ Matrix 1.6-2
+Message-ID: <95f67c1e-ff07-4982-a185-a30f0f905868@gmail.com>
+
+For repositories != CRAN:
+
+Matrix 1.6-2 was released on Nov 8.  Due to an ABI change, repositories
+maintaining R package binaries should ensure that binaries for the first
+order reverse LinkingTo of Matrix are rebuilt under Matrix 1.6-2:
+
+
+ > db <- available.packages(repos = "https://cran.r-project.org/")
+ > tools::package_dependencies("Matrix", db = db, which = "LinkingTo", reverse = 
+TRUE)[[1L]]
+  [1] "ahMLE"               "bayesWatch"          "cplm"
+  [4] "GeneralizedWendland" "geostatsp"           "hibayes"
+  [7] "irlba"               "lme4"                "mcmcsae"
+[10] "OpenMx"              "PRIMME"              "robustlmm"
+[13] "spGARCH"             "TMB"
+
+
+Typically, ABI changes occur only rarely, when Matrix updates the internal
+SuiteSparse libraries and _those_ libraries change _their_ ABI.  This case
+is an exception: we discovered that certain function prototypes in our
+headers were inconsistent with corresponding prototypes in the SuiteSparse
+headers, and the "consistent" prototypes were not binary compatible.
+
+It is for this reason (and others) that Matrix has begun versioning its ABI,
+as I announced in an earlier thread on R-SIG-Mac:
+
+     https://stat.ethz.ch/pipermail/r-sig-mac/2023-October/014890.html
+
+That (in addition to future, more proactive announcements on mailing lists)
+should allow repository maintainers to adapt sooner going forward.
+
+Mikael
+
+
