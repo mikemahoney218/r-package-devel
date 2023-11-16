@@ -16201,3 +16201,562 @@ Best regards,
 Ivan
 
 
+From rom@|n@p|er|ot @end|ng |rom u-borde@ux@|r  Tue Nov 14 10:25:03 2023
+From: rom@|n@p|er|ot @end|ng |rom u-borde@ux@|r (Romain Pierlot)
+Date: Tue, 14 Nov 2023 10:25:03 +0100 (CET)
+Subject: [R-pkg-devel] 
+ Package submission issue - OMP reduction (flang-new)
+In-Reply-To: <20231113211832.0159d227@Tarkus>
+References: <961109932.9036169.1699889985884.JavaMail.zimbra@u-bordeaux.fr>
+ <20231113211832.0159d227@Tarkus>
+Message-ID: <786252980.153097.1699953903938.JavaMail.zimbra@u-bordeaux.fr>
+
+Thanks again for your help.
+
+
+>Have you tried explaining this in the package submission comment? What
+>was the response? Does the reviewer need more evidence? Linking to the
+>LLVM issue on GitHub and/or the previous R-package-devel thread may
+>help.
+
+We indicated the possible bug in the comment section, with a link on the GitHub issue. 
+They didn't consider this, and just refused the package, sending us the .log file explaining the issue on .omp reduction.
+
+>1. In your ./configure script, check for the Fortran compiler being
+>flang-new version 17. If the check succeeds, disable OpenMP altogether.
+
+How can I do that ? I can create a .configure file on the root folder, but how do I check the compiler version ? As in .R file, with FC = ... ? And what about OpenMP deactivation ? 
+
+>2. Rewrite your Fortran code so that a variable is never touched before
+>it is used in an OpenMP reduction. You may have to declare a new
+>variable for every OpenMP reduction loop inside a function.
+
+I'll try this, thanks. I'm still unable to install flang-new on my device, as it is too voluminate and my computer systematically crash. So i'll do the changes and send it on CRAN, hopefully it'll be ok. 
+
+
+Many thanks for all your help ! 
+
+Best regards, 
+
+Romain Pierlot
+
+
+----- Mail original -----
+De: "Ivan Krylov" <krylov.r00t at gmail.com>
+?: "Romain Pierlot" <romain.pierlot at u-bordeaux.fr>
+Cc: "r-package-devel" <r-package-devel at r-project.org>
+Envoy?: Lundi 13 Novembre 2023 19:18:32
+Objet: Re: [R-pkg-devel] Package submission issue - OMP reduction (flang-new)
+
+On Mon, 13 Nov 2023 16:39:45 +0100 (CET)
+Romain Pierlot <romain.pierlot at u-bordeaux.fr> wrote:
+
+> Here is the error message, and the adequate code part is joint in the
+> mail : 
+> 
+> error:
+> loc("/data/gannet/ripley/R/packages/incoming/frailtypack.Rcheck/00_pkg_src/frailtypack/src/Integrale_mult_scl.f90":1811:17):
+> 'omp.reduction' op must be used within an operation supporting
+> reduction clause interface error: verification of lowering to FIR
+> failed 
+
+Have you tried explaining this in the package submission comment? What
+was the response? Does the reviewer need more evidence? Linking to the
+LLVM issue on GitHub and/or the previous R-package-devel thread may
+help.
+
+(LLVM giveth and LLVM taketh away. While I'm sure that their
+diagnostics helped improve many packages, I have encountered a few
+places in the R code where clang suggested to replace boolean
+expressions && and || with bitwise operations & and |. The code still
+works, but now relies on boolean constants having certain exact bits
+set. Replace a 1 with a 2 and things will break.)
+
+It might be the case that CRAN cannot afford to make an exception for
+this compiler bug. I can imagine a number of workarounds:
+
+1. In your ./configure script, check for the Fortran compiler being
+flang-new version 17. If the check succeeds, disable OpenMP altogether.
+
+2. Rewrite your Fortran code so that a variable is never touched before
+it is used in an OpenMP reduction. You may have to declare a new
+variable for every OpenMP reduction loop inside a function.
+
+If you don't succeed in convincing CRAN regarding the compiler bug,
+which one of the two workarounds would you prefer?
+
+-- 
+Best regards,
+Ivan
+-- 
+[ https://www.u-bordeaux.fr/ ] [ http://www.aquitaine-poitou-charentes.inserm.fr/ ] 
+
+[ mailto: | Romain Pierlot ] 
+Ing?nieur de recherches Bio-Informatique 
+?quipe BIOSTAT 
+
+
+[ https://www.u-bordeaux.fr/ | https://www.u-bordeaux.fr ]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Nov 14 10:52:10 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 14 Nov 2023 12:52:10 +0300
+Subject: [R-pkg-devel] 
+ Package submission issue - OMP reduction (flang-new)
+In-Reply-To: <786252980.153097.1699953903938.JavaMail.zimbra@u-bordeaux.fr>
+References: <961109932.9036169.1699889985884.JavaMail.zimbra@u-bordeaux.fr>
+ <20231113211832.0159d227@Tarkus>
+ <786252980.153097.1699953903938.JavaMail.zimbra@u-bordeaux.fr>
+Message-ID: <20231114125210.7038c854@Tarkus>
+
+On Tue, 14 Nov 2023 10:25:03 +0100 (CET)
+Romain Pierlot <romain.pierlot at u-bordeaux.fr> wrote:
+
+> We indicated the possible bug in the comment section, with a link on
+> the GitHub issue. They didn't consider this, and just refused the
+> package, sending us the .log file explaining the issue on .omp
+> reduction.
+
+Sorry about that. Was there an option to reply and explain? I once
+argued my way out of a rejection after I explained a mistake on the
+reviewer's part, but one has to be careful not to take too much time
+from one of the seven people keeping ~20000 packages working.
+
+Let's do the workaround then.
+
+> >1. In your ./configure script, check for the Fortran compiler being
+> >flang-new version 17. If the check succeeds, disable OpenMP
+> >altogether.  
+
+> How can I do that ? I can create a .configure file on the root
+> folder, but how do I check the compiler version ?
+
+#!/bin/sh
+# taken from Writing R Extensions, 1.2. Configure and cleanup
+: ${R_HOME=`R RHOME`}
+if test -z "${R_HOME}"; then
+  echo "could not determine R_HOME"
+  exit 1
+fi
+# determine the Fortran compiler
+FC="`"${R_HOME}/bin/R" CMD config FC`"
+# Use --version output to determine the compiler
+# A different compiler will either accept --version and print something
+# else or fail due to "unknown argument". In both cases the branch will
+# not be taken
+if "$FC" --version 2>/dev/null | grep -q 'flang-new version 17'; then
+ # deactivate OpenMP, see below
+fi
+
+> And what about OpenMP deactivation ? 
+
+In your src/Makevars, you use Make variables SHLIB_OPENMP_FFLAGS and
+SHLIB_OPENMP_CFLAGS to enable OpenMP support. The configure script can
+edit this file in various ways, for example, setting the variables to
+an empty string:
+
+echo 'SHLIB_OPENMP_FFLAGS =' >>src/Makevars
+echo 'SHLIB_OPENMP_CFLAGS =' >>src/Makevars
+
+This is untested, but should work.
+
+I think that workaround (1) should be easier to test (you can try
+disabling OpenMP when the Fortran compiler is gfortran, verify that it
+works, then switch the test to detect flang-new which you don't have
+installed), but if you're more comfortable editing Fortran code, (2)
+should also be viable.
+
+-- 
+Best regards,
+Ivan
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Tue Nov 14 15:38:22 2023
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Tue, 14 Nov 2023 15:38:22 +0100
+Subject: [R-pkg-devel] 
+ Package submission issue - OMP reduction (flang-new)
+In-Reply-To: <20231113211832.0159d227@Tarkus>
+References: <961109932.9036169.1699889985884.JavaMail.zimbra@u-bordeaux.fr>
+ <20231113211832.0159d227@Tarkus>
+Message-ID: <4a4a04dd-dcd2-40fd-a273-0cbb5ade245b@gmail.com>
+
+
+On 11/13/23 19:18, Ivan Krylov wrote:
+> On Mon, 13 Nov 2023 16:39:45 +0100 (CET)
+> Romain Pierlot <romain.pierlot at u-bordeaux.fr> wrote:
+>
+>> Here is the error message, and the adequate code part is joint in the
+>> mail :
+>>
+>> error:
+>> loc("/data/gannet/ripley/R/packages/incoming/frailtypack.Rcheck/00_pkg_src/frailtypack/src/Integrale_mult_scl.f90":1811:17):
+>> 'omp.reduction' op must be used within an operation supporting
+>> reduction clause interface error: verification of lowering to FIR
+>> failed
+> Have you tried explaining this in the package submission comment? What
+> was the response? Does the reviewer need more evidence? Linking to the
+> LLVM issue on GitHub and/or the previous R-package-devel thread may
+> help.
+>
+> (LLVM giveth and LLVM taketh away. While I'm sure that their
+> diagnostics helped improve many packages, I have encountered a few
+> places in the R code where clang suggested to replace boolean
+> expressions && and || with bitwise operations & and |. The code still
+> works, but now relies on boolean constants having certain exact bits
+> set. Replace a 1 with a 2 and things will break.)
+>
+> It might be the case that CRAN cannot afford to make an exception for
+> this compiler bug. I can imagine a number of workarounds:
+>
+> 1. In your ./configure script, check for the Fortran compiler being
+> flang-new version 17. If the check succeeds, disable OpenMP altogether.
+>
+> 2. Rewrite your Fortran code so that a variable is never touched before
+> it is used in an OpenMP reduction. You may have to declare a new
+> variable for every OpenMP reduction loop inside a function.
+>
+> If you don't succeed in convincing CRAN regarding the compiler bug,
+> which one of the two workarounds would you prefer?
+
+I would definitely look for a work-around. In the end we want to give 
+users software that works, rather than something that doesn't, but 
+telling them, possibly with good evidence, than it is not our fault.
+
+Tomas
+
+
+From u|r|ke@groemp|ng @end|ng |rom bht-ber||n@de  Tue Nov 14 15:45:25 2023
+From: u|r|ke@groemp|ng @end|ng |rom bht-ber||n@de (Ulrike Groemping)
+Date: Tue, 14 Nov 2023 15:45:25 +0100
+Subject: [R-pkg-devel] Trouble with greek letter in figure title in R-devel
+Message-ID: <479d4edf-9eea-4f51-acb3-06d61ccd9fa5@bht-berlin.de>
+
+Dear package developers,
+
+I am struggling with an error on R devel (all flavors) that I cannot 
+reproduce with a freshly installed R-devel on my machine: Function 
+halfnormal in package DoE.base places the greek letter alpha in the 
+title of a figure. I changed the code to using plotmath about a month 
+ago (on CRAN request), and everything seemed fine then. Now, however, 
+R-devel produces an error message 
+(https://www.r-project.org/nosvn/R.check/r-devel-windows-x86_64/DoE.base-00check.html):
+
+Error in title(...) :
+ ??conversion failure on 'Plot for rnorm.12., method = Lenth, ? = 0.05' 
+in 'mbcsToSbcs': for ? (U+03B1)
+Calls: halfnormal ... <Anonymous> -> plot -> plot.default -> localTitle 
+-> title
+Execution halted
+
+CRAN threaten to archive the package because of that error - so I would 
+really appreciate help on finding out what I should do (apart from nasty 
+things like writing alpha instead of using the greek letter).
+
+The code in function halfnormal that creates the title in question looks 
+as follows:
+
+ ? ## added August 1 5 2014, modified Oct 17 2023
+ ? if (is.null(titel)){
+ ???? titel <- as.expression(bquote("Plot for "*.(xnam)*", "*alpha == 
+.(alpha)))
+ ???? dots$main <- titel
+ ? }
+
+The list dots is later used in "do.call(plotfun, dots)".
+
+Any recommendations?
+
+Thanks and regards,
+Ulrike
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Tue Nov 14 17:16:11 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Tue, 14 Nov 2023 17:16:11 +0100
+Subject: [R-pkg-devel] 
+ Trouble with greek letter in figure title in R-devel
+In-Reply-To: <479d4edf-9eea-4f51-acb3-06d61ccd9fa5@bht-berlin.de>
+References: <479d4edf-9eea-4f51-acb3-06d61ccd9fa5@bht-berlin.de>
+Message-ID: <162009dd-4701-4780-9736-b5ffe421cf0a@statistik.tu-dortmund.de>
+
+
+
+On 14.11.2023 15:45, Ulrike Groemping wrote:
+> Dear package developers,
+> 
+> I am struggling with an error on R devel (all flavors) that I cannot 
+> reproduce with a freshly installed R-devel on my machine: Function 
+> halfnormal in package DoE.base places the greek letter alpha in the 
+> title of a figure. I changed the code to using plotmath about a month 
+> ago (on CRAN request), and everything seemed fine then. Now, however, 
+> R-devel produces an error message 
+> (https://www.r-project.org/nosvn/R.check/r-devel-windows-x86_64/DoE.base-00check.html):
+> 
+> Error in title(...) :
+>  ??conversion failure on 'Plot for rnorm.12., method = Lenth, ? = 0.05' 
+> in 'mbcsToSbcs': for ? (U+03B1)
+
+Yes, and your code contains
+
+      titel <- bquote(paste("Plot for ", paste(xnam), ", method = ", 
+.(method),
+      ", \U03B1 = ", .(alpha), sep=""))
+
+
+So please change this to plotmath as in the instance further above in 
+your code where you already wrote
+
+     titel <- as.expression(bquote("Plot for "*.(xnam)*", "*alpha == 
+.(alpha)))
+
+
+Best,
+Uwe Ligges
+
+
+
+> Calls: halfnormal ... <Anonymous> -> plot -> plot.default -> localTitle 
+> -> title
+> Execution halted
+> 
+> CRAN threaten to archive the package because of that error - so I would 
+> really appreciate help on finding out what I should do (apart from nasty 
+> things like writing alpha instead of using the greek letter).
+> 
+> The code in function halfnormal that creates the title in question looks 
+> as follows:
+> 
+>  ? ## added August 1 5 2014, modified Oct 17 2023
+>  ? if (is.null(titel)){
+>  ???? titel <- as.expression(bquote("Plot for "*.(xnam)*", "*alpha == 
+> .(alpha)))
+>  ???? dots$main <- titel
+>  ? }
+> 
+> The list dots is later used in "do.call(plotfun, dots)".
+> 
+> Any recommendations?
+> 
+> Thanks and regards,
+> Ulrike
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From u|r|ke@groemp|ng @end|ng |rom bht-ber||n@de  Tue Nov 14 17:29:59 2023
+From: u|r|ke@groemp|ng @end|ng |rom bht-ber||n@de (=?UTF-8?Q?Ulrike_Gr=C3=B6mping?=)
+Date: Tue, 14 Nov 2023 17:29:59 +0100
+Subject: [R-pkg-devel] 
+ Trouble with greek letter in figure title in R-devel
+In-Reply-To: <162009dd-4701-4780-9736-b5ffe421cf0a@statistik.tu-dortmund.de>
+References: <479d4edf-9eea-4f51-acb3-06d61ccd9fa5@bht-berlin.de>
+ <162009dd-4701-4780-9736-b5ffe421cf0a@statistik.tu-dortmund.de>
+Message-ID: <70d10e4e-84bc-4385-a1f8-8a6b8cf95040@bht-berlin.de>
+
+Thank you for spotting this, I should have found it myself :-(
+I suppose I don't get this error even from latest R-devel because of the 
+settings of my Windows system?
+
+Best, Ulrike
+
+Am 14.11.2023 um 17:16 schrieb Uwe Ligges:
+>
+>
+> On 14.11.2023 15:45, Ulrike Groemping wrote:
+>> Dear package developers,
+>>
+>> I am struggling with an error on R devel (all flavors) that I cannot 
+>> reproduce with a freshly installed R-devel on my machine: Function 
+>> halfnormal in package DoE.base places the greek letter alpha in the 
+>> title of a figure. I changed the code to using plotmath about a month 
+>> ago (on CRAN request), and everything seemed fine then. Now, however, 
+>> R-devel produces an error message 
+>> (https://www.r-project.org/nosvn/R.check/r-devel-windows-x86_64/DoE.base-00check.html):
+>>
+>> Error in title(...) :
+>> ???conversion failure on 'Plot for rnorm.12., method = Lenth, ? = 
+>> 0.05' in 'mbcsToSbcs': for ? (U+03B1)
+>
+> Yes, and your code contains
+>
+> ???? titel <- bquote(paste("Plot for ", paste(xnam), ", method = ", 
+> .(method),
+> ???? ", \U03B1 = ", .(alpha), sep=""))
+>
+>
+> So please change this to plotmath as in the instance further above in 
+> your code where you already wrote
+>
+> ??? titel <- as.expression(bquote("Plot for "*.(xnam)*", "*alpha == 
+> .(alpha)))
+>
+>
+> Best,
+> Uwe Ligges
+>
+>
+>
+>> Calls: halfnormal ... <Anonymous> -> plot -> plot.default -> 
+>> localTitle -> title
+>> Execution halted
+>>
+>> CRAN threaten to archive the package because of that error - so I 
+>> would really appreciate help on finding out what I should do (apart 
+>> from nasty things like writing alpha instead of using the greek letter).
+>>
+>> The code in function halfnormal that creates the title in question 
+>> looks as follows:
+>>
+>> ?? ## added August 1 5 2014, modified Oct 17 2023
+>> ?? if (is.null(titel)){
+>> ????? titel <- as.expression(bquote("Plot for "*.(xnam)*", "*alpha == 
+>> .(alpha)))
+>> ????? dots$main <- titel
+>> ?? }
+>>
+>> The list dots is later used in "do.call(plotfun, dots)".
+>>
+>> Any recommendations?
+>>
+>> Thanks and regards,
+>> Ulrike
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+-- 
+##############################################
+## Prof. Ulrike Groemping
+## FB II
+## BHT
+##############################################
+## prof.bht-berlin.de/groemping
+## Phone: +49(0)30 4504 5127
+## Fax:   +49(0)30 4504 66 5127
+## Home office: +49(0)30 394 04 863
+##############################################
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Tue Nov 14 17:57:44 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Tue, 14 Nov 2023 17:57:44 +0100
+Subject: [R-pkg-devel] 
+ Trouble with greek letter in figure title in R-devel
+In-Reply-To: <70d10e4e-84bc-4385-a1f8-8a6b8cf95040@bht-berlin.de>
+References: <479d4edf-9eea-4f51-acb3-06d61ccd9fa5@bht-berlin.de>
+ <162009dd-4701-4780-9736-b5ffe421cf0a@statistik.tu-dortmund.de>
+ <70d10e4e-84bc-4385-a1f8-8a6b8cf95040@bht-berlin.de>
+Message-ID: <d762794b-cc02-492d-811a-664f99c20571@statistik.tu-dortmund.de>
+
+Not sure if it is yet part of the --as-cran checks.
+But you can set the env var
+
+  _R_CHECK_MBCS_CONVERSION_FAILURE_=true
+
+Best,
+Uwe
+
+
+
+On 14.11.2023 17:29, Ulrike Gr?mping wrote:
+> Thank you for spotting this, I should have found it myself :-(
+> I suppose I don't get this error even from latest R-devel because of the 
+> settings of my Windows system?
+> 
+> Best, Ulrike
+> 
+> Am 14.11.2023 um 17:16 schrieb Uwe Ligges:
+>>
+>>
+>> On 14.11.2023 15:45, Ulrike Groemping wrote:
+>>> Dear package developers,
+>>>
+>>> I am struggling with an error on R devel (all flavors) that I cannot 
+>>> reproduce with a freshly installed R-devel on my machine: Function 
+>>> halfnormal in package DoE.base places the greek letter alpha in the 
+>>> title of a figure. I changed the code to using plotmath about a month 
+>>> ago (on CRAN request), and everything seemed fine then. Now, however, 
+>>> R-devel produces an error message 
+>>> (https://www.r-project.org/nosvn/R.check/r-devel-windows-x86_64/DoE.base-00check.html):
+>>>
+>>> Error in title(...) :
+>>> ???conversion failure on 'Plot for rnorm.12., method = Lenth, ? = 
+>>> 0.05' in 'mbcsToSbcs': for ? (U+03B1)
+>>
+>> Yes, and your code contains
+>>
+>> ???? titel <- bquote(paste("Plot for ", paste(xnam), ", method = ", 
+>> .(method),
+>> ???? ", \U03B1 = ", .(alpha), sep=""))
+>>
+>>
+>> So please change this to plotmath as in the instance further above in 
+>> your code where you already wrote
+>>
+>> ??? titel <- as.expression(bquote("Plot for "*.(xnam)*", "*alpha == 
+>> .(alpha)))
+>>
+>>
+>> Best,
+>> Uwe Ligges
+>>
+>>
+>>
+>>> Calls: halfnormal ... <Anonymous> -> plot -> plot.default -> 
+>>> localTitle -> title
+>>> Execution halted
+>>>
+>>> CRAN threaten to archive the package because of that error - so I 
+>>> would really appreciate help on finding out what I should do (apart 
+>>> from nasty things like writing alpha instead of using the greek letter).
+>>>
+>>> The code in function halfnormal that creates the title in question 
+>>> looks as follows:
+>>>
+>>> ?? ## added August 1 5 2014, modified Oct 17 2023
+>>> ?? if (is.null(titel)){
+>>> ????? titel <- as.expression(bquote("Plot for "*.(xnam)*", "*alpha == 
+>>> .(alpha)))
+>>> ????? dots$main <- titel
+>>> ?? }
+>>>
+>>> The list dots is later used in "do.call(plotfun, dots)".
+>>>
+>>> Any recommendations?
+>>>
+>>> Thanks and regards,
+>>> Ulrike
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+>
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Nov 14 20:01:56 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 14 Nov 2023 14:01:56 -0500
+Subject: [R-pkg-devel] 
+ Package submission issue - OMP reduction (flang-new)
+In-Reply-To: <4a4a04dd-dcd2-40fd-a273-0cbb5ade245b@gmail.com>
+References: <961109932.9036169.1699889985884.JavaMail.zimbra@u-bordeaux.fr>
+ <20231113211832.0159d227@Tarkus>
+ <4a4a04dd-dcd2-40fd-a273-0cbb5ade245b@gmail.com>
+Message-ID: <842c08a1-c966-4f5a-89a6-fdab974c0589@gmail.com>
+
+On 14/11/2023 9:38 a.m., Tomas Kalibera wrote:
+
+> I would definitely look for a work-around. In the end we want to give
+> users software that works, rather than something that doesn't, but
+> telling them, possibly with good evidence, that it is not our fault.
+
+Fortune nomination!
+
+
