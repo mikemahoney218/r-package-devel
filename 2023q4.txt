@@ -16760,3 +16760,149 @@ On 14/11/2023 9:38 a.m., Tomas Kalibera wrote:
 Fortune nomination!
 
 
+From @pyqqqd|@ @end|ng |rom y@hoo@com  Wed Nov 15 10:37:19 2023
+From: @pyqqqd|@ @end|ng |rom y@hoo@com (Michael Meyer)
+Date: Wed, 15 Nov 2023 09:37:19 +0000 (UTC)
+Subject: [R-pkg-devel] Virtual C++ functions
+References: <959008252.2197023.1700041039703.ref@mail.yahoo.com>
+Message-ID: <959008252.2197023.1700041039703@mail.yahoo.com>
+
+Greetings,
+Suppose I wanted to develop a package with C++ code that contains virtual functions which the package user should define.It's assumed that evaluation is expensive so we do not want to define these in R and then call these R-functions from C++.
+Is this a reasonable idea with a standard solution?Are there packages that do this?
+Thanks in advance for all answers,? 
+
+Michael Meyer
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Nov 15 14:44:56 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 15 Nov 2023 08:44:56 -0500
+Subject: [R-pkg-devel] Virtual C++ functions
+In-Reply-To: <959008252.2197023.1700041039703@mail.yahoo.com>
+References: <959008252.2197023.1700041039703.ref@mail.yahoo.com>
+ <959008252.2197023.1700041039703@mail.yahoo.com>
+Message-ID: <cc7659fb-5dea-485b-b3c3-3a5c0f6e4aee@gmail.com>
+
+On 15/11/2023 4:37 a.m., Michael Meyer via R-package-devel wrote:
+> Greetings,
+> Suppose I wanted to develop a package with C++ code that contains virtual functions which the package user should define.It's assumed that evaluation is expensive so we do not want to define these in R and then call these R-functions from C++.
+> Is this a reasonable idea with a standard solution?Are there packages that do this?
+> Thanks in advance for all answers,
+
+I think you would be better off having your package evaluate R 
+functions.  If that's too slow, the user could use Rcpp or hand 
+programming to put most of the computation into C++ or C code.
+
+It seems unlikely the overhead of passing the results from the user's 
+C++ code through R would be significant if the computations themselves 
+were slow.  On the other hand, the user has the opportunity of 
+prototyping in R, which may turn out to be fast enough.
+
+To get the prototyping possibility with your approach, you'd need to 
+write and maintain two interfaces:  C++ to C++ and C++ to R.
+
+One situation where this might be worth the trouble would be if you 
+expect the user's function to be fast, but your code needs to call it a 
+huge number of times, so the overhead adds up.
+
+Duncan Murdoch
+
+
+From @ergue|@@oko| @end|ng |rom gm@||@com  Wed Nov 15 14:54:03 2023
+From: @ergue|@@oko| @end|ng |rom gm@||@com (Serguei Sokol)
+Date: Wed, 15 Nov 2023 14:54:03 +0100
+Subject: [R-pkg-devel] Virtual C++ functions
+In-Reply-To: <959008252.2197023.1700041039703@mail.yahoo.com>
+References: <959008252.2197023.1700041039703.ref@mail.yahoo.com>
+ <959008252.2197023.1700041039703@mail.yahoo.com>
+Message-ID: <757f9590-90de-4b10-87e1-50e2de0f4116@gmail.com>
+
+Le 15/11/2023 ? 10:37, Michael Meyer via R-package-devel a ?crit?:
+> Greetings,
+> Suppose I wanted to develop a package with C++ code that contains virtual functions which the package user should define.It's assumed that evaluation is expensive so we do not want to define these in R and then call these R-functions from C++.
+Hm, virtual C++ functions are defined at compilation time. Their binding 
+is done at runtime but at compilation time they must be already defined. 
+So, how a package user (who already installed and therefor compiled your 
+package) could define them? Moreover in R?
+Or may be you mean that a user import your C++ code and define his own 
+derived function based on your virtual functions in his C++ code?
+Or, another option, you call "virtual function" what is usually called 
+"callback function" like e.g. a function searching for roots of any user 
+defined function and taking it as a parameter. This latter is a callback 
+function.
+
+Could you precise what you mean by "virtual function" and "package user 
+should define"?
+
+Best,
+Serguei.
+
+> Is this a reasonable idea with a standard solution?Are there packages that do this?
+> Thanks in advance for all answers,
+> 
+> Michael Meyer
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From |uc@r @end|ng |rom |edor@project@org  Wed Nov 15 15:29:35 2023
+From: |uc@r @end|ng |rom |edor@project@org (=?UTF-8?Q?I=C3=B1aki_Ucar?=)
+Date: Wed, 15 Nov 2023 15:29:35 +0100
+Subject: [R-pkg-devel] Virtual C++ functions
+In-Reply-To: <959008252.2197023.1700041039703@mail.yahoo.com>
+References: <959008252.2197023.1700041039703.ref@mail.yahoo.com>
+ <959008252.2197023.1700041039703@mail.yahoo.com>
+Message-ID: <CALEXWq2-bKFYrJP=RNOHuqq1=faQds8j1Kq7yym_GCC0Ffvj+Q@mail.gmail.com>
+
+On Wed, 15 Nov 2023 at 12:45, Michael Meyer via R-package-devel
+<r-package-devel at r-project.org> wrote:
+>
+> Greetings,
+> Suppose I wanted to develop a package with C++ code that contains virtual functions which the package user should define.It's assumed that evaluation is expensive so we do not want to define these in R and then call these R-functions from C++.
+> Is this a reasonable idea with a standard solution?Are there packages that do this?
+> Thanks in advance for all answers,
+
+Not sure if I understand what you are after, but the small
+RcppXPtrUtils package may be helpful. It provides two things: a
+utility to compile and wrap a C++ function provided by the user, and
+another one to check that the signature is correct. See:
+https://gallery.rcpp.org/articles/passing-cpp-function-pointers-rcppxptrutils/
+
+-- 
+I?aki ?car
+
+
+From henr|k@@|oot @end|ng |rom gm@||@com  Wed Nov 15 12:58:36 2023
+From: henr|k@@|oot @end|ng |rom gm@||@com (Henrik Sloot)
+Date: Wed, 15 Nov 2023 12:58:36 +0100
+Subject: [R-pkg-devel] Virtual C++ functions
+In-Reply-To: <959008252.2197023.1700041039703@mail.yahoo.com>
+References: <959008252.2197023.1700041039703.ref@mail.yahoo.com>
+ <959008252.2197023.1700041039703@mail.yahoo.com>
+Message-ID: <8AA7607C-4719-4AB0-A2AB-F54881902F74@gmail.com>
+
+I believe RcppNumerical is doing this.
+
+Best
+Henrik
+
+> Am 15.11.2023 um 10:37 schrieb Michael Meyer via R-package-devel <r-package-devel at r-project.org>:
+> 
+> Greetings,
+> Suppose I wanted to develop a package with C++ code that contains virtual functions which the package user should define.It's assumed that evaluation is expensive so we do not want to define these in R and then call these R-functions from C++.
+> Is this a reasonable idea with a standard solution?Are there packages that do this?
+> Thanks in advance for all answers,  
+> 
+> Michael Meyer
+> [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
