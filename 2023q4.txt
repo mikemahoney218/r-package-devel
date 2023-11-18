@@ -16906,3 +16906,384 @@ Henrik
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From @pyqqqd|@ @end|ng |rom y@hoo@com  Thu Nov 16 13:32:12 2023
+From: @pyqqqd|@ @end|ng |rom y@hoo@com (Michael Meyer)
+Date: Thu, 16 Nov 2023 12:32:12 +0000 (UTC)
+Subject: [R-pkg-devel] Virtual C++ functions
+References: <1354287342.2532036.1700137932826.ref@mail.yahoo.com>
+Message-ID: <1354287342.2532036.1700137932826@mail.yahoo.com>
+
+Thanks for all replies. I think the idea of a callback and link to RcppXPtrUtils is pointing me in the right direction.
+Michael Meyer
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Thu Nov 16 14:57:45 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 16 Nov 2023 07:57:45 -0600
+Subject: [R-pkg-devel] Can -mmacosx-version-min be raised to 10.15 ?
+Message-ID: <25942.8153.720793.564303@rob.eddelbuettel.com>
+
+
+Hi Simon,
+
+We use C++20 'inside' our library and C++17 in the API. Part of our C++17 use
+is now expanding to std::filesystem whose availability is dependent on the
+implementation. 
+
+The compiler tells us (in a compilation using -mmacosx-version-min=10.14)
+that the features we want are only available with 10.15.
+
+Would we be allowed to use this value of '10.15' on CRAN?
+
+Thanks as always,  Dirk
+
+
+[1] https://github.com/TileDB-Inc/TileDB/actions/runs/6882271269/job/18720444943?pr=4518#step:7:185
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Thu Nov 16 21:35:01 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Fri, 17 Nov 2023 09:35:01 +1300
+Subject: [R-pkg-devel] Can -mmacosx-version-min be raised to 10.15 ?
+In-Reply-To: <25942.8153.720793.564303@rob.eddelbuettel.com>
+References: <25942.8153.720793.564303@rob.eddelbuettel.com>
+Message-ID: <AC4D08AC-EA08-4A01-B4F5-C50EA92273F5@R-project.org>
+
+Dirk,
+
+can you clarify where the flags come from? The current CRAN builds (big-sur-x86_64 and big-sur-arm64) use
+
+export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX11.sdk
+export MACOSX_DEPLOYMENT_TARGET=11.0
+
+so the lowest target is 11.0 and it is no longer forced it in the flags (so that users can more easily choose their desired targets).
+
+Cheers,
+Simon
+
+
+
+> On 17/11/2023, at 2:57 AM, Dirk Eddelbuettel <edd at debian.org> wrote:
+> 
+> 
+> Hi Simon,
+> 
+> We use C++20 'inside' our library and C++17 in the API. Part of our C++17 use
+> is now expanding to std::filesystem whose availability is dependent on the
+> implementation. 
+> 
+> The compiler tells us (in a compilation using -mmacosx-version-min=10.14)
+> that the features we want are only available with 10.15.
+> 
+> Would we be allowed to use this value of '10.15' on CRAN?
+> 
+> Thanks as always,  Dirk
+> 
+> 
+> [1] https://github.com/TileDB-Inc/TileDB/actions/runs/6882271269/job/18720444943?pr=4518#step:7:185
+> 
+> -- 
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From edd @end|ng |rom deb|@n@org  Thu Nov 16 22:28:44 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 16 Nov 2023 15:28:44 -0600
+Subject: [R-pkg-devel] Can -mmacosx-version-min be raised to 10.15 ?
+In-Reply-To: <AC4D08AC-EA08-4A01-B4F5-C50EA92273F5@R-project.org>
+References: <25942.8153.720793.564303@rob.eddelbuettel.com>
+ <AC4D08AC-EA08-4A01-B4F5-C50EA92273F5@R-project.org>
+Message-ID: <25942.35212.882710.755303@rob.eddelbuettel.com>
+
+
+Simon,
+
+On 17 November 2023 at 09:35, Simon Urbanek wrote:
+| can you clarify where the flags come from? The current CRAN builds (big-sur-x86_64 and big-sur-arm64) use
+| 
+| export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX11.sdk
+| export MACOSX_DEPLOYMENT_TARGET=11.0
+| 
+| so the lowest target is 11.0 and it is no longer forced it in the flags (so that users can more easily choose their desired targets).
+
+Beautiful, solves our issue.  Was that announced at some point? If so, where?
+
+For reference the R-on-macOS FAQ I consulted still talks about 10.13 at
+https://cran.r-project.org/bin/macosx/RMacOSX-FAQ.html#Installation-of-source-packages
+
+  CC = clang -mmacosx-version-min=10.13
+  CXX = clang++ -mmacosx-version-min=10.13 -std=gnu++14
+  FC = gfortran -mmacosx-version-min=10.13
+  OBJC = clang -mmacosx-version-min=10.13
+  OBJCXX = clang++ -mmacosx-version-min=10.13
+
+so someone may want to refresh this. It is what I consulted as relevant info.
+
+Thanks, Dirk
+
+| 
+| Cheers,
+| Simon
+| 
+| 
+| 
+| > On 17/11/2023, at 2:57 AM, Dirk Eddelbuettel <edd at debian.org> wrote:
+| > 
+| > 
+| > Hi Simon,
+| > 
+| > We use C++20 'inside' our library and C++17 in the API. Part of our C++17 use
+| > is now expanding to std::filesystem whose availability is dependent on the
+| > implementation. 
+| > 
+| > The compiler tells us (in a compilation using -mmacosx-version-min=10.14)
+| > that the features we want are only available with 10.15.
+| > 
+| > Would we be allowed to use this value of '10.15' on CRAN?
+| > 
+| > Thanks as always,  Dirk
+| > 
+| > 
+| > [1] https://github.com/TileDB-Inc/TileDB/actions/runs/6882271269/job/18720444943?pr=4518#step:7:185
+| > 
+| > -- 
+| > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+| > 
+| > ______________________________________________
+| > R-package-devel at r-project.org mailing list
+| > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+| > 
+| 
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Thu Nov 16 22:43:00 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Fri, 17 Nov 2023 10:43:00 +1300
+Subject: [R-pkg-devel] Can -mmacosx-version-min be raised to 10.15 ?
+In-Reply-To: <25942.35212.882710.755303@rob.eddelbuettel.com>
+References: <25942.8153.720793.564303@rob.eddelbuettel.com>
+ <AC4D08AC-EA08-4A01-B4F5-C50EA92273F5@R-project.org>
+ <25942.35212.882710.755303@rob.eddelbuettel.com>
+Message-ID: <85E9AEED-33EC-416F-B3A1-7783D7DA7E67@R-project.org>
+
+Dirk,
+
+
+> On 17/11/2023, at 10:28 AM, Dirk Eddelbuettel <edd at debian.org> wrote:
+> 
+> 
+> Simon,
+> 
+> On 17 November 2023 at 09:35, Simon Urbanek wrote:
+> | can you clarify where the flags come from? The current CRAN builds (big-sur-x86_64 and big-sur-arm64) use
+> | 
+> | export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX11.sdk
+> | export MACOSX_DEPLOYMENT_TARGET=11.0
+> | 
+> | so the lowest target is 11.0 and it is no longer forced it in the flags (so that users can more easily choose their desired targets).
+> 
+> Beautiful, solves our issue.  Was that announced at some point? If so, where?
+> 
+
+I don't see what is there to announce as the packages should be simply using flags passed from R and that process did not change.
+
+That said, the binary target for CRAN has been announced on this list as part of the big-sur build announcement:
+https://stat.ethz.ch/pipermail/r-sig-mac/2023-April/014731.html
+
+
+> For reference the R-on-macOS FAQ I consulted still talks about 10.13 at
+> https://cran.r-project.org/bin/macosx/RMacOSX-FAQ.html#Installation-of-source-packages
+> 
+>  CC = clang -mmacosx-version-min=10.13
+>  CXX = clang++ -mmacosx-version-min=10.13 -std=gnu++14
+>  FC = gfortran -mmacosx-version-min=10.13
+>  OBJC = clang -mmacosx-version-min=10.13
+>  OBJCXX = clang++ -mmacosx-version-min=10.13
+> 
+> so someone may want to refresh this. It is what I consulted as relevant info.
+> 
+
+It says "Look at file /Library/Frameworks/R.framework/Resources/etc/Makeconf" so it is just an example that will vary by build. For example big-sur-arm64 will give you
+
+$ grep -E '^(CC|CXX|FC|OBJC|OBJCXX) ' /Library/Frameworks/R.framework/Resources/etc/Makeconf
+CC = clang -arch arm64
+CXX = clang++ -arch arm64 -std=gnu++14
+FC = /opt/R/arm64/bin/gfortran -mtune=native
+OBJC = clang -arch arm64
+OBJCXX = clang++ -arch arm64
+
+Again, this is just an example, no one should be entering such flags by hand - that's why they are in Makeconf so packages can use them without worrying about the values (see R-exts 1.2: https://cran.r-project.org/doc/manuals/R-exts.html#Configure-and-cleanup for details).
+
+Cheers,
+Simon
+
+
+
+> Thanks, Dirk
+> 
+> | 
+> | Cheers,
+> | Simon
+> | 
+> | 
+> | 
+> | > On 17/11/2023, at 2:57 AM, Dirk Eddelbuettel <edd at debian.org> wrote:
+> | > 
+> | > 
+> | > Hi Simon,
+> | > 
+> | > We use C++20 'inside' our library and C++17 in the API. Part of our C++17 use
+> | > is now expanding to std::filesystem whose availability is dependent on the
+> | > implementation. 
+> | > 
+> | > The compiler tells us (in a compilation using -mmacosx-version-min=10.14)
+> | > that the features we want are only available with 10.15.
+> | > 
+> | > Would we be allowed to use this value of '10.15' on CRAN?
+> | > 
+> | > Thanks as always,  Dirk
+> | > 
+> | > 
+> | > [1] https://github.com/TileDB-Inc/TileDB/actions/runs/6882271269/job/18720444943?pr=4518#step:7:185
+> | > 
+> | > -- 
+> | > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> | > 
+> | > ______________________________________________
+> | > R-package-devel at r-project.org mailing list
+> | > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> | > 
+> | 
+> 
+> -- 
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> 
+
+
+From edd @end|ng |rom deb|@n@org  Thu Nov 16 22:54:33 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 16 Nov 2023 15:54:33 -0600
+Subject: [R-pkg-devel] Can -mmacosx-version-min be raised to 10.15 ?
+In-Reply-To: <85E9AEED-33EC-416F-B3A1-7783D7DA7E67@R-project.org>
+References: <25942.8153.720793.564303@rob.eddelbuettel.com>
+ <AC4D08AC-EA08-4A01-B4F5-C50EA92273F5@R-project.org>
+ <25942.35212.882710.755303@rob.eddelbuettel.com>
+ <85E9AEED-33EC-416F-B3A1-7783D7DA7E67@R-project.org>
+Message-ID: <25942.36761.966537.856936@rob.eddelbuettel.com>
+
+
+Simon,
+
+On 17 November 2023 at 10:43, Simon Urbanek wrote:
+| > On 17/11/2023, at 10:28 AM, Dirk Eddelbuettel <edd at debian.org> wrote:
+| > On 17 November 2023 at 09:35, Simon Urbanek wrote:
+| > | can you clarify where the flags come from? The current CRAN builds (big-sur-x86_64 and big-sur-arm64) use
+| > | 
+| > | export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX11.sdk
+| > | export MACOSX_DEPLOYMENT_TARGET=11.0
+| > | 
+| > | so the lowest target is 11.0 and it is no longer forced it in the flags (so that users can more easily choose their desired targets).
+| > 
+| > Beautiful, solves our issue.  Was that announced at some point? If so, where?
+| > 
+| 
+| I don't see what is there to announce as the packages should be simply using flags passed from R and that process did not change.
+| 
+| That said, the binary target for CRAN has been announced on this list as part of the big-sur build announcement:
+| https://stat.ethz.ch/pipermail/r-sig-mac/2023-April/014731.html
+
+I don't own or (directly) use macOS hardware so I am not on that list. 
+ 
+| > For reference the R-on-macOS FAQ I consulted still talks about 10.13 at
+| > https://cran.r-project.org/bin/macosx/RMacOSX-FAQ.html#Installation-of-source-packages
+| > 
+| >  CC = clang -mmacosx-version-min=10.13
+| >  CXX = clang++ -mmacosx-version-min=10.13 -std=gnu++14
+| >  FC = gfortran -mmacosx-version-min=10.13
+| >  OBJC = clang -mmacosx-version-min=10.13
+| >  OBJCXX = clang++ -mmacosx-version-min=10.13
+| > 
+| > so someone may want to refresh this. It is what I consulted as relevant info.
+| > 
+| 
+| It says "Look at file /Library/Frameworks/R.framework/Resources/etc/Makeconf" so it is just an example that will vary by build. For example big-sur-arm64 will give you
+| 
+| $ grep -E '^(CC|CXX|FC|OBJC|OBJCXX) ' /Library/Frameworks/R.framework/Resources/etc/Makeconf
+| CC = clang -arch arm64
+| CXX = clang++ -arch arm64 -std=gnu++14
+| FC = /opt/R/arm64/bin/gfortran -mtune=native
+| OBJC = clang -arch arm64
+| OBJCXX = clang++ -arch arm64
+| 
+| Again, this is just an example, no one should be entering such flags by hand - that's why they are in Makeconf so packages can use them without worrying about the values (see R-exts 1.2: https://cran.r-project.org/doc/manuals/R-exts.html#Configure-and-cleanup for details).
+
+I recommend you spend a moment with for example the (rather handy) search
+capability of GitHub to search through the 'cran' organisation mirroring the
+repo.  The package I maintain is far from being the only one setting the flag.
+
+https://github.com/search?q=org%3Acran+mmacosx-version-min&type=code
+
+Best, Dirk
+
+| Cheers,
+| Simon
+| 
+| 
+| 
+| > Thanks, Dirk
+| > 
+| > | 
+| > | Cheers,
+| > | Simon
+| > | 
+| > | 
+| > | 
+| > | > On 17/11/2023, at 2:57 AM, Dirk Eddelbuettel <edd at debian.org> wrote:
+| > | > 
+| > | > 
+| > | > Hi Simon,
+| > | > 
+| > | > We use C++20 'inside' our library and C++17 in the API. Part of our C++17 use
+| > | > is now expanding to std::filesystem whose availability is dependent on the
+| > | > implementation. 
+| > | > 
+| > | > The compiler tells us (in a compilation using -mmacosx-version-min=10.14)
+| > | > that the features we want are only available with 10.15.
+| > | > 
+| > | > Would we be allowed to use this value of '10.15' on CRAN?
+| > | > 
+| > | > Thanks as always,  Dirk
+| > | > 
+| > | > 
+| > | > [1] https://github.com/TileDB-Inc/TileDB/actions/runs/6882271269/job/18720444943?pr=4518#step:7:185
+| > | > 
+| > | > -- 
+| > | > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+| > | > 
+| > | > ______________________________________________
+| > | > R-package-devel at r-project.org mailing list
+| > | > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+| > | > 
+| > | 
+| > 
+| > -- 
+| > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+| > 
+| 
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
