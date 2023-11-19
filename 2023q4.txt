@@ -17287,3 +17287,302 @@ Best, Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Nov 17 14:05:42 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 17 Nov 2023 16:05:42 +0300
+Subject: [R-pkg-devel] Package submission fail
+In-Reply-To: <CABuTGP5OCmo_r5RmPwTAvzTwRe_sRk5ft-00y-hcD1SQiqpfnA@mail.gmail.com>
+References: <CABuTGP7cqEZQqPWaLKfn=78LqzF63kdWV+joCq+jZw1MdhMTEw@mail.gmail.com>
+ <20231113164658.50dd9648@arachnoid>
+ <25938.10654.714235.267977@rob.eddelbuettel.com>
+ <CABuTGP5OCmo_r5RmPwTAvzTwRe_sRk5ft-00y-hcD1SQiqpfnA@mail.gmail.com>
+Message-ID: <20231117160542.7919acb2@parabola>
+
+? Fri, 17 Nov 2023 12:19:21 +0200
+Christiaan Pieterse <pietie.cjp.1908 at gmail.com> ?????:
+
+> #' # Set the working directory to a temporary directory
+> #' setwd(tempdir())
+
+> #' # Clean up the temporary directory
+> #' unlink(temp_dir, recursive = TRUE)
+
+This code looks like it shouldn't be working as written. I don't see
+the variable temp_dir being defined anywhere, so it should have failed
+with Error: object 'temp_dir' not found. Have you run roxygenise() in
+order to generate the man/*.Rd files (which is what R cares about)?
+
+It's best to avoid changing the global state of the application,
+including the current directory. When you have to setwd(), do it the
+following way:
+
+oldwd. <- setwd(...)
+# do the thing
+setwd(oldwd.)
+
+In my opinion, it's better to provide an argument for your function to
+let the user specify the destination file. This would let the user say
+IOPS(outfile = 'Combined_Results_2.xlsx') without overwriting the
+Combined_Results.xlsx that already exists or even outfile =
+file.path(tempdir(), 'whatever.xlsx') to put the file into another
+directory. I think you will also need to remove that file at the end of
+your example. (Cleaning the whole tempdir(), on the other hand, could
+be bad for the user.)
+
+> * checking examples ... [26s] NOTE
+> Examples with CPU (user + system) or elapsed time > 5s
+>       user system elapsed
+> IOPS 15.23   2.89   22.41
+
+22 seconds is much better!
+
+How much time is spent in read.csv(system.file("extdata",
+"ExampleTradeData.csv", package = "iopspackage"))? Can you resave it
+under data/*.rda, load it using data() and save some time there?
+
+If you cannot squeeze your data even further, it may help to profile
+the example(IOPS) run [1] and try to find faster alternatives for the
+parts of the code that take the most time. It's not exactly trivial
+(make sure to read both WRE 3.2 and help(Rprof)), but it should be
+possible to improve your time.
+
+-- 
+Best regards,
+Ivan
+
+[1]
+https://cran.r-project.org/doc/manuals/R-exts.html#Profiling-R-code-for-speed
+
+
+From edd @end|ng |rom deb|@n@org  Fri Nov 17 15:17:49 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 17 Nov 2023 08:17:49 -0600
+Subject: [R-pkg-devel] Can -mmacosx-version-min be raised to 10.15 ?
+In-Reply-To: <25942.36761.966537.856936@rob.eddelbuettel.com>
+References: <25942.8153.720793.564303@rob.eddelbuettel.com>
+ <AC4D08AC-EA08-4A01-B4F5-C50EA92273F5@R-project.org>
+ <25942.35212.882710.755303@rob.eddelbuettel.com>
+ <85E9AEED-33EC-416F-B3A1-7783D7DA7E67@R-project.org>
+ <25942.36761.966537.856936@rob.eddelbuettel.com>
+Message-ID: <25943.30221.622398.577279@rob.eddelbuettel.com>
+
+
+Simon,
+
+One more thing: An alert reader pointed out to me that macOS-oldrel has
+
+ r-oldrel-macos-x86_64	r-oldrel	macOS	x86_64	macOS 10.13.6 (17G11023)
+
+in the table at https://cran.r-project.org/web/checks/check_flavors.html. So
+this seems to mesh with what the R-on-macOS FAQ says, and switching to 11.0
+would appear to at least loose r-oldrel-macos-x86_64 until April, no?
+
+Best,  Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From p|et|e@cjp@1908 @end|ng |rom gm@||@com  Fri Nov 17 11:19:21 2023
+From: p|et|e@cjp@1908 @end|ng |rom gm@||@com (Christiaan Pieterse)
+Date: Fri, 17 Nov 2023 12:19:21 +0200
+Subject: [R-pkg-devel] Package submission fail
+In-Reply-To: <25938.10654.714235.267977@rob.eddelbuettel.com>
+References: <CABuTGP7cqEZQqPWaLKfn=78LqzF63kdWV+joCq+jZw1MdhMTEw@mail.gmail.com>
+ <20231113164658.50dd9648@arachnoid>
+ <25938.10654.714235.267977@rob.eddelbuettel.com>
+Message-ID: <CABuTGP5OCmo_r5RmPwTAvzTwRe_sRk5ft-00y-hcD1SQiqpfnA@mail.gmail.com>
+
+Hi all, thank you for your feedback and help! I apologise for the big
+attachment.
+
+I have made the changes you suggested but am still encountering some of the
+same notes, If you do not mind to assist me again I would greatly
+appreciate!
+
+I reduced the example file to a 3 KB file, hoping that it would reduce my
+runtime, but I still received this note:
+* checking examples ... [26s] NOTE
+Examples with CPU (user + system) or elapsed time > 5s
+      user system elapsed
+IOPS 15.23   2.89   22.41
+Is there any other way to reduce this time? I have gone through my code and
+can't find any areas to change that will help this.
+
+Then the 2nd and 3rd notes relate to the example and its outputs. I do not
+know how to fix this.
+* checking for non-standard things in the check directory ... NOTE
+Found the following files/directories:
+  'Combined_Results.csv' 'Combined_Results.xlsx'
+* checking for detritus in the temp directory ... NOTE
+Found the following files/directories:
+  'lastMiKTeXException'
+
+I have changed my code to include the tempdir() as suggested before but it
+doesn't seem to work. I then tried to use the \donttest{} method also
+suggested before. I don't know if I am doing this wrong.
+Here is my updated example code:
+
+#' @examples
+#' \donttest{
+#'
+#' # Set the working directory to a temporary directory
+#' setwd(tempdir())
+#'
+#' # Load the example data
+#' ExampleTradeData <- read.csv(system.file("extdata",
+"ExampleTradeData.csv", package = "iopspackage"))
+#'
+#'
+#' # Then use it in your function
+#' IOPS(
+#'   CountryCode = 710,
+#'   tradeData = ExampleTradeData,
+#'   ComplexMethod = "reflections",
+#'   iterCompl = 5,
+#'   GVCMapping = NULL,
+#'   tradedigit = 6
+#' )
+#'
+#' # Clean up the temporary directory
+#' unlink(temp_dir, recursive = TRUE)
+#' }
+#'
+
+Any assistance would be greatly appreciated
+Christiaan
+
+On Mon, 13 Nov 2023 at 15:50, Dirk Eddelbuettel <edd at debian.org> wrote:
+
+>
+> On 13 November 2023 at 16:46, Ivan Krylov wrote:
+> | Hello Christiaan and welcome to R-package-devel!
+>
+> Seconded but PLEASE do not send large attachments to the list and all its
+> subscriber. Point us to your code repository, you will like get a kind
+> response from a volunteer or two peeking at it.
+>
+> Dirk
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+
+	[[alternative HTML version deleted]]
+
+
+From ggene@|ogyp@ck@ge @end|ng |rom gm@||@com  Fri Nov 17 15:16:27 2023
+From: ggene@|ogyp@ck@ge @end|ng |rom gm@||@com (Package Maintainer)
+Date: Fri, 17 Nov 2023 14:16:27 +0000
+Subject: [R-pkg-devel] Conversion failure in 'mbcsToSbcs'
+Message-ID: <CAA8crwe=Ahry5kf_x6P1HXJ5coAZRfZJyv=arJUhVq0nm1khDA@mail.gmail.com>
+
+Hello:
+
+About three weeks ago, I received a message that a CRAN package I maintain
+(ggenealogy) had issues with "Unicode chars not available to pdf()".
+
+As shown here
+<https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-debian-clang/ggenealogy-00check.html>,
+it seems ERRORs occur when building the vignette, such as:
+
+1) conversion failure on 'Lubom?r Kub??ek' in 'mbcsToSbcs': for ? (U+010D)
+2) conversion failure on 'Anders ?gren' in 'mbcsToSbcs': for ? (U+00C5)
+
+I have attempted to add lines such as:
+
+1) pdf.options(encoding='ISOLatin2.enc') to the vignettes/ggenealogy.Rnw
+file
+2) set_null_device("cairo") to the vignettes/ggenealogy.Rnw file (this
+gives me a "could not find function "set_null_device"" ERROR)
+
+I have been a bit stuck on how to resolve these new issues. A few days ago,
+I noticed my package was removed from CRAN before the stated deadline AoE
+(Anywhere on Earth), and so I decided to upload all changes I had made up
+until that point into a new ggenealogy_1.0.2.tar.gz file to the CRAN
+submission website. However, it seems the problem remain, and so I'm now
+reaching out to the list-serve to see if this may help me resolve the
+issues in a timely manner.
+
+Thank you for your patience and guidance.
+
+Kind regards,
+LAR
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Nov 17 16:55:57 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 17 Nov 2023 18:55:57 +0300
+Subject: [R-pkg-devel] Conversion failure in 'mbcsToSbcs'
+In-Reply-To: <CAA8crwe=Ahry5kf_x6P1HXJ5coAZRfZJyv=arJUhVq0nm1khDA@mail.gmail.com>
+References: <CAA8crwe=Ahry5kf_x6P1HXJ5coAZRfZJyv=arJUhVq0nm1khDA@mail.gmail.com>
+Message-ID: <20231117185557.7ab22a8d@arachnoid>
+
+Hello!
+
+? Fri, 17 Nov 2023 14:16:27 +0000
+Package Maintainer <ggenealogypackage at gmail.com> ?????:
+
+> 2) set_null_device("cairo") to the vignettes/ggenealogy.Rnw file (this
+> gives me a "could not find function "set_null_device"" ERROR)
+
+I don't think this function from the cowplot package would have helped.
+You are compiling a LaTeX vignette, so you need to produce a PDF plot
+to include in the rendered PDF vignette.
+
+> 1) pdf.options(encoding='ISOLatin2.enc') to the
+> vignettes/ggenealogy.Rnw file
+
+Something like this should help. Here's how I can reproduce the problem
+on latest R-devel:
+
+Sys.setenv('_R_CHECK_MBCS_CONVERSION_FAILURE_' = 'TRUE')
+pdf()
+graphics::strwidth('Lubom?r Kub??ek', "inches")
+# Error in graphics::strwidth("Lubom?r Kub??ek", "inches") :
+#   conversion failure on 'Lubom?r Kub??ek' in 'mbcsToSbcs': for ?
+#   (U+00ED)
+
+Notably, the error is absent if I either call
+pdf.options(encoding='ISOLatin2.enc') before pdf() or replace pdf()
+with the better-Unicode-equipped cairo_pdf().
+
+As a workaround, you could use the latter device in your vignette by
+following section "Custom Graphics Devices" of help(RweaveLatex) (or
+section 4.1.5 "Graphics devices" of the Sweave vignette):
+
+<<results=hide,echo=FALSE>>=
+my.Swd <- function(name, width, height, ...)
+ grDevices::cairo_pdf(
+  filename = paste(name, "pdf", sep = "."),
+  width = width, height = height
+ )
+@
+\SweaveOpts{grdevice=my.Swd,pdf=FALSE}
+
+With this in the document, the following chunk doesn't crash
+_R_CHECK_MBCS_CONVERSION_FAILURE_=TRUE R-devel CMD Sweave:
+
+<<fig=TRUE>>=
+# NB: fig=TRUE must be set, otherwise R calls pdf() with default options
+graphics::strwidth('Lubom?r Kub??ek', "inches")
+@
+
+So why doesn't it help to call pdf.options() in a Sweave chunk? My
+guess is that's too late for Sweave to pick it up by the time it's
+weaving a vignette, but RweaveLatex presents an alternative way of
+setting the option:
+
+\SweaveOpts{pdf.encoding = ISOLatin2.enc}
+
+With this in the vignette, my previous example also avoids the crash.
+
+Good luck!
+
+-- 
+Best regards,
+Ivan
+
+
