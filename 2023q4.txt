@@ -17586,3 +17586,904 @@ Best regards,
 Ivan
 
 
+From @@eb@@dow@k| @end|ng |rom gm@||@com  Fri Nov 17 23:08:13 2023
+From: @@eb@@dow@k| @end|ng |rom gm@||@com (Adam)
+Date: Fri, 17 Nov 2023 17:08:13 -0500
+Subject: [R-pkg-devel] Cryptic error on Windows but not Debian
+Message-ID: <CAFG+KzX_ST5jsU_yDxw==kzK+0YA8LVO31DC3158pc2ZFWCmeA@mail.gmail.com>
+
+I pass on Debian but have an ERROR on Windows dev. version of R. I'm
+confused for 2 reasons:
+
+1. The example should not be running in the first place, as it has
+@examplesIf megamation:::mm_has_creds(), which should be FALSE for CRAN (it
+depends on env. variables)
+
+2. I see the example printed twice with strange formatting?
+
+Running examples in 'megamation-Ex.R' failed
+The error most likely occurred in:
+
+> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+> ### Name: mm_get
+> ### Title: Get data
+> ### Aliases: mm_get
+>
+> ### ** Examples
+>
+> ## Don't show:
+> if (megamation:::mm_has_creds()) (if (getRversion() >= "3.4") withAutoprint else force)({ # examplesIf
++ ## End(Don't show)
++ # Get all work orders from Jan. 2023 containing trades ADMIN and IT:
++
++ # First create a Date-type vector
++ jan_2023 <- seq.Date(
++   as.Date("2023-01-01"),
++   as.Date("2023-01-31"),
++   by = "day"
++ )
++
++ # Then prefix the trade values with the "containing" modifier "[]"
++ # since trade is a list column in the work order table
++ admin_and_it <- c("[]ADMIN", "[]IT")
++
++ mm_get("workorder", date = jan_2023, trade = admin_and_it)
++ ## Don't show:
++ }) # examplesIf
+> jan_2023 <- seq.Date(as.Date("2023-01-01"), as.Date("2023-01-31"), by = "day")
+> admin_and_it <- c("[]ADMIN", "[]IT")
+> mm_get("workorder", date = jan_2023, trade = admin_and_it)
+Error in `req_perform()`:
+! Failed to parse error body with method defined in `req_error()`.
+Caused by error in `httr2::resp_body_json()`:
+! Unexpected content type "text/html".
+? Expecting type "application/json" or suffix "json".
+
+
+Best,
+Adam
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sat Nov 18 18:35:28 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sat, 18 Nov 2023 20:35:28 +0300
+Subject: [R-pkg-devel] Cryptic error on Windows but not Debian
+In-Reply-To: <CAFG+KzX_ST5jsU_yDxw==kzK+0YA8LVO31DC3158pc2ZFWCmeA@mail.gmail.com>
+References: <CAFG+KzX_ST5jsU_yDxw==kzK+0YA8LVO31DC3158pc2ZFWCmeA@mail.gmail.com>
+Message-ID: <20231118202806.1f7006a1@Tarkus>
+
+? Fri, 17 Nov 2023 17:08:13 -0500
+Adam <asebsadowski at gmail.com> ?????:
+
+> 1. The example should not be running in the first place, as it has
+> @examplesIf megamation:::mm_has_creds(), which should be FALSE for
+> CRAN (it depends on env. variables)
+
+The tarball I have fished from CRAN says version 0.2.0, but your GitHub
+repo <https://github.com/asadow/megamation/> says version 0.1.0.
+(For best results, help us to help you by showing the source code.) Have
+you submitted this package to CRAN before? Did it previously contain a
+test that ran mm_authorize(overwrite = TRUE)?
+
+This is incredibly weird, but since your examples don't seem to run
+Sys.setenv() and have never ran mm_authorize(), my only low-probability
+guess is that the .Renviron changes from mm_authorize(overwrite = TRUE)
+in your tests/testthat/test-authorize.R turned out to persist from the
+check run of the previous version of your package.
+
+It may be a better idea to make use of tools::R_user_dir() in
+mm_authorize() and the rest of the package (and to be much more careful
+when unit-testing this function: changing user files and other global
+state in tests and examples is against CRAN policy) and leave
+~/.Renviron for the user to edit.
+
+> 2. I see the example printed twice with strange formatting?
+
+This is how @examplesIf works: it wraps your code in if (condition)
+withAutoprint { your code }. The first time is R echoing the source
+code back; the second time is R printing every line of the
+withAutoprint(...) code block before it's executed. withAutoprint helps
+you see the exact line where your example fails; otherwise you'd see
+the whole block of code start to execute and then fail somewhere.
+
+-- 
+Best regards,
+Ivan
+
+
+From @@eb@@dow@k| @end|ng |rom gm@||@com  Sat Nov 18 21:39:52 2023
+From: @@eb@@dow@k| @end|ng |rom gm@||@com (Adam)
+Date: Sat, 18 Nov 2023 15:39:52 -0500
+Subject: [R-pkg-devel] Cryptic error on Windows but not Debian
+In-Reply-To: <20231118202806.1f7006a1@Tarkus>
+References: <CAFG+KzX_ST5jsU_yDxw==kzK+0YA8LVO31DC3158pc2ZFWCmeA@mail.gmail.com>
+ <20231118202806.1f7006a1@Tarkus>
+Message-ID: <CAFG+KzXU9Mv8d9W_=bCkNd5Tdwh7-XAG=ZWBr-8C1XmzDa4Jqw@mail.gmail.com>
+
+Dear Ivan,
+
+Thank you for explaining in such depth. I had not submitted to CRAN before.
+I will look into tools::R_user_dir().
+
+- May you point me toward the policy that the package should not edit
+.Renviron? I thought I was following best practices, but maybe things have
+changed. For instance, this package changes the .Renvrion GitHub -
+ropensci/qualtRics: Download ?? Qualtrics survey data directly into R!
+<https://github.com/ropensci/qualtRics> with the difference being that they
+do not use withr::defer().
+
+- It occured to me I need skip_on_cran() for the test "mm_authorize() sets
+credentials". That is because testing_key(), which refers to an env var, is
+not available on CRAN.  Even without testing_key(), the test
+"mm_authorize() sets credentials" does not error. It gives a message
+
+-- Skip (Line 4): mm_authorize() sets credentials ------------------------------
+
+
+Reason: Can't find envvar MEGAMATION_KEY_HTTR2
+
+
+but since CMD check does not print this as a NOTE, and testthat does not
+print it either, I was unaware of it.
+
+Best,
+Adam
+
+
+On Sat, Nov 18, 2023 at 12:35?PM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+
+> ? Fri, 17 Nov 2023 17:08:13 -0500
+> Adam <asebsadowski at gmail.com> ?????:
+>
+> > 1. The example should not be running in the first place, as it has
+> > @examplesIf megamation:::mm_has_creds(), which should be FALSE for
+> > CRAN (it depends on env. variables)
+>
+> The tarball I have fished from CRAN says version 0.2.0, but your GitHub
+> repo <https://github.com/asadow/megamation/> says version 0.1.0.
+> (For best results, help us to help you by showing the source code.) Have
+> you submitted this package to CRAN before? Did it previously contain a
+> test that ran mm_authorize(overwrite = TRUE)?
+>
+> This is incredibly weird, but since your examples don't seem to run
+> Sys.setenv() and have never ran mm_authorize(), my only low-probability
+> guess is that the .Renviron changes from mm_authorize(overwrite = TRUE)
+> in your tests/testthat/test-authorize.R turned out to persist from the
+> check run of the previous version of your package.
+>
+> It may be a better idea to make use of tools::R_user_dir() in
+> mm_authorize() and the rest of the package (and to be much more careful
+> when unit-testing this function: changing user files and other global
+> state in tests and examples is against CRAN policy) and leave
+> ~/.Renviron for the user to edit.
+>
+> > 2. I see the example printed twice with strange formatting?
+>
+> This is how @examplesIf works: it wraps your code in if (condition)
+> withAutoprint { your code }. The first time is R echoing the source
+> code back; the second time is R printing every line of the
+> withAutoprint(...) code block before it's executed. withAutoprint helps
+> you see the exact line where your example fails; otherwise you'd see
+> the whole block of code start to execute and then fail somewhere.
+>
+> --
+> Best regards,
+> Ivan
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Sat Nov 18 22:52:17 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Sun, 19 Nov 2023 10:52:17 +1300
+Subject: [R-pkg-devel] Cryptic error on Windows but not Debian
+In-Reply-To: <CAFG+KzXU9Mv8d9W_=bCkNd5Tdwh7-XAG=ZWBr-8C1XmzDa4Jqw@mail.gmail.com>
+References: <CAFG+KzX_ST5jsU_yDxw==kzK+0YA8LVO31DC3158pc2ZFWCmeA@mail.gmail.com>
+ <20231118202806.1f7006a1@Tarkus>
+ <CAFG+KzXU9Mv8d9W_=bCkNd5Tdwh7-XAG=ZWBr-8C1XmzDa4Jqw@mail.gmail.com>
+Message-ID: <EDB9295B-C38E-4E52-975F-29284865CC8A@R-project.org>
+
+Adam,
+
+
+> On Nov 19, 2023, at 9:39 AM, Adam <asebsadowski at gmail.com> wrote:
+> 
+> Dear Ivan,
+> 
+> Thank you for explaining in such depth. I had not submitted to CRAN before.
+> I will look into tools::R_user_dir().
+> 
+> - May you point me toward the policy that the package should not edit .Renviron?
+
+
+It is the policy you have agreed to when submitting your package to CRAN:
+
+"CRAN Repository Policy
+[...]
+The code and examples provided in a package should never do anything which might be regarded as malicious or anti-social. The following are illustrative examples from past experience.
+[...]
+ - Packages should not write in the user?s home filespace (including clipboards), nor anywhere else on the file system apart from the R session?s temporary directory. [...]
+  For R version 4.0 or later (hence a version dependency is required or only conditional use is possible), packages may store user-specific data, configuration and cache files in their respective user directories obtained from tools::R_user_dir(), provided that by default sizes are kept as small as possible and the contents are actively managed (including removing outdated material).
+"
+
+Cheers,
+Simon
+
+
+From @@eb@@dow@k| @end|ng |rom gm@||@com  Sun Nov 19 00:07:20 2023
+From: @@eb@@dow@k| @end|ng |rom gm@||@com (Adam)
+Date: Sat, 18 Nov 2023 18:07:20 -0500
+Subject: [R-pkg-devel] Cryptic error on Windows but not Debian
+In-Reply-To: <EDB9295B-C38E-4E52-975F-29284865CC8A@R-project.org>
+References: <CAFG+KzX_ST5jsU_yDxw==kzK+0YA8LVO31DC3158pc2ZFWCmeA@mail.gmail.com>
+ <20231118202806.1f7006a1@Tarkus>
+ <CAFG+KzXU9Mv8d9W_=bCkNd5Tdwh7-XAG=ZWBr-8C1XmzDa4Jqw@mail.gmail.com>
+ <EDB9295B-C38E-4E52-975F-29284865CC8A@R-project.org>
+Message-ID: <CAFG+KzWP4WxvsHwpkOfbLc=FJw5N2Jm9ROd2AHC+QQsLL20URg@mail.gmail.com>
+
+Thank you dearly, Simon, for pointing out the policy. May a test do the
+following?
+
+1. Save the user's original value for env var X.
+2. Write a new value for env var X during a test.
+3. Write back the original value for env var X at the end of the test.
+
+An example:
+
+test_that("mm_authorize() sets credentials", {
+  skip_on_cran()
+  key_original <- mm_key()
+  url_original <- mm_url()
+  withr::defer({
+    mm_authorize(
+      key = key_original,
+      url = url_original,
+      overwrite = TRUE
+    )
+  })
+  mm_authorize(
+    key = "1",
+    url = "https://api.megamation.com/uw/joe/",
+    overwrite = TRUE
+  )
+  expect_false(
+    endsWith(Sys.getenv("MEGAMATION_URL"), "/")
+  )
+})
+
+Best,
+Adam
+
+
+On Sat, Nov 18, 2023 at 4:52?PM Simon Urbanek <simon.urbanek at r-project.org>
+wrote:
+
+> Adam,
+>
+>
+> > On Nov 19, 2023, at 9:39 AM, Adam <asebsadowski at gmail.com> wrote:
+> >
+> > Dear Ivan,
+> >
+> > Thank you for explaining in such depth. I had not submitted to CRAN
+> before.
+> > I will look into tools::R_user_dir().
+> >
+> > - May you point me toward the policy that the package should not edit
+> .Renviron?
+>
+>
+> It is the policy you have agreed to when submitting your package to CRAN:
+>
+> "CRAN Repository Policy
+> [...]
+> The code and examples provided in a package should never do anything which
+> might be regarded as malicious or anti-social. The following are
+> illustrative examples from past experience.
+> [...]
+>  - Packages should not write in the user?s home filespace (including
+> clipboards), nor anywhere else on the file system apart from the R
+> session?s temporary directory. [...]
+>   For R version 4.0 or later (hence a version dependency is required or
+> only conditional use is possible), packages may store user-specific data,
+> configuration and cache files in their respective user directories obtained
+> from tools::R_user_dir(), provided that by default sizes are kept as small
+> as possible and the contents are actively managed (including removing
+> outdated material).
+> "
+>
+> Cheers,
+> Simon
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Sun Nov 19 00:14:00 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Sun, 19 Nov 2023 12:14:00 +1300
+Subject: [R-pkg-devel] Cryptic error on Windows but not Debian
+In-Reply-To: <CAFG+KzWP4WxvsHwpkOfbLc=FJw5N2Jm9ROd2AHC+QQsLL20URg@mail.gmail.com>
+References: <CAFG+KzX_ST5jsU_yDxw==kzK+0YA8LVO31DC3158pc2ZFWCmeA@mail.gmail.com>
+ <20231118202806.1f7006a1@Tarkus>
+ <CAFG+KzXU9Mv8d9W_=bCkNd5Tdwh7-XAG=ZWBr-8C1XmzDa4Jqw@mail.gmail.com>
+ <EDB9295B-C38E-4E52-975F-29284865CC8A@R-project.org>
+ <CAFG+KzWP4WxvsHwpkOfbLc=FJw5N2Jm9ROd2AHC+QQsLL20URg@mail.gmail.com>
+Message-ID: <9ADD96A7-3705-48AE-A933-9EC8CBE79559@R-project.org>
+
+Adam,
+
+no, it is your code in mm_authorize() that violates the CRAN policy, it is not about the test. You may not touch user's .Renviron and there is no reason to resort to such drastic measures. If you want to cache user's credentials, you have to do it in a file located via tools::R_user_dir().
+
+Cheers,
+Simon
+
+
+> On Nov 19, 2023, at 12:07 PM, Adam <asebsadowski at gmail.com> wrote:
+> 
+> Thank you dearly, Simon, for pointing out the policy. May a test do the following?
+> 
+> 1. Save the user's original value for env var X.
+> 2. Write a new value for env var X during a test.
+> 3. Write back the original value for env var X at the end of the test.
+> 
+> An example:
+> 
+> test_that("mm_authorize() sets credentials", {
+>   skip_on_cran()
+>   key_original <- mm_key()
+>   url_original <- mm_url()
+>   withr::defer({
+>     mm_authorize(
+>       key = key_original,
+>       url = url_original,
+>       overwrite = TRUE
+>     )
+>   })
+>   mm_authorize(
+>     key = "1",
+>     url = "https://api.megamation.com/uw/joe/ <https://api.megamation.com/uw/joe/>",
+>     overwrite = TRUE
+>   )
+>   expect_false(
+>     endsWith(Sys.getenv("MEGAMATION_URL"), "/")
+>   )
+> })
+> 
+> Best,
+> Adam
+> 
+> 
+> On Sat, Nov 18, 2023 at 4:52?PM Simon Urbanek <simon.urbanek at r-project.org <mailto:simon.urbanek at r-project.org>> wrote:
+> Adam,
+> 
+> 
+> > On Nov 19, 2023, at 9:39 AM, Adam <asebsadowski at gmail.com <mailto:asebsadowski at gmail.com>> wrote:
+> > 
+> > Dear Ivan,
+> > 
+> > Thank you for explaining in such depth. I had not submitted to CRAN before.
+> > I will look into tools::R_user_dir().
+> > 
+> > - May you point me toward the policy that the package should not edit .Renviron?
+> 
+> 
+> It is the policy you have agreed to when submitting your package to CRAN:
+> 
+> "CRAN Repository Policy
+> [...]
+> The code and examples provided in a package should never do anything which might be regarded as malicious or anti-social. The following are illustrative examples from past experience.
+> [...]
+>  - Packages should not write in the user?s home filespace (including clipboards), nor anywhere else on the file system apart from the R session?s temporary directory. [...]
+>   For R version 4.0 or later (hence a version dependency is required or only conditional use is possible), packages may store user-specific data, configuration and cache files in their respective user directories obtained from tools::R_user_dir(), provided that by default sizes are kept as small as possible and the contents are actively managed (including removing outdated material).
+> "
+> 
+> Cheers,
+> Simon
+> 
+
+
+	[[alternative HTML version deleted]]
+
+
+From @@eb@@dow@k| @end|ng |rom gm@||@com  Sun Nov 19 00:38:23 2023
+From: @@eb@@dow@k| @end|ng |rom gm@||@com (Adam)
+Date: Sat, 18 Nov 2023 18:38:23 -0500
+Subject: [R-pkg-devel] Cryptic error on Windows but not Debian
+In-Reply-To: <9ADD96A7-3705-48AE-A933-9EC8CBE79559@R-project.org>
+References: <CAFG+KzX_ST5jsU_yDxw==kzK+0YA8LVO31DC3158pc2ZFWCmeA@mail.gmail.com>
+ <20231118202806.1f7006a1@Tarkus>
+ <CAFG+KzXU9Mv8d9W_=bCkNd5Tdwh7-XAG=ZWBr-8C1XmzDa4Jqw@mail.gmail.com>
+ <EDB9295B-C38E-4E52-975F-29284865CC8A@R-project.org>
+ <CAFG+KzWP4WxvsHwpkOfbLc=FJw5N2Jm9ROd2AHC+QQsLL20URg@mail.gmail.com>
+ <9ADD96A7-3705-48AE-A933-9EC8CBE79559@R-project.org>
+Message-ID: <CAFG+KzWWhNyT3a=bZGGVRZ4ck=uHYm4_XPB3Mwc20aKTBwSMoA@mail.gmail.com>
+
+Thank you so much for clarifying this.
+
+Best,
+Adam
+
+
+On Sat, Nov 18, 2023 at 6:14?PM Simon Urbanek <simon.urbanek at r-project.org>
+wrote:
+
+> Adam,
+>
+> no, it is your code in mm_authorize() that violates the CRAN policy, it is
+> not about the test. You may not touch user's .Renviron and there is no
+> reason to resort to such drastic measures. If you want to cache user's
+> credentials, you have to do it in a file located via tools::R_user_dir().
+>
+> Cheers,
+> Simon
+>
+>
+> On Nov 19, 2023, at 12:07 PM, Adam <asebsadowski at gmail.com> wrote:
+>
+> Thank you dearly, Simon, for pointing out the policy. May a test do the
+> following?
+>
+> 1. Save the user's original value for env var X.
+> 2. Write a new value for env var X during a test.
+> 3. Write back the original value for env var X at the end of the test.
+>
+> An example:
+>
+> test_that("mm_authorize() sets credentials", {
+>   skip_on_cran()
+>   key_original <- mm_key()
+>   url_original <- mm_url()
+>   withr::defer({
+>     mm_authorize(
+>       key = key_original,
+>       url = url_original,
+>       overwrite = TRUE
+>     )
+>   })
+>   mm_authorize(
+>     key = "1",
+>     url = "https://api.megamation.com/uw/joe/",
+>     overwrite = TRUE
+>   )
+>   expect_false(
+>     endsWith(Sys.getenv("MEGAMATION_URL"), "/")
+>   )
+> })
+>
+> Best,
+> Adam
+>
+>
+> On Sat, Nov 18, 2023 at 4:52?PM Simon Urbanek <simon.urbanek at r-project.org>
+> wrote:
+>
+>> Adam,
+>>
+>>
+>> > On Nov 19, 2023, at 9:39 AM, Adam <asebsadowski at gmail.com> wrote:
+>> >
+>> > Dear Ivan,
+>> >
+>> > Thank you for explaining in such depth. I had not submitted to CRAN
+>> before.
+>> > I will look into tools::R_user_dir().
+>> >
+>> > - May you point me toward the policy that the package should not edit
+>> .Renviron?
+>>
+>>
+>> It is the policy you have agreed to when submitting your package to CRAN:
+>>
+>> "CRAN Repository Policy
+>> [...]
+>> The code and examples provided in a package should never do anything
+>> which might be regarded as malicious or anti-social. The following are
+>> illustrative examples from past experience.
+>> [...]
+>>  - Packages should not write in the user?s home filespace (including
+>> clipboards), nor anywhere else on the file system apart from the R
+>> session?s temporary directory. [...]
+>>   For R version 4.0 or later (hence a version dependency is required or
+>> only conditional use is possible), packages may store user-specific data,
+>> configuration and cache files in their respective user directories obtained
+>> from tools::R_user_dir(), provided that by default sizes are kept as small
+>> as possible and the contents are actively managed (including removing
+>> outdated material).
+>> "
+>>
+>> Cheers,
+>> Simon
+>>
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From chr|@topherkenny @end|ng |rom |@@@h@rv@rd@edu  Sun Nov 19 00:40:47 2023
+From: chr|@topherkenny @end|ng |rom |@@@h@rv@rd@edu (Kenny, Christopher)
+Date: Sat, 18 Nov 2023 23:40:47 +0000
+Subject: [R-pkg-devel] Cryptic error on Windows but not Debian
+In-Reply-To: <9ADD96A7-3705-48AE-A933-9EC8CBE79559@R-project.org>
+References: <CAFG+KzX_ST5jsU_yDxw==kzK+0YA8LVO31DC3158pc2ZFWCmeA@mail.gmail.com>
+ <20231118202806.1f7006a1@Tarkus>
+ <CAFG+KzXU9Mv8d9W_=bCkNd5Tdwh7-XAG=ZWBr-8C1XmzDa4Jqw@mail.gmail.com>
+ <EDB9295B-C38E-4E52-975F-29284865CC8A@R-project.org>
+ <CAFG+KzWP4WxvsHwpkOfbLc=FJw5N2Jm9ROd2AHC+QQsLL20URg@mail.gmail.com>
+ <9ADD96A7-3705-48AE-A933-9EC8CBE79559@R-project.org>
+Message-ID: <BL0PR07MB5491CDADA971766B6603435E80B6A@BL0PR07MB5491.namprd07.prod.outlook.com>
+
+Rather than using tools::R_user_dir(), you can also ask the user for a path where they would like to save the information to. This allows you to test it with a temporary directory file, but would allow the user to specify their .Renviron file, if they so choose. This acts as a middle ground?managing a separate package-specific file and storing it as an environmental variable. This is how I approach it in a handful of packages, including `feltr` (see https://github.com/christopherkenny/feltr/blob/HEAD/R/felt_key.R) and `bskyr` (see https://github.com/christopherkenny/bskyr/blob/main/R/auth_user.R).
+
+For what it's?worth, some of this confusion may come from a relatively recent change in interpretation of the policy mentioned below by Simon (even though the text has long read that way). For years, CRAN allowed packages which had the practice of opting into writing to the default .Renviron file. That old reading comports with the example you point to in qualtRics, where the writing is controlled by the `install` argument, with a default of FALSE. Since sometime in the last year, the interpretation was updated and you are now met with a message from the volunteer which states:
+"Please ensure that your functions do not write by default or in your examples/vignettes/tests in the user's home filespace (including the package directory and getwd()). This is not allowed by CRAN policies.
+Please omit any default path in writing functions. In your examples/vignettes/tests you can write to tempdir()."
+
+The approach used in `feltr` and other packages to explicitly require a path as an argument appears to be okay with the new reading of the policy. (At least, the CRAN volunteers seem to accept packages which use this approach.)
+
+Best,
+Chris
+
+
+From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Simon Urbanek <simon.urbanek at R-project.org>
+Sent: Saturday, November 18, 2023 6:14 PM
+To: Adam <asebsadowski at gmail.com>
+Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Cryptic error on Windows but not Debian 
+?
+Adam,
+
+no, it is your code in mm_authorize() that violates the CRAN policy, it is not about the test. You may not touch user's .Renviron and there is no reason to resort to such drastic measures. If you want to cache user's credentials, you have to do it in a file located via tools::R_user_dir().
+
+Cheers,
+Simon
+
+
+> On Nov 19, 2023, at 12:07 PM, Adam <asebsadowski at gmail.com> wrote:
+> 
+> Thank you dearly, Simon, for pointing out the policy. May a test do the following?
+> 
+> 1. Save the user's original value for env var X.
+> 2. Write a new value for env var X during a test.
+> 3. Write back the original value for env var X at the end of the test.
+> 
+> An example:
+> 
+> test_that("mm_authorize() sets credentials", {
+>?? skip_on_cran()
+>?? key_original <- mm_key()
+>?? url_original <- mm_url()
+>?? withr::defer({
+>???? mm_authorize(
+>?????? key = key_original,
+>?????? url = url_original,
+>?????? overwrite = TRUE
+>???? )
+>?? })
+>?? mm_authorize(
+>???? key = "1",
+>???? url = "https://api.megamation.com/uw/joe/ <https://api.megamation.com/uw/joe/>",
+>???? overwrite = TRUE
+>?? )
+>?? expect_false(
+>???? endsWith(Sys.getenv("MEGAMATION_URL"), "/")
+>?? )
+> })
+> 
+> Best,
+> Adam
+> 
+> 
+> On Sat, Nov 18, 2023 at 4:52?PM Simon Urbanek <simon.urbanek at r-project.org <mailto:simon.urbanek at r-project.org>> wrote:
+> Adam,
+> 
+> 
+> > On Nov 19, 2023, at 9:39 AM, Adam <asebsadowski at gmail.com <mailto:asebsadowski at gmail.com>> wrote:
+> > 
+> > Dear Ivan,
+> > 
+> > Thank you for explaining in such depth. I had not submitted to CRAN before.
+> > I will look into tools::R_user_dir().
+> > 
+> > - May you point me toward the policy that the package should not edit .Renviron?
+> 
+> 
+> It is the policy you have agreed to when submitting your package to CRAN:
+> 
+> "CRAN Repository Policy
+> [...]
+> The code and examples provided in a package should never do anything which might be regarded as malicious or anti-social. The following are illustrative examples from past experience.
+> [...]
+>? - Packages should not write in the user?s home filespace (including clipboards), nor anywhere else on the file system apart from the R session?s temporary directory. [...]
+>?? For R version 4.0 or later (hence a version dependency is required or only conditional use is possible), packages may store user-specific data, configuration and cache files in their respective user directories obtained from tools::R_user_dir(), provided that by default sizes are kept as small as possible and the contents are actively managed (including removing outdated material).
+> "
+> 
+> Cheers,
+> Simon
+> 
+
+
+??????? [[alternative HTML version deleted]]
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+From |@go@g|n-v@z @end|ng |rom protonm@||@com  Sun Nov 19 02:01:22 2023
+From: |@go@g|n-v@z @end|ng |rom protonm@||@com (=?utf-8?Q?Iago_Gin=C3=A9-V=C3=A1zquez?=)
+Date: Sun, 19 Nov 2023 01:01:22 +0000
+Subject: [R-pkg-devel] Check warning around sprintf: Compiled code should
+ not call entry points which might terminate R nor write to stdout/stderr
+ instead of to the console,
+ nor use Fortran I/O nor system RNGs nor [v]sprintf.
+Message-ID: <xxAsFZWYO1xbzuhADmLbOGpwTJMBaRzuam9v_HWH7tfmrJqiyCAG2CFlJu98mN50GFgKNsmrJcTuteD-5fUm7WVhRCj2XsI1PZC06o6G0Zk=@protonmail.com>
+
+Dear all,
+
+I am updating a CRAN-archived R package, so it can get back to CRAN. But there is a warning produced in Linux OS that I am not sure to understand and I do not know how to solve, even after looking at ?Writing portable packages? in the ?Writing R Extensions? manual and after searching in the web. The warning is
+
+> * checking compiled code ... WARNING
+> File ?ccckc/libs/ccckc.so?:
+> Found ?sprintf?, possibly from ?sprintf? (C)
+> Object: ?criteria.o?
+>
+> Compiled code should not call entry points which might terminate R nor
+> write to stdout/stderr instead of to the console, nor use Fortran I/O
+> nor system RNGs nor [v]sprintf.
+> See ?Writing portable packages? in the ?Writing R Extensions? manual.
+
+The package contains both C and Fortran code and in the criteria.c there is only a sprintf use, as follows:
+
+sprintf(msg,"criteria: error (%d) -> %s\n", inErr, errStr);
+Rf_error(msg);
+May be the reason of the warning the next line the ?Writing R Extensions? manual?
+
+> Use ofsprintfandvsprintfis regarded as a potential security risk and warned about on some platforms.[82](https://cran.r-project.org/doc/manuals/R-exts.html#FOOT82)R CMD checkreports if any calls are found.
+
+If that is the reason, is there any alternative to the use of sprintf? Anyway, what can I do?
+
+Thanks you in advance for your time.
+
+Kind regards,
+Iago
+
+Sent with [Proton Mail](https://proton.me/) secure email.
+	[[alternative HTML version deleted]]
+
+
+From |kw@|mmo @end|ng |rom gm@||@com  Sun Nov 19 02:07:40 2023
+From: |kw@|mmo @end|ng |rom gm@||@com (Iris Simmons)
+Date: Sat, 18 Nov 2023 20:07:40 -0500
+Subject: [R-pkg-devel] 
+ Check warning around sprintf: Compiled code should
+ not call entry points which might terminate R nor write to stdout/stderr
+ instead of to the console,
+ nor use Fortran I/O nor system RNGs nor [v]sprintf.
+In-Reply-To: <xxAsFZWYO1xbzuhADmLbOGpwTJMBaRzuam9v_HWH7tfmrJqiyCAG2CFlJu98mN50GFgKNsmrJcTuteD-5fUm7WVhRCj2XsI1PZC06o6G0Zk=@protonmail.com>
+References: <xxAsFZWYO1xbzuhADmLbOGpwTJMBaRzuam9v_HWH7tfmrJqiyCAG2CFlJu98mN50GFgKNsmrJcTuteD-5fUm7WVhRCj2XsI1PZC06o6G0Zk=@protonmail.com>
+Message-ID: <CADNULg9HZNKzWbLfQ_qbyg=FsyT3kmPVuLGmq31kwE21-arwBw@mail.gmail.com>
+
+Yes, the reason for the error is the use of sprintf. You can instead use
+snprintf where n is the maximum number of bytes to write, including the
+terminating nul character. For example:
+
+char msg[8191];
+snprintf(msg, 8191, "criteria: error (%d) -> %s\n", inErr, errStr);
+Rf_error(msg);
+
+or however large you made the error string.
+
+
+On Sat, Nov 18, 2023, 20:01 Iago Gin?-V?zquez <iago.gin-vaz at protonmail.com>
+wrote:
+
+> Dear all,
+>
+> I am updating a CRAN-archived R package, so it can get back to CRAN. But
+> there is a warning produced in Linux OS that I am not sure to understand
+> and I do not know how to solve, even after looking at ?Writing portable
+> packages? in the ?Writing R Extensions? manual and after searching in the
+> web. The warning is
+>
+> > * checking compiled code ... WARNING
+> > File ?ccckc/libs/ccckc.so?:
+> > Found ?sprintf?, possibly from ?sprintf? (C)
+> > Object: ?criteria.o?
+> >
+> > Compiled code should not call entry points which might terminate R nor
+> > write to stdout/stderr instead of to the console, nor use Fortran I/O
+> > nor system RNGs nor [v]sprintf.
+> > See ?Writing portable packages? in the ?Writing R Extensions? manual.
+>
+> The package contains both C and Fortran code and in the criteria.c there
+> is only a sprintf use, as follows:
+>
+> sprintf(msg,"criteria: error (%d) -> %s\n", inErr, errStr);
+> Rf_error(msg);
+> May be the reason of the warning the next line the ?Writing R Extensions?
+> manual?
+>
+> > Use ofsprintfandvsprintfis regarded as a potential security risk and
+> warned about on some platforms.[82](
+> https://cran.r-project.org/doc/manuals/R-exts.html#FOOT82)R CMD
+> checkreports if any calls are found.
+>
+> If that is the reason, is there any alternative to the use of sprintf?
+> Anyway, what can I do?
+>
+> Thanks you in advance for your time.
+>
+> Kind regards,
+> Iago
+>
+> Sent with [Proton Mail](https://proton.me/) secure email.
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From |@go@g|n-v@z @end|ng |rom protonm@||@com  Sun Nov 19 02:17:30 2023
+From: |@go@g|n-v@z @end|ng |rom protonm@||@com (=?utf-8?Q?Iago_Gin=C3=A9-V=C3=A1zquez?=)
+Date: Sun, 19 Nov 2023 01:17:30 +0000
+Subject: [R-pkg-devel] 
+ Check warning around sprintf: Compiled code should
+ not call entry points which might terminate R nor write to stdout/stderr
+ instead of to the console,
+ nor use Fortran I/O nor system RNGs nor [v]sprintf.
+In-Reply-To: <CADNULg9HZNKzWbLfQ_qbyg=FsyT3kmPVuLGmq31kwE21-arwBw@mail.gmail.com>
+References: <xxAsFZWYO1xbzuhADmLbOGpwTJMBaRzuam9v_HWH7tfmrJqiyCAG2CFlJu98mN50GFgKNsmrJcTuteD-5fUm7WVhRCj2XsI1PZC06o6G0Zk=@protonmail.com>
+ <CADNULg9HZNKzWbLfQ_qbyg=FsyT3kmPVuLGmq31kwE21-arwBw@mail.gmail.com>
+Message-ID: <P3-6yyGH6Z9DaOedWboM4LMlZVIHLnKrcP-34GkhcOua15o3_nDFrxd_SgDC-YzXClgAwgrO7vVZUtfd4cXL4W2DjqLXTEqfUmKcnuEeWII=@protonmail.com>
+
+Thank you very much, Iris. Indeed that removed the warning.
+
+Kind regards,
+Iago
+
+Sent with [Proton Mail](https://proton.me/) secure email.
+
+On Sunday, 19 November 2023 at 02:07, Iris Simmons <ikwsimmo at gmail.com> wrote:
+
+> Yes, the reason for the error is the use of sprintf. You can instead use snprintf where n is the maximum number of bytes to write, including the terminating nul character. For example:
+>
+> char msg[8191];
+> snprintf(msg, 8191, "criteria: error (%d) -> %s\n", inErr, errStr);
+> Rf_error(msg);
+>
+> or however large you made the error string.
+>
+> On Sat, Nov 18, 2023, 20:01 Iago Gin?-V?zquez <iago.gin-vaz at protonmail.com> wrote:
+>
+>> Dear all,
+>>
+>> I am updating a CRAN-archived R package, so it can get back to CRAN. But there is a warning produced in Linux OS that I am not sure to understand and I do not know how to solve, even after looking at ?Writing portable packages? in the ?Writing R Extensions? manual and after searching in the web. The warning is
+>>
+>>> * checking compiled code ... WARNING
+>>> File ?ccckc/libs/ccckc.so?:
+>>> Found ?sprintf?, possibly from ?sprintf? (C)
+>>> Object: ?criteria.o?
+>>>
+>>> Compiled code should not call entry points which might terminate R nor
+>>> write to stdout/stderr instead of to the console, nor use Fortran I/O
+>>> nor system RNGs nor [v]sprintf.
+>>> See ?Writing portable packages? in the ?Writing R Extensions? manual.
+>>
+>> The package contains both C and Fortran code and in the criteria.c there is only a sprintf use, as follows:
+>>
+>> sprintf(msg,"criteria: error (%d) -> %s\n", inErr, errStr);
+>> Rf_error(msg);
+>> May be the reason of the warning the next line the ?Writing R Extensions? manual?
+>>
+>>> Use ofsprintfandvsprintfis regarded as a potential security risk and warned about on some platforms.[82](https://cran.r-project.org/doc/manuals/R-exts.html#FOOT82)R CMD checkreports if any calls are found.
+>>
+>> If that is the reason, is there any alternative to the use of sprintf? Anyway, what can I do?
+>>
+>> Thanks you in advance for your time.
+>>
+>> Kind regards,
+>> Iago
+>>
+>> Sent with [Proton Mail](https://proton.me/) secure email.
+>> [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+	[[alternative HTML version deleted]]
+
+
+From bbo|ker @end|ng |rom gm@||@com  Sun Nov 19 02:19:02 2023
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Sat, 18 Nov 2023 20:19:02 -0500
+Subject: [R-pkg-devel] 
+ Check warning around sprintf: Compiled code should
+ not call entry points which might terminate R nor write to stdout/stderr
+ instead of to the console,
+ nor use Fortran I/O nor system RNGs nor [v]sprintf.
+In-Reply-To: <CADNULg9HZNKzWbLfQ_qbyg=FsyT3kmPVuLGmq31kwE21-arwBw@mail.gmail.com>
+References: <xxAsFZWYO1xbzuhADmLbOGpwTJMBaRzuam9v_HWH7tfmrJqiyCAG2CFlJu98mN50GFgKNsmrJcTuteD-5fUm7WVhRCj2XsI1PZC06o6G0Zk=@protonmail.com>
+ <CADNULg9HZNKzWbLfQ_qbyg=FsyT3kmPVuLGmq31kwE21-arwBw@mail.gmail.com>
+Message-ID: <8342581a-6b2d-4caa-b4a4-2ab11861b304@gmail.com>
+
+   You may also be able to use Rprintf ? 
+https://teuder.github.io/rcpp4everyone_en/060_printing_massages.html
+
+On 2023-11-18 8:07 p.m., Iris Simmons wrote:
+> Yes, the reason for the error is the use of sprintf. You can instead use
+> snprintf where n is the maximum number of bytes to write, including the
+> terminating nul character. For example:
+> 
+> char msg[8191];
+> snprintf(msg, 8191, "criteria: error (%d) -> %s\n", inErr, errStr);
+> Rf_error(msg);
+> 
+> or however large you made the error string.
+> 
+> 
+> On Sat, Nov 18, 2023, 20:01 Iago Gin?-V?zquez <iago.gin-vaz at protonmail.com>
+> wrote:
+> 
+>> Dear all,
+>>
+>> I am updating a CRAN-archived R package, so it can get back to CRAN. But
+>> there is a warning produced in Linux OS that I am not sure to understand
+>> and I do not know how to solve, even after looking at ?Writing portable
+>> packages? in the ?Writing R Extensions? manual and after searching in the
+>> web. The warning is
+>>
+>>> * checking compiled code ... WARNING
+>>> File ?ccckc/libs/ccckc.so?:
+>>> Found ?sprintf?, possibly from ?sprintf? (C)
+>>> Object: ?criteria.o?
+>>>
+>>> Compiled code should not call entry points which might terminate R nor
+>>> write to stdout/stderr instead of to the console, nor use Fortran I/O
+>>> nor system RNGs nor [v]sprintf.
+>>> See ?Writing portable packages? in the ?Writing R Extensions? manual.
+>>
+>> The package contains both C and Fortran code and in the criteria.c there
+>> is only a sprintf use, as follows:
+>>
+>> sprintf(msg,"criteria: error (%d) -> %s\n", inErr, errStr);
+>> Rf_error(msg);
+>> May be the reason of the warning the next line the ?Writing R Extensions?
+>> manual?
+>>
+>>> Use ofsprintfandvsprintfis regarded as a potential security risk and
+>> warned about on some platforms.[82](
+>> https://cran.r-project.org/doc/manuals/R-exts.html#FOOT82)R CMD
+>> checkreports if any calls are found.
+>>
+>> If that is the reason, is there any alternative to the use of sprintf?
+>> Anyway, what can I do?
+>>
+>> Thanks you in advance for your time.
+>>
+>> Kind regards,
+>> Iago
+>>
+>> Sent with [Proton Mail](https://proton.me/) secure email.
+>>          [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
