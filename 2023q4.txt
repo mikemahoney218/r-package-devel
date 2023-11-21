@@ -18487,3 +18487,516 @@ On 2023-11-18 8:07 p.m., Iris Simmons wrote:
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From @@eb@@dow@k| @end|ng |rom gm@||@com  Sun Nov 19 04:16:36 2023
+From: @@eb@@dow@k| @end|ng |rom gm@||@com (Adam)
+Date: Sat, 18 Nov 2023 22:16:36 -0500
+Subject: [R-pkg-devel] Cryptic error on Windows but not Debian
+In-Reply-To: <BL0PR07MB5491CDADA971766B6603435E80B6A@BL0PR07MB5491.namprd07.prod.outlook.com>
+References: <CAFG+KzX_ST5jsU_yDxw==kzK+0YA8LVO31DC3158pc2ZFWCmeA@mail.gmail.com>
+ <20231118202806.1f7006a1@Tarkus>
+ <CAFG+KzXU9Mv8d9W_=bCkNd5Tdwh7-XAG=ZWBr-8C1XmzDa4Jqw@mail.gmail.com>
+ <EDB9295B-C38E-4E52-975F-29284865CC8A@R-project.org>
+ <CAFG+KzWP4WxvsHwpkOfbLc=FJw5N2Jm9ROd2AHC+QQsLL20URg@mail.gmail.com>
+ <9ADD96A7-3705-48AE-A933-9EC8CBE79559@R-project.org>
+ <BL0PR07MB5491CDADA971766B6603435E80B6A@BL0PR07MB5491.namprd07.prod.outlook.com>
+Message-ID: <CAFG+KzWzUkrVTHtrbvs+sfbRK__d6JSkMAhhs93OJ=c1Fa=5NQ@mail.gmail.com>
+
+Thank you, Chris. I plan to explore the method you described as simply
+removing the authorize function would be a shame. Your description of the
+past was certainly worthwhile and enlightening.
+
+Best,
+Adam
+
+
+On Sat, Nov 18, 2023 at 6:40?PM Kenny, Christopher <
+christopherkenny at fas.harvard.edu> wrote:
+
+> Rather than using tools::R_user_dir(), you can also ask the user for a
+> path where they would like to save the information to. This allows you to
+> test it with a temporary directory file, but would allow the user to
+> specify their .Renviron file, if they so choose. This acts as a middle
+> ground managing a separate package-specific file and storing it as an
+> environmental variable. This is how I approach it in a handful of packages,
+> including `feltr` (see
+> https://github.com/christopherkenny/feltr/blob/HEAD/R/felt_key.R) and
+> `bskyr` (see
+> https://github.com/christopherkenny/bskyr/blob/main/R/auth_user.R).
+>
+> For what it's worth, some of this confusion may come from a relatively
+> recent change in interpretation of the policy mentioned below by Simon
+> (even though the text has long read that way). For years, CRAN allowed
+> packages which had the practice of opting into writing to the default
+> .Renviron file. That old reading comports with the example you point to in
+> qualtRics, where the writing is controlled by the `install` argument, with
+> a default of FALSE. Since sometime in the last year, the interpretation was
+> updated and you are now met with a message from the volunteer which states:
+> "Please ensure that your functions do not write by default or in your
+> examples/vignettes/tests in the user's home filespace (including the
+> package directory and getwd()). This is not allowed by CRAN policies.
+> Please omit any default path in writing functions. In your
+> examples/vignettes/tests you can write to tempdir()."
+>
+> The approach used in `feltr` and other packages to explicitly require a
+> path as an argument appears to be okay with the new reading of the policy.
+> (At least, the CRAN volunteers seem to accept packages which use this
+> approach.)
+>
+> Best,
+> Chris
+>
+>
+> From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf
+> of Simon Urbanek <simon.urbanek at R-project.org>
+> Sent: Saturday, November 18, 2023 6:14 PM
+> To: Adam <asebsadowski at gmail.com>
+> Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+> Subject: Re: [R-pkg-devel] Cryptic error on Windows but not Debian
+>
+> Adam,
+>
+> no, it is your code in mm_authorize() that violates the CRAN policy, it is
+> not about the test. You may not touch user's .Renviron and there is no
+> reason to resort to such drastic measures. If you want to cache user's
+> credentials, you have to do it in a file located via tools::R_user_dir().
+>
+> Cheers,
+> Simon
+>
+>
+> > On Nov 19, 2023, at 12:07 PM, Adam <asebsadowski at gmail.com> wrote:
+> >
+> > Thank you dearly, Simon, for pointing out the policy. May a test do the
+> following?
+> >
+> > 1. Save the user's original value for env var X.
+> > 2. Write a new value for env var X during a test.
+> > 3. Write back the original value for env var X at the end of the test.
+> >
+> > An example:
+> >
+> > test_that("mm_authorize() sets credentials", {
+> >   skip_on_cran()
+> >   key_original <- mm_key()
+> >   url_original <- mm_url()
+> >   withr::defer({
+> >     mm_authorize(
+> >       key = key_original,
+> >       url = url_original,
+> >       overwrite = TRUE
+> >     )
+> >   })
+> >   mm_authorize(
+> >     key = "1",
+> >     url = "https://api.megamation.com/uw/joe/ <
+> https://api.megamation.com/uw/joe/>",
+> >     overwrite = TRUE
+> >   )
+> >   expect_false(
+> >     endsWith(Sys.getenv("MEGAMATION_URL"), "/")
+> >   )
+> > })
+> >
+> > Best,
+> > Adam
+> >
+> >
+> > On Sat, Nov 18, 2023 at 4:52?PM Simon Urbanek <
+> simon.urbanek at r-project.org <mailto:simon.urbanek at r-project.org>> wrote:
+> > Adam,
+> >
+> >
+> > > On Nov 19, 2023, at 9:39 AM, Adam <asebsadowski at gmail.com <mailto:
+> asebsadowski at gmail.com>> wrote:
+> > >
+> > > Dear Ivan,
+> > >
+> > > Thank you for explaining in such depth. I had not submitted to CRAN
+> before.
+> > > I will look into tools::R_user_dir().
+> > >
+> > > - May you point me toward the policy that the package should not edit
+> .Renviron?
+> >
+> >
+> > It is the policy you have agreed to when submitting your package to CRAN:
+> >
+> > "CRAN Repository Policy
+> > [...]
+> > The code and examples provided in a package should never do anything
+> which might be regarded as malicious or anti-social. The following are
+> illustrative examples from past experience.
+> > [...]
+> >  - Packages should not write in the user?s home filespace (including
+> clipboards), nor anywhere else on the file system apart from the R
+> session?s temporary directory. [...]
+> >   For R version 4.0 or later (hence a version dependency is required or
+> only conditional use is possible), packages may store user-specific data,
+> configuration and cache files in their respective user directories obtained
+> from tools::R_user_dir(), provided that by default sizes are kept as small
+> as possible and the contents are actively managed (including removing
+> outdated material).
+> > "
+> >
+> > Cheers,
+> > Simon
+> >
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sun Nov 19 06:05:11 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sun, 19 Nov 2023 08:05:11 +0300
+Subject: [R-pkg-devel] 
+ Check warning around sprintf: Compiled code should
+ not call entry points which might terminate R nor write to stdout/stderr
+ instead of to the console,
+ nor use Fortran I/O nor system RNGs nor [v]sprintf.
+In-Reply-To: <xxAsFZWYO1xbzuhADmLbOGpwTJMBaRzuam9v_HWH7tfmrJqiyCAG2CFlJu98mN50GFgKNsmrJcTuteD-5fUm7WVhRCj2XsI1PZC06o6G0Zk=@protonmail.com>
+References: <xxAsFZWYO1xbzuhADmLbOGpwTJMBaRzuam9v_HWH7tfmrJqiyCAG2CFlJu98mN50GFgKNsmrJcTuteD-5fUm7WVhRCj2XsI1PZC06o6G0Zk=@protonmail.com>
+Message-ID: <711D122D-FB93-4C40-97A2-3D8811969F11@gmail.com>
+
+19 ?????? 2023 ?. 04:01:22 GMT+03:00, "Iago Gin?-V?zquez" <iago.gin-vaz at protonmail.com> ?????:
+
+>The package contains both C and Fortran code and in the criteria.c there is only a sprintf use, as follows:
+>
+>sprintf(msg,"criteria: error (%d) -> %s\n", inErr, errStr);
+>Rf_error(msg);
+
+Rf_error() takes format arguments like sprintf(). It should be possible to call:
+
+Rf_error("criteria: error (%d) -> %s", inErr, errStr);
+
+
+-- 
+Best regards,
+Ivan
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Sun Nov 19 06:49:54 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Sun, 19 Nov 2023 18:49:54 +1300
+Subject: [R-pkg-devel] Cryptic error on Windows but not Debian
+In-Reply-To: <BL0PR07MB5491CDADA971766B6603435E80B6A@BL0PR07MB5491.namprd07.prod.outlook.com>
+References: <CAFG+KzX_ST5jsU_yDxw==kzK+0YA8LVO31DC3158pc2ZFWCmeA@mail.gmail.com>
+ <20231118202806.1f7006a1@Tarkus>
+ <CAFG+KzXU9Mv8d9W_=bCkNd5Tdwh7-XAG=ZWBr-8C1XmzDa4Jqw@mail.gmail.com>
+ <EDB9295B-C38E-4E52-975F-29284865CC8A@R-project.org>
+ <CAFG+KzWP4WxvsHwpkOfbLc=FJw5N2Jm9ROd2AHC+QQsLL20URg@mail.gmail.com>
+ <9ADD96A7-3705-48AE-A933-9EC8CBE79559@R-project.org>
+ <BL0PR07MB5491CDADA971766B6603435E80B6A@BL0PR07MB5491.namprd07.prod.outlook.com>
+Message-ID: <F5E91487-5388-4B29-A733-A708B216B008@R-project.org>
+
+Chris,
+
+this was not a change in interpretation, but rather CRAN's tools have gotten better at detecting such bad behavior.
+
+I would like to point out that there is absolutely no reason to mangle user's .Renviron since the package can always set any environment variables it needs from its (legally managed) configuration files (as described in the policy) on load.
+
+Regarding the approach you suggested, personally, I think it is bad - no package should be touching personal configuration files - it's entirely unnecessary and dangerous (e.g., your code will happily remove the content of the file on write error losing all user's values - that's why you never write important files directly, but rather create a copy which you atomically move in place *after* you know the content is correct).
+
+Cheers,
+Simon
+
+
+
+> On Nov 19, 2023, at 12:40 PM, Kenny, Christopher <christopherkenny at fas.harvard.edu> wrote:
+> 
+> Rather than using tools::R_user_dir(), you can also ask the user for a path where they would like to save the information to. This allows you to test it with a temporary directory file, but would allow the user to specify their .Renviron file, if they so choose. This acts as a middle ground managing a separate package-specific file and storing it as an environmental variable. This is how I approach it in a handful of packages, including `feltr` (see https://github.com/christopherkenny/feltr/blob/HEAD/R/felt_key.R) and `bskyr` (see https://github.com/christopherkenny/bskyr/blob/main/R/auth_user.R).
+> 
+> For what it's worth, some of this confusion may come from a relatively recent change in interpretation of the policy mentioned below by Simon (even though the text has long read that way). For years, CRAN allowed packages which had the practice of opting into writing to the default .Renviron file. That old reading comports with the example you point to in qualtRics, where the writing is controlled by the `install` argument, with a default of FALSE. Since sometime in the last year, the interpretation was updated and you are now met with a message from the volunteer which states:
+> "Please ensure that your functions do not write by default or in your examples/vignettes/tests in the user's home filespace (including the package directory and getwd()). This is not allowed by CRAN policies.
+> Please omit any default path in writing functions. In your examples/vignettes/tests you can write to tempdir()."
+> 
+> The approach used in `feltr` and other packages to explicitly require a path as an argument appears to be okay with the new reading of the policy. (At least, the CRAN volunteers seem to accept packages which use this approach.)
+> 
+> Best,
+> Chris
+> 
+> 
+> From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Simon Urbanek <simon.urbanek at R-project.org>
+> Sent: Saturday, November 18, 2023 6:14 PM
+> To: Adam <asebsadowski at gmail.com>
+> Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+> Subject: Re: [R-pkg-devel] Cryptic error on Windows but not Debian 
+>  
+> Adam,
+> 
+> no, it is your code in mm_authorize() that violates the CRAN policy, it is not about the test. You may not touch user's .Renviron and there is no reason to resort to such drastic measures. If you want to cache user's credentials, you have to do it in a file located via tools::R_user_dir().
+> 
+> Cheers,
+> Simon
+> 
+> 
+>> On Nov 19, 2023, at 12:07 PM, Adam <asebsadowski at gmail.com> wrote:
+>> 
+>> Thank you dearly, Simon, for pointing out the policy. May a test do the following?
+>> 
+>> 1. Save the user's original value for env var X.
+>> 2. Write a new value for env var X during a test.
+>> 3. Write back the original value for env var X at the end of the test.
+>> 
+>> An example:
+>> 
+>> test_that("mm_authorize() sets credentials", {
+>>    skip_on_cran()
+>>    key_original <- mm_key()
+>>    url_original <- mm_url()
+>>    withr::defer({
+>>      mm_authorize(
+>>        key = key_original,
+>>        url = url_original,
+>>        overwrite = TRUE
+>>      )
+>>    })
+>>    mm_authorize(
+>>      key = "1",
+>>      url = "https://api.megamation.com/uw/joe/ <https://api.megamation.com/uw/joe/>",
+>>      overwrite = TRUE
+>>    )
+>>    expect_false(
+>>      endsWith(Sys.getenv("MEGAMATION_URL"), "/")
+>>    )
+>> })
+>> 
+>> Best,
+>> Adam
+>> 
+>> 
+>> On Sat, Nov 18, 2023 at 4:52?PM Simon Urbanek <simon.urbanek at r-project.org <mailto:simon.urbanek at r-project.org>> wrote:
+>> Adam,
+>> 
+>> 
+>>> On Nov 19, 2023, at 9:39 AM, Adam <asebsadowski at gmail.com <mailto:asebsadowski at gmail.com>> wrote:
+>>> 
+>>> Dear Ivan,
+>>> 
+>>> Thank you for explaining in such depth. I had not submitted to CRAN before.
+>>> I will look into tools::R_user_dir().
+>>> 
+>>> - May you point me toward the policy that the package should not edit .Renviron?
+>> 
+>> 
+>> It is the policy you have agreed to when submitting your package to CRAN:
+>> 
+>> "CRAN Repository Policy
+>> [...]
+>> The code and examples provided in a package should never do anything which might be regarded as malicious or anti-social. The following are illustrative examples from past experience.
+>> [...]
+>>   - Packages should not write in the user?s home filespace (including clipboards), nor anywhere else on the file system apart from the R session?s temporary directory. [...]
+>>    For R version 4.0 or later (hence a version dependency is required or only conditional use is possible), packages may store user-specific data, configuration and cache files in their respective user directories obtained from tools::R_user_dir(), provided that by default sizes are kept as small as possible and the contents are actively managed (including removing outdated material).
+>> "
+>> 
+>> Cheers,
+>> Simon
+>> 
+> 
+> 
+>         [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From ggene@|ogyp@ck@ge @end|ng |rom gm@||@com  Sun Nov 19 14:53:52 2023
+From: ggene@|ogyp@ck@ge @end|ng |rom gm@||@com (Package Maintainer)
+Date: Sun, 19 Nov 2023 13:53:52 +0000
+Subject: [R-pkg-devel] Conversion failure in 'mbcsToSbcs'
+In-Reply-To: <20231117185557.7ab22a8d@arachnoid>
+References: <CAA8crwe=Ahry5kf_x6P1HXJ5coAZRfZJyv=arJUhVq0nm1khDA@mail.gmail.com>
+ <20231117185557.7ab22a8d@arachnoid>
+Message-ID: <CAA8crwfV15isVC7jzbbiN46Vg3=ceeZnMGn0MvoG7VW32z282Q@mail.gmail.com>
+
+Hello Ivan:
+
+Thank you for your helpful response here.
+
+I added the code you suggested to the package vignette:
+
+
+
+
+
+
+
+*<<echo=FALSE>>=my.Swd <- function(name, width, height,
+...) grDevices::cairo_pdf(  filename = paste(name, "pdf", sep = "."),
+width = width, height = height )@*
+
+This particular code did not seem to negatively affect the vignette
+production. R CMD check seemed to pass on my local machine. And running the
+vignette line-by-line on my local machine (even after setting:
+*Sys.setenv('_R_CHECK_MBCS_CONVERSION_FAILURE_'
+= 'TRUE')*) did not cause any errors and successfully produced plots.
+
+R CMD check also seems to pass with only one NOTE when I ran it on the
+"Debian Linux, R-devel, GCC" (by using the rhub::check("ggenealogy",
+platform = "debian-gcc-devel") in my local RStudio) (
+https://builder.r-hub.io/status/original/ggenealogy_1.0.3.tar.gz-9ffea1329d0b485eb9019dbf035a69f5)
+and when I ran it on "Debian Linux, R-devel, clang, ISO-8859-15 locale" (by
+using the rhub::check("ggenealogy", platform = "debian-clang-devel") in my
+local RStudio) (
+https://builder.r-hub.io/status/original/ggenealogy_1.0.3.tar.gz-58e271ac7d2144aaab035cf7c5d9f879
+).
+
+In both those cases, I didn't see the ERROR of "Conversion failure in
+'mbcsToSbcs'".
+
+So, I created a new .tar file and uploaded it to the CRAN submission site.
+However, I received another response that my package had errors (
+https://win-builder.r-project.org/incoming_pretest/ggenealogy_1.0.3_20231118_121231/Debian/00check.log),
+which does show the "conversion failure on 'Lubom?r Kub??ek' in
+'mbcsToSbcs': for ? (U+010D)" ERROR.
+
+I'm a bit unsure why this ERROR is still persisting, and how to
+troubleshoot it. I am unable to replicate it on my local machine. Do you
+have any suggestions how I can resolve this issue based on this latest
+update?
+
+Thank you again for your advice and patience.
+
+Kind regards,
+LAR
+
+On Fri, Nov 17, 2023 at 3:56?PM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+
+> Hello!
+>
+> ? Fri, 17 Nov 2023 14:16:27 +0000
+> Package Maintainer <ggenealogypackage at gmail.com> ?????:
+>
+> > 2) set_null_device("cairo") to the vignettes/ggenealogy.Rnw file (this
+> > gives me a "could not find function "set_null_device"" ERROR)
+>
+> I don't think this function from the cowplot package would have helped.
+> You are compiling a LaTeX vignette, so you need to produce a PDF plot
+> to include in the rendered PDF vignette.
+>
+> > 1) pdf.options(encoding='ISOLatin2.enc') to the
+> > vignettes/ggenealogy.Rnw file
+>
+> Something like this should help. Here's how I can reproduce the problem
+> on latest R-devel:
+>
+> Sys.setenv('_R_CHECK_MBCS_CONVERSION_FAILURE_' = 'TRUE')
+> pdf()
+> graphics::strwidth('Lubom?r Kub??ek', "inches")
+> # Error in graphics::strwidth("Lubom?r Kub??ek", "inches") :
+> #   conversion failure on 'Lubom?r Kub??ek' in 'mbcsToSbcs': for ?
+> #   (U+00ED)
+>
+> Notably, the error is absent if I either call
+> pdf.options(encoding='ISOLatin2.enc') before pdf() or replace pdf()
+> with the better-Unicode-equipped cairo_pdf().
+>
+> As a workaround, you could use the latter device in your vignette by
+> following section "Custom Graphics Devices" of help(RweaveLatex) (or
+> section 4.1.5 "Graphics devices" of the Sweave vignette):
+>
+> <<results=hide,echo=FALSE>>=
+> my.Swd <- function(name, width, height, ...)
+>  grDevices::cairo_pdf(
+>   filename = paste(name, "pdf", sep = "."),
+>   width = width, height = height
+>  )
+> @
+> \SweaveOpts{grdevice=my.Swd,pdf=FALSE}
+>
+> With this in the document, the following chunk doesn't crash
+> _R_CHECK_MBCS_CONVERSION_FAILURE_=TRUE R-devel CMD Sweave:
+>
+> <<fig=TRUE>>=
+> # NB: fig=TRUE must be set, otherwise R calls pdf() with default options
+> graphics::strwidth('Lubom?r Kub??ek', "inches")
+> @
+>
+> So why doesn't it help to call pdf.options() in a Sweave chunk? My
+> guess is that's too late for Sweave to pick it up by the time it's
+> weaving a vignette, but RweaveLatex presents an alternative way of
+> setting the option:
+>
+> \SweaveOpts{pdf.encoding = ISOLatin2.enc}
+>
+> With this in the vignette, my previous example also avoids the crash.
+>
+> Good luck!
+>
+> --
+> Best regards,
+> Ivan
+>
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sun Nov 19 16:25:39 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sun, 19 Nov 2023 18:25:39 +0300
+Subject: [R-pkg-devel] Conversion failure in 'mbcsToSbcs'
+In-Reply-To: <CAA8crwfV15isVC7jzbbiN46Vg3=ceeZnMGn0MvoG7VW32z282Q@mail.gmail.com>
+References: <CAA8crwe=Ahry5kf_x6P1HXJ5coAZRfZJyv=arJUhVq0nm1khDA@mail.gmail.com>
+ <20231117185557.7ab22a8d@arachnoid>
+ <CAA8crwfV15isVC7jzbbiN46Vg3=ceeZnMGn0MvoG7VW32z282Q@mail.gmail.com>
+Message-ID: <20231119182539.2483cbdb@Tarkus>
+
+On Sun, 19 Nov 2023 13:53:52 +0000
+Package Maintainer <ggenealogypackage at gmail.com> wrote:
+
+> I added the code you suggested to the package vignette:
+
+It won't work without setting my.Swd as the new plot device instead of
+pdf():
+
+\SweaveOpts{grdevice=my.Swd,pdf=FALSE}
+
+You have this directive commented out a few lines later, inside a code
+block. It should instead be present outside the code block, without a %
+before it.
+
+(It's best to link to a copy of the code available for viewing
+somewhere. While I was able to fish out a copy of your package from the
+CRAN FTP server this time, it is not always possible to do so.)
+
+A less intrusive way to avoid the error is using the following Sweave
+directive:
+
+\SweaveOpts{pdf.encoding = ISOLatin2.enc}
+
+(Without changing the plot device or creating a new plot device in a
+hidden code block.)
+
+> In both those cases, I didn't see the ERROR of "Conversion failure in
+> 'mbcsToSbcs'".
+
+In order to replicate the problem, you need (1) a fairly recent R-devel
+(a pre-release version, e.g. [*]) and (2) the environment variable
+_R_CHECK_MBCS_CONVERSION_FAILURE_ set. R-hub runs recent R-devel but
+doesn't set the environment variable. I don't know for sure, but I
+think that you are running a released version of R. I hope that R-core
+will make this test part of R CMD check --as-cran, making it possible
+to reproduce such failures with just a copy of R-devel, without extra
+environment variables.
+
+-- 
+Best regards,
+Ivan
+
+[*] https://cran.r-project.org/bin/windows/base/rdevel.html
+
+P.S. Could you please switch your mailer to plain text instead of HTML
+when sending messages to the list? When you compose your e-mail in
+HTML, your mailer automatically prepares a plain text equivalent where
+the code block is seriously mangled. This plain text equivalent is what
+the list subscribers see:
+https://stat.ethz.ch/pipermail/r-package-devel/2023q4/010102.html
+
+
