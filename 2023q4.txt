@@ -19000,3 +19000,333 @@ the list subscribers see:
 https://stat.ethz.ch/pipermail/r-package-devel/2023q4/010102.html
 
 
+From @ergue|@@oko| @end|ng |rom gm@||@com  Mon Nov 20 10:04:10 2023
+From: @ergue|@@oko| @end|ng |rom gm@||@com (Serguei Sokol)
+Date: Mon, 20 Nov 2023 10:04:10 +0100
+Subject: [R-pkg-devel] 
+ Check warning around sprintf: Compiled code should
+ not call entry points which might terminate R nor write to stdout/stderr
+ instead of to the console,
+ nor use Fortran I/O nor system RNGs nor [v]sprintf.
+In-Reply-To: <CADNULg9HZNKzWbLfQ_qbyg=FsyT3kmPVuLGmq31kwE21-arwBw@mail.gmail.com>
+References: <xxAsFZWYO1xbzuhADmLbOGpwTJMBaRzuam9v_HWH7tfmrJqiyCAG2CFlJu98mN50GFgKNsmrJcTuteD-5fUm7WVhRCj2XsI1PZC06o6G0Zk=@protonmail.com>
+ <CADNULg9HZNKzWbLfQ_qbyg=FsyT3kmPVuLGmq31kwE21-arwBw@mail.gmail.com>
+Message-ID: <72115435-c8bc-44c9-931f-a6ef4e0b086d@gmail.com>
+
+Le 19/11/2023 ? 02:07, Iris Simmons a ?crit?:
+> Yes, the reason for the error is the use of sprintf. You can instead use
+> snprintf where n is the maximum number of bytes to write, including the
+> terminating nul character. For example:
+> 
+> char msg[8191];
+> snprintf(msg, 8191, "criteria: error (%d) -> %s\n", inErr, errStr);
+This line should be
+
+snprintf(msg, 8190, "criteria: error (%d) -> %s\n", inErr, errStr);
+
+i.e. 1-less than 'msg' size, leaving a room for the terminal 0-byte.
+Otherwise, a recent version of gcc emits a warning caught by CRAN.
+
+Best,
+Serguei.
+
+
+> Rf_error(msg);
+> 
+> or however large you made the error string.
+> 
+> 
+> On Sat, Nov 18, 2023, 20:01 Iago Gin?-V?zquez <iago.gin-vaz at protonmail.com>
+> wrote:
+> 
+>> Dear all,
+>>
+>> I am updating a CRAN-archived R package, so it can get back to CRAN. But
+>> there is a warning produced in Linux OS that I am not sure to understand
+>> and I do not know how to solve, even after looking at ?Writing portable
+>> packages? in the ?Writing R Extensions? manual and after searching in the
+>> web. The warning is
+>>
+>>> * checking compiled code ... WARNING
+>>> File ?ccckc/libs/ccckc.so?:
+>>> Found ?sprintf?, possibly from ?sprintf? (C)
+>>> Object: ?criteria.o?
+>>>
+>>> Compiled code should not call entry points which might terminate R nor
+>>> write to stdout/stderr instead of to the console, nor use Fortran I/O
+>>> nor system RNGs nor [v]sprintf.
+>>> See ?Writing portable packages? in the ?Writing R Extensions? manual.
+>>
+>> The package contains both C and Fortran code and in the criteria.c there
+>> is only a sprintf use, as follows:
+>>
+>> sprintf(msg,"criteria: error (%d) -> %s\n", inErr, errStr);
+>> Rf_error(msg);
+>> May be the reason of the warning the next line the ?Writing R Extensions?
+>> manual?
+>>
+>>> Use ofsprintfandvsprintfis regarded as a potential security risk and
+>> warned about on some platforms.[82](
+>> https://cran.r-project.org/doc/manuals/R-exts.html#FOOT82)R CMD
+>> checkreports if any calls are found.
+>>
+>> If that is the reason, is there any alternative to the use of sprintf?
+>> Anyway, what can I do?
+>>
+>> Thanks you in advance for your time.
+>>
+>> Kind regards,
+>> Iago
+>>
+>> Sent with [Proton Mail](https://proton.me/) secure email.
+>>          [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From |kw@|mmo @end|ng |rom gm@||@com  Mon Nov 20 10:06:34 2023
+From: |kw@|mmo @end|ng |rom gm@||@com (Iris Simmons)
+Date: Mon, 20 Nov 2023 04:06:34 -0500
+Subject: [R-pkg-devel] 
+ Check warning around sprintf: Compiled code should
+ not call entry points which might terminate R nor write to stdout/stderr
+ instead of to the console,
+ nor use Fortran I/O nor system RNGs nor [v]sprintf.
+In-Reply-To: <72115435-c8bc-44c9-931f-a6ef4e0b086d@gmail.com>
+References: <xxAsFZWYO1xbzuhADmLbOGpwTJMBaRzuam9v_HWH7tfmrJqiyCAG2CFlJu98mN50GFgKNsmrJcTuteD-5fUm7WVhRCj2XsI1PZC06o6G0Zk=@protonmail.com>
+ <CADNULg9HZNKzWbLfQ_qbyg=FsyT3kmPVuLGmq31kwE21-arwBw@mail.gmail.com>
+ <72115435-c8bc-44c9-931f-a6ef4e0b086d@gmail.com>
+Message-ID: <CADNULg9pr0F=Cnd9kyyvvwX3xNVtOST-Q1EUfD8uG5S6YN8M-A@mail.gmail.com>
+
+The n in snprintf includes the room for the terminating nul. It should be
+8191. If gcc is throwing a warning, it can be ignored.
+
+On Mon, Nov 20, 2023, 04:04 Serguei Sokol <serguei.sokol at gmail.com> wrote:
+
+> Le 19/11/2023 ? 02:07, Iris Simmons a ?crit :
+> > Yes, the reason for the error is the use of sprintf. You can instead use
+> > snprintf where n is the maximum number of bytes to write, including the
+> > terminating nul character. For example:
+> >
+> > char msg[8191];
+> > snprintf(msg, 8191, "criteria: error (%d) -> %s\n", inErr, errStr);
+> This line should be
+>
+> snprintf(msg, 8190, "criteria: error (%d) -> %s\n", inErr, errStr);
+>
+> i.e. 1-less than 'msg' size, leaving a room for the terminal 0-byte.
+> Otherwise, a recent version of gcc emits a warning caught by CRAN.
+>
+> Best,
+> Serguei.
+>
+>
+> > Rf_error(msg);
+> >
+> > or however large you made the error string.
+> >
+> >
+> > On Sat, Nov 18, 2023, 20:01 Iago Gin?-V?zquez <
+> iago.gin-vaz at protonmail.com>
+> > wrote:
+> >
+> >> Dear all,
+> >>
+> >> I am updating a CRAN-archived R package, so it can get back to CRAN. But
+> >> there is a warning produced in Linux OS that I am not sure to understand
+> >> and I do not know how to solve, even after looking at ?Writing portable
+> >> packages? in the ?Writing R Extensions? manual and after searching in
+> the
+> >> web. The warning is
+> >>
+> >>> * checking compiled code ... WARNING
+> >>> File ?ccckc/libs/ccckc.so?:
+> >>> Found ?sprintf?, possibly from ?sprintf? (C)
+> >>> Object: ?criteria.o?
+> >>>
+> >>> Compiled code should not call entry points which might terminate R nor
+> >>> write to stdout/stderr instead of to the console, nor use Fortran I/O
+> >>> nor system RNGs nor [v]sprintf.
+> >>> See ?Writing portable packages? in the ?Writing R Extensions? manual.
+> >>
+> >> The package contains both C and Fortran code and in the criteria.c there
+> >> is only a sprintf use, as follows:
+> >>
+> >> sprintf(msg,"criteria: error (%d) -> %s\n", inErr, errStr);
+> >> Rf_error(msg);
+> >> May be the reason of the warning the next line the ?Writing R
+> Extensions?
+> >> manual?
+> >>
+> >>> Use ofsprintfandvsprintfis regarded as a potential security risk and
+> >> warned about on some platforms.[82](
+> >> https://cran.r-project.org/doc/manuals/R-exts.html#FOOT82)R CMD
+> >> checkreports if any calls are found.
+> >>
+> >> If that is the reason, is there any alternative to the use of sprintf?
+> >> Anyway, what can I do?
+> >>
+> >> Thanks you in advance for your time.
+> >>
+> >> Kind regards,
+> >> Iago
+> >>
+> >> Sent with [Proton Mail](https://proton.me/) secure email.
+> >>          [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-package-devel at r-project.org mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >>
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Mon Nov 20 10:09:43 2023
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Mon, 20 Nov 2023 10:09:43 +0100
+Subject: [R-pkg-devel] 
+ Check warning around sprintf: Compiled code should
+ not call entry points which might terminate R nor write to stdout/stderr
+ instead of to the console,
+ nor use Fortran I/O nor system RNGs nor [v]sprintf.
+In-Reply-To: <72115435-c8bc-44c9-931f-a6ef4e0b086d@gmail.com>
+References: <xxAsFZWYO1xbzuhADmLbOGpwTJMBaRzuam9v_HWH7tfmrJqiyCAG2CFlJu98mN50GFgKNsmrJcTuteD-5fUm7WVhRCj2XsI1PZC06o6G0Zk=@protonmail.com>
+ <CADNULg9HZNKzWbLfQ_qbyg=FsyT3kmPVuLGmq31kwE21-arwBw@mail.gmail.com>
+ <72115435-c8bc-44c9-931f-a6ef4e0b086d@gmail.com>
+Message-ID: <25947.8791.730071.8606@stat.math.ethz.ch>
+
+>>>>> Serguei Sokol 
+>>>>>     on Mon, 20 Nov 2023 10:04:10 +0100 writes:
+
+    > Le 19/11/2023 ? 02:07, Iris Simmons a ?crit?:
+    >> Yes, the reason for the error is the use of sprintf. You can instead use
+    >> snprintf where n is the maximum number of bytes to write, including the
+    >> terminating nul character. For example:
+    >> 
+    >> char msg[8191];
+    >> snprintf(msg, 8191, "criteria: error (%d) -> %s\n", inErr, errStr);
+    > This line should be
+
+    > snprintf(msg, 8190, "criteria: error (%d) -> %s\n", inErr, errStr);
+
+    > i.e. 1-less than 'msg' size, leaving a room for the terminal 0-byte.
+    > Otherwise, a recent version of gcc emits a warning caught by CRAN.
+
+    > Best,
+    > Serguei.
+
+Yes, indeed  ' - 1 ',
+
+but really  Iago    (and everyone else!) should in such cases
+use the much nicer and easier code that  Ivan Krylov proposed
+yesterday :
+
+   Rf_error("criteria: error (%d) -> %s", inErr, errStr);
+
+with *no* need of declaring a `msg` buffer and thinking about
+its size.
+
+Martin
+
+
+From |@go@g|n-v@z @end|ng |rom protonm@||@com  Tue Nov 21 01:24:33 2023
+From: |@go@g|n-v@z @end|ng |rom protonm@||@com (=?utf-8?Q?Iago_Gin=C3=A9-V=C3=A1zquez?=)
+Date: Tue, 21 Nov 2023 00:24:33 +0000
+Subject: [R-pkg-devel] 
+ Check warning around sprintf: Compiled code should
+ not call entry points which might terminate R nor write to stdout/stderr
+ instead of to the console,
+ nor use Fortran I/O nor system RNGs nor [v]sprintf.
+In-Reply-To: <25947.8791.730071.8606@stat.math.ethz.ch>
+References: <xxAsFZWYO1xbzuhADmLbOGpwTJMBaRzuam9v_HWH7tfmrJqiyCAG2CFlJu98mN50GFgKNsmrJcTuteD-5fUm7WVhRCj2XsI1PZC06o6G0Zk=@protonmail.com>
+ <CADNULg9HZNKzWbLfQ_qbyg=FsyT3kmPVuLGmq31kwE21-arwBw@mail.gmail.com>
+ <72115435-c8bc-44c9-931f-a6ef4e0b086d@gmail.com>
+ <25947.8791.730071.8606@stat.math.ethz.ch>
+Message-ID: <MOImJjchYstzOnIdaa5Me-iEi9cYFZy19qjDrD8k4M2uznZXrFd9U96m_1JriI3-AbAwzCaRlDgqdL1lIh9wRXKs2VbawAJ35oxqnMKkhZk=@protonmail.com>
+
+Thanks to all for the inputs and Ivan and Martin for the cleaner code you suggest and which I will definitely use.
+
+Iago
+
+
+
+
+Sent with Proton Mail secure email.
+
+On Monday, 20 November 2023 at 10:09, Martin Maechler <maechler at stat.math.ethz.ch> wrote:
+
+
+> > > > > > Serguei Sokol
+> > > > > > on Mon, 20 Nov 2023 10:04:10 +0100 writes:
+> 
+> 
+> > Le 19/11/2023 ? 02:07, Iris Simmons a ?crit :
+> 
+> >> Yes, the reason for the error is the use of sprintf. You can instead use
+> 
+> >> snprintf where n is the maximum number of bytes to write, including the
+> 
+> >> terminating nul character. For example:
+> 
+> >>
+> 
+> >> char msg[8191];
+> 
+> >> snprintf(msg, 8191, "criteria: error (%d) -> %s\n", inErr, errStr);
+> 
+> > This line should be
+> 
+> 
+> > snprintf(msg, 8190, "criteria: error (%d) -> %s\n", inErr, errStr);
+> 
+> 
+> > i.e. 1-less than 'msg' size, leaving a room for the terminal 0-byte.
+> 
+> > Otherwise, a recent version of gcc emits a warning caught by CRAN.
+> 
+> 
+> > Best,
+> 
+> > Serguei.
+> 
+> 
+> Yes, indeed ' - 1 ',
+> 
+> but really Iago (and everyone else!) should in such cases
+> use the much nicer and easier code that Ivan Krylov proposed
+> yesterday :
+> 
+> Rf_error("criteria: error (%d) -> %s", inErr, errStr);
+> 
+> 
+> with no need of declaring a `msg` buffer and thinking about
+> its size.
+> 
+> Martin
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
