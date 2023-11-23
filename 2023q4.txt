@@ -19330,3 +19330,82 @@ On Monday, 20 November 2023 at 10:09, Martin Maechler <maechler at stat.math.eth
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From @ndrew @end|ng |rom robb|n@@@me  Tue Nov 21 03:34:55 2023
+From: @ndrew @end|ng |rom robb|n@@@me (Andrew Robbins)
+Date: Mon, 20 Nov 2023 21:34:55 -0500
+Subject: [R-pkg-devel] RFC: an interface to manage use of parallelism in
+ packages
+In-Reply-To: <20231102134452.10a3bcd2@arachnoid>
+References: <20231102134452.10a3bcd2@arachnoid>
+Message-ID: <89b83618-1851-4fcb-b047-a155866043d2@robbinsa.me>
+
+Hi all,
+
+While we're on the topic of BLAS thread handling, there's also the 
+matter of OpenBLAS's two threading implementations. Depending on how the 
+library is built, it can either use OpenMP or it can use POSIX threading.
+
+This can cause issues in packages that call into BLAS functions in an 
+OpenMP block as the POSIX threading variant will attempt to spawn N 
+threads for each OpenMP thread (where N is the system-configured 
+OpenBLAS thread count). This explosion of threads causes a pretty severe 
+performance degradation. In my (pending) package, I currently have a 
+compile-time check for POSIX-threaded OpenBLAS which calls 
+openblas_set_num_threads before and after OpenMP blocks to stop this 
+behavior from occurring. If R were to implement some kind of internal 
+FlexiBLAS, this would need to be taken into account.
+
+
+Best,
+
+-- 
+Andrew Robbins
+Systems Analyst, Welch Lab<https://welch-lab.github.io>
+University of Michigan
+Department of Computational Medicine and Bioinformatics
+
+
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: OpenPGP_signature.asc
+Type: application/pgp-signature
+Size: 840 bytes
+Desc: OpenPGP digital signature
+URL: <https://stat.ethz.ch/pipermail/r-package-devel/attachments/20231120/c5dd8b5d/attachment.sig>
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Nov 21 17:17:51 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 21 Nov 2023 19:17:51 +0300
+Subject: [R-pkg-devel] RFC: an interface to manage use of parallelism in
+ packages
+In-Reply-To: <89b83618-1851-4fcb-b047-a155866043d2@robbinsa.me>
+References: <20231102134452.10a3bcd2@arachnoid>
+ <89b83618-1851-4fcb-b047-a155866043d2@robbinsa.me>
+Message-ID: <20231121191751.420e67e3@parabola>
+
+? Mon, 20 Nov 2023 21:34:55 -0500
+Andrew Robbins via R-package-devel <r-package-devel at r-project.org>
+?????:
+
+> In my (pending) package, I currently have a compile-time check for
+> POSIX-threaded OpenBLAS which calls openblas_set_num_threads before
+> and after OpenMP blocks to stop this behavior from occurring.
+
+This may be not enough. In distributions like Debian, it's possible (if
+not common) to install multiple BLAS implementations and switch them
+between program runs using update-alternatives, so it's possible to
+compile and link a package using one BLAS then run it using another
+BLAS.
+
+May I suggest using dlsym() to check whether openblas_get_parallel()
+is present in the current process and perform the check during run-time?
+
+(Sorry about not returning to this topic earlier. I do think that a
+semaphore is the right choice and I do intend to implement this
+interface using semaphores within a few weeks if not a few days.)
+
+-- 
+Best regards,
+Ivan
+
+
