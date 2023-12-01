@@ -21488,3 +21488,485 @@ Tomas
 >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From konr@d_kr@emer @end|ng |rom y@hoo@de  Wed Nov 29 11:23:14 2023
+From: konr@d_kr@emer @end|ng |rom y@hoo@de (Konrad)
+Date: Wed, 29 Nov 2023 11:23:14 +0100
+Subject: [R-pkg-devel] Coordination Needed: Update in ast2ast affecting
+ paropt
+References: <faa19393-5679-456d-ad9c-cc311cc9cfc0.ref@yahoo.de>
+Message-ID: <faa19393-5679-456d-ad9c-cc311cc9cfc0@yahoo.de>
+
+Dear all,
+
+
+I have two packages on CRAN (ast2ast and paropt). Notably, paropt 
+depends on ast2ast. Currently, I'm working on a major update of ast2ast 
+which changes the API at specific points that are used by paropt. Thus, 
+the update will break paropt.
+
+I am reaching out to seek your suggestions on how Ican smoothly navigate 
+this transition with minimal disruption.
+
+Thanks a lot in advance.
+
+Best Konrad
+
+	[[alternative HTML version deleted]]
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Wed Nov 29 12:25:23 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Wed, 29 Nov 2023 12:25:23 +0100
+Subject: [R-pkg-devel] Coordination Needed: Update in ast2ast affecting
+ paropt
+In-Reply-To: <faa19393-5679-456d-ad9c-cc311cc9cfc0@yahoo.de>
+References: <faa19393-5679-456d-ad9c-cc311cc9cfc0.ref@yahoo.de>
+ <faa19393-5679-456d-ad9c-cc311cc9cfc0@yahoo.de>
+Message-ID: <5f76d19f-b593-4cbf-b5ef-c4c939c1bf19@statistik.tu-dortmund.de>
+
+
+
+On 29.11.2023 11:23, Konrad via R-package-devel wrote:
+> Dear all,
+> 
+> 
+> I have two packages on CRAN (ast2ast and paropt). Notably, paropt
+> depends on ast2ast. Currently, I'm working on a major update of ast2ast
+> which changes the API at specific points that are used by paropt. Thus,
+> the update will break paropt.
+> 
+> I am reaching out to seek your suggestions on how Ican smoothly navigate
+> this transition with minimal disruption.
+
+If you cannot prepare paropt in a way that it works with both versions 
+of ast2ast, you can at least prepare a new version that work with the 
+new ast2ast and explain upon submission of axt2axt that paropt is well 
+prepared for submissions once ast2ast got released.
+
+Best,
+Uwe Ligges
+
+
+
+> Thanks a lot in advance.
+> 
+> Best Konrad
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Wed Nov 29 19:30:08 2023
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Wed, 29 Nov 2023 10:30:08 -0800
+Subject: [R-pkg-devel] Canonical way to Rprintf R_xlen_t
+In-Reply-To: <68ac5a21-f6d9-4695-b4aa-e2b6d350b51a@gmail.com>
+References: <CAJmOi+OWdiZP=y3Rj+LqJcBazH=Fg1W425VYSYhU-ekZLJt2VA@mail.gmail.com>
+ <20231128225123.3d932e80@Tarkus>
+ <CAFDcVCQ8xmFDDWwdHJ9THdzg0SRZgbXhx5VuTrt96CMaUiMoGA@mail.gmail.com>
+ <737E78B6-D7B0-4C17-812C-3A72362F723C@dal.ca>
+ <CAFDcVCRENVRsaFjaoNRdKBDoVh52V4BWmORFif5g4DVpvL_TVQ@mail.gmail.com>
+ <68ac5a21-f6d9-4695-b4aa-e2b6d350b51a@gmail.com>
+Message-ID: <CAFDcVCScMGMKCg62vjeU=VsELH1OYARFH1ZcHPveJPoaqpo0aw@mail.gmail.com>
+
+On Tue, Nov 28, 2023 at 1:21?PM Tomas Kalibera <tomas.kalibera at gmail.com> wrote:
+>
+>
+> On 11/28/23 21:50, Henrik Bengtsson wrote:
+> > Daniel, I get those compiler warnings for '%td" MS Windows. It works
+> > fine on Linux.
+>
+> Please let me clarify. %td works in R on Windows in R 4.3 and R-devel,
+> when using the recommended toolchain, which is Rtools43. It also worked
+> with R 4.2 and Rtools42. It works since R has switched to UCRT on
+> Windows. I assume you are not using a recommended toolchain and this is
+> why you are getting the warning - please let me know if this is not the
+> case and I will try to help.
+
+Thank you.
+
+I was getting those compiler warnings on %td when using the widely
+used https://github.com/r-lib/actions tool chain.  It was using
+gcc.exe (GCC) 12.2.0 two-three days ago.  I reran it yesterday, and it
+seems to have been fixed now.  It is now reporting on gcc.exe (GCC)
+12.3.0.  Not sure if that was the fix, or there was something else.
+
+> There is a bug in GCC, still present in gcc 12 and gcc 10, due to which
+> gcc displays warnings about the format even when it is supported. The
+> details are complicated, but in short, it accidentally applies both
+> Microsoft format and C99/GNU format checks to printf functions with UCRT
+> - so you get a warning whenever the two formats disagree, which includes
+> printing a 64 bit integer.  Also for %td which is not supported by
+> Microsoft format. Or say %zu (size_t) or %Lf (long double). I've been
+> patching GCC in Rtools42 and Rtools43 to avoid this problem, so you
+> don't get the warning there. My patch has been picked up also by Msys2,
+> I didn't check whether it is still there or not. Finally a new
+> implementation of the patch was accepted to GCC trunk, so eventually
+> this will no longer be needed. But regardless which version of GCC
+> Rtools44 will use, I will make sure it will accept C99 printf formats
+> without warnings.
+
+Interesting. Thanks for this work and pushing this upstreams.
+
+> An unpatched GCC 10 or 12 with UCRT will print a warning for %td but will support it.
+
+It sounds like '%td' is supported, and it's just that there's a false
+warning. Do you happen to know we can assume '%td' is compatible with
+much older versions of GCC too? My question is basically, can I safely
+use '%td' with older version of GCC, e.g. for older versions of R, and
+assume it'll compile on MS Windows?  In my case, we're trying to keep
+'matrixStats' backward quite far back, and I can imagine there are
+other packages doing that too.
+
+Thanks,
+
+Henrik
+
+>
+> Best
+> Tomas
+>
+> > FYI, https://builder.r-hub.io/ is a great, free service for testing on
+> > various platforms in the cloud.  Also, if you host your package code
+> > on GitHub, it's a small step to configure GitHub Actions to check your
+> > packages across platforms on their servers.  It's free and fairly
+> > straightforward.  There should be plenty of tutorials and examples
+> > online for how to do that with R packages.  So, no need to mock around
+> > with Linux containers etc.
+> >
+> > /Henrik
+> >
+> > On Tue, Nov 28, 2023 at 12:30?PM Daniel Kelley <kelley at dal.ca> wrote:
+> >> To HB: I also maintain a package that has this problem.  I do not have access to a linux machine (or a machine with the C++ version in question) so I spent quite a while trying to get docker set up. That was a slow process because I had to install R, a bunch of packages, some other software, and so forth.  Anyway, the docker container I had used didn't seem to have a compiler that gave these warnings.  But, by then, I saw that the machine used by
+> >>
+> >> devtools::check_win_devel()
+> >>
+> >> was giving those warnings :-)
+> >>
+> >> So, now there is a way to debug these things.
+> >>
+> >> PS. I also tried using rhub, but it takes a long time and often results in a PREPERROR.
+> >>
+> >> On Nov 28, 2023, at 3:58?PM, Henrik Bengtsson <henrik.bengtsson at gmail.com> wrote:
+> >>
+> >> CAUTION: The Sender of this email is not from within Dalhousie.
+> >>
+> >> "%td" is not supported on all platforms/compilers.  This is what I got
+> >> when I added it to 'matrixStats';
+> >>
+> >> * using log directory 'D:/a/matrixStats/matrixStats/check/matrixStats.Rcheck'
+> >> * using R Under development (unstable) (2023-11-26 r85638 ucrt)
+> >> * using platform: x86_64-w64-mingw32
+> >> * R was compiled by
+> >> gcc.exe (GCC) 12.3.0
+> >> GNU Fortran (GCC) 12.3.0
+> >> * running under: Windows Server 2022 x64 (build 20348)
+> >> * using session charset: UTF-8
+> >> * using options '--no-manual --as-cran'
+> >> * checking for file 'matrixStats/DESCRIPTION' ... OK
+> >> * this is package 'matrixStats' version '1.1.0-9003'
+> >> * checking package namespace information ... OK
+> >> * checking package dependencies ... OK
+> >> * checking if this is a source package ... OK
+> >> * checking if there is a namespace ... OK
+> >> * checking for executable files ... OK
+> >> * checking for hidden files and directories ... OK
+> >> * checking for portable file names ... OK
+> >> * checking serialization versions ... OK
+> >> * checking whether package 'matrixStats' can be installed ... [22s] WARNING
+> >> Found the following significant warnings:
+> >> binCounts.c:25:81: warning: unknown conversion type character 't' in
+> >> format [-Wformat=]
+> >> binCounts.c:25:11: warning: too many arguments for format [-Wformat-extra-args]
+> >> binMeans.c:26:60: warning: unknown conversion type character 't' in
+> >> format [-Wformat=]
+> >> binMeans.c:26:67: warning: unknown conversion type character 't' in
+> >> format [-Wformat=]
+> >> ...
+> >> See 'D:/a/matrixStats/matrixStats/check/matrixStats.Rcheck/00install.out'
+> >> for details.
+> >> * used C compiler: 'gcc.exe (GCC) 12.2.0'
+> >>
+> >> It worked fine on Linux. Because of this, I resorted to the coercion
+> >> strategy, i.e. "%lld" and (long long int)value.  FWIW, on MS Windows,
+> >> I see 'ptrsize_t' being 'long long int', whereas on Linux I see 'long
+> >> int'.
+> >>
+> >> /Henrik
+> >>
+> >> On Tue, Nov 28, 2023 at 11:51?AM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+> >>
+> >>
+> >> On Wed, 29 Nov 2023 06:11:23 +1100
+> >> Hugh Parsonage <hugh.parsonage at gmail.com> wrote:
+> >>
+> >> Rprintf("%lld", (long long) xlength(x));
+> >>
+> >>
+> >> This is fine. long longs are guaranteed to be at least 64 bits in size
+> >> and are signed, just like lengths in R.
+> >>
+> >> Rprintf("%td, xlength(x));
+> >>
+> >>
+> >> Maybe if you cast it to ptrdiff_t first. Otherwise I would expect this
+> >> to fail on an (increasingly rare) 32-bit system where R_xlen_t is int
+> >> (which is an implementation detail).
+> >>
+> >> In my opinion, ptrdiff_t is just the right type for array lengths if
+> >> they have to be signed (which is useful for Fortran interoperability),
+> >> so Rprintf("%td", (ptrdiff_t)xlength(x)) would be my preferred option
+> >> for now. By definition of ptrdiff_t, you can be sure [*] that there
+> >> won't be any vectors on your system longer than PTRDIFF_MAX.
+> >>
+> >> using the string macro found in Mr Kalibera's commit of r85641:
+> >> R_PRIdXLEN_T
+> >>
+> >>
+> >> I think this will be the best solution once we can afford
+> >> having our packages depend on R >= 4.4.
+> >>
+> >> --
+> >> Best regards,
+> >> Ivan
+> >>
+> >> [*] https://en.cppreference.com/w/c/types/ptrdiff_t posits that there
+> >> may exist long vectors that fit in SIZE_MAX (unsigned) elements but not
+> >> PTRDIFF_MAX (signed) elements. If such vector exists, subtracting two
+> >> pointers to its insides may result in undefined behaviour. This may be
+> >> already possible in a 32-bit process on Linux running with a 3G
+> >> user-space / 1G kernel-space split. The only way around the problem is
+> >> to use unsigned types for lengths, but that would preclude Fortran
+> >> compatibility.
+> >>
+> >> ______________________________________________
+> >> R-package-devel at r-project.org mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >>
+> >>
+> >> ______________________________________________
+> >> R-package-devel at r-project.org mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >>
+> >>
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Wed Nov 29 19:51:35 2023
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Wed, 29 Nov 2023 19:51:35 +0100
+Subject: [R-pkg-devel] Canonical way to Rprintf R_xlen_t
+In-Reply-To: <CAFDcVCScMGMKCg62vjeU=VsELH1OYARFH1ZcHPveJPoaqpo0aw@mail.gmail.com>
+References: <CAJmOi+OWdiZP=y3Rj+LqJcBazH=Fg1W425VYSYhU-ekZLJt2VA@mail.gmail.com>
+ <20231128225123.3d932e80@Tarkus>
+ <CAFDcVCQ8xmFDDWwdHJ9THdzg0SRZgbXhx5VuTrt96CMaUiMoGA@mail.gmail.com>
+ <737E78B6-D7B0-4C17-812C-3A72362F723C@dal.ca>
+ <CAFDcVCRENVRsaFjaoNRdKBDoVh52V4BWmORFif5g4DVpvL_TVQ@mail.gmail.com>
+ <68ac5a21-f6d9-4695-b4aa-e2b6d350b51a@gmail.com>
+ <CAFDcVCScMGMKCg62vjeU=VsELH1OYARFH1ZcHPveJPoaqpo0aw@mail.gmail.com>
+Message-ID: <7bed8ba6-52d1-4e59-9e6d-429d3780acce@gmail.com>
+
+
+On 11/29/23 19:30, Henrik Bengtsson wrote:
+> On Tue, Nov 28, 2023 at 1:21?PM Tomas Kalibera <tomas.kalibera at gmail.com> wrote:
+>>
+>> On 11/28/23 21:50, Henrik Bengtsson wrote:
+>>> Daniel, I get those compiler warnings for '%td" MS Windows. It works
+>>> fine on Linux.
+>> Please let me clarify. %td works in R on Windows in R 4.3 and R-devel,
+>> when using the recommended toolchain, which is Rtools43. It also worked
+>> with R 4.2 and Rtools42. It works since R has switched to UCRT on
+>> Windows. I assume you are not using a recommended toolchain and this is
+>> why you are getting the warning - please let me know if this is not the
+>> case and I will try to help.
+> Thank you.
+>
+> I was getting those compiler warnings on %td when using the widely
+> used https://github.com/r-lib/actions tool chain.  It was using
+> gcc.exe (GCC) 12.2.0 two-three days ago.  I reran it yesterday, and it
+> seems to have been fixed now.  It is now reporting on gcc.exe (GCC)
+> 12.3.0.  Not sure if that was the fix, or there was something else.
+Thanks. I don't know what that service uses, it is not maintained by R Core.
+>
+>> There is a bug in GCC, still present in gcc 12 and gcc 10, due to which
+>> gcc displays warnings about the format even when it is supported. The
+>> details are complicated, but in short, it accidentally applies both
+>> Microsoft format and C99/GNU format checks to printf functions with UCRT
+>> - so you get a warning whenever the two formats disagree, which includes
+>> printing a 64 bit integer.  Also for %td which is not supported by
+>> Microsoft format. Or say %zu (size_t) or %Lf (long double). I've been
+>> patching GCC in Rtools42 and Rtools43 to avoid this problem, so you
+>> don't get the warning there. My patch has been picked up also by Msys2,
+>> I didn't check whether it is still there or not. Finally a new
+>> implementation of the patch was accepted to GCC trunk, so eventually
+>> this will no longer be needed. But regardless which version of GCC
+>> Rtools44 will use, I will make sure it will accept C99 printf formats
+>> without warnings.
+> Interesting. Thanks for this work and pushing this upstreams.
+>
+>> An unpatched GCC 10 or 12 with UCRT will print a warning for %td but will support it.
+> It sounds like '%td' is supported, and it's just that there's a false
+> warning. Do you happen to know we can assume '%td' is compatible with
+> much older versions of GCC too? My question is basically, can I safely
+> use '%td' with older version of GCC, e.g. for older versions of R, and
+> assume it'll compile on MS Windows?  In my case, we're trying to keep
+> 'matrixStats' backward quite far back, and I can imagine there are
+> other packages doing that too.
+
+No, %td would not work with R < 4.2 built using the then recommended 
+toolchains, because MSVCRT was used, which did not support %td. The 
+runtime library would not be able to print such value.
+
+For such old versions of R, you would have to do something else. I think 
+PRId64 from inttypes.h and a cast to "(long long)" should work. The 
+macro would expand to the Microsoft format pattern in the older 
+versions. Or depending on what you want to do, also you could simply 
+cast to double and print that way.
+
+CRAN only tests and builds R-devel, R-release and R-oldrelease (4.2 at 
+this point).
+
+Best
+Tomas
+
+>
+> Thanks,
+>
+> Henrik
+>
+>> Best
+>> Tomas
+>>
+>>> FYI, https://builder.r-hub.io/ is a great, free service for testing on
+>>> various platforms in the cloud.  Also, if you host your package code
+>>> on GitHub, it's a small step to configure GitHub Actions to check your
+>>> packages across platforms on their servers.  It's free and fairly
+>>> straightforward.  There should be plenty of tutorials and examples
+>>> online for how to do that with R packages.  So, no need to mock around
+>>> with Linux containers etc.
+>>>
+>>> /Henrik
+>>>
+>>> On Tue, Nov 28, 2023 at 12:30?PM Daniel Kelley <kelley at dal.ca> wrote:
+>>>> To HB: I also maintain a package that has this problem.  I do not have access to a linux machine (or a machine with the C++ version in question) so I spent quite a while trying to get docker set up. That was a slow process because I had to install R, a bunch of packages, some other software, and so forth.  Anyway, the docker container I had used didn't seem to have a compiler that gave these warnings.  But, by then, I saw that the machine used by
+>>>>
+>>>> devtools::check_win_devel()
+>>>>
+>>>> was giving those warnings :-)
+>>>>
+>>>> So, now there is a way to debug these things.
+>>>>
+>>>> PS. I also tried using rhub, but it takes a long time and often results in a PREPERROR.
+>>>>
+>>>> On Nov 28, 2023, at 3:58?PM, Henrik Bengtsson <henrik.bengtsson at gmail.com> wrote:
+>>>>
+>>>> CAUTION: The Sender of this email is not from within Dalhousie.
+>>>>
+>>>> "%td" is not supported on all platforms/compilers.  This is what I got
+>>>> when I added it to 'matrixStats';
+>>>>
+>>>> * using log directory 'D:/a/matrixStats/matrixStats/check/matrixStats.Rcheck'
+>>>> * using R Under development (unstable) (2023-11-26 r85638 ucrt)
+>>>> * using platform: x86_64-w64-mingw32
+>>>> * R was compiled by
+>>>> gcc.exe (GCC) 12.3.0
+>>>> GNU Fortran (GCC) 12.3.0
+>>>> * running under: Windows Server 2022 x64 (build 20348)
+>>>> * using session charset: UTF-8
+>>>> * using options '--no-manual --as-cran'
+>>>> * checking for file 'matrixStats/DESCRIPTION' ... OK
+>>>> * this is package 'matrixStats' version '1.1.0-9003'
+>>>> * checking package namespace information ... OK
+>>>> * checking package dependencies ... OK
+>>>> * checking if this is a source package ... OK
+>>>> * checking if there is a namespace ... OK
+>>>> * checking for executable files ... OK
+>>>> * checking for hidden files and directories ... OK
+>>>> * checking for portable file names ... OK
+>>>> * checking serialization versions ... OK
+>>>> * checking whether package 'matrixStats' can be installed ... [22s] WARNING
+>>>> Found the following significant warnings:
+>>>> binCounts.c:25:81: warning: unknown conversion type character 't' in
+>>>> format [-Wformat=]
+>>>> binCounts.c:25:11: warning: too many arguments for format [-Wformat-extra-args]
+>>>> binMeans.c:26:60: warning: unknown conversion type character 't' in
+>>>> format [-Wformat=]
+>>>> binMeans.c:26:67: warning: unknown conversion type character 't' in
+>>>> format [-Wformat=]
+>>>> ...
+>>>> See 'D:/a/matrixStats/matrixStats/check/matrixStats.Rcheck/00install.out'
+>>>> for details.
+>>>> * used C compiler: 'gcc.exe (GCC) 12.2.0'
+>>>>
+>>>> It worked fine on Linux. Because of this, I resorted to the coercion
+>>>> strategy, i.e. "%lld" and (long long int)value.  FWIW, on MS Windows,
+>>>> I see 'ptrsize_t' being 'long long int', whereas on Linux I see 'long
+>>>> int'.
+>>>>
+>>>> /Henrik
+>>>>
+>>>> On Tue, Nov 28, 2023 at 11:51?AM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+>>>>
+>>>>
+>>>> On Wed, 29 Nov 2023 06:11:23 +1100
+>>>> Hugh Parsonage <hugh.parsonage at gmail.com> wrote:
+>>>>
+>>>> Rprintf("%lld", (long long) xlength(x));
+>>>>
+>>>>
+>>>> This is fine. long longs are guaranteed to be at least 64 bits in size
+>>>> and are signed, just like lengths in R.
+>>>>
+>>>> Rprintf("%td, xlength(x));
+>>>>
+>>>>
+>>>> Maybe if you cast it to ptrdiff_t first. Otherwise I would expect this
+>>>> to fail on an (increasingly rare) 32-bit system where R_xlen_t is int
+>>>> (which is an implementation detail).
+>>>>
+>>>> In my opinion, ptrdiff_t is just the right type for array lengths if
+>>>> they have to be signed (which is useful for Fortran interoperability),
+>>>> so Rprintf("%td", (ptrdiff_t)xlength(x)) would be my preferred option
+>>>> for now. By definition of ptrdiff_t, you can be sure [*] that there
+>>>> won't be any vectors on your system longer than PTRDIFF_MAX.
+>>>>
+>>>> using the string macro found in Mr Kalibera's commit of r85641:
+>>>> R_PRIdXLEN_T
+>>>>
+>>>>
+>>>> I think this will be the best solution once we can afford
+>>>> having our packages depend on R >= 4.4.
+>>>>
+>>>> --
+>>>> Best regards,
+>>>> Ivan
+>>>>
+>>>> [*] https://en.cppreference.com/w/c/types/ptrdiff_t posits that there
+>>>> may exist long vectors that fit in SIZE_MAX (unsigned) elements but not
+>>>> PTRDIFF_MAX (signed) elements. If such vector exists, subtracting two
+>>>> pointers to its insides may result in undefined behaviour. This may be
+>>>> already possible in a 32-bit process on Linux running with a 3G
+>>>> user-space / 1G kernel-space split. The only way around the problem is
+>>>> to use unsigned types for lengths, but that would preclude Fortran
+>>>> compatibility.
+>>>>
+>>>> ______________________________________________
+>>>> R-package-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>
+>>>>
+>>>> ______________________________________________
+>>>> R-package-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>
+>>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
