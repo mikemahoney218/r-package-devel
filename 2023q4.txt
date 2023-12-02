@@ -21970,3 +21970,320 @@ Tomas
 >>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Nov 30 13:40:32 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 30 Nov 2023 15:40:32 +0300
+Subject: [R-pkg-devel] Troubleshooting Winbuilder Run Timeouts
+In-Reply-To: <2a792231-a8b5-405d-82d8-23938cd00466@robbinsa.me>
+References: <2a792231-a8b5-405d-82d8-23938cd00466@robbinsa.me>
+Message-ID: <20231130154032.119eaa51@arachnoid>
+
+Hi Andrew Robbins,
+
+? Mon, 27 Nov 2023 12:22:44 -0500
+Andrew Robbins via R-package-devel <r-package-devel at r-project.org>
+?????:
+
+> I'm currently attempting to submit a package to CRAN and am getting 
+> timeouts during the "running examples" phase of the winbuilder tests 
+> that I cannot reproduce locally or on the r-hub windows runner
+
+Do I understand it correctly that in multiple win-builder tests, you
+always get a timeout in the same inmf example? Or is it different
+examples?
+
+There doesn't seem to be a lot of code between Rcpp::Rcerr << "INMF
+started, niter=" << niter << std::endl; and Progress p(niter, verbose);
+to crash or hang in. I've tried to reproduce the problem myself, but it
+doesn't happen to me either.
+
+So far I only noticed minor things, like the build-time dependency on
+pkgbuild (from tools/WindowsOverrides/hdf5/hdf5-config.cmake) that may
+be worth declaring in your DESCRIPTION. I also think that your patch to
+hwloc can be reduced by adding a -DNDEBUG somewhere instead of patching
+out calls to assert(). I think that the C standard (e.g. C99, WG14 draft
+version N1256, 7.4) requires assert() to expand to ((void)0) if NDEBUG
+is defined.
+
+The amount of systems engineering effort to do the right thing that
+went into this package is really impressive; I'd hate to see it fail.
+
+-- 
+Best regards,
+Ivan
+
+
+From @ndrew @end|ng |rom robb|n@@@me  Thu Nov 30 15:30:36 2023
+From: @ndrew @end|ng |rom robb|n@@@me (Andrew Robbins)
+Date: Thu, 30 Nov 2023 09:30:36 -0500
+Subject: [R-pkg-devel] Troubleshooting Winbuilder Run Timeouts
+In-Reply-To: <20231130154032.119eaa51@arachnoid>
+References: <2a792231-a8b5-405d-82d8-23938cd00466@robbinsa.me>
+ <20231130154032.119eaa51@arachnoid>
+Message-ID: <b442a032-df63-41ba-8dce-acadb587f023@robbinsa.me>
+
+Hi Ivan,
+
+Thank you for giving my package check a run-through. You have it 
+correct-every win-builder log hangs/halts in that exact example. The 
+only other anomaly I notice on win-builder is that the elapsed time 
+reported to Rcout is 0-which is clearly incorrect. DNDEBUG removing the 
+assert calls would certainly make my life quite a bit easier when it 
+comes time to maintain the package, so I'll definitely give that a try. 
+Re: declared requirements, WindowsOverrides contains slightly modified 
+copies of cmake locator files with patches that will likely be included 
+in a later Rtools43 release. I'm fairly sure pkgbuild in rtools can be 
+assumed present, but that's more of a Tomas question (and it may be 
+worth declaring either way). Regardless, those files aren't intended to 
+stick around for any longer than they need to. Any other suggestions are 
+always welcome, but I do get the feeling that something is fishy on 
+win-builder's end.
+
+
+Best,
+
+Andrew
+
+On 11/30/2023 7:40 AM, Ivan Krylov wrote:
+> Hi Andrew Robbins,
+>
+> ? Mon, 27 Nov 2023 12:22:44 -0500
+> Andrew Robbins via R-package-devel <r-package-devel at r-project.org>
+> ?????:
+>
+>> I'm currently attempting to submit a package to CRAN and am getting
+>> timeouts during the "running examples" phase of the winbuilder tests
+>> that I cannot reproduce locally or on the r-hub windows runner
+> Do I understand it correctly that in multiple win-builder tests, you
+> always get a timeout in the same inmf example? Or is it different
+> examples?
+>
+> There doesn't seem to be a lot of code between Rcpp::Rcerr << "INMF
+> started, niter=" << niter << std::endl; and Progress p(niter, verbose);
+> to crash or hang in. I've tried to reproduce the problem myself, but it
+> doesn't happen to me either.
+>
+> So far I only noticed minor things, like the build-time dependency on
+> pkgbuild (from tools/WindowsOverrides/hdf5/hdf5-config.cmake) that may
+> be worth declaring in your DESCRIPTION. I also think that your patch to
+> hwloc can be reduced by adding a -DNDEBUG somewhere instead of patching
+> out calls to assert(). I think that the C standard (e.g. C99, WG14 draft
+> version N1256, 7.4) requires assert() to expand to ((void)0) if NDEBUG
+> is defined.
+>
+> The amount of systems engineering effort to do the right thing that
+> went into this package is really impressive; I'd hate to see it fail.
+>
+-- 
+Andrew Robbins
+Systems Analyst, Welch Lab<https://welch-lab.github.io>
+University of Michigan
+Department of Computational Medicine and Bioinformatics
+
+
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: OpenPGP_signature.asc
+Type: application/pgp-signature
+Size: 840 bytes
+Desc: OpenPGP digital signature
+URL: <https://stat.ethz.ch/pipermail/r-package-devel/attachments/20231130/4f675e99/attachment.sig>
+
+From edd @end|ng |rom deb|@n@org  Thu Nov 30 17:49:36 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 30 Nov 2023 10:49:36 -0600
+Subject: [R-pkg-devel] URL woes at CRAN: Anaconda edition
+Message-ID: <25960.48416.146465.222624@rob.eddelbuettel.com>
+
+
+I added a badge to point to Conda builds for the work repo:
+
+  [![Anaconda](https://anaconda.org/conda-forge/r-tiledb/badges/version.svg)](https://anaconda.org/conda-forge/r-tiledb)
+
+
+And as it goes with all good intentions I immediately got punished on the
+next upload:
+
+  Found the following (possibly) invalid URLs:
+    URL: https://anaconda.org/conda-forge/r-tiledb
+      From: README.md
+      Status: 400
+      Message: Bad Request
+
+And *of course* the same URL resolves fine for me in the browser without any
+apparent redirect.  Bit of a web newb here but is there anything I can do
+short of deleteing the badge?
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From @ron@@tk|n@ @end|ng |rom gm@||@com  Thu Nov 30 18:28:32 2023
+From: @ron@@tk|n@ @end|ng |rom gm@||@com (Aron Atkins)
+Date: Thu, 30 Nov 2023 12:28:32 -0500
+Subject: [R-pkg-devel] URL woes at CRAN: Anaconda edition
+In-Reply-To: <25960.48416.146465.222624@rob.eddelbuettel.com>
+References: <25960.48416.146465.222624@rob.eddelbuettel.com>
+Message-ID: <CA+T4NJTBAbw6xaO5NAqCicFhK7xT8BX+tT5AqkgD9pM9zPX0Cw@mail.gmail.com>
+
+On Thu, Nov 30, 2023 at 11:49?AM Dirk Eddelbuettel <edd at debian.org> wrote:
+
+>
+> And *of course* the same URL resolves fine for me in the browser without
+> any
+> apparent redirect.  Bit of a web newb here but is there anything I can do
+> short of deleteing the badge?
+
+
+The badge you're referencing is hosted by a cloudflare CDN, which uses
+"magic" to return error responses to non-humans.
+
+You can see this behavior by running curl against the URL:
+
+curl -I https://anaconda.org/conda-forge/r-tiledb
+HTTP/2 400
+server: cloudflare
+...
+
+I have seen this behavior for other resources, but generally have
+experienced 403 responses.
+
+This urlchecker issue discusses what I had seen:
+https://github.com/r-lib/urlchecker/issues/26
+
+I do not have guidance other than to either remove the URL or add a note
+stating that the 400 errors are only presented to robots. Perhaps CRAN
+occasionally adjusts its User-Agent to avoid some of these challenges? Not
+sure.
+
+Aron
+-- 
+email: aron.atkins at gmail.com
+home: http://gweep.net/~aron/
+
+	[[alternative HTML version deleted]]
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Thu Nov 30 18:45:57 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Thu, 30 Nov 2023 18:45:57 +0100
+Subject: [R-pkg-devel] URL woes at CRAN: Anaconda edition
+In-Reply-To: <CA+T4NJTBAbw6xaO5NAqCicFhK7xT8BX+tT5AqkgD9pM9zPX0Cw@mail.gmail.com>
+References: <25960.48416.146465.222624@rob.eddelbuettel.com>
+ <CA+T4NJTBAbw6xaO5NAqCicFhK7xT8BX+tT5AqkgD9pM9zPX0Cw@mail.gmail.com>
+Message-ID: <990c6b4f-902a-4667-b116-0ba1c9b89b3f@statistik.tu-dortmund.de>
+
+
+
+On 30.11.2023 18:28, Aron Atkins wrote:
+> On Thu, Nov 30, 2023 at 11:49?AM Dirk Eddelbuettel <edd at debian.org> wrote:
+> 
+>>
+>> And *of course* the same URL resolves fine for me in the browser without
+>> any
+>> apparent redirect.  Bit of a web newb here but is there anything I can do
+>> short of deleteing the badge?
+> 
+> 
+> The badge you're referencing is hosted by a cloudflare CDN, which uses
+> "magic" to return error responses to non-humans.
+> 
+> You can see this behavior by running curl against the URL:
+> 
+> curl -I https://anaconda.org/conda-forge/r-tiledb
+> HTTP/2 400
+> server: cloudflare
+> ...
+> 
+> I have seen this behavior for other resources, but generally have
+> experienced 403 responses.
+> 
+> This urlchecker issue discusses what I had seen:
+> https://github.com/r-lib/urlchecker/issues/26
+> 
+> I do not have guidance other than to either remove the URL or add a note
+> stating that the 400 errors are only presented to robots. Perhaps CRAN
+> occasionally adjusts its User-Agent to avoid some of these challenges? Not
+> sure.
+> 
+> Aron
+
+This (status 400) underlies manual inspection and we let this pass.
+
+Best,
+Uwe Ligges
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Nov 30 19:26:31 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 30 Nov 2023 21:26:31 +0300
+Subject: [R-pkg-devel] URL woes at CRAN: Anaconda edition
+In-Reply-To: <25960.48416.146465.222624@rob.eddelbuettel.com>
+References: <25960.48416.146465.222624@rob.eddelbuettel.com>
+Message-ID: <20231130212631.4f068368@Tarkus>
+
+On Thu, 30 Nov 2023 10:49:36 -0600
+Dirk Eddelbuettel <edd at debian.org> wrote:
+
+>   Found the following (possibly) invalid URLs:
+>     URL: https://anaconda.org/conda-forge/r-tiledb
+>       From: README.md
+>       Status: 400
+>       Message: Bad Request
+
+The problem is that https://anaconda.org/conda-forge/PACKAGE fails to
+answer to HEAD requests and only answers to GET requests. HEAD differs
+from GET in that there is no need to send the actual content of the page
+in response to the request; it is enough to say "200 OK" (and pass the
+check) or, as it happens here, "400 Bad Request".
+
+It may help to ask ContinuumIO to support HEAD requests by filing a bug
+report for the Anaconda.org website at
+<https://github.com/ContinuumIO/anaconda-issues/>. It may be worth
+referencing RFC 9110, section 9.3.2
+<https://datatracker.ietf.org/doc/html/rfc9110#name-head>, in
+particular:
+
+>> The HEAD method is identical to GET except that the server MUST NOT
+>> send content in the response.
+
+>> The server SHOULD send the same header fields in response to a HEAD
+>> request as it would have sent if the request method had been GET.
+
+Arguably, the spirit of the standard is being violated here (if not the
+letter, which only mentions headers).
+
+-- 
+Best regards,
+Ivan
+
+
+From edd @end|ng |rom deb|@n@org  Thu Nov 30 20:17:21 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 30 Nov 2023 13:17:21 -0600
+Subject: [R-pkg-devel] URL woes at CRAN: Anaconda edition
+In-Reply-To: <20231130212631.4f068368@Tarkus>
+References: <25960.48416.146465.222624@rob.eddelbuettel.com>
+ <20231130212631.4f068368@Tarkus>
+Message-ID: <25960.57281.823334.556421@rob.eddelbuettel.com>
+
+
+Thank you all -- expecially Aron and Ivan for the deep dive on the underlying
+aspect of the hosting of that web property.  And of course to Uwe for
+approving the package manually.
+
+For my taste, life is too short for all this. So users be damned, and I have
+now removed the badge.  At the end of the day it is better for Uwe et al (and
+of course our side) to have these things autoprocess. If this kind of stuff
+is in the way, I will just remove it as maintainer.
+
+Thanks again to all.
+
+Cheers, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
