@@ -24017,3 +24017,219 @@ Size: 840 bytes
 Desc: OpenPGP digital signature
 URL: <https://stat.ethz.ch/pipermail/r-package-devel/attachments/20231205/2d7793d3/attachment.sig>
 
+From v|ncentv@nhee@ @end|ng |rom gm@||@com  Wed Dec  6 10:28:42 2023
+From: v|ncentv@nhee@ @end|ng |rom gm@||@com (Vincent van Hees)
+Date: Wed, 6 Dec 2023 10:28:42 +0100
+Subject: [R-pkg-devel] How to create a macos-arm64 virtual machine/cloud
+ environment to debug R package?
+Message-ID: <CALnEB15LXzBzdV=P+eM_=efORoztOO8Po83qR+grRoqdwqGadQ@mail.gmail.com>
+
+Hello,
+
+What is the recommended way to create a virtual machine or cloud based R
+environment for debugging R package issues specific to OS macos-arm64?
+
+Details:
+CRAN results show macos-arm64 specific problems for my package:
+https://cran.r-project.org/web/checks/check_results_GGIR.html. I am able to
+reproduce them with https://mac.r-project.org/macbuilder/submit.html. I
+suspect something goes wrong with the timestamp creation or handling as
+that has caused issues with this OS for me in the past. All this relates to
+this
+<https://github.com/wadpac/GGIR/blob/master/tests/testthat/test_part5_analyseRest.R>
+test for this
+<https://github.com/wadpac/GGIR/blob/master/R/g.part5.analyseRest.R>
+function, that in the process calls this
+<https://github.com/wadpac/GGIR/blob/master/R/POSIXtime2iso8601.R> short
+function. I have been trying some edits locally and re-submitting them to
+macbuilder a couple of times to no avail. To debug this efficiently it
+would be good to have access to an R environment for this OS. I do not have
+a physical macos myself.
+
+Vincent
+
+	[[alternative HTML version deleted]]
+
+
+From v|ncentv@nhee@ @end|ng |rom gm@||@com  Wed Dec  6 11:09:00 2023
+From: v|ncentv@nhee@ @end|ng |rom gm@||@com (Vincent van Hees)
+Date: Wed, 6 Dec 2023 11:09:00 +0100
+Subject: [R-pkg-devel] How to create a macos-arm64 virtual machine/cloud
+ environment to debug R package?
+In-Reply-To: <CALnEB15LXzBzdV=P+eM_=efORoztOO8Po83qR+grRoqdwqGadQ@mail.gmail.com>
+References: <CALnEB15LXzBzdV=P+eM_=efORoztOO8Po83qR+grRoqdwqGadQ@mail.gmail.com>
+Message-ID: <CALnEB17z+TWj2gK7DbfDmGYbdvMDXbx7xhHaKb=KcrDYqfyewg@mail.gmail.com>
+
+Sorry, I now see that this may actually be a timezone specific issue which
+I can now reproduce in Windows by changing the timezone of the timeseries
+to "Pacific/Auckland".
+
+This would indicate that macos-arm64 CRAN machines are based in a different
+timezone than the other machines, not the arm64 OS as such.
+
+This reminds me that I ran into a similar issues earlier this year where I
+struggled to get GitHub Actions to run the macos workflow in a non-default
+timezone, which I raised elsewhere:
+https://community.rstudio.com/t/upgrading-github-action-workflow-to-address-no-package-called-rcmdcheck-but-unclear-how-to-account-for-timezone/166876
+... I should have thought about that first.
+
+Vincent
+
+
+On Wed, 6 Dec 2023 at 10:28, Vincent van Hees <vincentvanhees at gmail.com>
+wrote:
+
+> Hello,
+>
+> What is the recommended way to create a virtual machine or cloud based R
+> environment for debugging R package issues specific to OS macos-arm64?
+>
+> Details:
+> CRAN results show macos-arm64 specific problems for my package:
+> https://cran.r-project.org/web/checks/check_results_GGIR.html. I am able
+> to reproduce them with https://mac.r-project.org/macbuilder/submit.html.
+> I suspect something goes wrong with the timestamp creation or handling as
+> that has caused issues with this OS for me in the past. All this relates to
+> this
+> <https://github.com/wadpac/GGIR/blob/master/tests/testthat/test_part5_analyseRest.R>
+> test for this
+> <https://github.com/wadpac/GGIR/blob/master/R/g.part5.analyseRest.R>
+> function, that in the process calls this
+> <https://github.com/wadpac/GGIR/blob/master/R/POSIXtime2iso8601.R> short
+> function. I have been trying some edits locally and re-submitting them to
+> macbuilder a couple of times to no avail. To debug this efficiently it
+> would be good to have access to an R environment for this OS. I do not have
+> a physical macos myself.
+>
+> Vincent
+>
+
+	[[alternative HTML version deleted]]
+
+
+From t|m@t@y|or @end|ng |rom h|ddene|eph@nt@@co@uk  Wed Dec  6 11:12:53 2023
+From: t|m@t@y|or @end|ng |rom h|ddene|eph@nt@@co@uk (Tim Taylor)
+Date: Wed, 06 Dec 2023 10:12:53 +0000
+Subject: [R-pkg-devel] How to create a macos-arm64 virtual machine/cloud
+ environment to debug R package?
+In-Reply-To: <CALnEB15LXzBzdV=P+eM_=efORoztOO8Po83qR+grRoqdwqGadQ@mail.gmail.com>
+References: <CALnEB15LXzBzdV=P+eM_=efORoztOO8Po83qR+grRoqdwqGadQ@mail.gmail.com>
+Message-ID: <03d126d1-bd9e-423d-9008-c61349d828a5@app.fastmail.com>
+
+This is just a punt from a quick glance at your tests. Try using the following on your local build to ensure it's not a time zone issue
+
+`TZ=NZ R CMD check --as-cran`
+
+`Apologies if this is just noise but whenever I've had issues with datetimes and mac tests this is the first thing I check.`
+
+`Tim`
+
+
+
+
+On Wed, 6 Dec 2023, at 9:28 AM, Vincent van Hees wrote:
+> Hello,
+> 
+> What is the recommended way to create a virtual machine or cloud based R
+> environment for debugging R package issues specific to OS macos-arm64?
+> 
+> Details:
+> CRAN results show macos-arm64 specific problems for my package:
+> https://cran.r-project.org/web/checks/check_results_GGIR.html. I am able to
+> reproduce them with https://mac.r-project.org/macbuilder/submit.html. I
+> suspect something goes wrong with the timestamp creation or handling as
+> that has caused issues with this OS for me in the past. All this relates to
+> this
+> <https://github.com/wadpac/GGIR/blob/master/tests/testthat/test_part5_analyseRest.R>
+> test for this
+> <https://github.com/wadpac/GGIR/blob/master/R/g.part5.analyseRest.R>
+> function, that in the process calls this
+> <https://github.com/wadpac/GGIR/blob/master/R/POSIXtime2iso8601.R> short
+> function. I have been trying some edits locally and re-submitting them to
+> macbuilder a couple of times to no avail. To debug this efficiently it
+> would be good to have access to an R environment for this OS. I do not have
+> a physical macos myself.
+> 
+> Vincent
+> 
+> [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+	[[alternative HTML version deleted]]
+
+
+From v|ncentv@nhee@ @end|ng |rom gm@||@com  Wed Dec  6 12:34:34 2023
+From: v|ncentv@nhee@ @end|ng |rom gm@||@com (Vincent van Hees)
+Date: Wed, 6 Dec 2023 12:34:34 +0100
+Subject: [R-pkg-devel] How to create a macos-arm64 virtual machine/cloud
+ environment to debug R package?
+In-Reply-To: <03d126d1-bd9e-423d-9008-c61349d828a5@app.fastmail.com>
+References: <CALnEB15LXzBzdV=P+eM_=efORoztOO8Po83qR+grRoqdwqGadQ@mail.gmail.com>
+ <03d126d1-bd9e-423d-9008-c61349d828a5@app.fastmail.com>
+Message-ID: <CALnEB14Tn3LPMxDRhS8LB4SDJ7tB1sMDLJPVEKYUesqpr8360g@mail.gmail.com>
+
+Thanks Tim, I just managed to fix the bug and will prepare a new submission
+to CRAN in the upcoming days.
+
+
+On Wed, 6 Dec 2023 at 11:13, Tim Taylor <tim.taylor at hiddenelephants.co.uk>
+wrote:
+
+> This is just a punt from a quick glance at your tests. Try using the
+> following on your local build to ensure it's not a time zone issue
+>
+> TZ=NZ R CMD check --as-cran
+>
+> Apologies if this is just noise but whenever I've had issues with
+> datetimes and mac tests this is the first thing I check.
+>
+> Tim
+>
+>
+>
+>
+> On Wed, 6 Dec 2023, at 9:28 AM, Vincent van Hees wrote:
+>
+> Hello,
+>
+> What is the recommended way to create a virtual machine or cloud based R
+> environment for debugging R package issues specific to OS macos-arm64?
+>
+> Details:
+> CRAN results show macos-arm64 specific problems for my package:
+> https://cran.r-project.org/web/checks/check_results_GGIR.html. I am able
+> to
+> reproduce them with https://mac.r-project.org/macbuilder/submit.html. I
+> suspect something goes wrong with the timestamp creation or handling as
+> that has caused issues with this OS for me in the past. All this relates to
+> this
+> <
+> https://github.com/wadpac/GGIR/blob/master/tests/testthat/test_part5_analyseRest.R
+> >
+> test for this
+> <https://github.com/wadpac/GGIR/blob/master/R/g.part5.analyseRest.R>
+> function, that in the process calls this
+> <https://github.com/wadpac/GGIR/blob/master/R/POSIXtime2iso8601.R> short
+> function. I have been trying some edits locally and re-submitting them to
+> macbuilder a couple of times to no avail. To debug this efficiently it
+> would be good to have access to an R environment for this OS. I do not have
+> a physical macos myself.
+>
+> Vincent
+>
+> [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
