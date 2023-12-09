@@ -24233,3 +24233,425 @@ wrote:
 	[[alternative HTML version deleted]]
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Dec  7 11:45:09 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 7 Dec 2023 13:45:09 +0300
+Subject: [R-pkg-devel] Troubleshooting Winbuilder Run Timeouts
+In-Reply-To: <fe738861-51e4-4d47-9ac4-6f8cf4172db1@robbinsa.me>
+References: <2a792231-a8b5-405d-82d8-23938cd00466@robbinsa.me>
+ <20231130154032.119eaa51@arachnoid>
+ <b442a032-df63-41ba-8dce-acadb587f023@robbinsa.me>
+ <fe738861-51e4-4d47-9ac4-6f8cf4172db1@robbinsa.me>
+Message-ID: <20231207134509.298b84fb@arachnoid>
+
+On Tue, 5 Dec 2023 17:16:37 -0500
+Andrew Robbins via R-package-devel <r-package-devel at r-project.org>
+wrote:
+
+> Every time, it reports a runtime of zero seconds for INMF res1
+
+I get exactly 0 seconds for both res1 and res2 on both my Windows
+machines and on my Linux machine. I had discounted that as an integer
+type used somewhere for elapsed time. Is that (exactly 0 seconds and an
+objective value of 44244.4) supposed to indicate a problem?
+
+(On my Linux machine, I had to crudely hack in linking with -lstdc++fs
+because some of the dependencies of RcppPlanc.so didn't pick it up
+automatically.)
+
+> and hangs/is killed on initiation of INMF res2 before the
+> initialization of RcppProgress. 
+
+Can we eliminate it running out of time? On my Windows 10 LTSC machine
+(AMD Ryzen 5 2400G from 2018, SATA SSD, nothing else going on at the
+time) the complete R CMD check takes slightly more than 10.5 minutes.
+An R-release check running on an Intel Xeon E5-2680 from 2016 with
+other checks going on at the same time could plausibly take more than 20
+minutes and get terminated [1], with some of the buffered output
+never reaching the RcppPlanc-Ex.Rout file... but then it happens on a
+much faster R-devel checking machine [2], which runs on an AMD EPYC
+7443, and we never see any differences in the output. Right?
+
+-- 
+Best regards,
+Ivan
+
+[1]
+https://svn.r-project.org/R-dev-web/trunk/CRAN/QA/Uwe/make/killR.R
+https://svn.r-project.org/R-dev-web/trunk/CRAN/QA/Uwe/make-guest/CRANguest.R
+
+[2]
+https://win-builder.r-project.org/incoming_pretest/RcppPlanc_1.0.0_20231118_001540/Windows/00check.log
+
+
+From @ndrew @end|ng |rom robb|n@@@me  Thu Dec  7 18:22:11 2023
+From: @ndrew @end|ng |rom robb|n@@@me (Andrew Robbins)
+Date: Thu, 7 Dec 2023 12:22:11 -0500
+Subject: [R-pkg-devel] Troubleshooting Winbuilder Run Timeouts
+In-Reply-To: <20231207134509.298b84fb@arachnoid>
+References: <2a792231-a8b5-405d-82d8-23938cd00466@robbinsa.me>
+ <20231130154032.119eaa51@arachnoid>
+ <b442a032-df63-41ba-8dce-acadb587f023@robbinsa.me>
+ <fe738861-51e4-4d47-9ac4-6f8cf4172db1@robbinsa.me>
+ <20231207134509.298b84fb@arachnoid>
+Message-ID: <72396e66-84ca-4f83-8937-71f11b30259c@robbinsa.me>
+
+Hi again,
+
+I just double checked the test invocations of INMF which are on /much/ 
+larger matrices with /far/ more iterations and am still seeing zero 
+seconds. That /is/ a bug, but its not a related one. The objective error 
+of 44244.4 is what it should be returning for the example matrices.
+
+
+I just benchmarked devtools::check() (which is actually a build followed 
+by a check) on my Ryzen 5700X/intel 660p system with a bunch of stuff 
+going on in the background and got just over 11 minutes. I don't 
+actually think its timing out. No output differences, of course.
+
+
+If you could get me more information (perhaps off-list) about the 
+-lstdc++ thing I'm curious about reproducing that.
+
+Best.
+
+-Andrew Robbins
+
+On 12/7/2023 5:45 AM, Ivan Krylov wrote:
+> On Tue, 5 Dec 2023 17:16:37 -0500
+> Andrew Robbins via R-package-devel <r-package-devel at r-project.org>
+> wrote:
+>
+>> Every time, it reports a runtime of zero seconds for INMF res1
+> I get exactly 0 seconds for both res1 and res2 on both my Windows
+> machines and on my Linux machine. I had discounted that as an integer
+> type used somewhere for elapsed time. Is that (exactly 0 seconds and an
+> objective value of 44244.4) supposed to indicate a problem?
+>
+> (On my Linux machine, I had to crudely hack in linking with -lstdc++fs
+> because some of the dependencies of RcppPlanc.so didn't pick it up
+> automatically.)
+>
+>> and hangs/is killed on initiation of INMF res2 before the
+>> initialization of RcppProgress.
+> Can we eliminate it running out of time? On my Windows 10 LTSC machine
+> (AMD Ryzen 5 2400G from 2018, SATA SSD, nothing else going on at the
+> time) the complete R CMD check takes slightly more than 10.5 minutes.
+> An R-release check running on an Intel Xeon E5-2680 from 2016 with
+> other checks going on at the same time could plausibly take more than 20
+> minutes and get terminated [1], with some of the buffered output
+> never reaching the RcppPlanc-Ex.Rout file... but then it happens on a
+> much faster R-devel checking machine [2], which runs on an AMD EPYC
+> 7443, and we never see any differences in the output. Right?
+>
+-- 
+Andrew Robbins
+Systems Analyst, Welch Lab<https://welch-lab.github.io>
+University of Michigan
+Department of Computational Medicine and Bioinformatics
+
+
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: OpenPGP_signature.asc
+Type: application/pgp-signature
+Size: 840 bytes
+Desc: OpenPGP digital signature
+URL: <https://stat.ethz.ch/pipermail/r-package-devel/attachments/20231207/010ac26f/attachment.sig>
+
+From @rtur@@t@t @end|ng |rom gm@||@com  Thu Dec  7 22:49:07 2023
+From: @rtur@@t@t @end|ng |rom gm@||@com (Artur Araujo)
+Date: Thu, 7 Dec 2023 21:49:07 +0000
+Subject: [R-pkg-devel] 
+ NOTE: Examples with CPU time > 2.5 times elapsed time
+In-Reply-To: <20231205014242.01f75c96@Tarkus>
+References: <DB9P190MB1276B65B088E2ACA1932B834AC81A@DB9P190MB1276.EURP190.PROD.OUTLOOK.COM>
+ <20231205014242.01f75c96@Tarkus>
+Message-ID: <DB9P190MB12768DC022D918B9C3EF1E4CAC8BA@DB9P190MB1276.EURP190.PROD.OUTLOOK.COM>
+
+Dear Ivan,
+
+I modified the example in:
+https://github.com/arturstat/TPmsm/blob/main/man/as.data.frame.survTP.Rd
+And it finally passed CRAN incoming checks:
+https://win-builder.r-project.org/incoming_pretest/TPmsm_1.2.12_20231207_221140/Debian/00check.log
+Thank you.
+
+Best regards,
+Artur
+
+________________________________
+From: Ivan Krylov <krylov.r00t at gmail.com>
+Sent: Monday, December 4, 2023 22:42
+To: Artur Araujo <artur.stat at gmail.com>
+Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>; Javier Roca Pardi?as <roca at uvigo.es>; Lu?s Machado <lmachado at math.uminho.pt>
+Subject: Re: [R-pkg-devel] NOTE: Examples with CPU time > 2.5 times elapsed time
+
+Dear Artur,
+
+You've got a well-written package. There are some parts I wasn't able
+to understand (e.g. changing the class of a variable by reference using
+SET_CLASS and later changing it back), but there are no obvious places
+where a mistake could be hiding.
+
+On Fri, 1 Dec 2023 23:43:32 +0000
+Artur Araujo <artur.stat at gmail.com> wrote:
+
+> Examples with CPU time > 2.5 times elapsed time
+>                 user system elapsed  ratio
+> contour.TPCmsm 2.605  0.132   0.108 25.343
+
+I managed to reproduce this, but not before compiling R-devel r85646
+on a Debian Testing virtual machine using clang-17 and flang-17 with
+libomp-17-dev installed. In particular, this doesn't seem to happen
+with latest R-devel built using (much older versions of) the GNU
+toolchain.
+
+There was a false start where I saw pthread_create breakpoints hit
+inside libpango while contour() was running, but that couldn't be your
+problem because examples run with the pdf() device active. Instead,
+when source()ing the TPmsm-Ex.R file, the breakpoint fired elsewhere:
+
+### Name: as.data.frame.survTP
+### Title: as.data.frame method for a survTP object
+### Aliases: as.data.frame.survTP
+### Keywords: manip metho .... [TRUNCATED]
+
+Breakpoint 7, __pthread_create_2_1 (newthread=0x7fffffff5a70, attr=0x7fffffff5a78, start_routine=0x7ffff75882a0 <__kmp_launch_worker()>, arg=0x5555572d9e80)
+    at ./nptl/pthread_create.c:623
+(gdb) bt
+#0  __pthread_create_2_1 (newthread=0x7fffffff5a70, attr=0x7fffffff5a78, start_routine=0x7ffff75882a0 <__kmp_launch_worker()>, arg=0x5555572d9e80)
+    at ./nptl/pthread_create.c:623
+#1  0x00007ffff75879b4 in __kmp_create_worker () at build-llvm/tools/clang/stage2-bins/openmp/runtime/src/z_Linux_util.cpp:795
+#2  0x00007ffff7518899 in __kmp_allocate_thread () at build-llvm/tools/clang/stage2-bins/openmp/runtime/src/kmp_runtime.cpp:4677
+#3  0x00007ffff751078a in __kmp_allocate_team () at build-llvm/tools/clang/stage2-bins/openmp/runtime/src/kmp_runtime.cpp:5384
+#4  0x00007ffff7511813 in __kmp_fork_call () at build-llvm/tools/clang/stage2-bins/openmp/runtime/src/kmp_runtime.cpp:2122
+#5  0x00007ffff74ffc81 in __kmpc_fork_call () at build-llvm/tools/clang/stage2-bins/openmp/runtime/src/kmp_csupport.cpp:300
+#6  0x00007ffff465100e in cens2 (pT1=<optimized out>, pE1=<optimized out>, pS=<optimized out>, pE=<optimized out>, pn=<optimized out>, tfunc=<optimized out>,
+    pcorr=<optimized out>, pdistpar=<optimized out>, cfunc=<optimized out>, pcenspar=<optimized out>, pstate2prob=<optimized out>) at dgpTP.c:83
+#7  dgpTP (n=<optimized out>, corr=<optimized out>, dist=<optimized out>, distpar=<optimized out>, modelcens=<optimized out>, censpar=<optimized out>,
+    state2prob=<optimized out>) at dgpTP.c:178
+#8  0x0000555555645cba in R_doDotCall (fun=0x0, nargs=nargs at entry=7, cargs=cargs at entry=0x7fffffff63b0, call=call at entry=0x5555573b62b8)
+    at ../../../R-svn/src/main/dotcode.c:1498
+(gdb) frame 6
+#6  0x00007ffff465100e in cens2 (pT1=<optimized out>, pE1=<optimized out>, pS=<optimized out>, pE=<optimized out>, pn=<optimized out>, tfunc=<optimized out>,
+    pcorr=<optimized out>, pdistpar=<optimized out>, cfunc=<optimized out>, pcenspar=<optimized out>, pstate2prob=<optimized out>) at dgpTP.c:83
+83              #pragma omp parallel num_threads(global_num_threads)
+(gdb) p global_num_threads
+$4 = 8
+
+Not sure why the CPU time gets counted for the contour() example
+instead of as.data.frame.survTP - do libomp threads not get counted
+until they terminate or something? - but since the contour.TPCmsm
+example directly follows as.data.frame.survTP, the call to dgpTP here
+must be the culprit.
+
+I would like to suggest a new diagnostic for the CPU time / elapsed
+time tests. If any examples have been found to exceed the time ratio
+limit and R is running on Linux with a special environment variable
+set, the examples should be re-run under a debugger. The debugger
+should set a breakpoint on the clone _system call_ (ideally, all system
+calls that can create threads or child processes) and print a C-level
+backtrace when it fires. Ideally, it should call something like
+R_ConciseTraceback to obtain an R-level traceback too, but it's not an
+API (at least yet) and I'm not sure it's generally safe to do this in
+the middle of an R call. If there is interest, I can try to see if gdb
+can be scripted to make this happen. I think it must be a ptrace
+debugger and not an LD_PRELOAD wrapper because there are too many ways
+to start threads and processes. For example, with libomp,
+pthread_create() breakpoints fire while clone() breakpoints do not,
+despite something later does make the clone() system call.
+
+This won't help if the threads get started separately and only later
+get utilised in a different example, but I wasn't able to put the
+output of `perf report` for good use when debugging similar problems in
+a different package. Other ideas for tracing the CPU usage culprits are
+also welcome.
+
+--
+Best regards,
+Ivan
+
+	[[alternative HTML version deleted]]
+
+
+From Serge@Iov|e|| @end|ng |rom @tkpp@org  Thu Dec  7 19:29:46 2023
+From: Serge@Iov|e|| @end|ng |rom @tkpp@org (Serge)
+Date: Thu, 7 Dec 2023 19:29:46 +0100
+Subject: [R-pkg-devel] Getting 'Rscript: Bad address' error when CRAN build
+ my package on windows platforms
+Message-ID: <6982940d-0890-49e1-9561-41d851a9c0c0@stkpp.org>
+
+Hello,
+
+I'm the maintener of the rtkore package and I'm experimenting an error during the installation on 
+the |r-devel-windows-x86_64| and the |r-release-windows-x86_64| platform. When trying to compile I get
+
+|g++ -std=gnu++11 -I"D:/RCompile/recent/R-4.3.2/include" -DNDEBUG -I../inst/projects/ 
+-I../inst/include/ -DIS_RTKPP_LIB -DSTKUSELAPACK -I'D:/RCompile/CRANpkg/lib/4.3/Rcpp/include' 
+-I"d:/rtools43/x86_64-w64-mingw32.static.posix/include" -fopenmp -O2 -Wall -mfpmath=sse -msse2 
+-mstackrealign -c fastRand.cpp -o fastRand.o /bin/sh: line 1: 
+/x86_64-w64-mingw32.static.posix/bin/g++: Bad address |
+
+A search indicate that the problem is from the "D:" (not sure it is the correct answer)
+
+In all case, I cannot modify these path as there given by the CRAN mechanism of compilation.
+
+Can you give me some hints about the problem and how to solve it ?
+
+Thanks
+
+	[[alternative HTML version deleted]]
+
+
+From O|g@@V|edm@ @end|ng |rom uc|m@e@  Thu Dec  7 21:58:01 2023
+From: O|g@@V|edm@ @end|ng |rom uc|m@e@ (=?iso-8859-1?Q?Mar=EDa_Olga_Viedma_Sillero?=)
+Date: Thu, 7 Dec 2023 20:58:01 +0000
+Subject: [R-pkg-devel] problems with Maintainers in DESCRIPTION file
+Message-ID: <DB9PR01MB99062BBE9A010ADCEDF57906EC8BA@DB9PR01MB9906.eurprd01.prod.exchangelabs.com>
+
+Dear all,
+
+
+
+I receive the same note after fixing it, removing it, and checking Authors at R. I think the rejection is a false positive.
+
+
+
+Flavor: r-devel-linux-x86_64-debian-gcc, r-devel-windows-x86_64
+
+Check: CRAN incoming feasibility, Result: NOTE
+
+  Maintainer: 'Olga Viedma <olga.viedma at uclm.es<mailto:olga.viedma at uclm.es>>'
+
+
+
+What do you think about this "NOTE"?
+
+
+
+This is my DESCRITION file.
+
+
+
+Package: LadderFuelsR
+
+Type: Package
+
+Title: Automated Tool for Vertical Fuel Continuity Analysis using LiDAR Data
+
+Version: 0.0.1
+
+Authors at R: c(person("Olga", "Viedma", email = "olga.viedma at uclm.es<mailto:olga.viedma at uclm.es>", role = c("aut", "cph", "cre")),
+
+             person("Carlos Alberto", "Silva", email = "c.silva at ufl.edu<mailto:c.silva at ufl.edu>", role = c("aut", "cph")),
+
+             person("Jose Manuel", "Moreno", email = "JoseM.Moreno at uclm.es<mailto:JoseM.Moreno at uclm.es>", role = c("aut", "cph")))
+
+Description: Set of automated tools for vertical fuel continuity analysis at tree level from LiDAR data.
+
+License: GPL-3
+
+Encoding: UTF-8
+
+LazyData: true
+
+Imports: dplyr, gdata, ggplot2, magrittr, segmented, stringr, tidyr, tibble, tidyselect
+
+RoxygenNote: 7.2.3
+
+Roxygen: list(roclets = c("rd", "collate", "namespace", "vignette"))
+
+Collate:
+
+    'calculate_gaps_perc2.R'
+
+    'gap_fbh.R'
+
+    'distances_calculation.R'
+
+    'depths_calculation.R'
+
+    'corrected_base_heights.R'
+
+    'corrected_depth.R'
+
+    'corrected_distances.R'
+
+    'cummLAD_breaks_metrics.R'
+
+    'maxlad_metrics_25perc.R'
+
+    'plot_cumm_breaks_metrics.R'
+
+    'plot_gaps_fbhs.R'
+
+    'plot_maxlad_metrics.R'
+
+    'renamed0_df.R'
+
+    'renamed_df.R'
+
+
+
+Thanks in advance,
+
+
+
+Olga Viedma
+
+
+[Logotipo UCLM]<https://www.uclm.es/>
+[Logotipo sello de excelencia investigadora HR]<https://www.uclm.es/es/Misiones/Investigacion/HRS4R>
+Mar?a Olga Viedma Sillero
+Profesor/A Titular De Universidad
+FACULTAD CC. AMBIENTALES Y BIOQU?MICA TO | Direcci?n Centro | Toledo
+Tfno: 926051780 <tel:+34:926051780> | Olga.Viedma at uclm.es<mailto:Olga.Viedma at uclm.es>
+ [http://www.uclm.es/comun/imgweb/firma_correo/orcid.jpg] <http://orcid.org/0000-0003-4614-3827>   [Google Scholar] <https://scholar.google.es/citations?user=iLs52w4AAAAJ&hl=es>
+
+Por favor, no imprima este documento si no es estrictamente necesario. Cuidar el medioambiente es responsabilidad de todos.
+Este mensaje de correo electr?nico puede contener informaci?n confidencial de la UCLM, siendo para uso exclusivo del destinatario.
+Si usted lo ha recibido por error y no es el destinatario del mensaje, le rogamos que no difunda su contenido y lo comunique al remitente.
+
+Please do not print this document unless absolutely necessary. Environmental protection is in our hands.
+This e-mail may contain confidential information of the ...{{dropped:8}}
+
+
+From edd @end|ng |rom deb|@n@org  Fri Dec  8 00:18:21 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 7 Dec 2023 17:18:21 -0600
+Subject: [R-pkg-devel] problems with Maintainers in DESCRIPTION file
+In-Reply-To: <DB9PR01MB99062BBE9A010ADCEDF57906EC8BA@DB9PR01MB9906.eurprd01.prod.exchangelabs.com>
+References: <DB9PR01MB99062BBE9A010ADCEDF57906EC8BA@DB9PR01MB9906.eurprd01.prod.exchangelabs.com>
+Message-ID: <25970.21181.938341.986052@rob.eddelbuettel.com>
+
+
+On 7 December 2023 at 20:58, Mar?a Olga Viedma Sillero wrote:
+| I receive the same note after fixing it, removing it, and checking Authors at R. I think the rejection is a false positive.
+| 
+| Flavor: r-devel-linux-x86_64-debian-gcc, r-devel-windows-x86_64
+| Check: CRAN incoming feasibility, Result: NOTE
+|   Maintainer: 'Olga Viedma <olga.viedma at uclm.es<mailto:olga.viedma at uclm.es>>'
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Compare that with the other 20500 CRAN packages (you can look at all of them
+conveniently via https://github.com/cran/) -- your format differs. Instead of
+
+  Authors at R: c(person("Olga", "Viedma", email = "olga.viedma at uclm.es<mailto:olga.viedma at uclm.es>", role = c("aut", "cph", "cre")),
+               person("Carlos Alberto", "Silva", email = "c.silva at ufl.edu<mailto:c.silva at ufl.edu>", role = c("aut", "cph")),
+               person("Jose Manuel", "Moreno", email = "JoseM.Moreno at uclm.es<mailto:JoseM.Moreno at uclm.es>", role = c("aut", "cph")))
+
+write
+
+  Authors at R: c(person("Olga", "Viedma", email = "olga.viedma at uclm.es", role = c("aut", "cph", "cre")),
+              person("Carlos Alberto", "Silva", email = "c.silva at ufl.edu", role = c("aut", "cph")),
+              person("Jose Manuel", "Moreno", email = "JoseM.Moreno at uclm.es", role = c("aut", "cph")))
+
+ie remove the <mailto:...> part.
+
+Hth, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
