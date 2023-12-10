@@ -24655,3 +24655,321 @@ Hth, Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Dec  8 08:54:55 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 8 Dec 2023 10:54:55 +0300
+Subject: [R-pkg-devel] Troubleshooting Winbuilder Run Timeouts
+In-Reply-To: <72396e66-84ca-4f83-8937-71f11b30259c@robbinsa.me>
+References: <2a792231-a8b5-405d-82d8-23938cd00466@robbinsa.me>
+ <20231130154032.119eaa51@arachnoid>
+ <b442a032-df63-41ba-8dce-acadb587f023@robbinsa.me>
+ <fe738861-51e4-4d47-9ac4-6f8cf4172db1@robbinsa.me>
+ <20231207134509.298b84fb@arachnoid>
+ <72396e66-84ca-4f83-8937-71f11b30259c@robbinsa.me>
+Message-ID: <20231208105455.7a9abcf0@Tarkus>
+
+On Thu, 7 Dec 2023 12:22:11 -0500
+Andrew Robbins <andrew at robbinsa.me> wrote:
+
+> I just benchmarked devtools::check() (which is actually a build
+> followed by a check) on my Ryzen 5700X/intel 660p system with a bunch
+> of stuff going on in the background and got just over 11 minutes. I
+> don't actually think its timing out. No output differences, of course.
+
+Then it's probably not a timeout, thanks for confirming this. If you've
+eliminated Rcpp::Rcout, OpenMP and std::chrono::high_resolution_clock,
+the crash must be happening inside
+planc::INMF<T>::computeObjectiveError for T = arma::mat but not T =
+arma::sp_mat.
+
+I see that inmf() is one of the first examples that tests the fitting
+functions (and exercises Armadillo), but not the first such example.
+Inside RcppPlanc-Ex.R, there is bppnnls() which should have exercised
+both arma::mat and arma::sp_mat cases, but with a different algorithm.
+
+My yet another unlikely idea is that something is going wrong when
+linking the package with OpenBLAS while another BLAS (provided by R) is
+present in the address space. Not a lot of CRAN packages do this, and
+some of those that did are now archived:
+<https://github.com/search?q=org%3Acran+openblas&type=code>
+
+Evidently it works on Linux and on our Windows machines, but maybe the
+Win-Builder configuration uncovers something that we don't see
+ourselves. I think we need the help of Uwe Ligges to see a backtrace,
+otherwise I don't know what to change.
+
+(I wonder if it's possible to enhance the current Win-Builder setup
+with something like https://github.com/jrfonseca/drmingw to catch the
+process crashing and print the annotated traceback somewhere for the
+Win-Builder scripts to pick it up. The tricky part will be to only
+handle `R CMD check` launched by the scripts but not anything else.)
+
+-- 
+Best regards,
+Ivan
+
+
+From O|g@@V|edm@ @end|ng |rom uc|m@e@  Fri Dec  8 09:09:08 2023
+From: O|g@@V|edm@ @end|ng |rom uc|m@e@ (=?iso-8859-1?Q?Mar=EDa_Olga_Viedma_Sillero?=)
+Date: Fri, 8 Dec 2023 08:09:08 +0000
+Subject: [R-pkg-devel] problems with Maintainers in DESCRIPTION file
+In-Reply-To: <25970.21181.938341.986052@rob.eddelbuettel.com>
+References: <DB9PR01MB99062BBE9A010ADCEDF57906EC8BA@DB9PR01MB9906.eurprd01.prod.exchangelabs.com>
+ <25970.21181.938341.986052@rob.eddelbuettel.com>
+Message-ID: <DB9PR01MB9906232BB62A6F800E508BBDEC8AA@DB9PR01MB9906.eurprd01.prod.exchangelabs.com>
+
+Thank you very much, Dirk.
+
+I am going to change it.
+
+Best regards,
+
+Olga
+-----Mensaje original-----
+De: Dirk Eddelbuettel <edd at debian.org> 
+Enviado el: viernes, 8 de diciembre de 2023 0:18
+Para: Mar?a Olga Viedma Sillero <Olga.Viedma at uclm.es>
+CC: r-package-devel at r-project.org
+Asunto: Re: [R-pkg-devel] problems with Maintainers in DESCRIPTION file
+
+[No suele recibir correo electr?nico de edd at debian.org. Descubra por qu? esto es importante en https://aka.ms/LearnAboutSenderIdentification ]
+
+On 7 December 2023 at 20:58, Mar?a Olga Viedma Sillero wrote:
+| I receive the same note after fixing it, removing it, and checking Authors at R. I think the rejection is a false positive.
+|
+| Flavor: r-devel-linux-x86_64-debian-gcc, r-devel-windows-x86_64
+| Check: CRAN incoming feasibility, Result: NOTE
+|   Maintainer: 'Olga Viedma <olga.viedma at uclm.es<mailto:olga.viedma at uclm.es>>'
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Compare that with the other 20500 CRAN packages (you can look at all of them conveniently via https://github.com/cran/) -- your format differs. Instead of
+
+  Authors at R: c(person("Olga", "Viedma", email = "olga.viedma at uclm.es<mailto:olga.viedma at uclm.es>", role = c("aut", "cph", "cre")),
+               person("Carlos Alberto", "Silva", email = "c.silva at ufl.edu<mailto:c.silva at ufl.edu>", role = c("aut", "cph")),
+               person("Jose Manuel", "Moreno", email = "JoseM.Moreno at uclm.es<mailto:JoseM.Moreno at uclm.es>", role = c("aut", "cph")))
+
+write
+
+  Authors at R: c(person("Olga", "Viedma", email = "olga.viedma at uclm.es", role = c("aut", "cph", "cre")),
+              person("Carlos Alberto", "Silva", email = "c.silva at ufl.edu", role = c("aut", "cph")),
+              person("Jose Manuel", "Moreno", email = "JoseM.Moreno at uclm.es", role = c("aut", "cph")))
+
+ie remove the <mailto:...> part.
+
+Hth, Dirk
+
+--
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Dec  8 09:13:30 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 8 Dec 2023 11:13:30 +0300
+Subject: [R-pkg-devel] problems with Maintainers in DESCRIPTION file
+In-Reply-To: <DB9PR01MB99062BBE9A010ADCEDF57906EC8BA@DB9PR01MB9906.eurprd01.prod.exchangelabs.com>
+References: <DB9PR01MB99062BBE9A010ADCEDF57906EC8BA@DB9PR01MB9906.eurprd01.prod.exchangelabs.com>
+Message-ID: <20231208111330.1ebb19b6@Tarkus>
+
+Dear Olga Viedma,
+
+Welcome to R-package-devel!
+
+When looking for advice here, it's best to link to the package code and
+the R CMD check report you have received.
+
+On Thu, 7 Dec 2023 20:58:01 +0000
+Mar?a Olga Viedma Sillero <Olga.Viedma at uclm.es> wrote:
+
+> Flavor: r-devel-linux-x86_64-debian-gcc, r-devel-windows-x86_64
+> 
+> Check: CRAN incoming feasibility, Result: NOTE
+> 
+>   Maintainer: 'Olga Viedma
+> <olga.viedma at uclm.es<mailto:olga.viedma at uclm.es>>'
+
+The maintainer address is always printed here, with a
+Note_for_CRAN_maintainers instead of NOTE if all other tests pass
+successfully. Unfortunately, this is not the whole NOTE:
+https://win-builder.r-project.org/incoming_pretest/LadderFuelsR_0.0.1_20231207_204411/Debian/00check.log
+
+>> New submission
+
+This NOTE is expected to happen. New submissions require manual review.
+
+>> Possibly misspelled words in DESCRIPTION:
+>>  LiDAR (3:67, 9:94)
+
+I think you can mention this being an established term of the art in
+the comment field. Only new submissions are spell-checked, so once the
+package is accepted, this won't reappear either. Alternatively, you can
+serialize a character vector of words into an .rds file under .aspell
+(see help(aspell)) so that it will be accepted by the automated check:
+
+saveRDS(c('LiDAR'), '.aspell/dictionary.rds')
+
+(This is untested but follows the documentation and the R CMD check
+source code.)
+
+>> Found the following (possibly) invalid URLs:
+>>   URL: https://travis-ci.com/olgaviedma/LadderFuelsR (moved to
+>>   https://www.travis-ci.com/olgaviedma/LadderFuelsR)
+>>     From: README.md
+>>     Status: 301
+>>     Message: Moved Permanently
+>>  For content that is 'Moved Permanently', please change http to
+>>  https, add trailing slashes, or replace the old by the new URL.
+
+This automated check makes sure that any URL listed in the
+documentation (README or help pages) directly points to a web page.
+It's not exactly obvious unless you run R CMD check --as-cran yourself,
+but https://travis-ci.com/olgaviedma/LadderFuelsR redirects to
+https://www.travis-ci.com/olgaviedma/LadderFuelsR. If you add the
+missing www., you will get rid of the problem.
+
+-- 
+Best regards,
+Ivan
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Fri Dec  8 11:12:17 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Fri, 8 Dec 2023 11:12:17 +0100
+Subject: [R-pkg-devel] 
+ Getting 'Rscript: Bad address' error when CRAN build
+ my package on windows platforms
+In-Reply-To: <6982940d-0890-49e1-9561-41d851a9c0c0@stkpp.org>
+References: <6982940d-0890-49e1-9561-41d851a9c0c0@stkpp.org>
+Message-ID: <b826d893-fcdc-4ebd-b4b3-14e662aff92a@statistik.tu-dortmund.de>
+
+
+
+On 07.12.2023 19:29, Serge wrote:
+> Hello,
+> 
+> I'm the maintener of the rtkore package and I'm experimenting an error during the installation on
+> the |r-devel-windows-x86_64| and the |r-release-windows-x86_64| platform. When trying to compile I get
+> 
+> |g++ -std=gnu++11 -I"D:/RCompile/recent/R-4.3.2/include" -DNDEBUG -I../inst/projects/
+> -I../inst/include/ -DIS_RTKPP_LIB -DSTKUSELAPACK -I'D:/RCompile/CRANpkg/lib/4.3/Rcpp/include'
+> -I"d:/rtools43/x86_64-w64-mingw32.static.posix/include" -fopenmp -O2 -Wall -mfpmath=sse -msse2
+> -mstackrealign -c fastRand.cpp -o fastRand.o /bin/sh: line 1:
+> /x86_64-w64-mingw32.static.posix/bin/g++: Bad address |
+> 
+> A search indicate that the problem is from the "D:" (not sure it is the correct answer)
+
+Well, the missing d: or /d/ in the last line of your cited output.
+Which package is this? Then I could take a look into the sources.
+
+Best,
+Uwe Ligges
+
+
+> 
+> In all case, I cannot modify these path as there given by the CRAN mechanism of compilation.
+> 
+> Can you give me some hints about the problem and how to solve it ?
+> 
+> Thanks
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From Serge@Iov|e|| @end|ng |rom @tkpp@org  Fri Dec  8 12:24:48 2023
+From: Serge@Iov|e|| @end|ng |rom @tkpp@org (Serge)
+Date: Fri, 8 Dec 2023 12:24:48 +0100
+Subject: [R-pkg-devel] 
+ Getting 'Rscript: Bad address' error when CRAN build
+ my package on windows platforms
+In-Reply-To: <b826d893-fcdc-4ebd-b4b3-14e662aff92a@statistik.tu-dortmund.de>
+References: <6982940d-0890-49e1-9561-41d851a9c0c0@stkpp.org>
+ <b826d893-fcdc-4ebd-b4b3-14e662aff92a@statistik.tu-dortmund.de>
+Message-ID: <aee3117e-5299-4e3d-9164-65324cfe4731@stkpp.org>
+
+https://cran.r-project.org/web/packages/rtkore/
+
+
+and the Makevars in ./src/? is
+
+#------------------------------------------------------------------------
+#?? Copyright (C) 2014-2015? Serge Iovleff, University Lille1, Inria
+#
+#?? This program is free software: you can redistribute it and/or modify
+#?? it under the terms of the GNU General Public License as published by
+#?? the Free Software Foundation, either version 3 of the License, or
+#?? (at your option) any later version.
+#
+#?? This program is distributed in the hope that it will be useful,
+#?? but WITHOUT ANY WARRANTY; without even the implied warranty of
+#?? MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.? See the
+#?? GNU General Public License for more details.
+#
+#?? You should have received a copy of the GNU General Public License
+#?? along with this program.? If not, see <http://www.gnu.org/licenses/>.
+#------------------------------------------------------------------------
+#?? Project:??? rtkore
+#?? Created on: Feb 17, 2014
+#?? Authors:??? Serge IOVLEFF <serge_DOT_iov..._AT_stkpp_DOT_org>
+#-----------------------------------------------------------------------
+## define PKG_CPPFLAGS (preprocessor & includes) and PKG_CXXFLAGS (compiler flags)
+CXX_STD = CXX11
+
+PKG_CXXFLAGS = -I'../inst/projects/' -I'../inst/include/' -DIS_RTKPP_LIB? -DSTKUSELAPACK 
+$(SHLIB_OPENMP_CXXFLAGS)
+#PKG_CXXFLAGS =
+PKG_LIBS???? = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(SHLIB_OPENMP_CXXFLAGS)
+
+## And export
+export
+
+## $(SHLIB) is the usual default target that is built automatically from all source
+## files in this directory. pkglib is an additional target for the library
+## that will be installed in inst/ and which users can link against.
+.PHONY: all
+
+all: $(SHLIB)
+
+Le 08/12/2023 ? 11:12, Uwe Ligges a ?crit?:
+>
+>
+> On 07.12.2023 19:29, Serge wrote:
+>> Hello,
+>>
+>> I'm the maintener of the rtkore package and I'm experimenting an error during the installation on
+>> the |r-devel-windows-x86_64| and the |r-release-windows-x86_64| platform. When trying to compile 
+>> I get
+>>
+>> |g++ -std=gnu++11 -I"D:/RCompile/recent/R-4.3.2/include" -DNDEBUG -I../inst/projects/
+>> -I../inst/include/ -DIS_RTKPP_LIB -DSTKUSELAPACK -I'D:/RCompile/CRANpkg/lib/4.3/Rcpp/include'
+>> -I"d:/rtools43/x86_64-w64-mingw32.static.posix/include" -fopenmp -O2 -Wall -mfpmath=sse -msse2
+>> -mstackrealign -c fastRand.cpp -o fastRand.o /bin/sh: line 1:
+>> /x86_64-w64-mingw32.static.posix/bin/g++: Bad address |
+>>
+>> A search indicate that the problem is from the "D:" (not sure it is the correct answer)
+>
+> Well, the missing d: or /d/ in the last line of your cited output.
+> Which package is this? Then I could take a look into the sources.
+>
+> Best,
+> Uwe Ligges
+>
+>
+>>
+>> In all case, I cannot modify these path as there given by the CRAN mechanism of compilation.
+>>
+>> Can you give me some hints about the problem and how to solve it ?
+>>
+>> Thanks
+>>
+>> ????[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+	[[alternative HTML version deleted]]
+
+
