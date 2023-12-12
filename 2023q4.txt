@@ -25016,3 +25016,125 @@ Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From @|mon@urb@nek @end|ng |rom R-project@org  Sun Dec 10 05:07:12 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Sun, 10 Dec 2023 17:07:12 +1300
+Subject: [R-pkg-devel] Status of -mmacosx-version-min
+In-Reply-To: <25972.55074.531674.648876@rob.eddelbuettel.com>
+References: <25972.55074.531674.648876@rob.eddelbuettel.com>
+Message-ID: <07E99E31-4739-4BBE-BBF0-0144D6540F61@R-project.org>
+
+As discussed here before packages should *never* set -mmacosx-version-min or similar flags by hand. As documented in R-exts 1.2 packages should retrieve compiler flags from R (this includes compiling 3rd party dependencies). Incidentally, older versions of R have included -mmacosx-version-min in the CC setting (high-sierra builds) which current ones don't, but complying packages will automatically use the correct compilers and flags regardless of the R version and build. Note that this is important as R can be built for different systems and targets so the package should not assume anything - just ask R.
+
+The implied question was about the target macOS version for CRAN binaries: it is always included in the build name, so high-sierra build was targeting macOS 10.13 (High Sierra) and big-sur build is targeting macOS 11 (Big Sur). It is clearly stated next to the download for each macOS R binary on CRAN: https://cran.r-project.org/bin/macosx/ where the current releases target macOS 11.
+
+Anyone distributing macOS binaries should subscribe to R-SIG-Mac where we discuss details such as repository locations etc. Developers writing packages just need to pay attention to R-exts and CRAN policies (the latter if they want to publish on CRAN). I hope this is now clear enough explanation.
+
+Cheers,
+Simon
+
+
+> On Dec 10, 2023, at 10:07 AM, Dirk Eddelbuettel <edd at debian.org> wrote:
+> 
+> 
+> Last month, I had asked about the setting '-mmacosx-version-min' here.  The
+> setting can be used to specify what macOS version one builds for. It is,
+> oddly enough, not mentioned in Writing R Extension but for both r-release and
+> r-devel the R Administration manual states
+> 
+>   ? Current CRAN macOS distributions are targeted at Big Sur so it is
+>     wise to ensure that the compilers generate code that will run on
+>     Big Sur or later.  With the recommended compilers we can use
+>          CC="clang -mmacosx-version-min=11.0"
+>          CXX="clang++ -mmacosx-version-min=11.0"
+>          FC="/opt//gfortran/bin/gfortran -mmacosx-version-min=11.0"
+>     or set the environment variable
+>          export MACOSX_DEPLOYMENT_TARGET=11.0
+> 
+> which is clear enough. (There is also an example in the R Internals manual
+> still showing the old (and deprecated ?) value of 10.13.)  It is also stated
+> at the top of mac.r-project.org.  But it is still in a somewhat confusing
+> contradiction to the matrix of tests machines, described e.g. at
+> 
+>   https://cran.r-project.org/web/checks/check_flavors.html
+> 
+> which still has r-oldrel-macos-x86_64 with 10.13.
+> 
+> I found this confusing, and pressed the CRAN macOS maintainer to clarify but
+> apparently did so in an insuffciently convincing manner. (There was a word
+> about it being emailed to r-sig-mac which is a list I am not on as I don't
+> have a macOS machine.) So in case anybody else wonders, my hope is that the
+> above is of help. At my day job, we will now switch to 11.0 to take advantage
+> of some more recent C++ features.
+> 
+> Dirk
+> 
+> -- 
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From edd @end|ng |rom deb|@n@org  Sun Dec 10 05:21:18 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Sat, 9 Dec 2023 22:21:18 -0600
+Subject: [R-pkg-devel] Status of -mmacosx-version-min
+In-Reply-To: <07E99E31-4739-4BBE-BBF0-0144D6540F61@R-project.org>
+References: <25972.55074.531674.648876@rob.eddelbuettel.com>
+ <07E99E31-4739-4BBE-BBF0-0144D6540F61@R-project.org>
+Message-ID: <25973.15550.580222.462696@rob.eddelbuettel.com>
+
+
+On 10 December 2023 at 17:07, Simon Urbanek wrote:
+| As discussed here before packages should *never* set -mmacosx-version-min
+| or similar flags by hand.
+
+a) That is in conflict with what was said in the past; we have used an
+explicit min version of 10.14 for the C++17 we were using then (and we now
+need a bit more so 11.0 is welcome).
+
+b) That is in conflict with how I read the R manual I quoted: R Admin,
+Section 'C.3.10 Building binary packages'. Recall that our package uses a
+binary artifact (by permission) so we have to play along and this minimum
+version used by both matters.
+
+c) That also appears to be in conflict with empirics. A quick search [1] at
+the searchable CRAN mirror finds around a dozen packages doing just that:
+setting a minimum version.
+
+Anyway -- I 'eventually' got the info I need. 
+
+Best regards, Dirk
+
+
+[1] https://github.com/search?q=org%3Acran%20mmacosx-version-min&type=code
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From edd @end|ng |rom deb|@n@org  Sun Dec 10 06:36:47 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Sat, 9 Dec 2023 23:36:47 -0600
+Subject: [R-pkg-devel] Status of -mmacosx-version-min
+In-Reply-To: <25973.15550.580222.462696@rob.eddelbuettel.com>
+References: <25972.55074.531674.648876@rob.eddelbuettel.com>
+ <07E99E31-4739-4BBE-BBF0-0144D6540F61@R-project.org>
+ <25973.15550.580222.462696@rob.eddelbuettel.com>
+Message-ID: <25973.20079.424384.758134@rob.eddelbuettel.com>
+
+
+PS One aspect I didn't mention clearly (my bad) that this does not affect all
+or even most packages: in most cases the src/Makevars should indeed be as
+simple as possible. But in _some_ cases we need to cooperate with external
+libraries and in some of these cases the switch has been seen to be necessary.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
