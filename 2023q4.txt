@@ -25138,3 +25138,108 @@ Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From koen@hu|ken@ @end|ng |rom gm@||@com  Mon Dec 11 11:02:14 2023
+From: koen@hu|ken@ @end|ng |rom gm@||@com (Koen Hufkens)
+Date: Mon, 11 Dec 2023 10:02:14 +0000
+Subject: [R-pkg-devel] Fortran compilation issues (errors/warnings) on
+ Fedora clang/llvm
+Message-ID: <CAHDtqqmBmRNNuPQ4-+c3dPBs+59AiyMKkh7sZshYrevbtx4wiA@mail.gmail.com>
+
+Hi Everyone,
+
+I'm a co-lead on the development of the {rsofun} package, a package to
+model ecosystem processes.
+
+https://github.com/geco-bern/rsofun
+
+The package uses a FORTRAN code base which is giving us some compilation
+and CRAN compliance problems. Our last submission was withdrawn with the
+following errors on Fedora: "
+error:
+loc("/data/gannet/ripley/R/packages/incoming/rsofun.Rcheck/00_pkg_src/rsofun/src/interface_biosphere_biomee.mod.f90":105:62):
+/data/gannet/ripley/Sources2/LLVM/17.0/llvm-project-17.0.3.src/flang/lib/Lower/ConvertType.cpp:392:
+not yet implemented: derived type components with non default lower bounds
+"
+
+This seems to be resolved when setting the suggested compiler flags for
+Fedora as: `-fc-prototypes-external`. However, this generates Warnings
+throughout platforms, as setting these compiler flags in Makevars is
+considered poor practice.
+
+I'm wondering how to reconcile both demands, i.e. addressing the above
+CLANG/LLVM issue, while not setting the compiler flags? Any guidance or
+ideas on this would be appreciated.
+
+Kind regards,
+Koen
+
+-- 
+Koen Hufkens, Ph.D.
+
+Senior Scientist
+Geocomputation and Earth Observation
+Institute of Geography
+University of Bern
+
+founder BlueGreen Labs
+bluegreenlabs.org
+@koen_hufkens at mastodon.social
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Mon Dec 11 13:58:23 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Mon, 11 Dec 2023 15:58:23 +0300
+Subject: [R-pkg-devel] Fortran compilation issues (errors/warnings) on
+ Fedora clang/llvm
+In-Reply-To: <CAHDtqqmBmRNNuPQ4-+c3dPBs+59AiyMKkh7sZshYrevbtx4wiA@mail.gmail.com>
+References: <CAHDtqqmBmRNNuPQ4-+c3dPBs+59AiyMKkh7sZshYrevbtx4wiA@mail.gmail.com>
+Message-ID: <20231211155823.0502f26a@arachnoid>
+
+? Mon, 11 Dec 2023 10:02:14 +0000
+Koen Hufkens <koen.hufkens at gmail.com> ?????:
+
+> error:
+> loc("/data/gannet/ripley/R/packages/incoming/rsofun.Rcheck/00_pkg_src/rsofun/src/interface_biosphere_biomee.mod.f90":105:62):
+> /data/gannet/ripley/Sources2/LLVM/17.0/llvm-project-17.0.3.src/flang/lib/Lower/ConvertType.cpp:392:
+> not yet implemented: derived type components with non default lower
+> bounds
+
+Experience shows that reporting bugs in flang-new may get them
+acknowledged but not fixed [1]. Have you tried detecting the flang-new
+compiler from the ./configure script and only adding the workaround
+flag if the compiler matches? Something like the following:
+
+#!/bin/sh
+# taken from Writing R Extensions, 1.2. Configure and cleanup
+: ${R_HOME=`R RHOME`}
+if test -z "${R_HOME}"; then
+  echo "could not determine R_HOME"
+  exit 1
+fi
+# determine the Fortran 9x compiler
+FC="`"${R_HOME}/bin/R" CMD config FC`"
+# Use --version output to determine the compiler
+# A different compiler will either accept --version and print something
+# else or fail due to "unknown argument". In both cases the branch will
+# not be taken
+if "$FC" --version 2>/dev/null | grep -q 'flang-new version 17'; then
+ echo "PKG_FCFLAGS = `"${R_HOME}/bin/R" CMD config FCFLAGS`" \
+  " -fc-prototypes-external" >>src/Makevars
+fi
+
+You will still get an "unsupported flag" warning on machines with
+flang-new, but at least it won't warn with standards-compliant
+compilers or crash with flang-new. Unfortunately, I don't know whether
+this is acceptable for CRAN, sorry.
+
+Good luck!
+
+-- 
+Best regards,
+Ivan
+
+[1] https://stat.ethz.ch/pipermail/r-package-devel/2023q4/009987.html
+
+
