@@ -25243,3 +25243,792 @@ Ivan
 [1] https://stat.ethz.ch/pipermail/r-package-devel/2023q4/009987.html
 
 
+From @|gbert @end|ng |rom w|w|@hu-ber||n@de  Tue Dec 12 08:24:11 2023
+From: @|gbert @end|ng |rom w|w|@hu-ber||n@de (Sigbert Klinke)
+Date: Tue, 12 Dec 2023 08:24:11 +0100
+Subject: [R-pkg-devel] vignette with "Run Examples"
+Message-ID: <5c1791b7-ffc5-4fc2-bc4d-8926913bdf0b@wiwi.hu-berlin.de>
+
+Hi,
+
+is it possible to get a button or link to run an example in a vignette 
+like we see for the examples in the R help?
+
+Thanks Sigbert
+
+-- 
+https://hu.berlin/sk
+https://www.stat.de/faqs
+https://hu.berlin/mmstat
+https://hu.berlin/mmstat-ar
+
+
+From deep@y@n@@@rk@r @end|ng |rom gm@||@com  Tue Dec 12 08:50:56 2023
+From: deep@y@n@@@rk@r @end|ng |rom gm@||@com (Deepayan Sarkar)
+Date: Tue, 12 Dec 2023 13:20:56 +0530
+Subject: [R-pkg-devel] vignette with "Run Examples"
+In-Reply-To: <5c1791b7-ffc5-4fc2-bc4d-8926913bdf0b@wiwi.hu-berlin.de>
+References: <5c1791b7-ffc5-4fc2-bc4d-8926913bdf0b@wiwi.hu-berlin.de>
+Message-ID: <CADfFDC7TodNvSpgD2_7gq8t3X7anw8gswN3opMMNkRZ7o71mJg@mail.gmail.com>
+
+On Tue, 12 Dec 2023 at 12:54, Sigbert Klinke <sigbert at wiwi.hu-berlin.de>
+wrote:
+
+> Hi,
+>
+> is it possible to get a button or link to run an example in a vignette
+> like we see for the examples in the R help?
+>
+
+Just to understand your expectations: The 'run examples' option only works
+within the "dynamic" R help system, because it has access to a running
+version of R. Vignettes can also be viewed through the dynamic system, but
+they perhaps more useful as standalone documentation (say on the CRAN page
+of a package). Would it be really useful to be able to run the code only in
+the limited setup of dynamic help?
+
+The other issue is that examples are expected to be short and simple,
+whereas vignettes can often be more complicated. They will also typically
+include the "output" from running the code, so what would be the point of
+running it again?
+
+If you want to really try the vignette code, then the package documentation
+page typically includes the R code extracted from a vignette, which you can
+download and run. And of course with IDEs like ESS or RStudio, you can
+simply open the vignette source and run the code interactively.
+
+Best,
+-Deepayan
+
+
+>
+> Thanks Sigbert
+>
+> --
+> https://hu.berlin/sk
+> https://www.stat.de/faqs
+> https://hu.berlin/mmstat
+> https://hu.berlin/mmstat-ar
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Dec 12 09:02:35 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 12 Dec 2023 11:02:35 +0300
+Subject: [R-pkg-devel] vignette with "Run Examples"
+In-Reply-To: <5c1791b7-ffc5-4fc2-bc4d-8926913bdf0b@wiwi.hu-berlin.de>
+References: <5c1791b7-ffc5-4fc2-bc4d-8926913bdf0b@wiwi.hu-berlin.de>
+Message-ID: <20231212110235.233340ca@Tarkus>
+
+On Tue, 12 Dec 2023 08:24:11 +0100
+Sigbert Klinke <sigbert at wiwi.hu-berlin.de> wrote:
+
+> is it possible to get a button or link to run an example in a vignette
+
+Technically, yes, but very hard to implement in practice.
+
+Vignettes are a form of literate programming, expressed in terms of
+files: there's a source file containing code mixed with prose, and
+there are two programs, one of which extracts the code into a runnable
+.R file and the other renders the code together with prose and any
+resulting plots into a human-readable document. A link to run examples
+implies that there's R running somewhere, which cannot be guaranteed by
+the time the human-readable document is opened by the human.
+
+One way around this problem would be to embed a copy of webR [*] in the
+document so that R would run in the browser. This involves a
+significant developer effort and would either bloat your vignette to
+the size of an R installation or make it depend on external resources
+to load webR from (that could go away or spy on the user). webR is
+still experimental; last time I tried it, it crashed the browser tab
+when I invoked functions from the quadprog package.
+
+Another way would be to add a hack to the vignette engine to start a
+server at vignette rendering time, insert the link to this server into
+the vignette as it's being rendered and hope that the server is still
+running by the time the vignette is opened. This would require the user
+to re-render the vignette every time they restart the server.
+
+Technically, one could also invent a completely new kind of vignette
+engine that would output self-contained executable files with a
+document rendering engine and R built in, so that a click on the "Run
+examples" would use that built-in R. This is basically the webR
+solution without the web and with a lot of extra pain.
+
+You could also fake some of it by writing extra JavaScript (with the
+help of third-party statistics libraries, e.g. [**]) to do the same
+thing in the browser as is done in R, but that's still a lot of work
+for little benefit.
+
+Yet another way would be to make these links point to an external
+service somewhere on the Internet that would run the R code. Since R is
+not designed to work with untrusted input (not to mention untrusted
+users entering code), that would be an informational security nightmare
+both on your side (R would have to run in locked-down read-only
+disposable virtual machines hardened against sandbox escape and
+privilege escalation exploits) and on the GDPR side of things.
+
+There are doubtlessly more approaches, but I think they would all be
+this convoluted or worse.
+
+-- 
+Best regards,
+Ivan
+
+[*] https://docs.r-wasm.org/webr/latest/
+
+[**] https://github.com/svkucheryavski/mdatools-js
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Dec 12 09:36:52 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 12 Dec 2023 03:36:52 -0500
+Subject: [R-pkg-devel] vignette with "Run Examples"
+In-Reply-To: <5c1791b7-ffc5-4fc2-bc4d-8926913bdf0b@wiwi.hu-berlin.de>
+References: <5c1791b7-ffc5-4fc2-bc4d-8926913bdf0b@wiwi.hu-berlin.de>
+Message-ID: <777161af-2d13-4b83-8303-dd6f85f444f7@gmail.com>
+
+On 12/12/2023 2:24 a.m., Sigbert Klinke wrote:
+> Hi,
+> 
+> is it possible to get a button or link to run an example in a vignette
+> like we see for the examples in the R help?
+> 
+
+Others have explained why this is hard.  An alternative might be to run 
+the examples when you produce your vignette, but hide the results until 
+a button is pressed to display them.
+
+Duncan Murdoch
+
+
+From koen@hu|ken@ @end|ng |rom gm@||@com  Tue Dec 12 14:06:46 2023
+From: koen@hu|ken@ @end|ng |rom gm@||@com (Koen Hufkens)
+Date: Tue, 12 Dec 2023 13:06:46 +0000
+Subject: [R-pkg-devel] Fortran compilation issues (errors/warnings) on
+ Fedora clang/llvm
+In-Reply-To: <20231211155823.0502f26a@arachnoid>
+References: <CAHDtqqmBmRNNuPQ4-+c3dPBs+59AiyMKkh7sZshYrevbtx4wiA@mail.gmail.com>
+ <20231211155823.0502f26a@arachnoid>
+Message-ID: <CAHDtqqknkZw4HEWpjiB4h32srAG0GW3ZPaUjJCNHkJkQZPooGA@mail.gmail.com>
+
+Dear Ivan,
+
+Thanks for these pointers!
+I think with your script, reading through the docs and some other packages
+structures I sort of made sense of things (the dynamic configure options
+are new to me).
+I hope this will now resolve the system specific dependencies.
+
+Appreciate the help!
+Cheers,
+K
+
+On Mon, 11 Dec 2023 at 12:58, Ivan Krylov <krylov.r00t at gmail.com> wrote:
+
+> ? Mon, 11 Dec 2023 10:02:14 +0000
+> Koen Hufkens <koen.hufkens at gmail.com> ?????:
+>
+> > error:
+> >
+> loc("/data/gannet/ripley/R/packages/incoming/rsofun.Rcheck/00_pkg_src/rsofun/src/interface_biosphere_biomee.mod.f90":105:62):
+> >
+> /data/gannet/ripley/Sources2/LLVM/17.0/llvm-project-17.0.3.src/flang/lib/Lower/ConvertType.cpp:392:
+> > not yet implemented: derived type components with non default lower
+> > bounds
+>
+> Experience shows that reporting bugs in flang-new may get them
+> acknowledged but not fixed [1]. Have you tried detecting the flang-new
+> compiler from the ./configure script and only adding the workaround
+> flag if the compiler matches? Something like the following:
+>
+> #!/bin/sh
+> # taken from Writing R Extensions, 1.2. Configure and cleanup
+> : ${R_HOME=`R RHOME`}
+> if test -z "${R_HOME}"; then
+>   echo "could not determine R_HOME"
+>   exit 1
+> fi
+> # determine the Fortran 9x compiler
+> FC="`"${R_HOME}/bin/R" CMD config FC`"
+> # Use --version output to determine the compiler
+> # A different compiler will either accept --version and print something
+> # else or fail due to "unknown argument". In both cases the branch will
+> # not be taken
+> if "$FC" --version 2>/dev/null | grep -q 'flang-new version 17'; then
+>  echo "PKG_FCFLAGS = `"${R_HOME}/bin/R" CMD config FCFLAGS`" \
+>   " -fc-prototypes-external" >>src/Makevars
+> fi
+>
+> You will still get an "unsupported flag" warning on machines with
+> flang-new, but at least it won't warn with standards-compliant
+> compilers or crash with flang-new. Unfortunately, I don't know whether
+> this is acceptable for CRAN, sorry.
+>
+> Good luck!
+>
+> --
+> Best regards,
+> Ivan
+>
+> [1] https://stat.ethz.ch/pipermail/r-package-devel/2023q4/009987.html
+>
+
+
+-- 
+Koen Hufkens, Ph.D.
+
+Senior Scientist
+Geocomputation and Earth Observation
+Institute of Geography
+University of Bern
+
+founder BlueGreen Labs
+bluegreenlabs.org
+@koen_hufkens at mastodon.social
+
+	[[alternative HTML version deleted]]
+
+
+From jmcgr@th @end|ng |rom ||||no|@@edu  Tue Dec 12 16:03:28 2023
+From: jmcgr@th @end|ng |rom ||||no|@@edu (McGrath, Justin M)
+Date: Tue, 12 Dec 2023 15:03:28 +0000
+Subject: [R-pkg-devel] Could the 100 byte path length limit be lifted?
+Message-ID: <CO1PR11MB51226E7B80B9B903DEE3BA32B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+
+We include other software in our source code. It has some long paths so a few of the files end up with paths longer than 100 bytes, and we need to manually rename them whenever we pull in updates.
+
+The 100 byte path limit is from tar v7, and since POSIX1.1988, there has not been a path length limit. That standard is 35 years old now, so given that there is probably no one using an old version of tar that also wants to use the latest version of R, could the 100 byte limit be lifted? Incidentally, I am a big proponent of wide, long-term support, but it's hard to see that this change would negatively impact anyone.
+
+Best wishes,
+Justin
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Tue Dec 12 17:13:44 2023
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Tue, 12 Dec 2023 17:13:44 +0100
+Subject: [R-pkg-devel] Wrong mailing list: Could the 100 byte path length
+ limit be lifted?
+In-Reply-To: <CO1PR11MB51226E7B80B9B903DEE3BA32B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+References: <CO1PR11MB51226E7B80B9B903DEE3BA32B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+Message-ID: <25976.34488.874895.830215@stat.math.ethz.ch>
+
+>>>>> McGrath, Justin M 
+>>>>>     on Tue, 12 Dec 2023 15:03:28 +0000 writes:
+
+    > We include other software in our source code. It has some long paths so a few of the files end up with paths longer than 100 bytes, and we need to manually rename them whenever we pull in updates.
+    > The 100 byte path limit is from tar v7, and since
+    > POSIX1.1988, there has not been a path length limit. That
+    > standard is 35 years old now, so given that there is
+    > probably no one using an old version of tar that also
+    > wants to use the latest version of R, could the 100 byte
+    > limit be lifted? Incidentally, I am a big proponent of
+    > wide, long-term support, but it's hard to see that this
+    > change would negatively impact anyone.
+
+    > Best wishes,
+    > Justin
+
+Wrong mailing list:
+
+This is a topic for R-devel,  not at all R-package-devel,
+but be more accurate in what you are talking about, only between
+the line I could read that it is about some variants of using
+'tar'.
+
+Best regards,
+Martin
+---
+
+Martin Maechler
+ETH Zurich  and  R Core team
+
+
+From jmcgr@th @end|ng |rom ||||no|@@edu  Tue Dec 12 18:03:03 2023
+From: jmcgr@th @end|ng |rom ||||no|@@edu (McGrath, Justin M)
+Date: Tue, 12 Dec 2023 17:03:03 +0000
+Subject: [R-pkg-devel] 
+ Wrong mailing list: Could the 100 byte path length limit be lifted?
+In-Reply-To: <25976.34488.874895.830215@stat.math.ethz.ch>
+References: <CO1PR11MB51226E7B80B9B903DEE3BA32B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <25976.34488.874895.830215@stat.math.ethz.ch>
+Message-ID: <CO1PR11MB5122A01EE74B94A499FC2DF8B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+
+When submitting a package to CRAN, it is required that path names be shorter than 100 bytes, with the reason that paths longer than that cannot be made into portable tar files. This error is reported by `R CMD check --as-cran`. Since this pertains only to developing packages, this seemed like the appropriate list, but if you don't think so, I can instead ask on R-devel.
+
+Best wishes,
+Justin
+
+________________________________________
+From: Martin Maechler <maechler at stat.math.ethz.ch>
+Sent: Tuesday, December 12, 2023 10:13 AM
+To: McGrath, Justin M
+Cc: r-package-devel at r-project.org
+Subject: Wrong mailing list: [R-pkg-devel] Could the 100 byte path length limit be lifted?
+
+>>>>> McGrath, Justin M
+>>>>>     on Tue, 12 Dec 2023 15:03:28 +0000 writes:
+
+    > We include other software in our source code. It has some long paths so a few of the files end up with paths longer than 100 bytes, and we need to manually rename them whenever we pull in updates.
+    > The 100 byte path limit is from tar v7, and since
+    > POSIX1.1988, there has not been a path length limit. That
+    > standard is 35 years old now, so given that there is
+    > probably no one using an old version of tar that also
+    > wants to use the latest version of R, could the 100 byte
+    > limit be lifted? Incidentally, I am a big proponent of
+    > wide, long-term support, but it's hard to see that this
+    > change would negatively impact anyone.
+
+    > Best wishes,
+    > Justin
+
+Wrong mailing list:
+
+This is a topic for R-devel,  not at all R-package-devel,
+but be more accurate in what you are talking about, only between
+the line I could read that it is about some variants of using
+'tar'.
+
+Best regards,
+Martin
+---
+
+Martin Maechler
+ETH Zurich  and  R Core team
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Tue Dec 12 20:57:05 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Wed, 13 Dec 2023 08:57:05 +1300
+Subject: [R-pkg-devel] 
+ Wrong mailing list: Could the 100 byte path length limit be lifted?
+In-Reply-To: <CO1PR11MB5122A01EE74B94A499FC2DF8B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+References: <CO1PR11MB51226E7B80B9B903DEE3BA32B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <25976.34488.874895.830215@stat.math.ethz.ch>
+ <CO1PR11MB5122A01EE74B94A499FC2DF8B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+Message-ID: <E5187765-A517-465D-A6F1-F9E4EB48AE78@R-project.org>
+
+Justin,
+
+now that you clarified what you are actually talking about, this is a question about the CRAN policies, so you should really direct it to the CRAN team as it is their decision (R-devel would be appropriate if this was a limitation in R itself, and R-package-devel would be appropriate if you wanted help with refactoring to adhere to the policy). There are still path limits on various platforms (even if they are becoming more rare), so I'd personally question the source rather than the policy, but then your email was remarkably devoid of any details.
+
+Cheers,
+Simon
+
+
+> On Dec 13, 2023, at 6:03 AM, McGrath, Justin M <jmcgrath at illinois.edu> wrote:
+> 
+> When submitting a package to CRAN, it is required that path names be shorter than 100 bytes, with the reason that paths longer than that cannot be made into portable tar files. This error is reported by `R CMD check --as-cran`. Since this pertains only to developing packages, this seemed like the appropriate list, but if you don't think so, I can instead ask on R-devel.
+> 
+> Best wishes,
+> Justin
+> 
+> ________________________________________
+> From: Martin Maechler <maechler at stat.math.ethz.ch>
+> Sent: Tuesday, December 12, 2023 10:13 AM
+> To: McGrath, Justin M
+> Cc: r-package-devel at r-project.org
+> Subject: Wrong mailing list: [R-pkg-devel] Could the 100 byte path length limit be lifted?
+> 
+>>>>>> McGrath, Justin M
+>>>>>>    on Tue, 12 Dec 2023 15:03:28 +0000 writes:
+> 
+>> We include other software in our source code. It has some long paths so a few of the files end up with paths longer than 100 bytes, and we need to manually rename them whenever we pull in updates.
+>> The 100 byte path limit is from tar v7, and since
+>> POSIX1.1988, there has not been a path length limit. That
+>> standard is 35 years old now, so given that there is
+>> probably no one using an old version of tar that also
+>> wants to use the latest version of R, could the 100 byte
+>> limit be lifted? Incidentally, I am a big proponent of
+>> wide, long-term support, but it's hard to see that this
+>> change would negatively impact anyone.
+> 
+>> Best wishes,
+>> Justin
+> 
+> Wrong mailing list:
+> 
+> This is a topic for R-devel,  not at all R-package-devel,
+> but be more accurate in what you are talking about, only between
+> the line I could read that it is about some variants of using
+> 'tar'.
+> 
+> Best regards,
+> Martin
+> ---
+> 
+> Martin Maechler
+> ETH Zurich  and  R Core team
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From bbo|ker @end|ng |rom gm@||@com  Tue Dec 12 21:10:25 2023
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Tue, 12 Dec 2023 15:10:25 -0500
+Subject: [R-pkg-devel] 
+ Wrong mailing list: Could the 100 byte path length limit be lifted?
+In-Reply-To: <E5187765-A517-465D-A6F1-F9E4EB48AE78@R-project.org>
+References: <CO1PR11MB51226E7B80B9B903DEE3BA32B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <25976.34488.874895.830215@stat.math.ethz.ch>
+ <CO1PR11MB5122A01EE74B94A499FC2DF8B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <E5187765-A517-465D-A6F1-F9E4EB48AE78@R-project.org>
+Message-ID: <f7fdb277-55f1-4700-9856-0ac00c86449c@gmail.com>
+
+  FWIW the R-windows FAQ says:
+
+Yet another complication is a 260 character limit on the length of the 
+entire path name imposed by Windows. The limit applies only to some 
+system functions, and hence it is possible to create a long path using 
+one application yet inaccessible to another. It is sometimes possible to 
+reduce the path length by creating a drive mapping using subst and 
+accessing files via that drive. As of Windows 10 version 1607 and R 4.3, 
+one can remove this limit via Windows registry by setting 
+Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem\LongPathsEnabled 
+to 1. Long paths still may not always work reliably: some applications 
+or packages may not be able to work with them and Windows cannot execute 
+an application with long path as the current directory.
+
+   I'm having trouble finding the specific check for path lengths > 100 
+in the R source tree.  It would be helpful to have the exact wording of 
+the NOTE/WARNING (?) that is thrown ...  (I know I could make my own 
+mini-package with a long path length in it somewhere but ...)
+
+   cheers
+    Ben Bolker
+
+On 2023-12-12 2:57 p.m., Simon Urbanek wrote:
+> Justin,
+> 
+> now that you clarified what you are actually talking about, this is a question about the CRAN policies, so you should really direct it to the CRAN team as it is their decision (R-devel would be appropriate if this was a limitation in R itself, and R-package-devel would be appropriate if you wanted help with refactoring to adhere to the policy). There are still path limits on various platforms (even if they are becoming more rare), so I'd personally question the source rather than the policy, but then your email was remarkably devoid of any details.
+> 
+> Cheers,
+> Simon
+> 
+> 
+>> On Dec 13, 2023, at 6:03 AM, McGrath, Justin M <jmcgrath at illinois.edu> wrote:
+>>
+>> When submitting a package to CRAN, it is required that path names be shorter than 100 bytes, with the reason that paths longer than that cannot be made into portable tar files. This error is reported by `R CMD check --as-cran`. Since this pertains only to developing packages, this seemed like the appropriate list, but if you don't think so, I can instead ask on R-devel.
+>>
+>> Best wishes,
+>> Justin
+>>
+>> ________________________________________
+>> From: Martin Maechler <maechler at stat.math.ethz.ch>
+>> Sent: Tuesday, December 12, 2023 10:13 AM
+>> To: McGrath, Justin M
+>> Cc: r-package-devel at r-project.org
+>> Subject: Wrong mailing list: [R-pkg-devel] Could the 100 byte path length limit be lifted?
+>>
+>>>>>>> McGrath, Justin M
+>>>>>>>     on Tue, 12 Dec 2023 15:03:28 +0000 writes:
+>>
+>>> We include other software in our source code. It has some long paths so a few of the files end up with paths longer than 100 bytes, and we need to manually rename them whenever we pull in updates.
+>>> The 100 byte path limit is from tar v7, and since
+>>> POSIX1.1988, there has not been a path length limit. That
+>>> standard is 35 years old now, so given that there is
+>>> probably no one using an old version of tar that also
+>>> wants to use the latest version of R, could the 100 byte
+>>> limit be lifted? Incidentally, I am a big proponent of
+>>> wide, long-term support, but it's hard to see that this
+>>> change would negatively impact anyone.
+>>
+>>> Best wishes,
+>>> Justin
+>>
+>> Wrong mailing list:
+>>
+>> This is a topic for R-devel,  not at all R-package-devel,
+>> but be more accurate in what you are talking about, only between
+>> the line I could read that it is about some variants of using
+>> 'tar'.
+>>
+>> Best regards,
+>> Martin
+>> ---
+>>
+>> Martin Maechler
+>> ETH Zurich  and  R Core team
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Dec 12 21:41:16 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 12 Dec 2023 15:41:16 -0500
+Subject: [R-pkg-devel] 
+ Wrong mailing list: Could the 100 byte path length limit be lifted?
+In-Reply-To: <f7fdb277-55f1-4700-9856-0ac00c86449c@gmail.com>
+References: <CO1PR11MB51226E7B80B9B903DEE3BA32B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <25976.34488.874895.830215@stat.math.ethz.ch>
+ <CO1PR11MB5122A01EE74B94A499FC2DF8B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <E5187765-A517-465D-A6F1-F9E4EB48AE78@R-project.org>
+ <f7fdb277-55f1-4700-9856-0ac00c86449c@gmail.com>
+Message-ID: <e134fe18-e1fb-45a2-88c1-5746b99aac05@gmail.com>
+
+I don't know what the warning looks like, but the ?tar help page 
+discusses the issues.
+
+Duncan Murdoch
+
+On 12/12/2023 3:10 p.m., Ben Bolker wrote:
+>    FWIW the R-windows FAQ says:
+> 
+> Yet another complication is a 260 character limit on the length of the
+> entire path name imposed by Windows. The limit applies only to some
+> system functions, and hence it is possible to create a long path using
+> one application yet inaccessible to another. It is sometimes possible to
+> reduce the path length by creating a drive mapping using subst and
+> accessing files via that drive. As of Windows 10 version 1607 and R 4.3,
+> one can remove this limit via Windows registry by setting
+> Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem\LongPathsEnabled
+> to 1. Long paths still may not always work reliably: some applications
+> or packages may not be able to work with them and Windows cannot execute
+> an application with long path as the current directory.
+> 
+>     I'm having trouble finding the specific check for path lengths > 100
+> in the R source tree.  It would be helpful to have the exact wording of
+> the NOTE/WARNING (?) that is thrown ...  (I know I could make my own
+> mini-package with a long path length in it somewhere but ...)
+> 
+>     cheers
+>      Ben Bolker
+> 
+> On 2023-12-12 2:57 p.m., Simon Urbanek wrote:
+>> Justin,
+>>
+>> now that you clarified what you are actually talking about, this is a question about the CRAN policies, so you should really direct it to the CRAN team as it is their decision (R-devel would be appropriate if this was a limitation in R itself, and R-package-devel would be appropriate if you wanted help with refactoring to adhere to the policy). There are still path limits on various platforms (even if they are becoming more rare), so I'd personally question the source rather than the policy, but then your email was remarkably devoid of any details.
+>>
+>> Cheers,
+>> Simon
+>>
+>>
+>>> On Dec 13, 2023, at 6:03 AM, McGrath, Justin M <jmcgrath at illinois.edu> wrote:
+>>>
+>>> When submitting a package to CRAN, it is required that path names be shorter than 100 bytes, with the reason that paths longer than that cannot be made into portable tar files. This error is reported by `R CMD check --as-cran`. Since this pertains only to developing packages, this seemed like the appropriate list, but if you don't think so, I can instead ask on R-devel.
+>>>
+>>> Best wishes,
+>>> Justin
+>>>
+>>> ________________________________________
+>>> From: Martin Maechler <maechler at stat.math.ethz.ch>
+>>> Sent: Tuesday, December 12, 2023 10:13 AM
+>>> To: McGrath, Justin M
+>>> Cc: r-package-devel at r-project.org
+>>> Subject: Wrong mailing list: [R-pkg-devel] Could the 100 byte path length limit be lifted?
+>>>
+>>>>>>>> McGrath, Justin M
+>>>>>>>>      on Tue, 12 Dec 2023 15:03:28 +0000 writes:
+>>>
+>>>> We include other software in our source code. It has some long paths so a few of the files end up with paths longer than 100 bytes, and we need to manually rename them whenever we pull in updates.
+>>>> The 100 byte path limit is from tar v7, and since
+>>>> POSIX1.1988, there has not been a path length limit. That
+>>>> standard is 35 years old now, so given that there is
+>>>> probably no one using an old version of tar that also
+>>>> wants to use the latest version of R, could the 100 byte
+>>>> limit be lifted? Incidentally, I am a big proponent of
+>>>> wide, long-term support, but it's hard to see that this
+>>>> change would negatively impact anyone.
+>>>
+>>>> Best wishes,
+>>>> Justin
+>>>
+>>> Wrong mailing list:
+>>>
+>>> This is a topic for R-devel,  not at all R-package-devel,
+>>> but be more accurate in what you are talking about, only between
+>>> the line I could read that it is about some variants of using
+>>> 'tar'.
+>>>
+>>> Best regards,
+>>> Martin
+>>> ---
+>>>
+>>> Martin Maechler
+>>> ETH Zurich  and  R Core team
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From bbo|ker @end|ng |rom gm@||@com  Tue Dec 12 21:48:11 2023
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Tue, 12 Dec 2023 15:48:11 -0500
+Subject: [R-pkg-devel] 
+ Wrong mailing list: Could the 100 byte path length limit be lifted?
+In-Reply-To: <e134fe18-e1fb-45a2-88c1-5746b99aac05@gmail.com>
+References: <CO1PR11MB51226E7B80B9B903DEE3BA32B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <25976.34488.874895.830215@stat.math.ethz.ch>
+ <CO1PR11MB5122A01EE74B94A499FC2DF8B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <E5187765-A517-465D-A6F1-F9E4EB48AE78@R-project.org>
+ <f7fdb277-55f1-4700-9856-0ac00c86449c@gmail.com>
+ <e134fe18-e1fb-45a2-88c1-5746b99aac05@gmail.com>
+Message-ID: <f6afda84-38a0-40ee-bdf6-3225d2b4b4a8@gmail.com>
+
+   Thanks. Pursuing this a bit further, from ?tar "Known problems":
+
+  The handling of file paths of more than 100 bytes.  These
+were unsupported in early versions of ?tar?, and supported in
+one way by POSIX ?tar? and in another by GNU ?tar? and yet
+another by the POSIX ?pax? command which recent ?tar?
+programs often support.  The internal implementation warns on
+paths of more than 100 bytes, uses the ?ustar? way from the
+1998 POSIX standard which supports up to 256 bytes (depending
+on the path: in particular the final component is limited to
+100 bytes) if possible, otherwise the GNU way (which is
+widely supported, including by ?untar?).
+
+   This issue is reminiscent of the "invalid uid value replaced ..." 
+warning, which has happened to me a lot but which CRAN has never 
+actually flagged when I've submitted a package:
+
+https://stackoverflow.com/questions/30599326/warning-message-during-building-an-r-package-invalid-uid-value-replaced-by-that
+
+  (By the way, this thread now seems firmly on-topic for r-pkg-devel, 
+even if the ultimate answers must come from the CRAN maintainers ...)
+
+   cheers
+    Ben
+
+
+
+On 2023-12-12 3:41 p.m., Duncan Murdoch wrote:
+> I don't know what the warning looks like, but the ?tar help page 
+> discusses the issues.
+> 
+> Duncan Murdoch
+> 
+> On 12/12/2023 3:10 p.m., Ben Bolker wrote:
+>> ?? FWIW the R-windows FAQ says:
+>>
+>> Yet another complication is a 260 character limit on the length of the
+>> entire path name imposed by Windows. The limit applies only to some
+>> system functions, and hence it is possible to create a long path using
+>> one application yet inaccessible to another. It is sometimes possible to
+>> reduce the path length by creating a drive mapping using subst and
+>> accessing files via that drive. As of Windows 10 version 1607 and R 4.3,
+>> one can remove this limit via Windows registry by setting
+>> Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem\LongPathsEnabled
+>> to 1. Long paths still may not always work reliably: some applications
+>> or packages may not be able to work with them and Windows cannot execute
+>> an application with long path as the current directory.
+>>
+>> ??? I'm having trouble finding the specific check for path lengths > 100
+>> in the R source tree.? It would be helpful to have the exact wording of
+>> the NOTE/WARNING (?) that is thrown ...? (I know I could make my own
+>> mini-package with a long path length in it somewhere but ...)
+>>
+>> ??? cheers
+>> ???? Ben Bolker
+>>
+>> On 2023-12-12 2:57 p.m., Simon Urbanek wrote:
+>>> Justin,
+>>>
+>>> now that you clarified what you are actually talking about, this is a 
+>>> question about the CRAN policies, so you should really direct it to 
+>>> the CRAN team as it is their decision (R-devel would be appropriate 
+>>> if this was a limitation in R itself, and R-package-devel would be 
+>>> appropriate if you wanted help with refactoring to adhere to the 
+>>> policy). There are still path limits on various platforms (even if 
+>>> they are becoming more rare), so I'd personally question the source 
+>>> rather than the policy, but then your email was remarkably devoid of 
+>>> any details.
+>>>
+>>> Cheers,
+>>> Simon
+>>>
+>>>
+>>>> On Dec 13, 2023, at 6:03 AM, McGrath, Justin M 
+>>>> <jmcgrath at illinois.edu> wrote:
+>>>>
+>>>> When submitting a package to CRAN, it is required that path names be 
+>>>> shorter than 100 bytes, with the reason that paths longer than that 
+>>>> cannot be made into portable tar files. This error is reported by `R 
+>>>> CMD check --as-cran`. Since this pertains only to developing 
+>>>> packages, this seemed like the appropriate list, but if you don't 
+>>>> think so, I can instead ask on R-devel.
+>>>>
+>>>> Best wishes,
+>>>> Justin
+>>>>
+>>>> ________________________________________
+>>>> From: Martin Maechler <maechler at stat.math.ethz.ch>
+>>>> Sent: Tuesday, December 12, 2023 10:13 AM
+>>>> To: McGrath, Justin M
+>>>> Cc: r-package-devel at r-project.org
+>>>> Subject: Wrong mailing list: [R-pkg-devel] Could the 100 byte path 
+>>>> length limit be lifted?
+>>>>
+>>>>>>>>> McGrath, Justin M
+>>>>>>>>> ???? on Tue, 12 Dec 2023 15:03:28 +0000 writes:
+>>>>
+>>>>> We include other software in our source code. It has some long 
+>>>>> paths so a few of the files end up with paths longer than 100 
+>>>>> bytes, and we need to manually rename them whenever we pull in 
+>>>>> updates.
+>>>>> The 100 byte path limit is from tar v7, and since
+>>>>> POSIX1.1988, there has not been a path length limit. That
+>>>>> standard is 35 years old now, so given that there is
+>>>>> probably no one using an old version of tar that also
+>>>>> wants to use the latest version of R, could the 100 byte
+>>>>> limit be lifted? Incidentally, I am a big proponent of
+>>>>> wide, long-term support, but it's hard to see that this
+>>>>> change would negatively impact anyone.
+>>>>
+>>>>> Best wishes,
+>>>>> Justin
+>>>>
+>>>> Wrong mailing list:
+>>>>
+>>>> This is a topic for R-devel,? not at all R-package-devel,
+>>>> but be more accurate in what you are talking about, only between
+>>>> the line I could read that it is about some variants of using
+>>>> 'tar'.
+>>>>
+>>>> Best regards,
+>>>> Martin
+>>>> ---
+>>>>
+>>>> Martin Maechler
+>>>> ETH Zurich? and? R Core team
+>>>>
+>>>> ______________________________________________
+>>>> R-package-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
