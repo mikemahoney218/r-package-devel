@@ -26032,3 +26032,908 @@ On 2023-12-12 3:41 p.m., Duncan Murdoch wrote:
 >
 
 
+From |r|edem@nn@von|@mpe @end|ng |rom b|o|og|e@un|-goett|ngen@de  Wed Dec 13 09:58:41 2023
+From: |r|edem@nn@von|@mpe @end|ng |rom b|o|og|e@un|-goett|ngen@de (Friedemann von Lampe)
+Date: Wed, 13 Dec 2023 09:58:41 +0100
+Subject: [R-pkg-devel] How to fix: non-standard things in the check
+ directory: 'NUL' ?
+In-Reply-To: <384c6ba4-9b33-4283-8eca-8380dc7b845a@biologie.uni-goettingen.de>
+References: <384c6ba4-9b33-4283-8eca-8380dc7b845a@biologie.uni-goettingen.de>
+Message-ID: <7e4e5744-7907-4339-be7f-89a133a63e3c@biologie.uni-goettingen.de>
+
+Hi,
+
+when trying to update my package on CRAN it is rejected, because it gets 
+a note during checks on Debian:
+
+Flavor: r-devel-linux-x86_64-debian-gcc
+Check: for non-standard things in the check directory, Result: NOTE
+Found the following files/directories:
+'NUL'
+
+There is no such file in my folder and therefore it can't be removed. 
+With Windows everything is OK.
+As far as I understood, this is a problem with Rhub? 
+(https://github.com/clessn/locateip/issues/99)
+
+Or what can I do, to fix this problem and get my package update 
+submitted to CRAN?
+
+Thanks,
+Friedemann von Lampe
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Dec 13 11:14:44 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 13 Dec 2023 13:14:44 +0300
+Subject: [R-pkg-devel] How to fix: non-standard things in the check
+ directory: 'NUL' ?
+In-Reply-To: <7e4e5744-7907-4339-be7f-89a133a63e3c@biologie.uni-goettingen.de>
+References: <384c6ba4-9b33-4283-8eca-8380dc7b845a@biologie.uni-goettingen.de>
+ <7e4e5744-7907-4339-be7f-89a133a63e3c@biologie.uni-goettingen.de>
+Message-ID: <20231213131444.74567bd8@arachnoid>
+
+Dear Friedemann von Lampe,
+
+Welcome to R-package-devel! This is a good, concise description of the
+problem, but please also provide a link to your code in the future.
+
+? Wed, 13 Dec 2023 09:58:41 +0100
+Friedemann von Lampe <friedemann.vonlampe at biologie.uni-goettingen.de>
+?????:
+
+> Flavor: r-devel-linux-x86_64-debian-gcc
+> Check: for non-standard things in the check directory, Result: NOTE
+> Found the following files/directories:
+> 'NUL'
+
+The file named 'NUL' is created in the function screeplot_NMDS:
+
+R/screeplot_NMDS.R:  capture.output(nmds_i <- invisible(metaMDS(matrix,
+distance = distance, k = i, trymax = trymax, engine = "monoMDS",
+autotransform = autotransform)), file='NUL')
+
+https://github.com/fvlampe/goeveg/blob/db94c4a567eeac67b6df1df5a4f2d1aa771e629a/R/screeplot_NMDS.R#L76
+
+On Windows, everything goes right and the output is redirected to the
+null device. On Linux, the null device is '/dev/null', not 'NUL', and
+this name doesn't hold any special powers, so the file with this name
+gets created.
+
+Use the base function nullfile() to obtain the name of the null device
+in a portable manner. I think you can also not supply the `file`
+argument and ignore the return value of the capture.output(...)
+expression. This may be less efficient if there's truly a lot of output.
+
+-- 
+Best regards,
+Ivan
+
+
+From jmcgr@th @end|ng |rom ||||no|@@edu  Wed Dec 13 14:56:09 2023
+From: jmcgr@th @end|ng |rom ||||no|@@edu (McGrath, Justin M)
+Date: Wed, 13 Dec 2023 13:56:09 +0000
+Subject: [R-pkg-devel] 
+ Wrong mailing list: Could the 100 byte path length limit be lifted?
+In-Reply-To: <25977.27088.90570.377617@stat.math.ethz.ch>
+References: <CO1PR11MB51226E7B80B9B903DEE3BA32B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <25976.34488.874895.830215@stat.math.ethz.ch>
+ <CO1PR11MB5122A01EE74B94A499FC2DF8B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <E5187765-A517-465D-A6F1-F9E4EB48AE78@R-project.org>
+ <f7fdb277-55f1-4700-9856-0ac00c86449c@gmail.com>
+ <e134fe18-e1fb-45a2-88c1-5746b99aac05@gmail.com>
+ <f6afda84-38a0-40ee-bdf6-3225d2b4b4a8@gmail.com>
+ <25977.27088.90570.377617@stat.math.ethz.ch>
+Message-ID: <CO1PR11MB5122CFB3DBD0133E23257E4FB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+
+> Thanks. Pursuing this a bit further, from ?tar "Known problems":
+    > The handling of file paths of more than 100 bytes.  These
+    > were unsupported in early versions of ?tar?, and supported in
+    > one way by POSIX ?tar? and in another by GNU ?tar? and yet
+    > another by the POSIX ?pax? command which recent ?tar?
+    > programs often support.  The internal implementation warns on
+    > paths of more than 100 bytes, uses the ?ustar? way from the
+    > 1998 POSIX standard which supports up to 256 bytes (depending
+    > on the path: in particular the final component is limited to
+    > 100 bytes) if possible, otherwise the GNU way (which is
+    > widely supported, including by ?untar?).
+
+R CMD check --as-cran gives a WARNING if a path is not ustar compatible, and gives the same message as a NOTE if it is not v7 compatible.
+
+The path in the example below is ustar compatible, but not v7 compatible.
+
+***********
+* checking for portable file names ... NOTE
+Found the following non-portable file path:
+  BioCro/inc/boost/numeric/odeint/stepper/generation/generation_controlled_adams_bashforth_moulton_really_long_file_name_one_two_three.hpp
+
+Tarballs are only required to store paths of up to 100 bytes and cannot
+store those of more than 256 bytes, with restrictions including to 100
+bytes for the final component.
+***********
+
+The code is in library/tools/R/check.R. An equivalent test is performed by R CMD build in library/tools/utils/tar.R.
+
+AFAIK, CRAN rejects a package regardless whether the message is given as a NOTE or a WARNING. ustar is 35 years old and is older than R itself, and thus anyone using R in the last several decades will have ustar support. Any path stored by ustar will be suitable for any common file system in use for the last several decades. Overall, if a path is supported by ustar, there is no reason to generate any message, even if that path is not v7 compatible. If the NOTE about v7 incompatibility is still desired, then could CRAN not reject packages for which the check reports a NOTE?
+
+Best wishes,
+Justin
+
+
+________________________________________
+From: Martin Maechler <maechler at stat.math.ethz.ch>
+Sent: Wednesday, December 13, 2023 2:22 AM
+To: Ben Bolker; McGrath, Justin M
+Cc: Simon Urbanek; Duncan Murdoch
+Subject: Re: [R-pkg-devel] Wrong mailing list: Could the 100 byte path length limit be lifted?
+
+>>>>> Ben Bolker
+>>>>>     on Tue, 12 Dec 2023 15:48:11 -0500 writes:
+
+    > Thanks. Pursuing this a bit further, from ?tar "Known problems":
+    > The handling of file paths of more than 100 bytes.  These
+    > were unsupported in early versions of ?tar?, and supported in
+    > one way by POSIX ?tar? and in another by GNU ?tar? and yet
+    > another by the POSIX ?pax? command which recent ?tar?
+    > programs often support.  The internal implementation warns on
+    > paths of more than 100 bytes, uses the ?ustar? way from the
+    > 1998 POSIX standard which supports up to 256 bytes (depending
+    > on the path: in particular the final component is limited to
+    > 100 bytes) if possible, otherwise the GNU way (which is
+    > widely supported, including by ?untar?).
+
+    > This issue is reminiscent of the "invalid uid value replaced ..."
+    > warning, which has happened to me a lot but which CRAN has never
+    > actually flagged when I've submitted a package:
+
+    > https://urldefense.com/v3/__https://stackoverflow.com/questions/30599326/warning-message-during-building-an-r-package-invalid-uid-value-replaced-by-that__;!!DZ3fjg!7eG1psjusIaxJny-wr4z56esZliTkCKpBunUO0IPxzllvu3oSRehH6ZnQh8vJN6ZkaAAmNXHaAHfrqwULOipdsJh2VOFww$
+
+    > (By the way, this thread now seems firmly on-topic for r-pkg-devel,
+    > even if the ultimate answers must come from the CRAN maintainers ...)
+
+Well, yes, in parts at least.
+
+Originally, even when it did not seem clear, it mostly seemed about the
+part of the  help(tar)  page you mention above  and the
+implementation of tar() .. i.e.  R-devel.
+
+... but it's not really important anymore now, and hence this goes only to you.
+
+Best regards,
+Martin
+
+
+    > cheers
+    > Ben
+
+
+
+    > On 2023-12-12 3:41 p.m., Duncan Murdoch wrote:
+    >> I don't know what the warning looks like, but the ?tar help page
+    >> discusses the issues.
+    >>
+    >> Duncan Murdoch
+    >>
+    >> On 12/12/2023 3:10 p.m., Ben Bolker wrote:
+    >>>    FWIW the R-windows FAQ says:
+    >>>
+    >>> Yet another complication is a 260 character limit on the length of the
+    >>> entire path name imposed by Windows. The limit applies only to some
+    >>> system functions, and hence it is possible to create a long path using
+    >>> one application yet inaccessible to another. It is sometimes possible to
+    >>> reduce the path length by creating a drive mapping using subst and
+    >>> accessing files via that drive. As of Windows 10 version 1607 and R 4.3,
+    >>> one can remove this limit via Windows registry by setting
+    >>> Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem\LongPathsEnabled
+    >>> to 1. Long paths still may not always work reliably: some applications
+    >>> or packages may not be able to work with them and Windows cannot execute
+    >>> an application with long path as the current directory.
+    >>>
+    >>>     I'm having trouble finding the specific check for path lengths > 100
+    >>> in the R source tree.  It would be helpful to have the exact wording of
+    >>> the NOTE/WARNING (?) that is thrown ...  (I know I could make my own
+    >>> mini-package with a long path length in it somewhere but ...)
+    >>>
+    >>>     cheers
+    >>>      Ben Bolker
+    >>>
+    >>> On 2023-12-12 2:57 p.m., Simon Urbanek wrote:
+    >>>> Justin,
+    >>>>
+    >>>> now that you clarified what you are actually talking about, this is a
+    >>>> question about the CRAN policies, so you should really direct it to
+    >>>> the CRAN team as it is their decision (R-devel would be appropriate
+    >>>> if this was a limitation in R itself, and R-package-devel would be
+    >>>> appropriate if you wanted help with refactoring to adhere to the
+    >>>> policy). There are still path limits on various platforms (even if
+    >>>> they are becoming more rare), so I'd personally question the source
+    >>>> rather than the policy, but then your email was remarkably devoid of
+    >>>> any details.
+    >>>>
+    >>>> Cheers,
+    >>>> Simon
+    >>>>
+    >>>>
+    >>>>> On Dec 13, 2023, at 6:03 AM, McGrath, Justin M
+    >>>>> <jmcgrath at illinois.edu> wrote:
+    >>>>>
+    >>>>> When submitting a package to CRAN, it is required that path names be
+    >>>>> shorter than 100 bytes, with the reason that paths longer than that
+    >>>>> cannot be made into portable tar files. This error is reported by `R
+    >>>>> CMD check --as-cran`. Since this pertains only to developing
+    >>>>> packages, this seemed like the appropriate list, but if you don't
+    >>>>> think so, I can instead ask on R-devel.
+    >>>>>
+    >>>>> Best wishes,
+    >>>>> Justin
+    >>>>>
+    >>>>> ________________________________________
+    >>>>> From: Martin Maechler <maechler at stat.math.ethz.ch>
+    >>>>> Sent: Tuesday, December 12, 2023 10:13 AM
+    >>>>> To: McGrath, Justin M
+    >>>>> Cc: r-package-devel at r-project.org
+    >>>>> Subject: Wrong mailing list: [R-pkg-devel] Could the 100 byte path
+    >>>>> length limit be lifted?
+    >>>>>
+    >>>>>>>>>> McGrath, Justin M
+    >>>>>>>>>>      on Tue, 12 Dec 2023 15:03:28 +0000 writes:
+    >>>>>
+>>>>> We include other software in our source code. It has some long
+>>>>> paths so a few of the files end up with paths longer than 100
+>>>>> bytes, and we need to manually rename them whenever we pull in
+>>>>> updates.
+>>>>> The 100 byte path limit is from tar v7, and since
+>>>>> POSIX1.1988, there has not been a path length limit. That
+>>>>> standard is 35 years old now, so given that there is
+>>>>> probably no one using an old version of tar that also
+>>>>> wants to use the latest version of R, could the 100 byte
+>>>>> limit be lifted? Incidentally, I am a big proponent of
+>>>>> wide, long-term support, but it's hard to see that this
+>>>>> change would negatively impact anyone.
+    >>>>>
+>>>>> Best wishes,
+>>>>> Justin
+    >>>>>
+    >>>>> Wrong mailing list:
+    >>>>>
+    >>>>> This is a topic for R-devel,  not at all R-package-devel,
+    >>>>> but be more accurate in what you are talking about, only between
+    >>>>> the line I could read that it is about some variants of using
+    >>>>> 'tar'.
+    >>>>>
+    >>>>> Best regards,
+    >>>>> Martin
+    >>>>> ---
+    >>>>>
+    >>>>> Martin Maechler
+    >>>>> ETH Zurich  and  R Core team
+
+    > ______________________________________________
+    > R-package-devel at r-project.org mailing list
+    > https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!DZ3fjg!7eG1psjusIaxJny-wr4z56esZliTkCKpBunUO0IPxzllvu3oSRehH6ZnQh8vJN6ZkaAAmNXHaAHfrqwULOipdsJI-ZBa6A$
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Wed Dec 13 15:32:13 2023
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Wed, 13 Dec 2023 15:32:13 +0100
+Subject: [R-pkg-devel] 
+ Wrong mailing list: Could the 100 byte path length limit be lifted?
+In-Reply-To: <CO1PR11MB5122CFB3DBD0133E23257E4FB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+References: <CO1PR11MB51226E7B80B9B903DEE3BA32B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <25976.34488.874895.830215@stat.math.ethz.ch>
+ <CO1PR11MB5122A01EE74B94A499FC2DF8B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <E5187765-A517-465D-A6F1-F9E4EB48AE78@R-project.org>
+ <f7fdb277-55f1-4700-9856-0ac00c86449c@gmail.com>
+ <e134fe18-e1fb-45a2-88c1-5746b99aac05@gmail.com>
+ <f6afda84-38a0-40ee-bdf6-3225d2b4b4a8@gmail.com>
+ <25977.27088.90570.377617@stat.math.ethz.ch>
+ <CO1PR11MB5122CFB3DBD0133E23257E4FB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+Message-ID: <f0104f52-0839-470c-afb9-4724309946fa@gmail.com>
+
+On 12/13/23 14:56, McGrath, Justin M wrote:
+>> Thanks. Pursuing this a bit further, from ?tar "Known problems":
+>      > The handling of file paths of more than 100 bytes.  These
+>      > were unsupported in early versions of ?tar?, and supported in
+>      > one way by POSIX ?tar? and in another by GNU ?tar? and yet
+>      > another by the POSIX ?pax? command which recent ?tar?
+>      > programs often support.  The internal implementation warns on
+>      > paths of more than 100 bytes, uses the ?ustar? way from the
+>      > 1998 POSIX standard which supports up to 256 bytes (depending
+>      > on the path: in particular the final component is limited to
+>      > 100 bytes) if possible, otherwise the GNU way (which is
+>      > widely supported, including by ?untar?).
+>
+> R CMD check --as-cran gives a WARNING if a path is not ustar compatible, and gives the same message as a NOTE if it is not v7 compatible.
+>
+> The path in the example below is ustar compatible, but not v7 compatible.
+>
+> ***********
+> * checking for portable file names ... NOTE
+> Found the following non-portable file path:
+>    BioCro/inc/boost/numeric/odeint/stepper/generation/generation_controlled_adams_bashforth_moulton_really_long_file_name_one_two_three.hpp
+>
+> Tarballs are only required to store paths of up to 100 bytes and cannot
+> store those of more than 256 bytes, with restrictions including to 100
+> bytes for the final component.
+> ***********
+>
+> The code is in library/tools/R/check.R. An equivalent test is performed by R CMD build in library/tools/utils/tar.R.
+>
+> AFAIK, CRAN rejects a package regardless whether the message is given as a NOTE or a WARNING. ustar is 35 years old and is older than R itself, and thus anyone using R in the last several decades will have ustar support. Any path stored by ustar will be suitable for any common file system in use for the last several decades. Overall, if a path is supported by ustar, there is no reason to generate any message, even if that path is not v7 compatible. If the NOTE about v7 incompatibility is still desired, then could CRAN not reject packages for which the check reports a NOTE?
+
+Please don't forget about what has been correctly mentioned on this 
+thread already: there is essentially a 260 character limit on Windows 
+(see 
+https://blog.r-project.org/2023/03/07/path-length-limit-on-windows/index.html 
+for more). Even if the relative path length limit for a CRAN package was 
+no longer regarded important for tar compatibility, it would still make 
+sense for compatibility with Windows. It may still be a good service to 
+your users if you keep renaming the files to fit into that limit.
+
+Also please do not share private emails on the list.
+
+Thanks
+Tomas
+
+>
+> Best wishes,
+> Justin
+>
+>
+> _
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Wed Dec 13 15:55:47 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Wed, 13 Dec 2023 06:55:47 -0800
+Subject: [R-pkg-devel] How to fix: non-standard things in the check
+ directory: 'NUL' ?
+In-Reply-To: <7e4e5744-7907-4339-be7f-89a133a63e3c@biologie.uni-goettingen.de>
+References: <384c6ba4-9b33-4283-8eca-8380dc7b845a@biologie.uni-goettingen.de>
+ <7e4e5744-7907-4339-be7f-89a133a63e3c@biologie.uni-goettingen.de>
+Message-ID: <01AE509A-EF94-4530-B90F-70DC7DCC705F@dcn.davis.ca.us>
+
+Rhub is not CRAN. Please include a link to your source package if you want help. If there is actually a bug in Rhub then this NUL error may not reflect the response you will get from CRAN if and when you submit.
+
+On December 13, 2023 12:58:41 AM PST, Friedemann von Lampe <friedemann.vonlampe at biologie.uni-goettingen.de> wrote:
+>Hi,
+>
+>when trying to update my package on CRAN it is rejected, because it gets a note during checks on Debian:
+>
+>Flavor: r-devel-linux-x86_64-debian-gcc
+>Check: for non-standard things in the check directory, Result: NOTE
+>Found the following files/directories:
+>'NUL'
+>
+>There is no such file in my folder and therefore it can't be removed. With Windows everything is OK.
+>As far as I understood, this is a problem with Rhub? (https://github.com/clessn/locateip/issues/99)
+>
+>Or what can I do, to fix this problem and get my package update submitted to CRAN?
+>
+>Thanks,
+>Friedemann von Lampe
+>
+>______________________________________________
+>R-package-devel at r-project.org mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From edd @end|ng |rom deb|@n@org  Wed Dec 13 15:59:47 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 13 Dec 2023 08:59:47 -0600
+Subject: [R-pkg-devel] 
+ Wrong mailing list: Could the 100 byte path length limit be lifted?
+In-Reply-To: <f0104f52-0839-470c-afb9-4724309946fa@gmail.com>
+References: <CO1PR11MB51226E7B80B9B903DEE3BA32B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <25976.34488.874895.830215@stat.math.ethz.ch>
+ <CO1PR11MB5122A01EE74B94A499FC2DF8B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <E5187765-A517-465D-A6F1-F9E4EB48AE78@R-project.org>
+ <f7fdb277-55f1-4700-9856-0ac00c86449c@gmail.com>
+ <e134fe18-e1fb-45a2-88c1-5746b99aac05@gmail.com>
+ <f6afda84-38a0-40ee-bdf6-3225d2b4b4a8@gmail.com>
+ <25977.27088.90570.377617@stat.math.ethz.ch>
+ <CO1PR11MB5122CFB3DBD0133E23257E4FB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <f0104f52-0839-470c-afb9-4724309946fa@gmail.com>
+Message-ID: <25977.50915.199029.676541@rob.eddelbuettel.com>
+
+
+On 13 December 2023 at 15:32, Tomas Kalibera wrote:
+| Please don't forget about what has been correctly mentioned on this 
+| thread already: there is essentially a 260 character limit on Windows 
+| (see 
+| https://blog.r-project.org/2023/03/07/path-length-limit-on-windows/index.html 
+| for more). Even if the relative path length limit for a CRAN package was 
+| no longer regarded important for tar compatibility, it would still make 
+| sense for compatibility with Windows. It may still be a good service to 
+| your users if you keep renaming the files to fit into that limit.
+
+So can lift the limit from 100 char to 260 char ?
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Wed Dec 13 16:02:07 2023
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Wed, 13 Dec 2023 16:02:07 +0100
+Subject: [R-pkg-devel] 
+ Wrong mailing list: Could the 100 byte path length limit be lifted?
+In-Reply-To: <25977.50915.199029.676541@rob.eddelbuettel.com>
+References: <CO1PR11MB51226E7B80B9B903DEE3BA32B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <25976.34488.874895.830215@stat.math.ethz.ch>
+ <CO1PR11MB5122A01EE74B94A499FC2DF8B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <E5187765-A517-465D-A6F1-F9E4EB48AE78@R-project.org>
+ <f7fdb277-55f1-4700-9856-0ac00c86449c@gmail.com>
+ <e134fe18-e1fb-45a2-88c1-5746b99aac05@gmail.com>
+ <f6afda84-38a0-40ee-bdf6-3225d2b4b4a8@gmail.com>
+ <25977.27088.90570.377617@stat.math.ethz.ch>
+ <CO1PR11MB5122CFB3DBD0133E23257E4FB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <f0104f52-0839-470c-afb9-4724309946fa@gmail.com>
+ <25977.50915.199029.676541@rob.eddelbuettel.com>
+Message-ID: <88371cfe-ecdb-4711-95a3-c6bf2041ea23@gmail.com>
+
+
+On 12/13/23 15:59, Dirk Eddelbuettel wrote:
+> On 13 December 2023 at 15:32, Tomas Kalibera wrote:
+> | Please don't forget about what has been correctly mentioned on this
+> | thread already: there is essentially a 260 character limit on Windows
+> | (see
+> | https://blog.r-project.org/2023/03/07/path-length-limit-on-windows/index.html
+> | for more). Even if the relative path length limit for a CRAN package was
+> | no longer regarded important for tar compatibility, it would still make
+> | sense for compatibility with Windows. It may still be a good service to
+> | your users if you keep renaming the files to fit into that limit.
+>
+> So can lift the limit from 100 char to 260 char ?
+
+The 260 char limit is for the full path. A package would be extracted in 
+some directory, possibly also with a rather long name.
+
+Tomas
+
+>
+> Dirk
+>
+
+
+From edd @end|ng |rom deb|@n@org  Wed Dec 13 16:13:54 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 13 Dec 2023 09:13:54 -0600
+Subject: [R-pkg-devel] 
+ Wrong mailing list: Could the 100 byte path length limit be lifted?
+In-Reply-To: <88371cfe-ecdb-4711-95a3-c6bf2041ea23@gmail.com>
+References: <CO1PR11MB51226E7B80B9B903DEE3BA32B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <25976.34488.874895.830215@stat.math.ethz.ch>
+ <CO1PR11MB5122A01EE74B94A499FC2DF8B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <E5187765-A517-465D-A6F1-F9E4EB48AE78@R-project.org>
+ <f7fdb277-55f1-4700-9856-0ac00c86449c@gmail.com>
+ <e134fe18-e1fb-45a2-88c1-5746b99aac05@gmail.com>
+ <f6afda84-38a0-40ee-bdf6-3225d2b4b4a8@gmail.com>
+ <25977.27088.90570.377617@stat.math.ethz.ch>
+ <CO1PR11MB5122CFB3DBD0133E23257E4FB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <f0104f52-0839-470c-afb9-4724309946fa@gmail.com>
+ <25977.50915.199029.676541@rob.eddelbuettel.com>
+ <88371cfe-ecdb-4711-95a3-c6bf2041ea23@gmail.com>
+Message-ID: <25977.51762.12713.531192@rob.eddelbuettel.com>
+
+
+On 13 December 2023 at 16:02, Tomas Kalibera wrote:
+| 
+| On 12/13/23 15:59, Dirk Eddelbuettel wrote:
+| > On 13 December 2023 at 15:32, Tomas Kalibera wrote:
+| > | Please don't forget about what has been correctly mentioned on this
+| > | thread already: there is essentially a 260 character limit on Windows
+| > | (see
+| > | https://blog.r-project.org/2023/03/07/path-length-limit-on-windows/index.html
+| > | for more). Even if the relative path length limit for a CRAN package was
+| > | no longer regarded important for tar compatibility, it would still make
+| > | sense for compatibility with Windows. It may still be a good service to
+| > | your users if you keep renaming the files to fit into that limit.
+| >
+| > So can lift the limit from 100 char to 260 char ?
+| 
+| The 260 char limit is for the full path. A package would be extracted in 
+| some directory, possibly also with a rather long name.
+
+Call a cutoff number. 
+
+Any move from '100' to '100 + N' for any nonzero N is a win. Pick one, and
+then commit the change.  N = 50 would be a great start as arbitrary as it is.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From jmcgr@th @end|ng |rom ||||no|@@edu  Wed Dec 13 16:27:05 2023
+From: jmcgr@th @end|ng |rom ||||no|@@edu (McGrath, Justin M)
+Date: Wed, 13 Dec 2023 15:27:05 +0000
+Subject: [R-pkg-devel] 
+ Wrong mailing list: Could the 100 byte path length limit be lifted?
+In-Reply-To: <f0104f52-0839-470c-afb9-4724309946fa@gmail.com>
+References: <CO1PR11MB51226E7B80B9B903DEE3BA32B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <25976.34488.874895.830215@stat.math.ethz.ch>
+ <CO1PR11MB5122A01EE74B94A499FC2DF8B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <E5187765-A517-465D-A6F1-F9E4EB48AE78@R-project.org>
+ <f7fdb277-55f1-4700-9856-0ac00c86449c@gmail.com>
+ <e134fe18-e1fb-45a2-88c1-5746b99aac05@gmail.com>
+ <f6afda84-38a0-40ee-bdf6-3225d2b4b4a8@gmail.com>
+ <25977.27088.90570.377617@stat.math.ethz.ch>
+ <CO1PR11MB5122CFB3DBD0133E23257E4FB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <f0104f52-0839-470c-afb9-4724309946fa@gmail.com>
+Message-ID: <CO1PR11MB51229CD4E66B992B55AEEBDAB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+
+The maximum path length supported by ustar is 255 bytes, and any path compatible with ustar is compatible with path limits for all file systems used by any operating system for the last several decades. Anything that is ustar compatible is compatible with all other requirements. There is no reason today to reject packages with ustar compatible paths that are not v7 compatible.
+
+Best wishes,
+Justin
+
+________________________________________
+From: Tomas Kalibera <tomas.kalibera at gmail.com>
+Sent: Wednesday, December 13, 2023 8:32 AM
+To: McGrath, Justin M; Ben Bolker; Martin Maechler; r-package-devel at r-project.org
+Subject: Re: [R-pkg-devel] Wrong mailing list: Could the 100 byte path length limit be lifted?
+
+On 12/13/23 14:56, McGrath, Justin M wrote:
+>> Thanks. Pursuing this a bit further, from ?tar "Known problems":
+>      > The handling of file paths of more than 100 bytes.  These
+>      > were unsupported in early versions of ?tar?, and supported in
+>      > one way by POSIX ?tar? and in another by GNU ?tar? and yet
+>      > another by the POSIX ?pax? command which recent ?tar?
+>      > programs often support.  The internal implementation warns on
+>      > paths of more than 100 bytes, uses the ?ustar? way from the
+>      > 1998 POSIX standard which supports up to 256 bytes (depending
+>      > on the path: in particular the final component is limited to
+>      > 100 bytes) if possible, otherwise the GNU way (which is
+>      > widely supported, including by ?untar?).
+>
+> R CMD check --as-cran gives a WARNING if a path is not ustar compatible, and gives the same message as a NOTE if it is not v7 compatible.
+>
+> The path in the example below is ustar compatible, but not v7 compatible.
+>
+> ***********
+> * checking for portable file names ... NOTE
+> Found the following non-portable file path:
+>    BioCro/inc/boost/numeric/odeint/stepper/generation/generation_controlled_adams_bashforth_moulton_really_long_file_name_one_two_three.hpp
+>
+> Tarballs are only required to store paths of up to 100 bytes and cannot
+> store those of more than 256 bytes, with restrictions including to 100
+> bytes for the final component.
+> ***********
+>
+> The code is in library/tools/R/check.R. An equivalent test is performed by R CMD build in library/tools/utils/tar.R.
+>
+> AFAIK, CRAN rejects a package regardless whether the message is given as a NOTE or a WARNING. ustar is 35 years old and is older than R itself, and thus anyone using R in the last several decades will have ustar support. Any path stored by ustar will be suitable for any common file system in use for the last several decades. Overall, if a path is supported by ustar, there is no reason to generate any message, even if that path is not v7 compatible. If the NOTE about v7 incompatibility is still desired, then could CRAN not reject packages for which the check reports a NOTE?
+
+Please don't forget about what has been correctly mentioned on this
+thread already: there is essentially a 260 character limit on Windows
+(see
+https://urldefense.com/v3/__https://blog.r-project.org/2023/03/07/path-length-limit-on-windows/index.html__;!!DZ3fjg!-9O1ZyZet_W6lAzZI0JZDI27SKTG6H4M4E5zB9xFItNpCD-I-eH2xmFxJ10uU1WAy1JNb4EiygQzkDsHkO1chmsk4TKd$
+for more). Even if the relative path length limit for a CRAN package was
+no longer regarded important for tar compatibility, it would still make
+sense for compatibility with Windows. It may still be a good service to
+your users if you keep renaming the files to fit into that limit.
+
+Also please do not share private emails on the list.
+
+Thanks
+Tomas
+
+>
+> Best wishes,
+> Justin
+>
+>
+> _
+
+
+From jmcgr@th @end|ng |rom ||||no|@@edu  Wed Dec 13 16:27:42 2023
+From: jmcgr@th @end|ng |rom ||||no|@@edu (McGrath, Justin M)
+Date: Wed, 13 Dec 2023 15:27:42 +0000
+Subject: [R-pkg-devel] 
+ Wrong mailing list: Could the 100 byte path length limit be lifted?
+In-Reply-To: <25977.50915.199029.676541@rob.eddelbuettel.com>
+References: <CO1PR11MB51226E7B80B9B903DEE3BA32B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <25976.34488.874895.830215@stat.math.ethz.ch>
+ <CO1PR11MB5122A01EE74B94A499FC2DF8B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <E5187765-A517-465D-A6F1-F9E4EB48AE78@R-project.org>
+ <f7fdb277-55f1-4700-9856-0ac00c86449c@gmail.com>
+ <e134fe18-e1fb-45a2-88c1-5746b99aac05@gmail.com>
+ <f6afda84-38a0-40ee-bdf6-3225d2b4b4a8@gmail.com>
+ <25977.27088.90570.377617@stat.math.ethz.ch>
+ <CO1PR11MB5122CFB3DBD0133E23257E4FB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <f0104f52-0839-470c-afb9-4724309946fa@gmail.com>
+ <25977.50915.199029.676541@rob.eddelbuettel.com>
+Message-ID: <CO1PR11MB5122F3010E690B9EAF7F305CB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+
+I'm not even asking for that. I'm asking for the decades old ustar comparability, which is 255 characters, at most. In practice it is slightly less than that. ustar is older than R itself. There is no one using R who doesn't have ustar compatible tar.
+
+________________________________________
+From: Dirk Eddelbuettel <edd at debian.org>
+Sent: Wednesday, December 13, 2023 8:59 AM
+To: Tomas Kalibera
+Cc: McGrath, Justin M; Ben Bolker; Martin Maechler; r-package-devel at r-project.org
+Subject: Re: [R-pkg-devel]  Wrong mailing list: Could the 100 byte path length limit be lifted?
+
+
+On 13 December 2023 at 15:32, Tomas Kalibera wrote:
+| Please don't forget about what has been correctly mentioned on this
+| thread already: there is essentially a 260 character limit on Windows
+| (see
+| https://urldefense.com/v3/__https://blog.r-project.org/2023/03/07/path-length-limit-on-windows/index.html__;!!DZ3fjg!-YZg5PVpulgNXCVfVklP442UG_0ofB8omMLlMq5dNadF9RP_6uofnrT6IbZpG1fpvjmAtLyAm1Y9rbc$
+| for more). Even if the relative path length limit for a CRAN package was
+| no longer regarded important for tar compatibility, it would still make
+| sense for compatibility with Windows. It may still be a good service to
+| your users if you keep renaming the files to fit into that limit.
+
+So can lift the limit from 100 char to 260 char ?
+
+Dirk
+
+--
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From jmcgr@th @end|ng |rom ||||no|@@edu  Wed Dec 13 16:47:28 2023
+From: jmcgr@th @end|ng |rom ||||no|@@edu (McGrath, Justin M)
+Date: Wed, 13 Dec 2023 15:47:28 +0000
+Subject: [R-pkg-devel] 
+ Wrong mailing list: Could the 100 byte path length limit be lifted?
+In-Reply-To: <25977.51762.12713.531192@rob.eddelbuettel.com>
+References: <CO1PR11MB51226E7B80B9B903DEE3BA32B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <25976.34488.874895.830215@stat.math.ethz.ch>
+ <CO1PR11MB5122A01EE74B94A499FC2DF8B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <E5187765-A517-465D-A6F1-F9E4EB48AE78@R-project.org>
+ <f7fdb277-55f1-4700-9856-0ac00c86449c@gmail.com>
+ <e134fe18-e1fb-45a2-88c1-5746b99aac05@gmail.com>
+ <f6afda84-38a0-40ee-bdf6-3225d2b4b4a8@gmail.com>
+ <25977.27088.90570.377617@stat.math.ethz.ch>
+ <CO1PR11MB5122CFB3DBD0133E23257E4FB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <f0104f52-0839-470c-afb9-4724309946fa@gmail.com>
+ <25977.50915.199029.676541@rob.eddelbuettel.com>
+ <88371cfe-ecdb-4711-95a3-c6bf2041ea23@gmail.com>
+ <25977.51762.12713.531192@rob.eddelbuettel.com>
+Message-ID: <CO1PR11MB5122A8AF888CDFF2CAA1722AB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+
+On Windows, packages will be in "C:\Users\[User Name]\Documents\R\win-library\[R version]\[Package Name]".
+
+With a 150 byte limit, that leaves 70 bytes for the user name, R version and package name. That seems more than sufficient. If people are downloading the source files, that also leaves plenty of space regardless where they choose to extract the files.
+
+________________________________________
+From: Dirk Eddelbuettel <edd at debian.org>
+Sent: Wednesday, December 13, 2023 9:13 AM
+To: Tomas Kalibera
+Cc: Dirk Eddelbuettel; McGrath, Justin M; Ben Bolker; Martin Maechler; r-package-devel at r-project.org
+Subject: Re: [R-pkg-devel] Wrong mailing list: Could the 100 byte path length limit be lifted?
+
+
+On 13 December 2023 at 16:02, Tomas Kalibera wrote:
+|
+| On 12/13/23 15:59, Dirk Eddelbuettel wrote:
+| > On 13 December 2023 at 15:32, Tomas Kalibera wrote:
+| > | Please don't forget about what has been correctly mentioned on this
+| > | thread already: there is essentially a 260 character limit on Windows
+| > | (see
+| > | https://urldefense.com/v3/__https://blog.r-project.org/2023/03/07/path-length-limit-on-windows/index.html__;!!DZ3fjg!-NHAlEZQvY2kegkNVkuY3Lf84nKmMahrpZ4Euz2XXFDPvMWEcP28iepLlRiKzVZdAh752lyhHxd6zvk$
+| > | for more). Even if the relative path length limit for a CRAN package was
+| > | no longer regarded important for tar compatibility, it would still make
+| > | sense for compatibility with Windows. It may still be a good service to
+| > | your users if you keep renaming the files to fit into that limit.
+| >
+| > So can lift the limit from 100 char to 260 char ?
+|
+| The 260 char limit is for the full path. A package would be extracted in
+| some directory, possibly also with a rather long name.
+
+Call a cutoff number.
+
+Any move from '100' to '100 + N' for any nonzero N is a win. Pick one, and
+then commit the change.  N = 50 would be a great start as arbitrary as it is.
+
+Dirk
+
+--
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Wed Dec 13 17:09:36 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Wed, 13 Dec 2023 08:09:36 -0800
+Subject: [R-pkg-devel] 
+ Wrong mailing list: Could the 100 byte path length limit be lifted?
+In-Reply-To: <CO1PR11MB5122F3010E690B9EAF7F305CB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+References: <CO1PR11MB51226E7B80B9B903DEE3BA32B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <25976.34488.874895.830215@stat.math.ethz.ch>
+ <CO1PR11MB5122A01EE74B94A499FC2DF8B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <E5187765-A517-465D-A6F1-F9E4EB48AE78@R-project.org>
+ <f7fdb277-55f1-4700-9856-0ac00c86449c@gmail.com>
+ <e134fe18-e1fb-45a2-88c1-5746b99aac05@gmail.com>
+ <f6afda84-38a0-40ee-bdf6-3225d2b4b4a8@gmail.com>
+ <25977.27088.90570.377617@stat.math.ethz.ch>
+ <CO1PR11MB5122CFB3DBD0133E23257E4FB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <f0104f52-0839-470c-afb9-4724309946fa@gmail.com>
+ <25977.50915.199029.676541@rob.eddelbuettel.com>
+ <CO1PR11MB5122F3010E690B9EAF7F305CB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+Message-ID: <9958C170-8F67-431C-A0E8-6E5EBBA4D476@dcn.davis.ca.us>
+
+This is a narrow view of the world. As has been mentioned here by Tomas, the issue at this point is that a very widely-used operating system does not allow the absolute path to be longer than 254 characters unless users make possibly-breaking changes to their OS configuration. If a user is currently working in a directory with a path that is 150 characters long, and you try to un-tar a package there, it will work. If they are in a directory path that is 170 characters long, then the un-tar will fail. They then have to do some research and discover that they have to share the total absolute path length with the package creators, and they become accustomed to working in directories with path length no longer than 154 characters.
+
+Now you want to propose giving the entire path length budget plus 2 to the package developers. Not gonna happen. And Dirk wants 50 more characters. Then the user working at 150 characters tries to un-tar a package with paths 150 characters long and 150 user plus 150 package gets you to 300 characters and what used to work for them stops working suddenly.
+
+I think a package developer can figure out how to shorten their internal paths easier than thousands of users can restructure their historically useful directory structures or break their existing software. I vote no to both of these proposals.
+
+Eventually, Microsoft is going to virtualize running old Windows APIs, and once people migrate away from the old API then this stupid problem will go away. But as it is we are stuck.
+
+On December 13, 2023 7:27:42 AM PST, "McGrath, Justin M" <jmcgrath at illinois.edu> wrote:
+>I'm not even asking for that. I'm asking for the decades old ustar comparability, which is 255 characters, at most. In practice it is slightly less than that. ustar is older than R itself. There is no one using R who doesn't have ustar compatible tar.
+>
+>________________________________________
+>From: Dirk Eddelbuettel <edd at debian.org>
+>Sent: Wednesday, December 13, 2023 8:59 AM
+>To: Tomas Kalibera
+>Cc: McGrath, Justin M; Ben Bolker; Martin Maechler; r-package-devel at r-project.org
+>Subject: Re: [R-pkg-devel]  Wrong mailing list: Could the 100 byte path length limit be lifted?
+>
+>
+>On 13 December 2023 at 15:32, Tomas Kalibera wrote:
+>| Please don't forget about what has been correctly mentioned on this
+>| thread already: there is essentially a 260 character limit on Windows
+>| (see
+>| https://urldefense.com/v3/__https://blog.r-project.org/2023/03/07/path-length-limit-on-windows/index.html__;!!DZ3fjg!-YZg5PVpulgNXCVfVklP442UG_0ofB8omMLlMq5dNadF9RP_6uofnrT6IbZpG1fpvjmAtLyAm1Y9rbc$
+>| for more). Even if the relative path length limit for a CRAN package was
+>| no longer regarded important for tar compatibility, it would still make
+>| sense for compatibility with Windows. It may still be a good service to
+>| your users if you keep renaming the files to fit into that limit.
+>
+>So can lift the limit from 100 char to 260 char ?
+>
+>Dirk
+>
+>--
+>dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+>______________________________________________
+>R-package-devel at r-project.org mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Wed Dec 13 17:23:13 2023
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Wed, 13 Dec 2023 08:23:13 -0800
+Subject: [R-pkg-devel] 
+ Wrong mailing list: Could the 100 byte path length limit be lifted?
+In-Reply-To: <CO1PR11MB5122A8AF888CDFF2CAA1722AB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+References: <CO1PR11MB51226E7B80B9B903DEE3BA32B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <25976.34488.874895.830215@stat.math.ethz.ch>
+ <CO1PR11MB5122A01EE74B94A499FC2DF8B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <E5187765-A517-465D-A6F1-F9E4EB48AE78@R-project.org>
+ <f7fdb277-55f1-4700-9856-0ac00c86449c@gmail.com>
+ <e134fe18-e1fb-45a2-88c1-5746b99aac05@gmail.com>
+ <f6afda84-38a0-40ee-bdf6-3225d2b4b4a8@gmail.com>
+ <25977.27088.90570.377617@stat.math.ethz.ch>
+ <CO1PR11MB5122CFB3DBD0133E23257E4FB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <f0104f52-0839-470c-afb9-4724309946fa@gmail.com>
+ <25977.50915.199029.676541@rob.eddelbuettel.com>
+ <88371cfe-ecdb-4711-95a3-c6bf2041ea23@gmail.com>
+ <25977.51762.12713.531192@rob.eddelbuettel.com>
+ <CO1PR11MB5122A8AF888CDFF2CAA1722AB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+Message-ID: <CAFDcVCTK7432817HghYpb7rGUf3uLs=y8+Eo7qVDgE82YZ0ynw@mail.gmail.com>
+
+On Wed, Dec 13, 2023 at 8:06?AM McGrath, Justin M <jmcgrath at illinois.edu> wrote:
+>
+> On Windows, packages will be in "C:\Users\[User Name]\Documents\R\win-library\[R version]\[Package Name]".
+
+In R (>= 4.2.0), the default R_LIBS_USER path has moved to under
+LOCALAPPDATA, e.g. "C:\Users\[User
+Name]\AppData\Local\R\win-library\[R version]".  See
+https://cran.r-project.org/bin/windows/base/rw-FAQ.html
+
+FWIW, one workaround for too long paths on MS Windows is to map a long
+path to a drive letter, e.g.
+
+subst Y: 'C:/VeryLongPathToo/Users/JohnDoe/AppData/Local/R/'.
+
+and then work with Y: instead of C:. We had to use that in some
+projects with nested data folder structures. This approach is tedious,
+and might require special permissions (not sure).
+
+/Henrik
+
+>
+> With a 150 byte limit, that leaves 70 bytes for the user name, R version and package name. That seems more than sufficient. If people are downloading the source files, that also leaves plenty of space regardless where they choose to extract the files.
+>
+> ________________________________________
+> From: Dirk Eddelbuettel <edd at debian.org>
+> Sent: Wednesday, December 13, 2023 9:13 AM
+> To: Tomas Kalibera
+> Cc: Dirk Eddelbuettel; McGrath, Justin M; Ben Bolker; Martin Maechler; r-package-devel at r-project.org
+> Subject: Re: [R-pkg-devel] Wrong mailing list: Could the 100 byte path length limit be lifted?
+>
+>
+> On 13 December 2023 at 16:02, Tomas Kalibera wrote:
+> |
+> | On 12/13/23 15:59, Dirk Eddelbuettel wrote:
+> | > On 13 December 2023 at 15:32, Tomas Kalibera wrote:
+> | > | Please don't forget about what has been correctly mentioned on this
+> | > | thread already: there is essentially a 260 character limit on Windows
+> | > | (see
+> | > | https://urldefense.com/v3/__https://blog.r-project.org/2023/03/07/path-length-limit-on-windows/index.html__;!!DZ3fjg!-NHAlEZQvY2kegkNVkuY3Lf84nKmMahrpZ4Euz2XXFDPvMWEcP28iepLlRiKzVZdAh752lyhHxd6zvk$
+> | > | for more). Even if the relative path length limit for a CRAN package was
+> | > | no longer regarded important for tar compatibility, it would still make
+> | > | sense for compatibility with Windows. It may still be a good service to
+> | > | your users if you keep renaming the files to fit into that limit.
+> | >
+> | > So can lift the limit from 100 char to 260 char ?
+> |
+> | The 260 char limit is for the full path. A package would be extracted in
+> | some directory, possibly also with a rather long name.
+>
+> Call a cutoff number.
+>
+> Any move from '100' to '100 + N' for any nonzero N is a win. Pick one, and
+> then commit the change.  N = 50 would be a great start as arbitrary as it is.
+>
+> Dirk
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From |r|edem@nn@von|@mpe @end|ng |rom b|o|og|e@un|-goett|ngen@de  Wed Dec 13 20:40:09 2023
+From: |r|edem@nn@von|@mpe @end|ng |rom b|o|og|e@un|-goett|ngen@de (Friedemann von Lampe)
+Date: Wed, 13 Dec 2023 20:40:09 +0100
+Subject: [R-pkg-devel] How to fix: non-standard things in the check
+ directory: 'NUL' ?
+In-Reply-To: <01AE509A-EF94-4530-B90F-70DC7DCC705F@dcn.davis.ca.us>
+References: <384c6ba4-9b33-4283-8eca-8380dc7b845a@biologie.uni-goettingen.de>
+ <7e4e5744-7907-4339-be7f-89a133a63e3c@biologie.uni-goettingen.de>
+ <01AE509A-EF94-4530-B90F-70DC7DCC705F@dcn.davis.ca.us>
+Message-ID: <640bb7bf-44d6-4211-8d4c-90de94d3c957@biologie.uni-goettingen.de>
+
+Thanks. Thankfully Ivan looked up the source package 
+(https://github.com/fvlampe/goeveg) and his response previously on this 
+list solved the problem for CRAN. I simply needed to change the argument 
+from? 'NUL' to NULL. The package was now successfully submitted.
+
+However, in R-hub the NOTE remains, which apparently is is one of their 
+problems.
+
+Am 13.12.2023 um 15:55 schrieb Jeff Newmiller via R-package-devel:
+> Rhub is not CRAN. Please include a link to your source package if you want help. If there is actually a bug in Rhub then this NUL error may not reflect the response you will get from CRAN if and when you submit.
+>
+> On December 13, 2023 12:58:41 AM PST, Friedemann von Lampe <friedemann.vonlampe at biologie.uni-goettingen.de> wrote:
+>> Hi,
+>>
+>> when trying to update my package on CRAN it is rejected, because it gets a note during checks on Debian:
+>>
+>> Flavor: r-devel-linux-x86_64-debian-gcc
+>> Check: for non-standard things in the check directory, Result: NOTE
+>> Found the following files/directories:
+>> 'NUL'
+>>
+>> There is no such file in my folder and therefore it can't be removed. With Windows everything is OK.
+>> As far as I understood, this is a problem with Rhub? (https://github.com/clessn/locateip/issues/99)
+>>
+>> Or what can I do, to fix this problem and get my package update submitted to CRAN?
+>>
+>> Thanks,
+>> Friedemann von Lampe
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
