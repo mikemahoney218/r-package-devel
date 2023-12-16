@@ -26937,3 +26937,499 @@ Am 13.12.2023 um 15:55 schrieb Jeff Newmiller via R-package-devel:
 >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From Serge@Iov|e|| @end|ng |rom @tkpp@org  Thu Dec 14 12:55:20 2023
+From: Serge@Iov|e|| @end|ng |rom @tkpp@org (Serge)
+Date: Thu, 14 Dec 2023 12:55:20 +0100
+Subject: [R-pkg-devel] 
+ Getting 'Rscript: Bad address' error when CRAN build
+ my package on windows platforms
+In-Reply-To: <aee3117e-5299-4e3d-9164-65324cfe4731@stkpp.org>
+References: <6982940d-0890-49e1-9561-41d851a9c0c0@stkpp.org>
+ <b826d893-fcdc-4ebd-b4b3-14e662aff92a@statistik.tu-dortmund.de>
+ <aee3117e-5299-4e3d-9164-65324cfe4731@stkpp.org>
+Message-ID: <62ddc723-cc70-432b-8487-d53f6afbfec1@stkpp.org>
+
+It looks like the problem was coming from this line in the Makevars
+
+## $(SHLIB) is the usual default target that is built automatically from all source
+## files in this directory. pkglib is an additional target for the library
+## that will be installed in inst/ and which users can link against.
+.PHONY: all
+
+all: $(SHLIB)
+
+Don't remember why I had these lines in the Makevars, the first release of the package is from 2015.
+A quick check on other packages on CRAN shows than it is (no more ?) not necessary.
+
+Serge
+
+
+Le 08/12/2023 ? 12:24, Serge a ?crit?:
+> https://cran.r-project.org/web/packages/rtkore/
+>
+>
+> and the Makevars in ./src/? is
+>
+> #------------------------------------------------------------------------
+> #?? Copyright (C) 2014-2015? Serge Iovleff, University Lille1, Inria
+> #
+> #?? This program is free software: you can redistribute it and/or modify
+> #?? it under the terms of the GNU General Public License as published by
+> #?? the Free Software Foundation, either version 3 of the License, or
+> #?? (at your option) any later version.
+> #
+> #?? This program is distributed in the hope that it will be useful,
+> #?? but WITHOUT ANY WARRANTY; without even the implied warranty of
+> #?? MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.? See the
+> #?? GNU General Public License for more details.
+> #
+> #?? You should have received a copy of the GNU General Public License
+> #?? along with this program.? If not, see <http://www.gnu.org/licenses/>.
+> #------------------------------------------------------------------------
+> #?? Project:??? rtkore
+> #?? Created on: Feb 17, 2014
+> #?? Authors:??? Serge IOVLEFF <serge_DOT_iov..._AT_stkpp_DOT_org>
+> #-----------------------------------------------------------------------
+> ## define PKG_CPPFLAGS (preprocessor & includes) and PKG_CXXFLAGS (compiler flags)
+> CXX_STD = CXX11
+>
+> PKG_CXXFLAGS = -I'../inst/projects/' -I'../inst/include/' -DIS_RTKPP_LIB? -DSTKUSELAPACK 
+> $(SHLIB_OPENMP_CXXFLAGS)
+> #PKG_CXXFLAGS =
+> PKG_LIBS???? = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(SHLIB_OPENMP_CXXFLAGS)
+>
+> ## And export
+> export
+>
+> ## $(SHLIB) is the usual default target that is built automatically from all source
+> ## files in this directory. pkglib is an additional target for the library
+> ## that will be installed in inst/ and which users can link against.
+> .PHONY: all
+>
+> all: $(SHLIB)
+>
+> Le 08/12/2023 ? 11:12, Uwe Ligges a ?crit?:
+>>
+>>
+>> On 07.12.2023 19:29, Serge wrote:
+>>> Hello,
+>>>
+>>> I'm the maintener of the rtkore package and I'm experimenting an error during the installation on
+>>> the |r-devel-windows-x86_64| and the |r-release-windows-x86_64| platform. When trying to compile 
+>>> I get
+>>>
+>>> |g++ -std=gnu++11 -I"D:/RCompile/recent/R-4.3.2/include" -DNDEBUG -I../inst/projects/
+>>> -I../inst/include/ -DIS_RTKPP_LIB -DSTKUSELAPACK -I'D:/RCompile/CRANpkg/lib/4.3/Rcpp/include'
+>>> -I"d:/rtools43/x86_64-w64-mingw32.static.posix/include" -fopenmp -O2 -Wall -mfpmath=sse -msse2
+>>> -mstackrealign -c fastRand.cpp -o fastRand.o /bin/sh: line 1:
+>>> /x86_64-w64-mingw32.static.posix/bin/g++: Bad address |
+>>>
+>>> A search indicate that the problem is from the "D:" (not sure it is the correct answer)
+>>
+>> Well, the missing d: or /d/ in the last line of your cited output.
+>> Which package is this? Then I could take a look into the sources.
+>>
+>> Best,
+>> Uwe Ligges
+>>
+>>
+>>>
+>>> In all case, I cannot modify these path as there given by the CRAN mechanism of compilation.
+>>>
+>>> Can you give me some hints about the problem and how to solve it ?
+>>>
+>>> Thanks
+>>>
+>>> ????[[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From vo|ody@ @end|ng |rom m|nd@pr|ng@com  Thu Dec 14 15:18:54 2023
+From: vo|ody@ @end|ng |rom m|nd@pr|ng@com (Vladimir Dergachev)
+Date: Thu, 14 Dec 2023 09:18:54 -0500 (EST)
+Subject: [R-pkg-devel] 
+ Wrong mailing list: Could the 100 byte path length limit be lifted?
+In-Reply-To: <CO1PR11MB5122A8AF888CDFF2CAA1722AB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+References: <CO1PR11MB51226E7B80B9B903DEE3BA32B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <25976.34488.874895.830215@stat.math.ethz.ch>
+ <CO1PR11MB5122A01EE74B94A499FC2DF8B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <E5187765-A517-465D-A6F1-F9E4EB48AE78@R-project.org>
+ <f7fdb277-55f1-4700-9856-0ac00c86449c@gmail.com>
+ <e134fe18-e1fb-45a2-88c1-5746b99aac05@gmail.com>
+ <f6afda84-38a0-40ee-bdf6-3225d2b4b4a8@gmail.com>
+ <25977.27088.90570.377617@stat.math.ethz.ch>
+ <CO1PR11MB5122CFB3DBD0133E23257E4FB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <f0104f52-0839-470c-afb9-4724309946fa@gmail.com>
+ <25977.50915.199029.676541@rob.eddelbuettel.com>
+ <88371cfe-ecdb-4711-95a3-c6bf2041ea23@gmail.com>
+ <25977.51762.12713.531192@rob.eddelbuettel.com>
+ <CO1PR11MB5122A8AF888CDFF2CAA1722AB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+Message-ID: <alpine.DEB.2.22.394.2312140912120.8898@iridium>
+
+
+
+On Wed, 13 Dec 2023, McGrath, Justin M wrote:
+
+> On Windows, packages will be in "C:\Users\[User Name]\Documents\R\win-library\[R version]\[Package Name]".
+>
+> With a 150 byte limit, that leaves 70 bytes for the user name, R version 
+> and package name. That seems more than sufficient. If people are 
+> downloading the source files, that also leaves plenty of space 
+> regardless where they choose to extract the files.
+>
+
+70 bytes ?? My name is 18 characters long and there are plenty of people 
+with longer names. I also saw practice on Windows systems to append the 
+name of organization or department.
+
+Also, this restricts the length of package name which is arguably more 
+important that internal package path names that the user never sees.
+
+That said, that Windows limitation is only for some programs, and the 
+pertitent question is whether R and any software used by R has this 
+limitation. I suspect the answer is no, but as all my systems are Linux
+I can not check.
+
+Vladimir Dergachev
+
+
+From @teve@the@b@ye@|@n @end|ng |rom gm@||@com  Thu Dec 14 19:11:51 2023
+From: @teve@the@b@ye@|@n @end|ng |rom gm@||@com (Steven Scott)
+Date: Thu, 14 Dec 2023 10:11:51 -0800
+Subject: [R-pkg-devel] 
+ Wrong mailing list: Could the 100 byte path length limit be lifted?
+In-Reply-To: <alpine.DEB.2.22.394.2312140912120.8898@iridium>
+References: <CO1PR11MB51226E7B80B9B903DEE3BA32B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <25976.34488.874895.830215@stat.math.ethz.ch>
+ <CO1PR11MB5122A01EE74B94A499FC2DF8B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <E5187765-A517-465D-A6F1-F9E4EB48AE78@R-project.org>
+ <f7fdb277-55f1-4700-9856-0ac00c86449c@gmail.com>
+ <e134fe18-e1fb-45a2-88c1-5746b99aac05@gmail.com>
+ <f6afda84-38a0-40ee-bdf6-3225d2b4b4a8@gmail.com>
+ <25977.27088.90570.377617@stat.math.ethz.ch>
+ <CO1PR11MB5122CFB3DBD0133E23257E4FB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <f0104f52-0839-470c-afb9-4724309946fa@gmail.com>
+ <25977.50915.199029.676541@rob.eddelbuettel.com>
+ <88371cfe-ecdb-4711-95a3-c6bf2041ea23@gmail.com>
+ <25977.51762.12713.531192@rob.eddelbuettel.com>
+ <CO1PR11MB5122A8AF888CDFF2CAA1722AB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <alpine.DEB.2.22.394.2312140912120.8898@iridium>
+Message-ID: <CAJqTW44aoPXkaY-t9L2cOp5HyzUJxqBjo4w0Vjn6+SdgfUVSXA@mail.gmail.com>
+
+Compiled code is another source of long names.  Some libraries are produced
+by companies with style restrictions that demand LongDescriptiveNames for
+functions and classes, and which expect file names to match the name of the
+class contained within.  If you've got
+Models/SpecificModelFamily/PosteriorSamplers/SpecificTypeOfPosteriorSampler.hpp
+it leaves very little room (20 characters) for "C:\Users\..." etc up
+front.
+
+I solved my 'tar' problems with 'sed'.  In human readable code I keep the
+long names.  In the code that gets submitted to CRAN I pass specific file
+names through sed to rename the long files.  I have an install script with
+lines like:
+
+hdr="MvStateSpaceRegressionPosteriorSampler.hpp"
+new_hdr="MVSSRPS.hpp"
+mv "$ibase/$dbase/$hdr" "$ibase/$dbase/$new_hdr"
+echo "replacing $dbase/$hdr with $dbase/$new_hdr"
+grep -rl "$dbase/$hdr" "$BOOM_DIR/src/Models" | xargs $SED -i
+"s|$dbase/$hdr|$dbase/$new_hdr|g"
+
+This renames the files, and uses sed to replace #include references to file
+names with the shorter file names.  The SED macro is because on mac 'sed'
+is spelled 'gsed'.
+
+I agree the system sucks.  It would be nice if one of the steps in
+winbuilder took non-windows compliant TAR files and replaced them with ZIP
+files or something similar.  We'd still have the Win32 character limit, but
+256 > 100 so the problem wouldn't bite so hard.
+
+On Thu, Dec 14, 2023 at 6:19?AM Vladimir Dergachev <volodya at mindspring.com>
+wrote:
+
+>
+>
+> On Wed, 13 Dec 2023, McGrath, Justin M wrote:
+>
+> > On Windows, packages will be in "C:\Users\[User
+> Name]\Documents\R\win-library\[R version]\[Package Name]".
+> >
+> > With a 150 byte limit, that leaves 70 bytes for the user name, R version
+> > and package name. That seems more than sufficient. If people are
+> > downloading the source files, that also leaves plenty of space
+> > regardless where they choose to extract the files.
+> >
+>
+> 70 bytes ?? My name is 18 characters long and there are plenty of people
+> with longer names. I also saw practice on Windows systems to append the
+> name of organization or department.
+>
+> Also, this restricts the length of package name which is arguably more
+> important that internal package path names that the user never sees.
+>
+> That said, that Windows limitation is only for some programs, and the
+> pertitent question is whether R and any software used by R has this
+> limitation. I suspect the answer is no, but as all my systems are Linux
+> I can not check.
+>
+> Vladimir Dergachev
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From jmcgr@th @end|ng |rom ||||no|@@edu  Thu Dec 14 19:39:32 2023
+From: jmcgr@th @end|ng |rom ||||no|@@edu (McGrath, Justin M)
+Date: Thu, 14 Dec 2023 18:39:32 +0000
+Subject: [R-pkg-devel] 
+ Wrong mailing list: Could the 100 byte path length limit be lifted?
+In-Reply-To: <CAJqTW44aoPXkaY-t9L2cOp5HyzUJxqBjo4w0Vjn6+SdgfUVSXA@mail.gmail.com>
+References: <CO1PR11MB51226E7B80B9B903DEE3BA32B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <25976.34488.874895.830215@stat.math.ethz.ch>
+ <CO1PR11MB5122A01EE74B94A499FC2DF8B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <E5187765-A517-465D-A6F1-F9E4EB48AE78@R-project.org>
+ <f7fdb277-55f1-4700-9856-0ac00c86449c@gmail.com>
+ <e134fe18-e1fb-45a2-88c1-5746b99aac05@gmail.com>
+ <f6afda84-38a0-40ee-bdf6-3225d2b4b4a8@gmail.com>
+ <25977.27088.90570.377617@stat.math.ethz.ch>
+ <CO1PR11MB5122CFB3DBD0133E23257E4FB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <f0104f52-0839-470c-afb9-4724309946fa@gmail.com>
+ <25977.50915.199029.676541@rob.eddelbuettel.com>
+ <88371cfe-ecdb-4711-95a3-c6bf2041ea23@gmail.com>
+ <25977.51762.12713.531192@rob.eddelbuettel.com>
+ <CO1PR11MB5122A8AF888CDFF2CAA1722AB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <alpine.DEB.2.22.394.2312140912120.8898@iridium>
+ <CAJqTW44aoPXkaY-t9L2cOp5HyzUJxqBjo4w0Vjn6+SdgfUVSXA@mail.gmail.com>
+Message-ID: <CO1PR11MB5122C0FED58BFBD401C3ED5EB78CA@CO1PR11MB5122.namprd11.prod.outlook.com>
+
+At this point, the policy appears to have nothing to do with tar, contrary to the error message. Thus, replacing tar with zip wouldn't address CRAN's concern. The policy given in this thread (and seemingly unstated anywhere public) is that CRAN wants to allow someone on Windows to unpack an R package in a directory with a path length of 160 characters, given the 260 limit on Windows.
+
+The implication here is that developers of public libraries needs to get their act together because they have *total path lengths* of 85 characters, that one needs to rename to include in an R package,  in order to accommodate someone who is unpacking R packages in directories with lengths of 160 characters (just the directory length!). I doubt such people exist, so we are accommodating a myth. I don't even have directories that long on my computer, and I certainly wouldn't be unpacking R packages in them if I did.
+
+Path lengths in packages of 130 to 150 characters would allow unpacking in directories of 130 to 110 characters. Anything in that range would likely result in no or very few problems for either the people creating or the people unpacking packages. The claim that people need to use sensible naming schemes goes both ways. One can't expect unreasonably long path in packages, and people making packages can't expect people try to unpack into unreasonably long directories. Yet, it's impossible to miss the great disparity in the current split of 100 character total path vs 160 characters for just a directory path.
+
+________________________________________
+From: Steven Scott <steve.the.bayesian at gmail.com>
+Sent: Thursday, December 14, 2023 12:11 PM
+To: Vladimir Dergachev
+Cc: McGrath, Justin M; r-package-devel at r-project.org
+Subject: Re: [R-pkg-devel] Wrong mailing list: Could the 100 byte path length limit be lifted?
+
+Compiled code is another source of long names.  Some libraries are produced by companies with style restrictions that demand LongDescriptiveNames for functions and classes, and which expect file names to match the name of the class contained within.  If you've got Models/SpecificModelFamily/PosteriorSamplers/SpecificTypeOfPosteriorSampler.hpp it leaves very little room (20 characters) for "C:\Users\..." etc up front.
+
+I solved my 'tar' problems with 'sed'.  In human readable code I keep the long names.  In the code that gets submitted to CRAN I pass specific file names through sed to rename the long files.  I have an install script with lines like:
+
+hdr="MvStateSpaceRegressionPosteriorSampler.hpp"
+new_hdr="MVSSRPS.hpp"
+mv "$ibase/$dbase/$hdr" "$ibase/$dbase/$new_hdr"
+echo "replacing $dbase/$hdr with $dbase/$new_hdr"
+grep -rl "$dbase/$hdr" "$BOOM_DIR/src/Models" | xargs $SED -i "s|$dbase/$hdr|$dbase/$new_hdr|g"
+
+This renames the files, and uses sed to replace #include references to file names with the shorter file names.  The SED macro is because on mac 'sed' is spelled 'gsed'.
+
+I agree the system sucks.  It would be nice if one of the steps in winbuilder took non-windows compliant TAR files and replaced them with ZIP files or something similar.  We'd still have the Win32 character limit, but 256 > 100 so the problem wouldn't bite so hard.
+
+On Thu, Dec 14, 2023 at 6:19?AM Vladimir Dergachev <volodya at mindspring.com<mailto:volodya at mindspring.com>> wrote:
+
+
+On Wed, 13 Dec 2023, McGrath, Justin M wrote:
+
+> On Windows, packages will be in "C:\Users\[User Name]\Documents\R\win-library\[R version]\[Package Name]".
+>
+> With a 150 byte limit, that leaves 70 bytes for the user name, R version
+> and package name. That seems more than sufficient. If people are
+> downloading the source files, that also leaves plenty of space
+> regardless where they choose to extract the files.
+>
+
+70 bytes ?? My name is 18 characters long and there are plenty of people
+with longer names. I also saw practice on Windows systems to append the
+name of organization or department.
+
+Also, this restricts the length of package name which is arguably more
+important that internal package path names that the user never sees.
+
+That said, that Windows limitation is only for some programs, and the
+pertitent question is whether R and any software used by R has this
+limitation. I suspect the answer is no, but as all my systems are Linux
+I can not check.
+
+Vladimir Dergachev
+
+______________________________________________
+R-package-devel at r-project.org<mailto:R-package-devel at r-project.org> mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel<https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!DZ3fjg!93aINLPSC17ykCzT_i1DXmJ-yJAMwt2qaA6IIJjoA4XZP-dDbg_gZp8N-nN9Mcfpw4nR1wc--NRqfx6iGnr6OLa0XJUUKQ$>
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Thu Dec 14 21:07:27 2023
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Thu, 14 Dec 2023 21:07:27 +0100
+Subject: [R-pkg-devel] 
+ Wrong mailing list: Could the 100 byte path length limit be lifted?
+In-Reply-To: <CO1PR11MB5122C0FED58BFBD401C3ED5EB78CA@CO1PR11MB5122.namprd11.prod.outlook.com>
+References: <CO1PR11MB51226E7B80B9B903DEE3BA32B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <CO1PR11MB5122A01EE74B94A499FC2DF8B78EA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <E5187765-A517-465D-A6F1-F9E4EB48AE78@R-project.org>
+ <f7fdb277-55f1-4700-9856-0ac00c86449c@gmail.com>
+ <e134fe18-e1fb-45a2-88c1-5746b99aac05@gmail.com>
+ <f6afda84-38a0-40ee-bdf6-3225d2b4b4a8@gmail.com>
+ <25977.27088.90570.377617@stat.math.ethz.ch>
+ <CO1PR11MB5122CFB3DBD0133E23257E4FB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <f0104f52-0839-470c-afb9-4724309946fa@gmail.com>
+ <25977.50915.199029.676541@rob.eddelbuettel.com>
+ <88371cfe-ecdb-4711-95a3-c6bf2041ea23@gmail.com>
+ <25977.51762.12713.531192@rob.eddelbuettel.com>
+ <CO1PR11MB5122A8AF888CDFF2CAA1722AB78DA@CO1PR11MB5122.namprd11.prod.outlook.com>
+ <alpine.DEB.2.22.394.2312140912120.8898@iridium>
+ <CAJqTW44aoPXkaY-t9L2cOp5HyzUJxqBjo4w0Vjn6+SdgfUVSXA@mail.gmail.com>
+ <CO1PR11MB5122C0FED58BFBD401C3ED5EB78CA@CO1PR11MB5122.namprd11.prod.outlook.com>
+Message-ID: <75dc4de9-6af9-4db8-9807-8df88ccfdb8e@gmail.com>
+
+On 12/14/23 19:39, McGrath, Justin M wrote:
+> At this point, the policy appears to have nothing to do with tar, contrary to the error message. Thus, replacing tar with zip wouldn't address CRAN's concern. The policy given in this thread (and seemingly unstated anywhere public) is that CRAN wants to allow someone on Windows to unpack an R package in a directory with a path length of 160 characters, given the 260 limit on Windows.
+
+The CRAN repository policy is a publicly accessible document at [1]. If 
+you are unsure what is acceptable or not, or if you think you a have 
+strong case to ask for an exception for your package, or possibly for 
+completely ignoring this warning from R, contact the CRAN team [2].
+
+On this list you may receive help and advice from individual people, but 
+that doesn't constitute the CRAN policy nor what CRAN "wants", even when 
+from people who individually are members of the CRAN team. You may still 
+find such advice useful for making your packages better.
+
+If you wanted R tar() to stop issuing warnings in certain cases, you can 
+suggest that on R bugzilla. If that happens and instead say a new check 
+is added to R to warn when a different limit is reached (e.g. to protect 
+users on Windows), you can then file another bug report.
+
+I don't think you can get any more help with this on this list.
+
+1. https://cran.r-project.org/web/packages/policies.html
+2. https://cran.r-project.org
+
+Tomas
+
+>
+> The implication here is that developers of public libraries needs to get their act together because they have *total path lengths* of 85 characters, that one needs to rename to include in an R package,  in order to accommodate someone who is unpacking R packages in directories with lengths of 160 characters (just the directory length!). I doubt such people exist, so we are accommodating a myth. I don't even have directories that long on my computer, and I certainly wouldn't be unpacking R packages in them if I did.
+>
+> Path lengths in packages of 130 to 150 characters would allow unpacking in directories of 130 to 110 characters. Anything in that range would likely result in no or very few problems for either the people creating or the people unpacking packages. The claim that people need to use sensible naming schemes goes both ways. One can't expect unreasonably long path in packages, and people making packages can't expect people try to unpack into unreasonably long directories. Yet, it's impossible to miss the great disparity in the current split of 100 character total path vs 160 characters for just a directory path.
+>
+> ________________________________________
+> From: Steven Scott <steve.the.bayesian at gmail.com>
+> Sent: Thursday, December 14, 2023 12:11 PM
+> To: Vladimir Dergachev
+> Cc: McGrath, Justin M; r-package-devel at r-project.org
+> Subject: Re: [R-pkg-devel] Wrong mailing list: Could the 100 byte path length limit be lifted?
+>
+> Compiled code is another source of long names.  Some libraries are produced by companies with style restrictions that demand LongDescriptiveNames for functions and classes, and which expect file names to match the name of the class contained within.  If you've got Models/SpecificModelFamily/PosteriorSamplers/SpecificTypeOfPosteriorSampler.hpp it leaves very little room (20 characters) for "C:\Users\..." etc up front.
+>
+> I solved my 'tar' problems with 'sed'.  In human readable code I keep the long names.  In the code that gets submitted to CRAN I pass specific file names through sed to rename the long files.  I have an install script with lines like:
+>
+> hdr="MvStateSpaceRegressionPosteriorSampler.hpp"
+> new_hdr="MVSSRPS.hpp"
+> mv "$ibase/$dbase/$hdr" "$ibase/$dbase/$new_hdr"
+> echo "replacing $dbase/$hdr with $dbase/$new_hdr"
+> grep -rl "$dbase/$hdr" "$BOOM_DIR/src/Models" | xargs $SED -i "s|$dbase/$hdr|$dbase/$new_hdr|g"
+>
+> This renames the files, and uses sed to replace #include references to file names with the shorter file names.  The SED macro is because on mac 'sed' is spelled 'gsed'.
+>
+> I agree the system sucks.  It would be nice if one of the steps in winbuilder took non-windows compliant TAR files and replaced them with ZIP files or something similar.  We'd still have the Win32 character limit, but 256 > 100 so the problem wouldn't bite so hard.
+>
+> On Thu, Dec 14, 2023 at 6:19?AM Vladimir Dergachev <volodya at mindspring.com<mailto:volodya at mindspring.com>> wrote:
+>
+>
+> On Wed, 13 Dec 2023, McGrath, Justin M wrote:
+>
+>> On Windows, packages will be in "C:\Users\[User Name]\Documents\R\win-library\[R version]\[Package Name]".
+>>
+>> With a 150 byte limit, that leaves 70 bytes for the user name, R version
+>> and package name. That seems more than sufficient. If people are
+>> downloading the source files, that also leaves plenty of space
+>> regardless where they choose to extract the files.
+>>
+> 70 bytes ?? My name is 18 characters long and there are plenty of people
+> with longer names. I also saw practice on Windows systems to append the
+> name of organization or department.
+>
+> Also, this restricts the length of package name which is arguably more
+> important that internal package path names that the user never sees.
+>
+> That said, that Windows limitation is only for some programs, and the
+> pertitent question is whether R and any software used by R has this
+> limitation. I suspect the answer is no, but as all my systems are Linux
+> I can not check.
+>
+> Vladimir Dergachev
+>
+> ______________________________________________
+> R-package-devel at r-project.org<mailto:R-package-devel at r-project.org> mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel<https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!DZ3fjg!93aINLPSC17ykCzT_i1DXmJ-yJAMwt2qaA6IIJjoA4XZP-dDbg_gZp8N-nN9Mcfpw4nR1wc--NRqfx6iGnr6OLa0XJUUKQ$>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Dec 14 21:40:15 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 14 Dec 2023 23:40:15 +0300
+Subject: [R-pkg-devel] 
+ Getting 'Rscript: Bad address' error when CRAN build
+ my package on windows platforms
+In-Reply-To: <6982940d-0890-49e1-9561-41d851a9c0c0@stkpp.org>
+References: <6982940d-0890-49e1-9561-41d851a9c0c0@stkpp.org>
+Message-ID: <20231214234015.4c93d9e0@Tarkus>
+
+On Thu, 7 Dec 2023 19:29:46 +0100
+Serge <Serge.Iovleff at stkpp.org> wrote:
+
+> g++ -std=gnu++11 -I"D:/RCompile/recent/R-4.3.2/include" -DNDEBUG
+> -I../inst/projects/ -I../inst/include/ -DIS_RTKPP_LIB -DSTKUSELAPACK
+> -I'D:/RCompile/CRANpkg/lib/4.3/Rcpp/include'
+> -I"d:/rtools43/x86_64-w64-mingw32.static.posix/include" -fopenmp -O2
+> -Wall -mfpmath=sse -msse2 -mstackrealign -c fastRand.cpp -o
+> fastRand.o
+> /bin/sh: line 1: /x86_64-w64-mingw32.static.posix/bin/g++: Bad address
+
+I don't think this is a problem with your package. The shell says "Bad
+address" when it gets an EFAULT while trying to run a program:
+
+$ strace -f -e fault=execve:error=EFAULT:when=1 -e trace=execve \
+ /bin/sh -c '/usr/bin/g++'
+execve("/bin/sh", ["/bin/sh", "-c", "/usr/bin/g++"], [/* 51 vars */]) = 0
+strace: Process 20756 attached
+[pid 20756] execve("/usr/bin/g++", ["/usr/bin/g++"], [/* 50 vars */]) = -1 EFAULT (Bad address) (INJECTED)
+/bin/sh: 1: /usr/bin/g++: Bad address
+
+There is not enough information to find out why this happens. I think
+that since Rtools are based on MSYS2 which is based on Cygwin, the
+place to look for EFAULT is Cygwin's implementation of the exec()
+system call. Indeed, there's one such place there, after the giant
+structured exception handling __try block, where errno is set to EFAULT
+if the system got such an exception while launching a process without
+previously setting errno to ENOMEM:
+https://cygwin.com/cgit/newlib-cygwin/tree/winsup/cygwin/spawn.cc?id=ca2a4ec243627b19f0ac2c7262703f81712f3be4#n947
+
+Does this happen every time? If not, I think the problem was
+Win-Builder temporary running out of memory.
+
+P.S.: Please don't compose HTML e-mail to this list with Thunderbird.
+Thunderbird's auto-generated plain text version is all we get, and it's
+severely mangled:
+https://stat.ethz.ch/pipermail/r-package-devel/2023q4/010178.html
+
+-- 
+Best regards,
+Ivan
+
+
