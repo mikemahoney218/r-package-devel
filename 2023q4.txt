@@ -28348,3 +28348,776 @@ On Sun, 17 Dec 2023 at 16:06, Ivan Krylov <krylov.r00t at gmail.com> wrote:
 	[[alternative HTML version deleted]]
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Mon Dec 18 10:01:48 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Mon, 18 Dec 2023 12:01:48 +0300
+Subject: [R-pkg-devel] CRAN submission struggle
+In-Reply-To: <CABuTGP6YP3XhFtYo5PcNcu0yfNPbQWHVvyzFAyeyRsk7CX0EHA@mail.gmail.com>
+References: <CABuTGP4PHvRLjhih=7V=EuVmWV-zyXPbmjSr5TnxEF76UXdUCw@mail.gmail.com>
+ <20231216210737.5ea551d1@Tarkus>
+ <CABuTGP4Opm_b0N_T1sLeTKPv4oNA4LMMOOMjyBfejRtCGg1BqA@mail.gmail.com>
+ <20231217170639.7376f8c3@Tarkus>
+ <CABuTGP6YP3XhFtYo5PcNcu0yfNPbQWHVvyzFAyeyRsk7CX0EHA@mail.gmail.com>
+Message-ID: <20231218120148.51339325@Tarkus>
+
+On Sun, 17 Dec 2023 21:48:51 +0200
+Christiaan Pieterse <pietie.cjp.1908 at gmail.com> wrote:
+
+> Warning in complexity_measures(Mbin, method = "reflections",
+> iterations = iterCompl) :
+>   'iterations' was changed to 'iterations + 1' to work with an even
+> number of iterations
+> Killed
+
+If this is happening on Linux, this could mean the current example (or
+some other, completely unrelated process running at the same time)
+allocating too much memory and summoning the OOM-killer.
+
+In the current HEAD of the CRAN-prep branch, the man/*.Rd files are
+empty, which prevents the package from being installed, so I couldn't
+reproduce the problem. Are there any local changes you need to commit
+and push to GitHub? If you're not comfortable keeping the package
+source in sync with GitHub, we can consider other options.
+
+> * checking HTML version of manual ... NOTE
+> Skipping checking HTML validation: no command 'tidy' found
+
+This is a problem with the system running R CMD check, not your
+package. In order to check the validity of generated HTML
+documentation, R needs to use the program called HTML-Tidy, which is
+not installed on this computer.
+
+Where are you getting these results from? Win-Builder
+<https://win-builder.r-project.org/>? macOS builder
+<https://mac.r-project.org/macbuilder/submit.html>?
+
+-- 
+Best regards,
+Ivan
+
+
+From j|@c@@hu|@m@n @end|ng |rom gm@||@com  Mon Dec 18 11:06:16 2023
+From: j|@c@@hu|@m@n @end|ng |rom gm@||@com (Jisca Huisman)
+Date: Mon, 18 Dec 2023 11:06:16 +0100
+Subject: [R-pkg-devel] Issue with flang-new (segfault from C stack overflow)
+Message-ID: <3d9969a5-4499-4b91-822d-077459c42319@gmail.com>
+
+Hello,
+
+My package sequoia contains Fortran code, and failed to pass the 
+pre-test on Debian with the new flang-new compiler. I was able to 
+reproduce the issue, but strongly suspect it is an issue with 
+flang-new-17 rather than with my code. However, since in the past when I 
+thought the problem was not with my code I usually eventually turned out 
+to be wrong, I would be grateful for a 'second opinion' and/or advise on 
+further checks to figure out what the issue might be.
+
+The error in ..._Debian_00check.log during pretest was "Error: segfault 
+from C stack overflow" when running one of the examples ( 
+https://win-builder.r-project.org/incoming_pretest/sequoia_2.7.5_20231209_204908/Debian/ 
+)
+
+I was able to reproduce this error on Ubuntu 22.04 with R configured as 
+follows:
+
+LIBnn=lib64 \
+ ?? ??? CC="clang-17" \
+ ?? ??? CXX="clang++-17" \
+ ?? ??? FC="flang-new-17" \
+ ?? ??? FCFLAGS="-g -O2 -mtune=native" \
+ ?? ??? CXXFLAGS="-g -O2 -mtune=native" \
+ ?? ??? FFLAGS="-g -O2" \
+ ?? ??? MAIN_LDFLAGS="-pthread" \
+ ?? ??? ./configure -C --with-valgrind-instrumentation=2 \
+ ?? ??? --with-system-valgrind-headers --with-x=no \
+ ?? ??? --without-recommended-packages --enable-lto=yes
+
+
+I isolated the problem in a minimal working example available here: 
+https://github.com/JiscaH/flang_segfault_min_example . All that does is 
+pass a vector of length N*N back and forth between R and Fortran. It 
+works fine for very long vectors (tested up to length 5e8), but throws a 
+segfault when I reshape a large array in Fortran to a vector to pass to 
+R, both when using RESHAPE() and when using loops.
+
+During installation of the minimal package there is a warning:
+
+** building package indices
+** testing if installed package can be loaded from temporary location
+** checking absolute paths in shared objects and dynamic libraries
+readelf: Warning: Unrecognized form: 0x22
+** testing if installed package can be loaded from final location
+** testing if installed package keeps a record of temporary installation 
+path
+* DONE (minWE)
+
+and during installation of the sequoia package there are dozens of those 
+warnings.
+
+When running
+
+R -d "valgrind --tool=memcheck --leak-check=full" --vanilla < test_example.R
+
+where
+
+test_example.R is:? minWE::test_fun(N=5e2); minWE::test_fun(N=5e3)
+
+with Valgrind-3.22.0 I get no valgrind messages/warnings/errors when 
+N=5e2, but a segfault and a sleuth of messages when N=5e3, see 
+https://github.com/JiscaH/flang_segfault_min_example/blob/main/valgrind_output_v15.txt 
+.
+
+When configuring R with
+
+LIBnn=lib64 \
+ ?? ??? CC="gcc -std=gnu99" \
+ ?? ??? CXX="g++ -fno-omit-frame-pointer" \
+ ?? ??? FC="gfortran" \
+ ?? ??? FCFLAGS="-g -O2 -mtune=native" \
+ ?? ??? CXXFLAGS="-g -O2 -Wall -pedantic -mtune=native" \
+ ?? ??? FFLAGS="-g -O2 -mtune=native" \
+ ?? ??? MAIN_LDFLAGS="-pthread" \
+ ?? ??? ./configure -C --with-valgrind-instrumentation=2 \
+ ?? ??? --with-system-valgrind-headers --with-x=no \
+ ?? ??? --without-recommended-packages --enable-lto=yes
+
+It runs without issues.
+
+
+If someone can confirm that I'm not overlooking anything, I will submit 
+a bug report to https://github.com/llvm/llvm-project/issues , and hope 
+that I can convince the CRAN team to accept my package despite failing 
+the pre-test.
+
+
+Thanks,
+
+Jisca
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Mon Dec 18 15:09:29 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Mon, 18 Dec 2023 17:09:29 +0300
+Subject: [R-pkg-devel] 
+ Issue with flang-new (segfault from C stack overflow)
+In-Reply-To: <3d9969a5-4499-4b91-822d-077459c42319@gmail.com>
+References: <3d9969a5-4499-4b91-822d-077459c42319@gmail.com>
+Message-ID: <20231218170929.77246560@arachnoid>
+
+? Mon, 18 Dec 2023 11:06:16 +0100
+Jisca Huisman <jisca.huisman at gmail.com> ?????:
+
+> I isolated the problem in a minimal working example available here: 
+> https://github.com/JiscaH/flang_segfault_min_example . All that does
+> is pass a vector of length N*N back and forth between R and Fortran.
+> It works fine for very long vectors (tested up to length 5e8), but
+> throws a segfault when I reshape a large array in Fortran to a vector
+> to pass to R, both when using RESHAPE() and when using loops.
+
+You've done an impressive amount of investigative work. Thank you for
+reducing your problem to such a small example! My eyes are drawn to
+these two lines:
+
+>>  integer, intent(IN) :: N
+>>  integer :: M(N,N)
+
+If this was C, such a declaration would mean a variable-length array
+that would have to be placed on the (limited-size) stack and eventually
+overflow it. gfortran places the array on the heap, so the program
+works:
+
+  integer, intent(IN) :: N
+  integer, intent(INOUT) :: V(N*N)
+  integer :: M(N,N)
+    1205:       48 63 db                movslq %ebx,%rbx
+    1208:       b8 00 00 00 00          mov    $0x0,%eax
+    120d:       48 85 db                test   %rbx,%rbx
+    1210:       49 89 c4                mov    %rax,%r12
+    1213:       4c 0f 49 e3             cmovns %rbx,%r12
+    1217:       48 89 df                mov    %rbx,%rdi
+    121a:       49 0f af fc             imul   %r12,%rdi
+    121e:       48 85 ff                test   %rdi,%rdi
+    1221:       48 0f 48 f8             cmovs  %rax,%rdi
+    1225:       48 c1 e7 02             shl    $0x2,%rdi
+    1229:       b8 01 00 00 00          mov    $0x1,%eax
+    122e:       48 0f 44 f8             cmove  %rax,%rdi
+    1232:       e8 19 fe ff ff          callq  1050 <malloc at plt>
+    1237:       48 89 c5                mov    %rax,%rbp
+    123a:       4c 89 e7                mov    %r12,%rdi
+    123d:       48 f7 d7                not    %rdi
+
+(Looking at the address of M in GDB and comparing it with the output
+of info proc mappings, I can confirm that it lives on the heap.)
+
+flang-new makes M into a C-style VLA:
+
+  integer, intent(IN) :: N
+  integer, intent(INOUT) :: V(N*N)
+  integer :: M(N,N)
+    74ec:       48 63 17                movslq (%rdi),%rdx
+    74ef:       89 d1                   mov    %edx,%ecx
+    74f1:       31 c0                   xor    %eax,%eax
+    74f3:       48 85 d2                test   %rdx,%rdx
+    74f6:       48 0f 49 c2             cmovns %rdx,%rax
+    74fa:       48 89 85 b0 fe ff ff    mov    %rax,-0x150(%rbp)
+    7501:       48 89 c2                mov    %rax,%rdx
+    7504:       48 0f af d2             imul   %rdx,%rdx
+    7508:       48 8d 34 95 0f 00 00    lea    0xf(,%rdx,4),%rsi
+    750f:       00
+    7510:       48 83 e6 f0             and    $0xfffffffffffffff0,%rsi
+    7514:       48 89 e2                mov    %rsp,%rdx
+    7517:       48 29 f2                sub    %rsi,%rdx
+    751a:       48 89 95 b8 fe ff ff    mov    %rdx,-0x148(%rbp)
+    7521:       48 89 d4                mov    %rdx,%rsp
+
+(Looking at the value of the stack pointer in GDB after M(N,N) is
+declared, I can see it way below the end of the stack and the loaded
+shared libraries according to info proc mappings. GDB doesn't let me
+see the address of M. The program crashes in `M = 42`, trying to
+overwrite the code from the C standard library.)
+
+Are Fortran processors allowed to place such "automatic data objects"
+like integer :: M(N,N) on the stack? The Fortran standard doesn't seem
+to give an answer to this question, but if you make your M allocatable,
+you won't have to worry about stack usage:
+
+subroutine dostuff(N,V)
+  implicit none
+
+  integer, intent(IN) :: N
+  integer, intent(INOUT) :: V(N*N)
+  integer, allocatable :: M(:,:) ! <-- here
+
+  allocate(M(N,N))               ! <-- and here
+  M = 42
+  V = RESHAPE(M, (/N*N/))
+end subroutine dostuff
+
+No leaks or crashes observed with these two changes and either
+compiler. The Fortran standard requires that local allocatable unsaved
+arrays (except for the function result) are deallocated at the end of
+procedures.
+
+-- 
+Best regards,
+Ivan
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Mon Dec 18 16:06:11 2023
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Mon, 18 Dec 2023 16:06:11 +0100
+Subject: [R-pkg-devel] 
+ Issue with flang-new (segfault from C stack overflow)
+In-Reply-To: <20231218170929.77246560@arachnoid>
+References: <3d9969a5-4499-4b91-822d-077459c42319@gmail.com>
+ <20231218170929.77246560@arachnoid>
+Message-ID: <38550545-f79b-4197-8445-2c7551f06bcf@gmail.com>
+
+
+On 12/18/23 15:09, Ivan Krylov wrote:
+> ? Mon, 18 Dec 2023 11:06:16 +0100
+> Jisca Huisman <jisca.huisman at gmail.com> ?????:
+>
+>> I isolated the problem in a minimal working example available here:
+>> https://github.com/JiscaH/flang_segfault_min_example . All that does
+>> is pass a vector of length N*N back and forth between R and Fortran.
+>> It works fine for very long vectors (tested up to length 5e8), but
+>> throws a segfault when I reshape a large array in Fortran to a vector
+>> to pass to R, both when using RESHAPE() and when using loops.
+> You've done an impressive amount of investigative work. Thank you for
+> reducing your problem to such a small example! My eyes are drawn to
+> these two lines:
+>
+>>>   integer, intent(IN) :: N
+>>>   integer :: M(N,N)
+> If this was C, such a declaration would mean a variable-length array
+> that would have to be placed on the (limited-size) stack and eventually
+> overflow it. gfortran places the array on the heap, so the program
+> works:
+>
+>    integer, intent(IN) :: N
+>    integer, intent(INOUT) :: V(N*N)
+>    integer :: M(N,N)
+>      1205:       48 63 db                movslq %ebx,%rbx
+>      1208:       b8 00 00 00 00          mov    $0x0,%eax
+>      120d:       48 85 db                test   %rbx,%rbx
+>      1210:       49 89 c4                mov    %rax,%r12
+>      1213:       4c 0f 49 e3             cmovns %rbx,%r12
+>      1217:       48 89 df                mov    %rbx,%rdi
+>      121a:       49 0f af fc             imul   %r12,%rdi
+>      121e:       48 85 ff                test   %rdi,%rdi
+>      1221:       48 0f 48 f8             cmovs  %rax,%rdi
+>      1225:       48 c1 e7 02             shl    $0x2,%rdi
+>      1229:       b8 01 00 00 00          mov    $0x1,%eax
+>      122e:       48 0f 44 f8             cmove  %rax,%rdi
+>      1232:       e8 19 fe ff ff          callq  1050 <malloc at plt>
+>      1237:       48 89 c5                mov    %rax,%rbp
+>      123a:       4c 89 e7                mov    %r12,%rdi
+>      123d:       48 f7 d7                not    %rdi
+>
+> (Looking at the address of M in GDB and comparing it with the output
+> of info proc mappings, I can confirm that it lives on the heap.)
+>
+> flang-new makes M into a C-style VLA:
+>
+>    integer, intent(IN) :: N
+>    integer, intent(INOUT) :: V(N*N)
+>    integer :: M(N,N)
+>      74ec:       48 63 17                movslq (%rdi),%rdx
+>      74ef:       89 d1                   mov    %edx,%ecx
+>      74f1:       31 c0                   xor    %eax,%eax
+>      74f3:       48 85 d2                test   %rdx,%rdx
+>      74f6:       48 0f 49 c2             cmovns %rdx,%rax
+>      74fa:       48 89 85 b0 fe ff ff    mov    %rax,-0x150(%rbp)
+>      7501:       48 89 c2                mov    %rax,%rdx
+>      7504:       48 0f af d2             imul   %rdx,%rdx
+>      7508:       48 8d 34 95 0f 00 00    lea    0xf(,%rdx,4),%rsi
+>      750f:       00
+>      7510:       48 83 e6 f0             and    $0xfffffffffffffff0,%rsi
+>      7514:       48 89 e2                mov    %rsp,%rdx
+>      7517:       48 29 f2                sub    %rsi,%rdx
+>      751a:       48 89 95 b8 fe ff ff    mov    %rdx,-0x148(%rbp)
+>      7521:       48 89 d4                mov    %rdx,%rsp
+>
+> (Looking at the value of the stack pointer in GDB after M(N,N) is
+> declared, I can see it way below the end of the stack and the loaded
+> shared libraries according to info proc mappings. GDB doesn't let me
+> see the address of M. The program crashes in `M = 42`, trying to
+> overwrite the code from the C standard library.)
+>
+> Are Fortran processors allowed to place such "automatic data objects"
+> like integer :: M(N,N) on the stack?
+
+ From my reading, yes, they are allowed to do that. Local arrays can be 
+put on the stack or the heap. Even the "allocatable" could be placed on 
+the stack. But I am not a fortran expert.
+
+Allocating on the stack has the problem that it is not possible to have 
+a portable test whether there is enough space, hence the crash when it 
+isn't. This is not specific to fortran. Some systems try to still detect 
+such cases (like R), but it is not portable. There are OS-specific ways 
+to increase the stack size limit, but that cannot be relied on with R, 
+it would be rather too much asking R users to do that.
+
+You might perhaps submit a bug report for flang-new, asking whether 
+their heuristics for these cases are as intended, showing that they 
+differ from gfortran.
+
+You might get more help on mailing lists discussing Fortran language, 
+specifically - this is not an R issue.
+
+But in practice, yes, using "allocatable" should work much better for 
+large arrays.
+
+Best
+Tomas
+
+
+> The Fortran standard doesn't seem
+> to give an answer to this question, but if you make your M allocatable,
+> you won't have to worry about stack usage:
+>
+> subroutine dostuff(N,V)
+>    implicit none
+>
+>    integer, intent(IN) :: N
+>    integer, intent(INOUT) :: V(N*N)
+>    integer, allocatable :: M(:,:) ! <-- here
+>
+>    allocate(M(N,N))               ! <-- and here
+>    M = 42
+>    V = RESHAPE(M, (/N*N/))
+> end subroutine dostuff
+>
+> No leaks or crashes observed with these two changes and either
+> compiler. The Fortran standard requires that local allocatable unsaved
+> arrays (except for the function result) are deallocated at the end of
+> procedures.
+>
+
+
+From j|@c@@hu|@m@n @end|ng |rom gm@||@com  Mon Dec 18 16:41:04 2023
+From: j|@c@@hu|@m@n @end|ng |rom gm@||@com (Jisca Huisman)
+Date: Mon, 18 Dec 2023 16:41:04 +0100
+Subject: [R-pkg-devel] 
+ Issue with flang-new (segfault from C stack overflow)
+In-Reply-To: <38550545-f79b-4197-8445-2c7551f06bcf@gmail.com>
+References: <3d9969a5-4499-4b91-822d-077459c42319@gmail.com>
+ <20231218170929.77246560@arachnoid>
+ <38550545-f79b-4197-8445-2c7551f06bcf@gmail.com>
+Message-ID: <818958b8-e513-4f91-979e-40d373ad5c21@gmail.com>
+
+Hello Ivan & Tomas,
+
+Thank you for your time and helpful suggestions!
+
+The finer details of memory use and heap vs stack are still outside my 
+comfort zone, but some trial and error shows that using an allocatable 
+does indeed solve the issue. When using the largest value I expect users 
+to use before running into Out Of Memory issues at other points in the 
+code, I get
+
+==3154== Warning: set address range perms: large range [0xd0ff3070, 
+0x14834c470) (undefined)
+==3154== Warning: set address range perms: large range [0x14834d040, 
+0x1bf6a6440) (undefined)
+==3154== Warning: set address range perms: large range [0x14834d028, 
+0x1bf6a6458) (noaccess)
+
+but no valgrind errors. So I'm happy with this fairly straightforward 
+solution, thanks Ivan!
+
+
+>
+> You might perhaps submit a bug report for flang-new, asking whether 
+> their heuristics for these cases are as intended, showing that they 
+> differ from gfortran.
+Will do; I suspect gfortran may have some trick to make it work somehow.
+>
+> You might get more help on mailing lists discussing Fortran language, 
+> specifically - this is not an R issue.
+
+Since the original error was "segfault from C stack overflow" I was not 
+convinced that this was a Fortran issue, but thanks for the suggestion - 
+I will try to find those for future issues.
+
+>
+> But in practice, yes, using "allocatable" should work much better for 
+> large arrays.
+
+Good to know!
+
+>
+>
+> Best
+> Tomas 
+
+Thanks,
+
+Jisca
+
+
+
+On 18-12-2023 16:06, Tomas Kalibera wrote:
+>
+> On 12/18/23 15:09, Ivan Krylov wrote:
+>> ? Mon, 18 Dec 2023 11:06:16 +0100
+>> Jisca Huisman <jisca.huisman at gmail.com> ?????:
+>>
+>>> I isolated the problem in a minimal working example available here:
+>>> https://github.com/JiscaH/flang_segfault_min_example . All that does
+>>> is pass a vector of length N*N back and forth between R and Fortran.
+>>> It works fine for very long vectors (tested up to length 5e8), but
+>>> throws a segfault when I reshape a large array in Fortran to a vector
+>>> to pass to R, both when using RESHAPE() and when using loops.
+>> You've done an impressive amount of investigative work. Thank you for
+>> reducing your problem to such a small example! My eyes are drawn to
+>> these two lines:
+>>
+>>>> ? integer, intent(IN) :: N
+>>>> ? integer :: M(N,N)
+>> If this was C, such a declaration would mean a variable-length array
+>> that would have to be placed on the (limited-size) stack and eventually
+>> overflow it. gfortran places the array on the heap, so the program
+>> works:
+>>
+>> ?? integer, intent(IN) :: N
+>> ?? integer, intent(INOUT) :: V(N*N)
+>> ?? integer :: M(N,N)
+>> ???? 1205:?????? 48 63 db??????????????? movslq %ebx,%rbx
+>> ???? 1208:?????? b8 00 00 00 00????????? mov??? $0x0,%eax
+>> ???? 120d:?????? 48 85 db??????????????? test?? %rbx,%rbx
+>> ???? 1210:?????? 49 89 c4??????????????? mov??? %rax,%r12
+>> ???? 1213:?????? 4c 0f 49 e3???????????? cmovns %rbx,%r12
+>> ???? 1217:?????? 48 89 df??????????????? mov??? %rbx,%rdi
+>> ???? 121a:?????? 49 0f af fc???????????? imul?? %r12,%rdi
+>> ???? 121e:?????? 48 85 ff??????????????? test?? %rdi,%rdi
+>> ???? 1221:?????? 48 0f 48 f8???????????? cmovs? %rax,%rdi
+>> ???? 1225:?????? 48 c1 e7 02???????????? shl??? $0x2,%rdi
+>> ???? 1229:?????? b8 01 00 00 00????????? mov??? $0x1,%eax
+>> ???? 122e:?????? 48 0f 44 f8???????????? cmove? %rax,%rdi
+>> ???? 1232:?????? e8 19 fe ff ff????????? callq? 1050 <malloc at plt>
+>> ???? 1237:?????? 48 89 c5??????????????? mov??? %rax,%rbp
+>> ???? 123a:?????? 4c 89 e7??????????????? mov??? %r12,%rdi
+>> ???? 123d:?????? 48 f7 d7??????????????? not??? %rdi
+>>
+>> (Looking at the address of M in GDB and comparing it with the output
+>> of info proc mappings, I can confirm that it lives on the heap.)
+>>
+>> flang-new makes M into a C-style VLA:
+>>
+>> ?? integer, intent(IN) :: N
+>> ?? integer, intent(INOUT) :: V(N*N)
+>> ?? integer :: M(N,N)
+>> ???? 74ec:?????? 48 63 17??????????????? movslq (%rdi),%rdx
+>> ???? 74ef:?????? 89 d1?????????????????? mov??? %edx,%ecx
+>> ???? 74f1:?????? 31 c0?????????????????? xor??? %eax,%eax
+>> ???? 74f3:?????? 48 85 d2??????????????? test?? %rdx,%rdx
+>> ???? 74f6:?????? 48 0f 49 c2???????????? cmovns %rdx,%rax
+>> ???? 74fa:?????? 48 89 85 b0 fe ff ff??? mov %rax,-0x150(%rbp)
+>> ???? 7501:?????? 48 89 c2??????????????? mov??? %rax,%rdx
+>> ???? 7504:?????? 48 0f af d2???????????? imul?? %rdx,%rdx
+>> ???? 7508:?????? 48 8d 34 95 0f 00 00??? lea 0xf(,%rdx,4),%rsi
+>> ???? 750f:?????? 00
+>> ???? 7510:?????? 48 83 e6 f0???????????? and $0xfffffffffffffff0,%rsi
+>> ???? 7514:?????? 48 89 e2??????????????? mov??? %rsp,%rdx
+>> ???? 7517:?????? 48 29 f2??????????????? sub??? %rsi,%rdx
+>> ???? 751a:?????? 48 89 95 b8 fe ff ff??? mov %rdx,-0x148(%rbp)
+>> ???? 7521:?????? 48 89 d4??????????????? mov??? %rdx,%rsp
+>>
+>> (Looking at the value of the stack pointer in GDB after M(N,N) is
+>> declared, I can see it way below the end of the stack and the loaded
+>> shared libraries according to info proc mappings. GDB doesn't let me
+>> see the address of M. The program crashes in `M = 42`, trying to
+>> overwrite the code from the C standard library.)
+>>
+>> Are Fortran processors allowed to place such "automatic data objects"
+>> like integer :: M(N,N) on the stack?
+>
+> From my reading, yes, they are allowed to do that. Local arrays can be 
+> put on the stack or the heap. Even the "allocatable" could be placed 
+> on the stack. But I am not a fortran expert.
+>
+> Allocating on the stack has the problem that it is not possible to 
+> have a portable test whether there is enough space, hence the crash 
+> when it isn't. This is not specific to fortran. Some systems try to 
+> still detect such cases (like R), but it is not portable. There are 
+> OS-specific ways to increase the stack size limit, but that cannot be 
+> relied on with R, it would be rather too much asking R users to do that.
+>
+> You might perhaps submit a bug report for flang-new, asking whether 
+> their heuristics for these cases are as intended, showing that they 
+> differ from gfortran.
+>
+> You might get more help on mailing lists discussing Fortran language, 
+> specifically - this is not an R issue.
+>
+> But in practice, yes, using "allocatable" should work much better for 
+> large arrays.
+>
+> Best
+> Tomas
+>
+>
+>> The Fortran standard doesn't seem
+>> to give an answer to this question, but if you make your M allocatable,
+>> you won't have to worry about stack usage:
+>>
+>> subroutine dostuff(N,V)
+>> ?? implicit none
+>>
+>> ?? integer, intent(IN) :: N
+>> ?? integer, intent(INOUT) :: V(N*N)
+>> ?? integer, allocatable :: M(:,:) ! <-- here
+>>
+>> ?? allocate(M(N,N))?????????????? ! <-- and here
+>> ?? M = 42
+>> ?? V = RESHAPE(M, (/N*N/))
+>> end subroutine dostuff
+>>
+>> No leaks or crashes observed with these two changes and either
+>> compiler. The Fortran standard requires that local allocatable unsaved
+>> arrays (except for the function result) are deallocated at the end of
+>> procedures.
+>>
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Mon Dec 18 18:19:27 2023
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Mon, 18 Dec 2023 18:19:27 +0100
+Subject: [R-pkg-devel] 
+ Issue with flang-new (segfault from C stack overflow)
+In-Reply-To: <818958b8-e513-4f91-979e-40d373ad5c21@gmail.com>
+References: <3d9969a5-4499-4b91-822d-077459c42319@gmail.com>
+ <20231218170929.77246560@arachnoid>
+ <38550545-f79b-4197-8445-2c7551f06bcf@gmail.com>
+ <818958b8-e513-4f91-979e-40d373ad5c21@gmail.com>
+Message-ID: <338b37c9-1b2b-4cba-aeb1-43fa5b3916ac@gmail.com>
+
+
+On 12/18/23 16:41, Jisca Huisman wrote:
+> Hello Ivan & Tomas,
+>
+> Thank you for your time and helpful suggestions!
+>
+> The finer details of memory use and heap vs stack are still outside my 
+> comfort zone, but some trial and error shows that using an allocatable 
+> does indeed solve the issue. When using the largest value I expect 
+> users to use before running into Out Of Memory issues at other points 
+> in the code, I get
+>
+> ==3154== Warning: set address range perms: large range [0xd0ff3070, 
+> 0x14834c470) (undefined)
+> ==3154== Warning: set address range perms: large range [0x14834d040, 
+> 0x1bf6a6440) (undefined)
+> ==3154== Warning: set address range perms: large range [0x14834d028, 
+> 0x1bf6a6458) (noaccess)
+>
+> but no valgrind errors. So I'm happy with this fairly straightforward 
+> solution, thanks Ivan!
+>
+>
+>>
+>> You might perhaps submit a bug report for flang-new, asking whether 
+>> their heuristics for these cases are as intended, showing that they 
+>> differ from gfortran.
+> Will do; I suspect gfortran may have some trick to make it work somehow.
+Thanks.
+>>
+>> You might get more help on mailing lists discussing Fortran language, 
+>> specifically - this is not an R issue.
+>
+> Since the original error was "segfault from C stack overflow" I was 
+> not convinced that this was a Fortran issue, but thanks for the 
+> suggestion - I will try to find those for future issues.
+
+The segfault handler belongs to R, but it is triggered by the overflow 
+in the fortran function. If you ran the example outside R, it would use 
+the default segfault handler, which would simply terminate the program 
+(possibly creating a core dump, depending on the OS/setup).
+
+Best
+Tomas
+
+>
+>>
+>> But in practice, yes, using "allocatable" should work much better for 
+>> large arrays.
+>
+> Good to know!
+>
+>>
+>>
+>> Best
+>> Tomas 
+>
+> Thanks,
+>
+> Jisca
+>
+>
+>
+> On 18-12-2023 16:06, Tomas Kalibera wrote:
+>>
+>> On 12/18/23 15:09, Ivan Krylov wrote:
+>>> ? Mon, 18 Dec 2023 11:06:16 +0100
+>>> Jisca Huisman <jisca.huisman at gmail.com> ?????:
+>>>
+>>>> I isolated the problem in a minimal working example available here:
+>>>> https://github.com/JiscaH/flang_segfault_min_example . All that does
+>>>> is pass a vector of length N*N back and forth between R and Fortran.
+>>>> It works fine for very long vectors (tested up to length 5e8), but
+>>>> throws a segfault when I reshape a large array in Fortran to a vector
+>>>> to pass to R, both when using RESHAPE() and when using loops.
+>>> You've done an impressive amount of investigative work. Thank you for
+>>> reducing your problem to such a small example! My eyes are drawn to
+>>> these two lines:
+>>>
+>>>>> ? integer, intent(IN) :: N
+>>>>> ? integer :: M(N,N)
+>>> If this was C, such a declaration would mean a variable-length array
+>>> that would have to be placed on the (limited-size) stack and eventually
+>>> overflow it. gfortran places the array on the heap, so the program
+>>> works:
+>>>
+>>> ?? integer, intent(IN) :: N
+>>> ?? integer, intent(INOUT) :: V(N*N)
+>>> ?? integer :: M(N,N)
+>>> ???? 1205:?????? 48 63 db??????????????? movslq %ebx,%rbx
+>>> ???? 1208:?????? b8 00 00 00 00????????? mov??? $0x0,%eax
+>>> ???? 120d:?????? 48 85 db??????????????? test?? %rbx,%rbx
+>>> ???? 1210:?????? 49 89 c4??????????????? mov??? %rax,%r12
+>>> ???? 1213:?????? 4c 0f 49 e3???????????? cmovns %rbx,%r12
+>>> ???? 1217:?????? 48 89 df??????????????? mov??? %rbx,%rdi
+>>> ???? 121a:?????? 49 0f af fc???????????? imul?? %r12,%rdi
+>>> ???? 121e:?????? 48 85 ff??????????????? test?? %rdi,%rdi
+>>> ???? 1221:?????? 48 0f 48 f8???????????? cmovs? %rax,%rdi
+>>> ???? 1225:?????? 48 c1 e7 02???????????? shl??? $0x2,%rdi
+>>> ???? 1229:?????? b8 01 00 00 00????????? mov??? $0x1,%eax
+>>> ???? 122e:?????? 48 0f 44 f8???????????? cmove? %rax,%rdi
+>>> ???? 1232:?????? e8 19 fe ff ff????????? callq? 1050 <malloc at plt>
+>>> ???? 1237:?????? 48 89 c5??????????????? mov??? %rax,%rbp
+>>> ???? 123a:?????? 4c 89 e7??????????????? mov??? %r12,%rdi
+>>> ???? 123d:?????? 48 f7 d7??????????????? not??? %rdi
+>>>
+>>> (Looking at the address of M in GDB and comparing it with the output
+>>> of info proc mappings, I can confirm that it lives on the heap.)
+>>>
+>>> flang-new makes M into a C-style VLA:
+>>>
+>>> ?? integer, intent(IN) :: N
+>>> ?? integer, intent(INOUT) :: V(N*N)
+>>> ?? integer :: M(N,N)
+>>> ???? 74ec:?????? 48 63 17??????????????? movslq (%rdi),%rdx
+>>> ???? 74ef:?????? 89 d1?????????????????? mov??? %edx,%ecx
+>>> ???? 74f1:?????? 31 c0?????????????????? xor??? %eax,%eax
+>>> ???? 74f3:?????? 48 85 d2??????????????? test?? %rdx,%rdx
+>>> ???? 74f6:?????? 48 0f 49 c2???????????? cmovns %rdx,%rax
+>>> ???? 74fa:?????? 48 89 85 b0 fe ff ff??? mov %rax,-0x150(%rbp)
+>>> ???? 7501:?????? 48 89 c2??????????????? mov??? %rax,%rdx
+>>> ???? 7504:?????? 48 0f af d2???????????? imul?? %rdx,%rdx
+>>> ???? 7508:?????? 48 8d 34 95 0f 00 00??? lea 0xf(,%rdx,4),%rsi
+>>> ???? 750f:?????? 00
+>>> ???? 7510:?????? 48 83 e6 f0???????????? and $0xfffffffffffffff0,%rsi
+>>> ???? 7514:?????? 48 89 e2??????????????? mov??? %rsp,%rdx
+>>> ???? 7517:?????? 48 29 f2??????????????? sub??? %rsi,%rdx
+>>> ???? 751a:?????? 48 89 95 b8 fe ff ff??? mov %rdx,-0x148(%rbp)
+>>> ???? 7521:?????? 48 89 d4??????????????? mov??? %rdx,%rsp
+>>>
+>>> (Looking at the value of the stack pointer in GDB after M(N,N) is
+>>> declared, I can see it way below the end of the stack and the loaded
+>>> shared libraries according to info proc mappings. GDB doesn't let me
+>>> see the address of M. The program crashes in `M = 42`, trying to
+>>> overwrite the code from the C standard library.)
+>>>
+>>> Are Fortran processors allowed to place such "automatic data objects"
+>>> like integer :: M(N,N) on the stack?
+>>
+>> From my reading, yes, they are allowed to do that. Local arrays can 
+>> be put on the stack or the heap. Even the "allocatable" could be 
+>> placed on the stack. But I am not a fortran expert.
+>>
+>> Allocating on the stack has the problem that it is not possible to 
+>> have a portable test whether there is enough space, hence the crash 
+>> when it isn't. This is not specific to fortran. Some systems try to 
+>> still detect such cases (like R), but it is not portable. There are 
+>> OS-specific ways to increase the stack size limit, but that cannot be 
+>> relied on with R, it would be rather too much asking R users to do that.
+>>
+>> You might perhaps submit a bug report for flang-new, asking whether 
+>> their heuristics for these cases are as intended, showing that they 
+>> differ from gfortran.
+>>
+>> You might get more help on mailing lists discussing Fortran language, 
+>> specifically - this is not an R issue.
+>>
+>> But in practice, yes, using "allocatable" should work much better for 
+>> large arrays.
+>>
+>> Best
+>> Tomas
+>>
+>>
+>>> The Fortran standard doesn't seem
+>>> to give an answer to this question, but if you make your M allocatable,
+>>> you won't have to worry about stack usage:
+>>>
+>>> subroutine dostuff(N,V)
+>>> ?? implicit none
+>>>
+>>> ?? integer, intent(IN) :: N
+>>> ?? integer, intent(INOUT) :: V(N*N)
+>>> ?? integer, allocatable :: M(:,:) ! <-- here
+>>>
+>>> ?? allocate(M(N,N))?????????????? ! <-- and here
+>>> ?? M = 42
+>>> ?? V = RESHAPE(M, (/N*N/))
+>>> end subroutine dostuff
+>>>
+>>> No leaks or crashes observed with these two changes and either
+>>> compiler. The Fortran standard requires that local allocatable unsaved
+>>> arrays (except for the function result) are deallocated at the end of
+>>> procedures.
+>>>
+
+
