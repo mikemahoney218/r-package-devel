@@ -29167,3 +29167,254 @@ www.spsanderson.com
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From @teve@the@b@ye@|@n @end|ng |rom gm@||@com  Wed Dec 20 20:10:39 2023
+From: @teve@the@b@ye@|@n @end|ng |rom gm@||@com (Steven Scott)
+Date: Wed, 20 Dec 2023 11:10:39 -0800
+Subject: [R-pkg-devel] portability question
+Message-ID: <CAJqTW461njEgL6GQDAVk1qckH54tsLf542KzczLcY_WwUtBGeA@mail.gmail.com>
+
+The Boom package builds a library against which other packages link.  The
+library is built using the Makevars mechanism using the line
+
+${AR} rc $@ $^
+
+A user has asked me to change 'rc' to 'rcs' so that 'ranlib' will be run on
+the archive.  This is apparently needed for certain flavors of macs.  I'm
+hoping someone on this list can comment on the portability of that change
+and whether it would negatively affect other platforms.  Thank you.
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Wed Dec 20 20:42:38 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 20 Dec 2023 13:42:38 -0600
+Subject: [R-pkg-devel] portability question
+In-Reply-To: <CAJqTW461njEgL6GQDAVk1qckH54tsLf542KzczLcY_WwUtBGeA@mail.gmail.com>
+References: <CAJqTW461njEgL6GQDAVk1qckH54tsLf542KzczLcY_WwUtBGeA@mail.gmail.com>
+Message-ID: <25987.17326.224163.689337@rob.eddelbuettel.com>
+
+
+On 20 December 2023 at 11:10, Steven Scott wrote:
+| The Boom package builds a library against which other packages link.  The
+| library is built using the Makevars mechanism using the line
+| 
+| ${AR} rc $@ $^
+| 
+| A user has asked me to change 'rc' to 'rcs' so that 'ranlib' will be run on
+| the archive.  This is apparently needed for certain flavors of macs.  I'm
+| hoping someone on this list can comment on the portability of that change
+| and whether it would negatively affect other platforms.  Thank you.
+
+Just branch for macOS.  Here is a line I 'borrowed' years ago from data.table
+and still use for packages needed to call install_name_tool on macOS.  You
+could have a simple 'true' branch of the test use 'rcs' and the 'false'
+branch do what you have always done.  Without any portability concerns.
+
+>From https://github.com/Rdatatable/data.table/blob/master/src/Makevars.in#L14
+and indented here for clarity
+
+        if [ "$(OS)" != "Windows_NT" ] && [ `uname -s` = 'Darwin' ]; then \
+           install_name_tool -id data_table$(SHLIB_EXT) data_table$(SHLIB_EXT); \
+        fi
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Wed Dec 20 21:42:48 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Thu, 21 Dec 2023 09:42:48 +1300
+Subject: [R-pkg-devel] portability question
+In-Reply-To: <CAJqTW461njEgL6GQDAVk1qckH54tsLf542KzczLcY_WwUtBGeA@mail.gmail.com>
+References: <CAJqTW461njEgL6GQDAVk1qckH54tsLf542KzczLcY_WwUtBGeA@mail.gmail.com>
+Message-ID: <B3562258-12AA-4FF7-AC20-246AF8EE4AB2@R-project.org>
+
+Steven,
+
+no, I'm not aware of any negative effect, in fact having an index in the archive is always a good idea - some linkers require it, some work faster with it and at the worst the linker ignores it. And as far as I can tell all current system "ar" implementations support the -s flag (even though technically, it's only part of the XSI POSIX extension, but POSIX doesn't define ranlib so ar -s is better than using ranlib directly).
+
+Cheers,
+Simon
+
+
+> On 21/12/2023, at 8:10 AM, Steven Scott <steve.the.bayesian at gmail.com> wrote:
+> 
+> The Boom package builds a library against which other packages link.  The
+> library is built using the Makevars mechanism using the line
+> 
+> ${AR} rc $@ $^
+> 
+> A user has asked me to change 'rc' to 'rcs' so that 'ranlib' will be run on
+> the archive.  This is apparently needed for certain flavors of macs.  I'm
+> hoping someone on this list can comment on the portability of that change
+> and whether it would negatively affect other platforms.  Thank you.
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Wed Dec 20 21:51:22 2023
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Thu, 21 Dec 2023 09:51:22 +1300
+Subject: [R-pkg-devel] portability question
+In-Reply-To: <25987.17326.224163.689337@rob.eddelbuettel.com>
+References: <CAJqTW461njEgL6GQDAVk1qckH54tsLf542KzczLcY_WwUtBGeA@mail.gmail.com>
+ <25987.17326.224163.689337@rob.eddelbuettel.com>
+Message-ID: <BC530EF8-0BD9-4CAF-987D-AA8ABFD876C9@R-project.org>
+
+This has nothing to do with Steven's question since he is creating a *static* library whereas install_name_tool changes install name ID entry of a *dynamic* library. Also the data.table example is effectively a no-op, because changing the ID makes no difference as it can't be linked against directly anyway. [In general, taking advice from data.table regarding macOS doesn't strike me as wise given that the authors can't even get their package to work properly on macOS.]
+
+Cheers,
+Simon
+
+
+> On 21/12/2023, at 8:42 AM, Dirk Eddelbuettel <edd at debian.org> wrote:
+> 
+> 
+> On 20 December 2023 at 11:10, Steven Scott wrote:
+> | The Boom package builds a library against which other packages link.  The
+> | library is built using the Makevars mechanism using the line
+> | 
+> | ${AR} rc $@ $^
+> | 
+> | A user has asked me to change 'rc' to 'rcs' so that 'ranlib' will be run on
+> | the archive.  This is apparently needed for certain flavors of macs.  I'm
+> | hoping someone on this list can comment on the portability of that change
+> | and whether it would negatively affect other platforms.  Thank you.
+> 
+> Just branch for macOS.  Here is a line I 'borrowed' years ago from data.table
+> and still use for packages needed to call install_name_tool on macOS.  You
+> could have a simple 'true' branch of the test use 'rcs' and the 'false'
+> branch do what you have always done.  Without any portability concerns.
+> 
+> From https://github.com/Rdatatable/data.table/blob/master/src/Makevars.in#L14
+> and indented here for clarity
+> 
+>        if [ "$(OS)" != "Windows_NT" ] && [ `uname -s` = 'Darwin' ]; then \
+>           install_name_tool -id data_table$(SHLIB_EXT) data_table$(SHLIB_EXT); \
+>        fi
+> 
+> Dirk
+> 
+> -- 
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From edd @end|ng |rom deb|@n@org  Wed Dec 20 22:09:45 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 20 Dec 2023 15:09:45 -0600
+Subject: [R-pkg-devel] portability question
+In-Reply-To: <BC530EF8-0BD9-4CAF-987D-AA8ABFD876C9@R-project.org>
+References: <CAJqTW461njEgL6GQDAVk1qckH54tsLf542KzczLcY_WwUtBGeA@mail.gmail.com>
+ <25987.17326.224163.689337@rob.eddelbuettel.com>
+ <BC530EF8-0BD9-4CAF-987D-AA8ABFD876C9@R-project.org>
+Message-ID: <25987.22553.192996.868641@rob.eddelbuettel.com>
+
+
+The point of my email was that
+
+   if [ `uname -s` = 'Darwin' ]; then ...
+
+allows for a clean branch between the (new here) macOS behaviour and (old,
+prior) behavior removing all concerns about 'portability' (per the Subject:).
+
+You missed 100% of that.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From @teve@the@b@ye@|@n @end|ng |rom gm@||@com  Wed Dec 20 22:11:16 2023
+From: @teve@the@b@ye@|@n @end|ng |rom gm@||@com (Steven Scott)
+Date: Wed, 20 Dec 2023 13:11:16 -0800
+Subject: [R-pkg-devel] portability question
+In-Reply-To: <BC530EF8-0BD9-4CAF-987D-AA8ABFD876C9@R-project.org>
+References: <CAJqTW461njEgL6GQDAVk1qckH54tsLf542KzczLcY_WwUtBGeA@mail.gmail.com>
+ <25987.17326.224163.689337@rob.eddelbuettel.com>
+ <BC530EF8-0BD9-4CAF-987D-AA8ABFD876C9@R-project.org>
+Message-ID: <CAJqTW46nrsUMEkYpkGep3qFFzGVn2e0Xs35FSaU6jAHyjys-UA@mail.gmail.com>
+
+I think Dirk was just showing me an example of how to branch on OS, which
+would be relevant in the event that adding the 's' was harmful.  In this
+case it sounds like adding the 's' is the right path forward, which is the
+advice I was hoping for.  Thank you both!
+
+On Wed, Dec 20, 2023 at 12:51?PM Simon Urbanek <simon.urbanek at r-project.org>
+wrote:
+
+> This has nothing to do with Steven's question since he is creating a
+> *static* library whereas install_name_tool changes install name ID entry of
+> a *dynamic* library. Also the data.table example is effectively a no-op,
+> because changing the ID makes no difference as it can't be linked against
+> directly anyway. [In general, taking advice from data.table regarding macOS
+> doesn't strike me as wise given that the authors can't even get their
+> package to work properly on macOS.]
+>
+> Cheers,
+> Simon
+>
+>
+> > On 21/12/2023, at 8:42 AM, Dirk Eddelbuettel <edd at debian.org> wrote:
+> >
+> >
+> > On 20 December 2023 at 11:10, Steven Scott wrote:
+> > | The Boom package builds a library against which other packages link.
+> The
+> > | library is built using the Makevars mechanism using the line
+> > |
+> > | ${AR} rc $@ $^
+> > |
+> > | A user has asked me to change 'rc' to 'rcs' so that 'ranlib' will be
+> run on
+> > | the archive.  This is apparently needed for certain flavors of macs.
+> I'm
+> > | hoping someone on this list can comment on the portability of that
+> change
+> > | and whether it would negatively affect other platforms.  Thank you.
+> >
+> > Just branch for macOS.  Here is a line I 'borrowed' years ago from
+> data.table
+> > and still use for packages needed to call install_name_tool on macOS.
+> You
+> > could have a simple 'true' branch of the test use 'rcs' and the 'false'
+> > branch do what you have always done.  Without any portability concerns.
+> >
+> > From
+> https://github.com/Rdatatable/data.table/blob/master/src/Makevars.in#L14
+> > and indented here for clarity
+> >
+> >        if [ "$(OS)" != "Windows_NT" ] && [ `uname -s` = 'Darwin' ]; then
+> \
+> >           install_name_tool -id data_table$(SHLIB_EXT)
+> data_table$(SHLIB_EXT); \
+> >        fi
+> >
+> > Dirk
+> >
+> > --
+> > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
