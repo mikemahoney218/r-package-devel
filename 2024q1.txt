@@ -1,0 +1,198 @@
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Tue Jan  2 13:59:13 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Tue, 2 Jan 2024 13:59:13 +0100
+Subject: [R-pkg-devel] CRAN submission struggle
+In-Reply-To: <CAAS8PAKctuyYkXYRenUK+XqwgPeY_F09aK=b-dRYS6HV4GoMPQ@mail.gmail.com>
+References: <CABuTGP4PHvRLjhih=7V=EuVmWV-zyXPbmjSr5TnxEF76UXdUCw@mail.gmail.com>
+ <20231216210737.5ea551d1@Tarkus>
+ <CABuTGP4Opm_b0N_T1sLeTKPv4oNA4LMMOOMjyBfejRtCGg1BqA@mail.gmail.com>
+ <20231217170639.7376f8c3@Tarkus>
+ <CABuTGP6YP3XhFtYo5PcNcu0yfNPbQWHVvyzFAyeyRsk7CX0EHA@mail.gmail.com>
+ <20231218120148.51339325@Tarkus>
+ <CABuTGP61Ex1mjz0hxyEJdsAvWTqrQwkPRSyeSwTrcDCGm4qM0A@mail.gmail.com>
+ <20231218221521.351314e1@Tarkus>
+ <CABuTGP4R9gCxPB_wJNoR3A1F4oJx3GSKSXd8=Z83esKhNVu=Tg@mail.gmail.com>
+ <20231218232233.75e450c9@parabola>
+ <CABuTGP48FCN5DPmdLfgXVOD0ZWjKtPXMt817fLmP7xtcVSZv0g@mail.gmail.com>
+ <20231219003331.4e822ba7@Tarkus>
+ <CABuTGP5yOhT-iE5fFxWEeEXSzJPJPg_33tqxjvnak_TYC2frfw@mail.gmail.com>
+ <20231228165509.189879dd@arachnoid>
+ <CABuTGP5xk58SFEN7ib5qPe9o6zKYfxoDhEn8kHd7Cx2UTz=OCw@mail.gmail.com>
+ <CAAS8PAKctuyYkXYRenUK+XqwgPeY_F09aK=b-dRYS6HV4GoMPQ@mail.gmail.com>
+Message-ID: <8235587f-f936-4010-8bde-768eba54384b@statistik.tu-dortmund.de>
+
+
+
+On 29.12.2023 09:13, Greg Hunt wrote:
+> Christaan,
+> The elapsed time note is because CRAN expects that examples will be
+> configured to run single threaded and some package that you use, or a
+> package used by a package that you use is multi-threading by default and
+> using more CPU time than clock time. If you cannot figure out how to
+> reconfigure the multi-threaded package, a number of people have found that
+> the simplest thing to do is disable running the example (which reduces the
+> effective test coverage provided by the example).
+
+
+No and no:
+
+1.
+       user system elapsed
+IOPS 10.06   3.35   35.04
+
+suggests that either the machines this ran on is heavily loaded (so that 
+elapsed >> user) or something is waiting like some internet access. [For 
+multithreading it would be user > elapsed.]
+
+2. The solution is not to exclude examples ebtirely, as we need runtime 
+checks.
+
+For internet access: Set a timeout and let the exampe fail gracefully in 
+case web access takes more than, e.g., 2. sec.
+
+In general: Please reduce each example to less than 5 sec.
+
+So use small toy examples. If you really want to add rel world examples 
+that may take longer, then add them in addition to toy examples and wrap 
+in \donttest{}.
+
+Best,
+Uwe Ligges
+
+
+
+
+
+
+
+
+> 
+> I haven?t encountered the miktex exception file before but i suspect its a
+> side effect of a miktex error. Packages should not leave files behind in
+> the temp directory. If you expect a miktex error you need to remove the
+> file. If you don?t you need to track down and fix or work around the bug.
+> The build process is really a quality check on your package.
+> 
+> Greg
+> 
+> On Fri, 29 Dec 2023 at 3:01?am, Christiaan Pieterse <
+> pietie.cjp.1908 at gmail.com> wrote:
+> 
+>> Hi,
+>>
+>> Thank you for showing the difference in the ExampleTradeData. I've fixed
+>> this by adding a .Gitignore file and a "data-raw" folder to load the
+>> ExampleTradeData. I hope I did this correctly. When I check the package (
+>> https://github.com/WoutersResearchGroup/R-IO-PS/tree/CRAN-prep) in
+>> RStudio.
+>> I only get 3 notes (see below), and if I run it in PositCloud, it crashes
+>> or yields the same 1 ERROR and 2 NOTES result as before. Why might this be?
+>> Is it a problem or is it fine if I continue working in RStudio since I
+>> cannot increase the specs in PositCloud because I'm working on a research
+>> group account?
+>>
+>> Here are the 3 notes I receive in RStudio:
+>>
+>> The first is the expected New Submission Note.
+>>
+>> The second is the runtime that is too long:
+>> * checking examples ... [43s] NOTE
+>> Examples with CPU (user + system) or elapsed time > 5s
+>>        user system elapsed
+>> IOPS 10.06   3.35   35.04
+>> How can I reduce this time? I'm not sure how to reduce the size of my
+>> ExampleTradeData without the check giving errors when running the example.
+>>
+>> The third note I am unsure what it means:
+>> * checking for detritus in the temp directory ... NOTE
+>> Found the following files/directories:
+>>    'lastMiKTeXException'
+>>
+>> Kind regards
+>> Christiaan
+>>
+>> On Thu, 28 Dec 2023 at 15:55, Ivan Krylov <krylov.r00t at gmail.com> wrote:
+>>
+>>> Hi Christiaan,
+>>>
+>>> ? Thu, 28 Dec 2023 14:57:55 +0200
+>>> Christiaan Pieterse <pietie.cjp.1908 at gmail.com> ?????:
+>>>
+>>>> Still, I couldn't figure out why I ran into this problem, so I
+>>>> created a test file called "Test Example.R" (available at the same
+>>>> GitHub repository:
+>>>> https://github.com/WoutersResearchGroup/R-IO-PS/tree/CRAN-prep).
+>>>
+>>> I see you're always adding or updating files to the GitHub repo by
+>>> means of uploading. While that's certainly one way to use GitHub, it's
+>>> combines the least convenient aspects of two approaches to using GitHub.
+>>>
+>>> With GitHub purely in the browser, GitHub is just a website where you
+>>> keep and edit code, running nothing else on the local computer. Code
+>>> can be run in Codespaces or using GitHub Actions. Microsoft will want
+>>> to be paid money to run code on their computers.
+>>>
+>>> With GitHub as a Git remote, there is a local checkout [*] that's kept
+>>> in sync with GitHub by means of commits [**] and pushes [***], letting
+>>> you create meaningful, describable snapshots of changes in your code
+>>> spanning multiple files at the same time.
+>>>
+>>> Right now, it probably feels like Dropbox but worse.
+>>>
+>>>> This file creates the function in the global environment (note that
+>>>> this is the same function code as available in the package
+>>>> "R/iopspackage2.0.R" file), and then runs this function with the same
+>>>> example as in the package (If you want to try this yourself, just
+>>>> load the data/ExampleTradeData.rda in before running the Test Example
+>>>> file). This test file yields no errors when I run it and produces the
+>>>> correct results. When I then proceed to build and check the package,
+>>>> it yields the same example error as before. I do not understand why
+>>>> or what could cause this issue.
+>>>
+>>> The difference is in the ExampleTradeData variable, which "Test
+>>> Example.R" doesn't define.
+>>>
+>>> With data(ExampleTradeData), the script works.
+>>>
+>>> With ExampleTradeData <-
+>>>
+>>>
+>> read.csv(system.file("extdata","ExampleTradeData.csv",package="iopspackage")),
+>>> the script fails exactly the same way as example(IOPS) does.
+>>>
+>>>> I'm not sure if I should send out another email to the developers to
+>>>> see if someone else spots something I'm not seeing.
+>>>
+>>> It may help to keep Cc: r-package-devel at r-project.org in the e-mails
+>>> for the search engines to index the potential solutions in the mailing
+>>> list archives.
+>>>
+>>> --
+>>> Best regards,
+>>> Ivan
+>>>
+>>> [*]
+>>> https://git-scm.com/book/en/v2/Git-Basics-Getting-a-Git-Repository
+>>>
+>>> [**]
+>>>
+>>>
+>> https://git-scm.com/book/en/v2/Git-Basics-Recording-Changes-to-the-Repository
+>>>
+>>> [***]
+>>> https://git-scm.com/book/en/v2/Git-Basics-Working-with-Remotes
+>>>
+>>
+>>          [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
