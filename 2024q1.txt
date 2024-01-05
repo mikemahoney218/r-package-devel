@@ -196,3 +196,2161 @@ Uwe Ligges
 > R-package-devel at r-project.org mailing list
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
+From ke||ey @end|ng |rom d@|@c@  Wed Jan  3 14:34:27 2024
+From: ke||ey @end|ng |rom d@|@c@ (Daniel Kelley)
+Date: Wed, 3 Jan 2024 13:34:27 +0000
+Subject: [R-pkg-devel] how to use pkgdown::build_site() with a project using
+ S7 with a specialized plot()?
+Message-ID: <99119974-B153-4584-A974-C4E423D3DB83@dal.ca>
+
+# Question
+
+Is there an online example online of specializing `plot()` for S7 objects, such that `pkgdown::build_site()` will produce webpages?  I ask because I find lots of users (of other packages) tend to consult websites made with pkgdown, rather than using the online help within R.  I think the problem I am having (discussed in the following sections) has to do with my specialization of plot().  I say that because when I was using S3 objects in an earlier version of my package, `pkgdown::build_site()` worked as intended.
+
+# Background
+
+In my 'mooring' package (https://github.com/dankelley/mooring/tree/S7), I am writing code like (https://github.com/dankelley/mooring/blob/f70b53ca12e88968f65710c205b50a64f750a99d/R/plot.R#L69)
+
+```R
+#' @aliases plot.mooring
+#' ETC
+`plot.mooring::mooring` <- plot(ETC) ETC
+```
+
+to handle objects made with (https://github.com/dankelley/mooring/blob/f70b53ca12e88968f65710c205b50a64f750a99d/R/oo.R#L2)
+
+```R
+mooringS7 <- S7::new_class("mooring",
+    package = "mooring",
+ETC
+```
+
+Built up in Rstudio, with Roxygen2 being used to create documentation, things seem to work, e.g.
+
+```R
+m <- mooring(anchor(), wire(length = 80), float(), waterDepth = 100)
+plot(m)
+```
+
+produces a plot as intended, and
+
+```R
+?plot.mooring
+```
+
+produces documentation as intended.
+
+*However* I encounter a problem comes when I try building a website with
+
+```R
+pkgdown::build_site()
+```
+
+This yields results as in the next section.  (I apologize for the length. I'm including the whole thing because I thought that would be less bothersome than writing another email to the list.)
+
+I am not sure how to find the problem, and so I hope that someone on this list can point out an example of how to set up `plot()` to work with S7 objects, in such a way that documentation can be created with Roxygen2 and websites can be made with `pkgdown::build_site()`.
+
+# What pkgdown::build_site() gives
+
+```
+> library(pkgdown)
+> build_site()
+Warning: Failed to parse usage:
+
+S3method(`plot`, ``mooring::mooring``)(
+  x,
+  which = "shape",
+  showInterfaces = TRUE,
+  showDepths = FALSE,
+  showLabels = TRUE,
+  showDetails = FALSE,
+  fancy = FALSE,
+  title = "",
+  mar = c(1.5, 3.5, 3.5, 1),
+  mgp = c(2, 0.7, 0),
+  xlim = NULL,
+  xaxs = "r",
+  yaxs = "r",
+  type = "l",
+  debug = 0,
+  ...
+)
+
+-- Installing package into temporary library ----------------
+== Building pkgdown site =======================================================
+Reading from: '/Users/kelley/git/mooring'
+Writing to:   '/Users/kelley/git/mooring/docs'
+-- Initialising site -----------------------------------------------------------
+-- Building home ---------------------------------------------------------------
+Writing '404.html'
+-- Building function reference -------------------------------------------------
+Error: 
+! in callr subprocess.
+Caused by error in `map2(.x, vec_index(.x), .f, ...)`:
+! In index: 1.
+? See `$stdout` for standard output.
+Type .Last.error to see the more details.
+> .Last.error
+<callr_error/rlib_error_3_0/rlib_error/error>
+Error: 
+! in callr subprocess.
+Caused by error in `map2(.x, vec_index(.x), .f, ...)`:
+! In index: 1.
+? See `$stdout` for standard output.
+---
+Backtrace:
+1. pkgdown::build_site()
+2. pkgdown:::build_site_external(pkg = pkg, examples = examples, run?
+3. callr::r(function(..., cli_colors, pkgdown_internet) { ?
+4. callr:::get_result(output = out, options)
+5. callr:::throw(callr_remote_error(remerr, output), parent = fix_?
+---
+Subprocess backtrace:
+ 1. pkgdown::build_site(...)
+ 2. pkgdown:::build_site_local(pkg = pkg, examples = examples, run_do?
+ 3. pkgdown::build_reference(pkg, lazy = lazy, examples = examples, ?
+ 4. pkgdown::build_reference_index(pkg)
+ 5. pkgdown::render_page(pkg, "reference-index", data = data_referen?
+ 6. pkgdown:::render_page_html(pkg, name = name, data = data, depth =?
+ 7. utils::modifyList(data_template(pkg, depth = depth), da?
+ 8. base::stopifnot(is.list(x), is.list(val))
+ 9. pkgdown:::data_reference_index(pkg)
+10. meta %>% purrr::imap(data_reference_index_rows, pkg = p?
+11. base::unlist(., recursive = FALSE)
+12. purrr::compact(.)
+13. purrr::discard(.x, function(x) is_empty(.f(x)))
+14. purrr:::where_if(.x, .p, ...)
+15. purrr:::map_(.x, .p, ..., .type = "logical", .purrr_error_call ?
+16. purrr:::vctrs_vec_compat(.x, .purrr_user_env)
+17. purrr::imap(., data_reference_index_rows, pkg = pkg)
+18. purrr::map2(.x, vec_index(.x), .f, ...)
+19. purrr:::map2_("list", .x, .y, .f, ..., .progress = .progress)
+20. purrr:::with_indexed_errors(i = i, names = names, error_call = ?
+21. base::withCallingHandlers(expr, error = function(cnd) { ?
+22. purrr:::call_with_cleanup(map2_impl, environment(), .type, .pro?
+23. local .f(.x[[i]], .y[[i]], ...)
+24. pkgdown:::section_topics(section$contents, pkg$topics, pkg$src_pa?
+25. base::rbind(topics, ext_topics(ext_strings))
+26. base::rbind(deparse.level, ...)
+27. pkgdown:::ext_topics(ext_strings)
+28. purrr::map2(pkg, fun, get_rd_from_help)
+29. purrr:::map2_("list", .x, .y, .f, ..., .progress = .progress)
+30. purrr:::with_indexed_errors(i = i, names = names, error_call = ?
+31. base::withCallingHandlers(expr, error = function(cnd) { ?
+32. purrr:::call_with_cleanup(map2_impl, environment(), .type, .pro?
+33. local .f(.x[[i]], .y[[i]], ...)
+34. rlang::check_installed(package, "as it's used in the reference?
+35. base::stop(cnd)
+36. (function (cnd) ?
+37. cli::cli_abort(message, location = i, name = name, pare?
+38. | rlang::abort(message, ..., call = call, use_cli_format ?
+39. | rlang:::signal_abort(cnd, .file)
+40. | base::signalCondition(cnd)
+41. (function (cnd) ?
+42. cli::cli_abort(message, location = i, name = name, pare?
+43. | rlang::abort(message, ..., call = call, use_cli_format ?
+44. | rlang:::signal_abort(cnd, .file)
+45. | base::signalCondition(cnd)
+46. global (function (e) ?
+```
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Jan  3 15:01:20 2024
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 3 Jan 2024 17:01:20 +0300
+Subject: [R-pkg-devel] 
+ how to use pkgdown::build_site() with a project using
+ S7 with a specialized plot()?
+In-Reply-To: <99119974-B153-4584-A974-C4E423D3DB83@dal.ca>
+References: <99119974-B153-4584-A974-C4E423D3DB83@dal.ca>
+Message-ID: <20240103170120.138d2f5a@Tarkus>
+
+On Wed, 3 Jan 2024 13:34:27 +0000
+Daniel Kelley <kelley at dal.ca> wrote:
+
+> Error: 
+> ! in callr subprocess.
+> Caused by error in `map2(.x, vec_index(.x), .f, ...)`:
+> ! In index: 1.
+
+Interesting that the actual error messages seem to be completely
+empty.
+
+By chance (I was searching for "rlang See `$stdout` for standard
+output" because I was curious to know what is this error message
+telling the user to subset) I found a bug report that seems relevant
+(as it's also about S7, has the same warning and crashes in the same
+call to rlang::check_installed):
+https://github.com/r-lib/pkgdown/issues/2186
+
+Unfortunately, there's no solution, just two similar-looking cases.
+
+Is there an equivalent of options(error = recover) for callr child
+processes? If you can recover the expression evaluated by the child
+process, it could be worth executing it directly and walking the call
+stack looking at the local variables at the time of the crash.
+
+-- 
+Best regards,
+Ivan
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Wed Jan  3 17:33:44 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Wed, 3 Jan 2024 11:33:44 -0500
+Subject: [R-pkg-devel] Suggests with non-CRAN packages
+Message-ID: <CAL3ufUJs8qG7KOuX3q2T_VPavwsAhNkrvC79pk70KEq_wVZVKQ@mail.gmail.com>
+
+I have a scenario where I have an exported function that requires the
+installation a package that *is not* available on CRAN. The body of the
+function is generally:
+
+fx <- function() {
+  rlang::check_installed("noncranpkg")
+  noncranpkg::gx()
+}
+
+As required, this package is in the Suggests field. But this results in a
+note:
+
+checking package dependencies ... NOTE
+Package suggested but not available for checking: ?noncranpkg?
+
+Can this be safely ignored?
+
+	[[alternative HTML version deleted]]
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Wed Jan  3 17:43:08 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Wed, 3 Jan 2024 17:43:08 +0100
+Subject: [R-pkg-devel] Suggests with non-CRAN packages
+In-Reply-To: <CAL3ufUJs8qG7KOuX3q2T_VPavwsAhNkrvC79pk70KEq_wVZVKQ@mail.gmail.com>
+References: <CAL3ufUJs8qG7KOuX3q2T_VPavwsAhNkrvC79pk70KEq_wVZVKQ@mail.gmail.com>
+Message-ID: <3ffa6bed-84a2-43d7-a1a1-0ef7453e6943@statistik.tu-dortmund.de>
+
+
+
+On 03.01.2024 17:33, Josiah Parry wrote:
+> I have a scenario where I have an exported function that requires the
+> installation a package that *is not* available on CRAN. The body of the
+> function is generally:
+> 
+> fx <- function() {
+>    rlang::check_installed("noncranpkg")
+>    noncranpkg::gx()
+> }
+> 
+> As required, this package is in the Suggests field. But this results in a
+> note:
+> 
+> checking package dependencies ... NOTE
+> Package suggested but not available for checking: ?noncranpkg?
+> 
+> Can this be safely ignored?
+
+Yes.
+
+Best,
+Uwe Ligges
+
+
+
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Wed Jan  3 17:50:07 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Wed, 3 Jan 2024 11:50:07 -0500
+Subject: [R-pkg-devel] Suggests with non-CRAN packages
+In-Reply-To: <3ffa6bed-84a2-43d7-a1a1-0ef7453e6943@statistik.tu-dortmund.de>
+References: <CAL3ufUJs8qG7KOuX3q2T_VPavwsAhNkrvC79pk70KEq_wVZVKQ@mail.gmail.com>
+ <3ffa6bed-84a2-43d7-a1a1-0ef7453e6943@statistik.tu-dortmund.de>
+Message-ID: <CAL3ufU+tMjvHpuEiC7KUsU1pf2EiZ_pOJW4Lm+cCtjzSf6p1mA@mail.gmail.com>
+
+Lovely, thank you!
+
+On Wed, Jan 3, 2024 at 11:43?AM Uwe Ligges <ligges at statistik.tu-dortmund.de>
+wrote:
+
+>
+>
+> On 03.01.2024 17:33, Josiah Parry wrote:
+> > I have a scenario where I have an exported function that requires the
+> > installation a package that *is not* available on CRAN. The body of the
+> > function is generally:
+> >
+> > fx <- function() {
+> >    rlang::check_installed("noncranpkg")
+> >    noncranpkg::gx()
+> > }
+> >
+> > As required, this package is in the Suggests field. But this results in a
+> > note:
+> >
+> > checking package dependencies ... NOTE
+> > Package suggested but not available for checking: ?noncranpkg?
+> >
+> > Can this be safely ignored?
+>
+> Yes.
+>
+> Best,
+> Uwe Ligges
+>
+>
+>
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Jan  3 17:58:31 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 3 Jan 2024 11:58:31 -0500
+Subject: [R-pkg-devel] Suggests with non-CRAN packages
+In-Reply-To: <CAL3ufUJs8qG7KOuX3q2T_VPavwsAhNkrvC79pk70KEq_wVZVKQ@mail.gmail.com>
+References: <CAL3ufUJs8qG7KOuX3q2T_VPavwsAhNkrvC79pk70KEq_wVZVKQ@mail.gmail.com>
+Message-ID: <4b98dd93-760c-4c21-a122-9bff615b5f62@gmail.com>
+
+On 03/01/2024 11:33 a.m., Josiah Parry wrote:
+> I have a scenario where I have an exported function that requires the
+> installation a package that *is not* available on CRAN. The body of the
+> function is generally:
+> 
+> fx <- function() {
+>    rlang::check_installed("noncranpkg")
+>    noncranpkg::gx()
+> }
+> 
+> As required, this package is in the Suggests field. But this results in a
+> note:
+> 
+> checking package dependencies ... NOTE
+> Package suggested but not available for checking: ?noncranpkg?
+> 
+> Can this be safely ignored?
+
+Uwe said yes, and he's an authority.  But for your users, it might be 
+nice to include an Additional_repositories field so they can find the 
+package.  This needs to be organized as an actual repository; the drat 
+package is a very convenient way to set one up.
+
+Duncan Murdoch
+
+
+From h@w|ckh@m @end|ng |rom gm@||@com  Wed Jan  3 18:06:11 2024
+From: h@w|ckh@m @end|ng |rom gm@||@com (Hadley Wickham)
+Date: Thu, 4 Jan 2024 06:06:11 +1300
+Subject: [R-pkg-devel] 
+ how to use pkgdown::build_site() with a project using
+ S7 with a specialized plot()?
+In-Reply-To: <99119974-B153-4584-A974-C4E423D3DB83@dal.ca>
+References: <99119974-B153-4584-A974-C4E423D3DB83@dal.ca>
+Message-ID: <CABdHhvFtCY64ArC=qHG6Zmd2NQprhOxbehy4GVSL2k=sLc=FPg@mail.gmail.com>
+
+This bug is fixed in the dev version (I don?t remember off the top of my
+head in which of pkgdown and roxygen2 you need but it might be both). I?m
+planning CRAN updates for both in the near future.
+
+Hadley
+
+On Thursday, January 4, 2024, Daniel Kelley <kelley at dal.ca> wrote:
+
+> # Question
+>
+> Is there an online example online of specializing `plot()` for S7 objects,
+> such that `pkgdown::build_site()` will produce webpages?  I ask because I
+> find lots of users (of other packages) tend to consult websites made with
+> pkgdown, rather than using the online help within R.  I think the problem I
+> am having (discussed in the following sections) has to do with my
+> specialization of plot().  I say that because when I was using S3 objects
+> in an earlier version of my package, `pkgdown::build_site()` worked as
+> intended.
+>
+> # Background
+>
+> In my 'mooring' package (https://github.com/dankelley/mooring/tree/S7), I
+> am writing code like (https://github.com/dankelley/mooring/blob/
+> f70b53ca12e88968f65710c205b50a64f750a99d/R/plot.R#L69)
+>
+> ```R
+> #' @aliases plot.mooring
+> #' ETC
+> `plot.mooring::mooring` <- plot(ETC) ETC
+> ```
+>
+> to handle objects made with (https://github.com/dankelley/mooring/blob/
+> f70b53ca12e88968f65710c205b50a64f750a99d/R/oo.R#L2)
+>
+> ```R
+> mooringS7 <- S7::new_class("mooring",
+>     package = "mooring",
+> ETC
+> ```
+>
+> Built up in Rstudio, with Roxygen2 being used to create documentation,
+> things seem to work, e.g.
+>
+> ```R
+> m <- mooring(anchor(), wire(length = 80), float(), waterDepth = 100)
+> plot(m)
+> ```
+>
+> produces a plot as intended, and
+>
+> ```R
+> ?plot.mooring
+> ```
+>
+> produces documentation as intended.
+>
+> *However* I encounter a problem comes when I try building a website with
+>
+> ```R
+> pkgdown::build_site()
+> ```
+>
+> This yields results as in the next section.  (I apologize for the length.
+> I'm including the whole thing because I thought that would be less
+> bothersome than writing another email to the list.)
+>
+> I am not sure how to find the problem, and so I hope that someone on this
+> list can point out an example of how to set up `plot()` to work with S7
+> objects, in such a way that documentation can be created with Roxygen2 and
+> websites can be made with `pkgdown::build_site()`.
+>
+> # What pkgdown::build_site() gives
+>
+> ```
+> > library(pkgdown)
+> > build_site()
+> Warning: Failed to parse usage:
+>
+> S3method(`plot`, ``mooring::mooring``)(
+>   x,
+>   which = "shape",
+>   showInterfaces = TRUE,
+>   showDepths = FALSE,
+>   showLabels = TRUE,
+>   showDetails = FALSE,
+>   fancy = FALSE,
+>   title = "",
+>   mar = c(1.5, 3.5, 3.5, 1),
+>   mgp = c(2, 0.7, 0),
+>   xlim = NULL,
+>   xaxs = "r",
+>   yaxs = "r",
+>   type = "l",
+>   debug = 0,
+>   ...
+> )
+>
+> -- Installing package into temporary library ----------------
+> == Building pkgdown site ==============================
+> =========================
+> Reading from: '/Users/kelley/git/mooring'
+> Writing to:   '/Users/kelley/git/mooring/docs'
+> -- Initialising site ------------------------------
+> -----------------------------
+> -- Building home ------------------------------
+> ---------------------------------
+> Writing '404.html'
+> -- Building function reference ------------------------------
+> -------------------
+> Error:
+> ! in callr subprocess.
+> Caused by error in `map2(.x, vec_index(.x), .f, ...)`:
+> ! In index: 1.
+> ? See `$stdout` for standard output.
+> Type .Last.error to see the more details.
+> > .Last.error
+> <callr_error/rlib_error_3_0/rlib_error/error>
+> Error:
+> ! in callr subprocess.
+> Caused by error in `map2(.x, vec_index(.x), .f, ...)`:
+> ! In index: 1.
+> ? See `$stdout` for standard output.
+> ---
+> Backtrace:
+> 1. pkgdown::build_site()
+> 2. pkgdown:::build_site_external(pkg = pkg, examples = examples, run?
+> 3. callr::r(function(..., cli_colors, pkgdown_internet) { ?
+> 4. callr:::get_result(output = out, options)
+> 5. callr:::throw(callr_remote_error(remerr, output), parent = fix_?
+> ---
+> Subprocess backtrace:
+>  1. pkgdown::build_site(...)
+>  2. pkgdown:::build_site_local(pkg = pkg, examples = examples, run_do?
+>  3. pkgdown::build_reference(pkg, lazy = lazy, examples = examples, ?
+>  4. pkgdown::build_reference_index(pkg)
+>  5. pkgdown::render_page(pkg, "reference-index", data = data_referen?
+>  6. pkgdown:::render_page_html(pkg, name = name, data = data, depth =?
+>  7. utils::modifyList(data_template(pkg, depth = depth), da?
+>  8. base::stopifnot(is.list(x), is.list(val))
+>  9. pkgdown:::data_reference_index(pkg)
+> 10. meta %>% purrr::imap(data_reference_index_rows, pkg = p?
+> 11. base::unlist(., recursive = FALSE)
+> 12. purrr::compact(.)
+> 13. purrr::discard(.x, function(x) is_empty(.f(x)))
+> 14. purrr:::where_if(.x, .p, ...)
+> 15. purrr:::map_(.x, .p, ..., .type = "logical", .purrr_error_call ?
+> 16. purrr:::vctrs_vec_compat(.x, .purrr_user_env)
+> 17. purrr::imap(., data_reference_index_rows, pkg = pkg)
+> 18. purrr::map2(.x, vec_index(.x), .f, ...)
+> 19. purrr:::map2_("list", .x, .y, .f, ..., .progress = .progress)
+> 20. purrr:::with_indexed_errors(i = i, names = names, error_call = ?
+> 21. base::withCallingHandlers(expr, error = function(cnd) { ?
+> 22. purrr:::call_with_cleanup(map2_impl, environment(), .type, .pro?
+> 23. local .f(.x[[i]], .y[[i]], ...)
+> 24. pkgdown:::section_topics(section$contents, pkg$topics, pkg$src_pa?
+> 25. base::rbind(topics, ext_topics(ext_strings))
+> 26. base::rbind(deparse.level, ...)
+> 27. pkgdown:::ext_topics(ext_strings)
+> 28. purrr::map2(pkg, fun, get_rd_from_help)
+> 29. purrr:::map2_("list", .x, .y, .f, ..., .progress = .progress)
+> 30. purrr:::with_indexed_errors(i = i, names = names, error_call = ?
+> 31. base::withCallingHandlers(expr, error = function(cnd) { ?
+> 32. purrr:::call_with_cleanup(map2_impl, environment(), .type, .pro?
+> 33. local .f(.x[[i]], .y[[i]], ...)
+> 34. rlang::check_installed(package, "as it's used in the reference?
+> 35. base::stop(cnd)
+> 36. (function (cnd) ?
+> 37. cli::cli_abort(message, location = i, name = name, pare?
+> 38. | rlang::abort(message, ..., call = call, use_cli_format ?
+> 39. | rlang:::signal_abort(cnd, .file)
+> 40. | base::signalCondition(cnd)
+> 41. (function (cnd) ?
+> 42. cli::cli_abort(message, location = i, name = name, pare?
+> 43. | rlang::abort(message, ..., call = call, use_cli_format ?
+> 44. | rlang:::signal_abort(cnd, .file)
+> 45. | base::signalCondition(cnd)
+> 46. global (function (e) ?
+> ```
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+-- 
+http://hadley.nz
+
+	[[alternative HTML version deleted]]
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Wed Jan  3 18:14:07 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Wed, 3 Jan 2024 18:14:07 +0100
+Subject: [R-pkg-devel] Suggests with non-CRAN packages
+In-Reply-To: <4b98dd93-760c-4c21-a122-9bff615b5f62@gmail.com>
+References: <CAL3ufUJs8qG7KOuX3q2T_VPavwsAhNkrvC79pk70KEq_wVZVKQ@mail.gmail.com>
+ <4b98dd93-760c-4c21-a122-9bff615b5f62@gmail.com>
+Message-ID: <fd578d29-d30e-4060-a774-c141aa095c33@statistik.tu-dortmund.de>
+
+
+
+On 03.01.2024 17:58, Duncan Murdoch wrote:
+> On 03/01/2024 11:33 a.m., Josiah Parry wrote:
+>> I have a scenario where I have an exported function that requires the
+>> installation a package that *is not* available on CRAN. The body of the
+>> function is generally:
+>>
+>> fx <- function() {
+>> ?? rlang::check_installed("noncranpkg")
+>> ?? noncranpkg::gx()
+>> }
+>>
+>> As required, this package is in the Suggests field. But this results in a
+>> note:
+>>
+>> checking package dependencies ... NOTE
+>> Package suggested but not available for checking: ?noncranpkg?
+>>
+>> Can this be safely ignored?
+> 
+> Uwe said yes, and he's an authority.? But for your users, it might be 
+> nice to include an Additional_repositories field so they can find the 
+> package.? This needs to be organized as an actual repository; the drat 
+> package is a very convenient way to set one up.
+
+Thanks for elaborating, yes of course, people have to declare where to 
+get the package from. The note from above is still unavoidable in that case.
+
+Best,
+Uwe
+
+> 
+> Duncan Murdoch
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Wed Jan  3 18:19:45 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Wed, 3 Jan 2024 12:19:45 -0500
+Subject: [R-pkg-devel] Suggests with non-CRAN packages
+In-Reply-To: <fd578d29-d30e-4060-a774-c141aa095c33@statistik.tu-dortmund.de>
+References: <CAL3ufUJs8qG7KOuX3q2T_VPavwsAhNkrvC79pk70KEq_wVZVKQ@mail.gmail.com>
+ <4b98dd93-760c-4c21-a122-9bff615b5f62@gmail.com>
+ <fd578d29-d30e-4060-a774-c141aa095c33@statistik.tu-dortmund.de>
+Message-ID: <CAL3ufUL2que0kEhmtuNt41BJyQKxo-UcwXzJkMS+3LZ7CbYnZw@mail.gmail.com>
+
+Thanks, both. I'm not familiar with Additional_repositories. Must the
+package source be specified there? Or can it be specified via documentation
+a la Rd file?
+
+On Wed, Jan 3, 2024 at 12:14?PM Uwe Ligges <ligges at statistik.tu-dortmund.de>
+wrote:
+
+>
+>
+> On 03.01.2024 17:58, Duncan Murdoch wrote:
+> > On 03/01/2024 11:33 a.m., Josiah Parry wrote:
+> >> I have a scenario where I have an exported function that requires the
+> >> installation a package that *is not* available on CRAN. The body of the
+> >> function is generally:
+> >>
+> >> fx <- function() {
+> >>    rlang::check_installed("noncranpkg")
+> >>    noncranpkg::gx()
+> >> }
+> >>
+> >> As required, this package is in the Suggests field. But this results in
+> a
+> >> note:
+> >>
+> >> checking package dependencies ... NOTE
+> >> Package suggested but not available for checking: ?noncranpkg?
+> >>
+> >> Can this be safely ignored?
+> >
+> > Uwe said yes, and he's an authority.  But for your users, it might be
+> > nice to include an Additional_repositories field so they can find the
+> > package.  This needs to be organized as an actual repository; the drat
+> > package is a very convenient way to set one up.
+>
+> Thanks for elaborating, yes of course, people have to declare where to
+> get the package from. The note from above is still unavoidable in that
+> case.
+>
+> Best,
+> Uwe
+>
+> >
+> > Duncan Murdoch
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From ke||ey @end|ng |rom d@|@c@  Wed Jan  3 18:31:59 2024
+From: ke||ey @end|ng |rom d@|@c@ (Daniel Kelley)
+Date: Wed, 3 Jan 2024 17:31:59 +0000
+Subject: [R-pkg-devel] 
+ how to use pkgdown::build_site() with a project using
+ S7 with a specialized plot()?
+In-Reply-To: <CABdHhvFtCY64ArC=qHG6Zmd2NQprhOxbehy4GVSL2k=sLc=FPg@mail.gmail.com>
+References: <99119974-B153-4584-A974-C4E423D3DB83@dal.ca>
+ <CABdHhvFtCY64ArC=qHG6Zmd2NQprhOxbehy4GVSL2k=sLc=FPg@mail.gmail.com>
+Message-ID: <DF86B412-821B-45D0-9DE7-C55CE7DA6A8D@dal.ca>
+
+Thanks.  I installed the latest roxygen2 and pkgdown, and tried to make a simple reprex
+git clone https://github.com/dankelley/mooring.git
+cd mooring
+git checkout S7
+Rscript -e "pkgdown::clean_site()"
+Rscript -e "pkgdown::build_site()"
+
+but it still fails.  (Full output is below, for completeness.) I wonder whether I ought to be doing something extra in the Roxygen code (in file R/plot.R within this directory.). Please note that I can rename it as "draw()" or something, but I'm hoping to learn S7 properly, because I'm really quite keen to leave my S3 and S4 days behind me.  (PS to Hadley: I loved the presentation you gave on what was then R7, and have recommended it to colleagues not just for the R7 information, but for the concise explanation of the benefit of OOP and generics.)
+
+?? Installing package mooring into temporary library ???????????????????????????
+?? Building pkgdown site for package mooring ???????????????????????????????????
+Reading from: /Users/kelley/wednesday/mooring
+Writing to: /Users/kelley/wednesday/mooring/docs
+?? Initialising site ???????????????????????????????????????????????????????????
+Copying
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/bootstrap-toc.css,
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/bootstrap-toc.js,
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/docsearch.css,
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/docsearch.js,
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/link.svg,
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/pkgdown.css,
+and
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/pkgdown.js
+to bootstrap-toc.css, bootstrap-toc.js, docsearch.css, docsearch.js, link.svg,
+pkgdown.css, and pkgdown.js
+?? Building home ???????????????????????????????????????????????????????????????
+Writing authors.html
+Copying man/figures/Makefile, man/figures/README-example-1.png,
+man/figures/README-example-2.png, man/figures/force_diagram.R, and
+man/figures/force_diagram.png
+to reference/figures/Makefile, reference/figures/README-example-1.png,
+reference/figures/README-example-2.png, reference/figures/force_diagram.R, and
+reference/figures/force_diagram.png
+Writing 404.html
+?? Building function reference ?????????????????????????????????????????????????
+Error:
+! in callr subprocess.
+Caused by error in `map2(.x, vec_index(.x), .f, ...)`:
+! In index: 1.
+---
+Standard error:
+?? Building pkgdown site for package mooring ???????????????????????????????????
+Reading from: /Users/kelley/wednesday/mooring
+Writing to: /Users/kelley/wednesday/mooring/docs
+?? Initialising site ???????????????????????????????????????????????????????????
+Copying
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/bootstrap-toc.css,
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/bootstrap-toc.js,
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/docsearch.css,
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/docsearch.js,
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/link.svg,
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/pkgdown.css,
+and
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/pkgdown.js
+to bootstrap-toc.css, bootstrap-toc.js, docsearch.css, docsearch.js, link.svg,
+pkgdown.css, and pkgdown.js
+?? Building home ???????????????????????????????????????????????????????????????
+Writing authors.html
+Copying man/figures/Makefile, man/figures/README-example-1.png,
+man/figures/README-example-2.png, man/figures/force_diagram.R, and
+man/figures/force_diagram.png
+to reference/figures/Makefile, reference/figures/README-example-1.png,
+reference/figures/README-example-2.png, reference/figures/force_diagram.R, and
+reference/figures/force_diagram.png
+Writing 404.html
+?? Building function reference ?????????????????????????????????????????????????
+---
+Backtrace:
+1. pkgdown::build_site()
+2. pkgdown:::build_site_external(pkg = pkg, examples = examples, run_dont_run = run_don?
+3. callr::r(function(..., cli_colors, pkgdown_internet) { ?
+4. callr:::get_result(output = out, options)
+5. callr:::throw(callr_remote_error(remerr, output), parent = fix_msg(remerr[[3]]))
+---
+Subprocess backtrace:
+ 1. pkgdown::build_site(...)
+ 2. pkgdown:::build_site_local(pkg = pkg, examples = examples, run_dont_run = run_dont_r?
+ 3. pkgdown::build_reference(pkg, lazy = lazy, examples = examples, run_dont_run = run_?
+ 4. pkgdown::build_reference_index(pkg)
+ 5. pkgdown::render_page(pkg, "reference-index", data = data_reference_index(pkg), ?
+ 6. pkgdown:::render_page_html(pkg, name = name, data = data, depth = depth)
+ 7. utils::modifyList(data_template(pkg, depth = depth), data)
+ 8. base::stopifnot(is.list(x), is.list(val))
+ 9. pkgdown:::data_reference_index(pkg)
+10. meta %>% purrr::imap(data_reference_index_rows, pkg = pkg) %>% ?
+11. base::unlist(., recursive = FALSE)
+12. purrr::compact(.)
+13. purrr::discard(.x, function(x) is_empty(.f(x)))
+14. purrr:::where_if(.x, .p, ...)
+15. purrr:::map_(.x, .p, ..., .type = "logical", .purrr_error_call = .purrr_error_call)
+16. purrr:::vctrs_vec_compat(.x, .purrr_user_env)
+17. purrr::imap(., data_reference_index_rows, pkg = pkg)
+18. purrr::map2(.x, vec_index(.x), .f, ...)
+19. purrr:::map2_("list", .x, .y, .f, ..., .progress = .progress)
+20. purrr:::with_indexed_errors(i = i, names = names, error_call = .purrr_error_call, ?
+21. base::withCallingHandlers(expr, error = function(cnd) { ?
+22. purrr:::call_with_cleanup(map2_impl, environment(), .type, .progress, ?
+23. local .f(.x[[i]], .y[[i]], ...)
+24. pkgdown:::section_topics(section$contents, pkg$topics, pkg$src_path)
+25. base::rbind(topics, ext_topics(ext_strings))
+26. base::rbind(deparse.level, ...)
+27. pkgdown:::ext_topics(ext_strings)
+28. purrr::map2(pkg, fun, get_rd_from_help)
+29. purrr:::map2_("list", .x, .y, .f, ..., .progress = .progress)
+30. purrr:::with_indexed_errors(i = i, names = names, error_call = .purrr_error_call, ?
+31. base::withCallingHandlers(expr, error = function(cnd) { ?
+32. purrr:::call_with_cleanup(map2_impl, environment(), .type, .progress, ?
+33. local .f(.x[[i]], .y[[i]], ...)
+34. rlang::check_installed(package, "as it's used in the reference index.")
+35. base::stop(cnd)
+36. (function (cnd) ?
+37. cli::cli_abort(message, location = i, name = name, parent = cnd, ?
+38. | rlang::abort(message, ..., call = call, use_cli_format = TRUE, ?
+39. | rlang:::signal_abort(cnd, .file)
+40. | base::signalCondition(cnd)
+41. (function (cnd) ?
+42. cli::cli_abort(message, location = i, name = name, parent = cnd, ?
+43. | rlang::abort(message, ..., call = call, use_cli_format = TRUE, ?
+44. | rlang:::signal_abort(cnd, .file)
+45. | base::signalCondition(cnd)
+46. global (function (e) ?
+Execution halted
+
+
+
+On Jan 3, 2024, at 1:06?PM, Hadley Wickham <h.wickham at gmail.com> wrote:
+
+CAUTION: The Sender of this email is not from within Dalhousie.
+This bug is fixed in the dev version (I don?t remember off the top of my head in which of pkgdown and roxygen2 you need but it might be both). I?m planning CRAN updates for both in the near future.
+
+Hadley
+
+On Thursday, January 4, 2024, Daniel Kelley <kelley at dal.ca<mailto:kelley at dal.ca>> wrote:
+# Question
+
+Is there an online example online of specializing `plot()` for S7 objects, such that `pkgdown::build_site()` will produce webpages?  I ask because I find lots of users (of other packages) tend to consult websites made with pkgdown, rather than using the online help within R.  I think the problem I am having (discussed in the following sections) has to do with my specialization of plot().  I say that because when I was using S3 objects in an earlier version of my package, `pkgdown::build_site()` worked as intended.
+
+# Background
+
+In my 'mooring' package (https://github.com/dankelley/mooring/tree/S7), I am writing code like (https://github.com/dankelley/mooring/blob/f70b53ca12e88968f65710c205b50a64f750a99d/R/plot.R#L69)
+
+```R
+#' @aliases plot.mooring
+#' ETC
+`plot.mooring::mooring` <- plot(ETC) ETC
+```
+
+to handle objects made with (https://github.com/dankelley/mooring/blob/f70b53ca12e88968f65710c205b50a64f750a99d/R/oo.R#L2)
+
+```R
+mooringS7 <- S7::new_class("mooring",
+    package = "mooring",
+ETC
+```
+
+Built up in Rstudio, with Roxygen2 being used to create documentation, things seem to work, e.g.
+
+```R
+m <- mooring(anchor(), wire(length = 80), float(), waterDepth = 100)
+plot(m)
+```
+
+produces a plot as intended, and
+
+```R
+?plot.mooring
+```
+
+produces documentation as intended.
+
+*However* I encounter a problem comes when I try building a website with
+
+```R
+pkgdown::build_site()
+```
+
+This yields results as in the next section.  (I apologize for the length. I'm including the whole thing because I thought that would be less bothersome than writing another email to the list.)
+
+I am not sure how to find the problem, and so I hope that someone on this list can point out an example of how to set up `plot()` to work with S7 objects, in such a way that documentation can be created with Roxygen2 and websites can be made with `pkgdown::build_site()`.
+
+# What pkgdown::build_site() gives
+
+```
+> library(pkgdown)
+> build_site()
+Warning: Failed to parse usage:
+
+S3method(`plot`, ``mooring::mooring``)(
+  x,
+  which = "shape",
+  showInterfaces = TRUE,
+  showDepths = FALSE,
+  showLabels = TRUE,
+  showDetails = FALSE,
+  fancy = FALSE,
+  title = "",
+  mar = c(1.5, 3.5, 3.5, 1),
+  mgp = c(2, 0.7, 0),
+  xlim = NULL,
+  xaxs = "r",
+  yaxs = "r",
+  type = "l",
+  debug = 0,
+  ...
+)
+
+-- Installing package into temporary library ----------------
+== Building pkgdown site =======================================================
+Reading from: '/Users/kelley/git/mooring'
+Writing to:   '/Users/kelley/git/mooring/docs'
+-- Initialising site -----------------------------------------------------------
+-- Building home ---------------------------------------------------------------
+Writing '404.html'
+-- Building function reference -------------------------------------------------
+Error:
+! in callr subprocess.
+Caused by error in `map2(.x, vec_index(.x), .f, ...)`:
+! In index: 1.
+? See `$stdout` for standard output.
+Type .Last.error to see the more details.
+> .Last.error
+<callr_error/rlib_error_3_0/rlib_error/error>
+Error:
+! in callr subprocess.
+Caused by error in `map2(.x, vec_index(.x), .f, ...)`:
+! In index: 1.
+? See `$stdout` for standard output.
+---
+Backtrace:
+1. pkgdown::build_site()
+2. pkgdown:::build_site_external(pkg = pkg, examples = examples, run?
+3. callr::r(function(..., cli_colors, pkgdown_internet) { ?
+4. callr:::get_result(output = out, options)
+5. callr:::throw(callr_remote_error(remerr, output), parent = fix_?
+---
+Subprocess backtrace:
+ 1. pkgdown::build_site(...)
+ 2. pkgdown:::build_site_local(pkg = pkg, examples = examples, run_do?
+ 3. pkgdown::build_reference(pkg, lazy = lazy, examples = examples, ?
+ 4. pkgdown::build_reference_index(pkg)
+ 5. pkgdown::render_page(pkg, "reference-index", data = data_referen?
+ 6. pkgdown:::render_page_html(pkg, name = name, data = data, depth =?
+ 7. utils::modifyList(data_template(pkg, depth = depth), da?
+ 8. base::stopifnot(is.list(x), is.list(val))
+ 9. pkgdown:::data_reference_index(pkg)
+10. meta %>% purrr::imap(data_reference_index_rows, pkg = p?
+11. base::unlist(., recursive = FALSE)
+12. purrr::compact(.)
+13. purrr::discard(.x, function(x) is_empty(.f(x)))
+14. purrr:::where_if(.x, .p, ...)
+15. purrr:::map_(.x, .p, ..., .type = "logical", .purrr_error_call ?
+16. purrr:::vctrs_vec_compat(.x, .purrr_user_env)
+17. purrr::imap(., data_reference_index_rows, pkg = pkg)
+18. purrr::map2(.x, vec_index(.x), .f, ...)
+19. purrr:::map2_("list", .x, .y, .f, ..., .progress = .progress)
+20. purrr:::with_indexed_errors(i = i, names = names, error_call = ?
+21. base::withCallingHandlers(expr, error = function(cnd) { ?
+22. purrr:::call_with_cleanup(map2_impl, environment(), .type, .pro?
+23. local .f(.x[[i]], .y[[i]], ...)
+24. pkgdown:::section_topics(section$contents, pkg$topics, pkg$src_pa?
+25. base::rbind(topics, ext_topics(ext_strings))
+26. base::rbind(deparse.level, ...)
+27. pkgdown:::ext_topics(ext_strings)
+28. purrr::map2(pkg, fun, get_rd_from_help)
+29. purrr:::map2_("list", .x, .y, .f, ..., .progress = .progress)
+30. purrr:::with_indexed_errors(i = i, names = names, error_call = ?
+31. base::withCallingHandlers(expr, error = function(cnd) { ?
+32. purrr:::call_with_cleanup(map2_impl, environment(), .type, .pro?
+33. local .f(.x[[i]], .y[[i]], ...)
+34. rlang::check_installed(package, "as it's used in the reference?
+35. base::stop(cnd)
+36. (function (cnd) ?
+37. cli::cli_abort(message, location = i, name = name, pare?
+38. | rlang::abort(message, ..., call = call, use_cli_format ?
+39. | rlang:::signal_abort(cnd, .file)
+40. | base::signalCondition(cnd)
+41. (function (cnd) ?
+42. cli::cli_abort(message, location = i, name = name, pare?
+43. | rlang::abort(message, ..., call = call, use_cli_format ?
+44. | rlang:::signal_abort(cnd, .file)
+45. | base::signalCondition(cnd)
+46. global (function (e) ?
+```
+
+______________________________________________
+R-package-devel at r-project.org<mailto:R-package-devel at r-project.org> mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+--
+http://hadley.nz<http://hadley.nz/>
+
+
+	[[alternative HTML version deleted]]
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Wed Jan  3 18:35:56 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Wed, 3 Jan 2024 18:35:56 +0100
+Subject: [R-pkg-devel] Suggests with non-CRAN packages
+In-Reply-To: <CAL3ufUL2que0kEhmtuNt41BJyQKxo-UcwXzJkMS+3LZ7CbYnZw@mail.gmail.com>
+References: <CAL3ufUJs8qG7KOuX3q2T_VPavwsAhNkrvC79pk70KEq_wVZVKQ@mail.gmail.com>
+ <4b98dd93-760c-4c21-a122-9bff615b5f62@gmail.com>
+ <fd578d29-d30e-4060-a774-c141aa095c33@statistik.tu-dortmund.de>
+ <CAL3ufUL2que0kEhmtuNt41BJyQKxo-UcwXzJkMS+3LZ7CbYnZw@mail.gmail.com>
+Message-ID: <9f77096b-e7ab-4750-ab60-802576dfb471@statistik.tu-dortmund.de>
+
+ From the CRAN polcies:
+
+"Packages on which a CRAN package depends should be available from a 
+mainstream repository: if any mentioned in ?Suggests? or ?Enhances? 
+fields are not from such a repository, where to obtain them at a 
+repository should be specified in an ?Additional_repositories? field of 
+the DESCRIPTION file (as a comma-separated list of repository URLs) or 
+for other means of access, described in the ?Description? field. "
+
+Best,
+Uwe Ligges
+
+
+
+
+On 03.01.2024 18:19, Josiah Parry wrote:
+> Thanks, both. I'm not familiar with Additional_repositories. Must the 
+> package source be specified there? Or can it be specified?via 
+> documentation a la Rd file?
+> 
+> On Wed, Jan 3, 2024 at 12:14?PM Uwe Ligges 
+> <ligges at statistik.tu-dortmund.de 
+> <mailto:ligges at statistik.tu-dortmund.de>> wrote:
+> 
+> 
+> 
+>     On 03.01.2024 17:58, Duncan Murdoch wrote:
+>      > On 03/01/2024 11:33 a.m., Josiah Parry wrote:
+>      >> I have a scenario where I have an exported function that
+>     requires the
+>      >> installation a package that *is not* available on CRAN. The body
+>     of the
+>      >> function is generally:
+>      >>
+>      >> fx <- function() {
+>      >> ?? rlang::check_installed("noncranpkg")
+>      >> ?? noncranpkg::gx()
+>      >> }
+>      >>
+>      >> As required, this package is in the Suggests field. But this
+>     results in a
+>      >> note:
+>      >>
+>      >> checking package dependencies ... NOTE
+>      >> Package suggested but not available for checking: ?noncranpkg?
+>      >>
+>      >> Can this be safely ignored?
+>      >
+>      > Uwe said yes, and he's an authority.? But for your users, it
+>     might be
+>      > nice to include an Additional_repositories field so they can find
+>     the
+>      > package.? This needs to be organized as an actual repository; the
+>     drat
+>      > package is a very convenient way to set one up.
+> 
+>     Thanks for elaborating, yes of course, people have to declare where to
+>     get the package from. The note from above is still unavoidable in
+>     that case.
+> 
+>     Best,
+>     Uwe
+> 
+>      >
+>      > Duncan Murdoch
+>      >
+>      > ______________________________________________
+>      > R-package-devel at r-project.org
+>     <mailto:R-package-devel at r-project.org> mailing list
+>      > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>     <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+> 
+
+From h@w|ckh@m @end|ng |rom gm@||@com  Wed Jan  3 19:48:03 2024
+From: h@w|ckh@m @end|ng |rom gm@||@com (Hadley Wickham)
+Date: Thu, 4 Jan 2024 07:48:03 +1300
+Subject: [R-pkg-devel] 
+ how to use pkgdown::build_site() with a project using
+ S7 with a specialized plot()?
+In-Reply-To: <DF86B412-821B-45D0-9DE7-C55CE7DA6A8D@dal.ca>
+References: <99119974-B153-4584-A974-C4E423D3DB83@dal.ca>
+ <CABdHhvFtCY64ArC=qHG6Zmd2NQprhOxbehy4GVSL2k=sLc=FPg@mail.gmail.com>
+ <DF86B412-821B-45D0-9DE7-C55CE7DA6A8D@dal.ca>
+Message-ID: <CABdHhvERBUSxpuQ4B+xhjtr=XvGQdRFm81KbADHFnvQcvY0uyA@mail.gmail.com>
+
+Did you re-document? You?ll need that to correctly regenerate the .Rd, I
+think. (Sorry I?m on vacation so I?m guessing at stuff from my phone)
+
+Hadley
+
+On Thursday, January 4, 2024, Daniel Kelley <kelley at dal.ca> wrote:
+
+> Thanks.  I installed the latest roxygen2 and pkgdown, and tried to make a
+> simple reprex
+> git clone https://github.com/dankelley/mooring.git
+> cd mooring
+> git checkout S7
+> Rscript -e "pkgdown::clean_site()"
+> Rscript -e "pkgdown::build_site()"
+>
+> but it still fails.  (Full output is below, for completeness.) I wonder
+> whether I ought to be doing something extra in the Roxygen code (in file
+> R/plot.R within this directory.). Please note that I can rename it as
+> "draw()" or something, but I'm hoping to learn S7 properly, because I'm
+> really quite keen to leave my S3 and S4 days behind me.  (PS to Hadley: I
+> loved the presentation you gave on what was then R7, and have recommended
+> it to colleagues not just for the R7 information, but for the concise
+> explanation of the benefit of OOP and generics.)
+>
+> ?? Installing package mooring into temporary library
+> ???????????????????????????
+> ?? Building pkgdown site for package mooring ??????????????????????????????
+> ?????
+> Reading from: /Users/kelley/wednesday/mooring
+> Writing to: /Users/kelley/wednesday/mooring/docs
+> ?? Initialising site ??????????????????????????????
+> ?????????????????????????????
+> Copying
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/
+> library/pkgdown/BS3/assets/bootstrap-toc.css,
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/
+> library/pkgdown/BS3/assets/bootstrap-toc.js,
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/
+> library/pkgdown/BS3/assets/docsearch.css,
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/
+> library/pkgdown/BS3/assets/docsearch.js,
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/
+> library/pkgdown/BS3/assets/link.svg,
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/
+> library/pkgdown/BS3/assets/pkgdown.css,
+> and
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/
+> library/pkgdown/BS3/assets/pkgdown.js
+> to bootstrap-toc.css, bootstrap-toc.js, docsearch.css, docsearch.js,
+> link.svg,
+> pkgdown.css, and pkgdown.js
+> ?? Building home ??????????????????????????????
+> ?????????????????????????????????
+> Writing authors.html
+> Copying man/figures/Makefile, man/figures/README-example-1.png,
+> man/figures/README-example-2.png, man/figures/force_diagram.R, and
+> man/figures/force_diagram.png
+> to reference/figures/Makefile, reference/figures/README-example-1.png,
+> reference/figures/README-example-2.png, reference/figures/force_diagram.R,
+> and
+> reference/figures/force_diagram.png
+> Writing 404.html
+> ?? Building function reference ??????????????????????????????
+> ???????????????????
+> Error:
+> ! in callr subprocess.
+> Caused by error in `map2(.x, vec_index(.x), .f, ...)`:
+> ! In index: 1.
+> ---
+> Standard error:
+> ?? Building pkgdown site for package mooring ??????????????????????????????
+> ?????
+> Reading from: /Users/kelley/wednesday/mooring
+> Writing to: /Users/kelley/wednesday/mooring/docs
+> ?? Initialising site ??????????????????????????????
+> ?????????????????????????????
+> Copying
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/
+> library/pkgdown/BS3/assets/bootstrap-toc.css,
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/
+> library/pkgdown/BS3/assets/bootstrap-toc.js,
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/
+> library/pkgdown/BS3/assets/docsearch.css,
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/
+> library/pkgdown/BS3/assets/docsearch.js,
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/
+> library/pkgdown/BS3/assets/link.svg,
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/
+> library/pkgdown/BS3/assets/pkgdown.css,
+> and
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/
+> library/pkgdown/BS3/assets/pkgdown.js
+> to bootstrap-toc.css, bootstrap-toc.js, docsearch.css, docsearch.js,
+> link.svg,
+> pkgdown.css, and pkgdown.js
+> ?? Building home ??????????????????????????????
+> ?????????????????????????????????
+> Writing authors.html
+> Copying man/figures/Makefile, man/figures/README-example-1.png,
+> man/figures/README-example-2.png, man/figures/force_diagram.R, and
+> man/figures/force_diagram.png
+> to reference/figures/Makefile, reference/figures/README-example-1.png,
+> reference/figures/README-example-2.png, reference/figures/force_diagram.R,
+> and
+> reference/figures/force_diagram.png
+> Writing 404.html
+> ?? Building function reference ??????????????????????????????
+> ???????????????????
+> ---
+> Backtrace:
+> 1. pkgdown::build_site()
+> 2. pkgdown:::build_site_external(pkg = pkg, examples = examples,
+> run_dont_run = run_don?
+> 3. callr::r(function(..., cli_colors, pkgdown_internet) { ?
+> 4. callr:::get_result(output = out, options)
+> 5. callr:::throw(callr_remote_error(remerr, output), parent =
+> fix_msg(remerr[[3]]))
+> ---
+> Subprocess backtrace:
+>  1. pkgdown::build_site(...)
+>  2. pkgdown:::build_site_local(pkg = pkg, examples = examples,
+> run_dont_run = run_dont_r?
+>  3. pkgdown::build_reference(pkg, lazy = lazy, examples = examples,
+> run_dont_run = run_?
+>  4. pkgdown::build_reference_index(pkg)
+>  5. pkgdown::render_page(pkg, "reference-index", data =
+> data_reference_index(pkg), ?
+>  6. pkgdown:::render_page_html(pkg, name = name, data = data, depth =
+> depth)
+>  7. utils::modifyList(data_template(pkg, depth = depth), data)
+>  8. base::stopifnot(is.list(x), is.list(val))
+>  9. pkgdown:::data_reference_index(pkg)
+> 10. meta %>% purrr::imap(data_reference_index_rows, pkg = pkg) %>% ?
+> 11. base::unlist(., recursive = FALSE)
+> 12. purrr::compact(.)
+> 13. purrr::discard(.x, function(x) is_empty(.f(x)))
+> 14. purrr:::where_if(.x, .p, ...)
+> 15. purrr:::map_(.x, .p, ..., .type = "logical", .purrr_error_call =
+> .purrr_error_call)
+> 16. purrr:::vctrs_vec_compat(.x, .purrr_user_env)
+> 17. purrr::imap(., data_reference_index_rows, pkg = pkg)
+> 18. purrr::map2(.x, vec_index(.x), .f, ...)
+> 19. purrr:::map2_("list", .x, .y, .f, ..., .progress = .progress)
+> 20. purrr:::with_indexed_errors(i = i, names = names, error_call =
+> .purrr_error_call, ?
+> 21. base::withCallingHandlers(expr, error = function(cnd) { ?
+> 22. purrr:::call_with_cleanup(map2_impl, environment(), .type, .progress,
+> ?
+> 23. local .f(.x[[i]], .y[[i]], ...)
+> 24. pkgdown:::section_topics(section$contents, pkg$topics, pkg$src_path)
+> 25. base::rbind(topics, ext_topics(ext_strings))
+> 26. base::rbind(deparse.level, ...)
+> 27. pkgdown:::ext_topics(ext_strings)
+> 28. purrr::map2(pkg, fun, get_rd_from_help)
+> 29. purrr:::map2_("list", .x, .y, .f, ..., .progress = .progress)
+> 30. purrr:::with_indexed_errors(i = i, names = names, error_call =
+> .purrr_error_call, ?
+> 31. base::withCallingHandlers(expr, error = function(cnd) { ?
+> 32. purrr:::call_with_cleanup(map2_impl, environment(), .type, .progress,
+> ?
+> 33. local .f(.x[[i]], .y[[i]], ...)
+> 34. rlang::check_installed(package, "as it's used in the reference
+> index.")
+> 35. base::stop(cnd)
+> 36. (function (cnd) ?
+> 37. cli::cli_abort(message, location = i, name = name, parent = cnd, ?
+> 38. | rlang::abort(message, ..., call = call, use_cli_format = TRUE, ?
+> 39. | rlang:::signal_abort(cnd, .file)
+> 40. | base::signalCondition(cnd)
+> 41. (function (cnd) ?
+> 42. cli::cli_abort(message, location = i, name = name, parent = cnd, ?
+> 43. | rlang::abort(message, ..., call = call, use_cli_format = TRUE, ?
+> 44. | rlang:::signal_abort(cnd, .file)
+> 45. | base::signalCondition(cnd)
+> 46. global (function (e) ?
+> Execution halted
+>
+>
+>
+> On Jan 3, 2024, at 1:06?PM, Hadley Wickham <h.wickham at gmail.com> wrote:
+>
+> CAUTION: The Sender of this email is not from within Dalhousie.
+> This bug is fixed in the dev version (I don?t remember off the top of my
+> head in which of pkgdown and roxygen2 you need but it might be both). I?m
+> planning CRAN updates for both in the near future.
+>
+> Hadley
+>
+> On Thursday, January 4, 2024, Daniel Kelley <kelley at dal.ca> wrote:
+>
+>> # Question
+>>
+>> Is there an online example online of specializing `plot()` for S7
+>> objects, such that `pkgdown::build_site()` will produce webpages?  I ask
+>> because I find lots of users (of other packages) tend to consult websites
+>> made with pkgdown, rather than using the online help within R.  I think the
+>> problem I am having (discussed in the following sections) has to do with my
+>> specialization of plot().  I say that because when I was using S3 objects
+>> in an earlier version of my package, `pkgdown::build_site()` worked as
+>> intended.
+>>
+>> # Background
+>>
+>> In my 'mooring' package (https://github.com/dankelley/mooring/tree/S7),
+>> I am writing code like (https://github.com/dankelley/
+>> mooring/blob/f70b53ca12e88968f65710c205b50a64f750a99d/R/plot.R#L69)
+>>
+>> ```R
+>> #' @aliases plot.mooring
+>> #' ETC
+>> `plot.mooring::mooring` <- plot(ETC) ETC
+>> ```
+>>
+>> to handle objects made with (https://github.com/dankelley/
+>> mooring/blob/f70b53ca12e88968f65710c205b50a64f750a99d/R/oo.R#L2)
+>>
+>> ```R
+>> mooringS7 <- S7::new_class("mooring",
+>>     package = "mooring",
+>> ETC
+>> ```
+>>
+>> Built up in Rstudio, with Roxygen2 being used to create documentation,
+>> things seem to work, e.g.
+>>
+>> ```R
+>> m <- mooring(anchor(), wire(length = 80), float(), waterDepth = 100)
+>> plot(m)
+>> ```
+>>
+>> produces a plot as intended, and
+>>
+>> ```R
+>> ?plot.mooring
+>> ```
+>>
+>> produces documentation as intended.
+>>
+>> *However* I encounter a problem comes when I try building a website with
+>>
+>> ```R
+>> pkgdown::build_site()
+>> ```
+>>
+>> This yields results as in the next section.  (I apologize for the length.
+>> I'm including the whole thing because I thought that would be less
+>> bothersome than writing another email to the list.)
+>>
+>> I am not sure how to find the problem, and so I hope that someone on this
+>> list can point out an example of how to set up `plot()` to work with S7
+>> objects, in such a way that documentation can be created with Roxygen2 and
+>> websites can be made with `pkgdown::build_site()`.
+>>
+>> # What pkgdown::build_site() gives
+>>
+>> ```
+>> > library(pkgdown)
+>> > build_site()
+>> Warning: Failed to parse usage:
+>>
+>> S3method(`plot`, ``mooring::mooring``)(
+>>   x,
+>>   which = "shape",
+>>   showInterfaces = TRUE,
+>>   showDepths = FALSE,
+>>   showLabels = TRUE,
+>>   showDetails = FALSE,
+>>   fancy = FALSE,
+>>   title = "",
+>>   mar = c(1.5, 3.5, 3.5, 1),
+>>   mgp = c(2, 0.7, 0),
+>>   xlim = NULL,
+>>   xaxs = "r",
+>>   yaxs = "r",
+>>   type = "l",
+>>   debug = 0,
+>>   ...
+>> )
+>>
+>> -- Installing package into temporary library ----------------
+>> == Building pkgdown site ==============================
+>> =========================
+>> Reading from: '/Users/kelley/git/mooring'
+>> Writing to:   '/Users/kelley/git/mooring/docs'
+>> -- Initialising site ------------------------------
+>> -----------------------------
+>> -- Building home ------------------------------
+>> ---------------------------------
+>> Writing '404.html'
+>> -- Building function reference ------------------------------
+>> -------------------
+>> Error:
+>> ! in callr subprocess.
+>> Caused by error in `map2(.x, vec_index(.x), .f, ...)`:
+>> ! In index: 1.
+>> ? See `$stdout` for standard output.
+>> Type .Last.error to see the more details.
+>> > .Last.error
+>> <callr_error/rlib_error_3_0/rlib_error/error>
+>> Error:
+>> ! in callr subprocess.
+>> Caused by error in `map2(.x, vec_index(.x), .f, ...)`:
+>> ! In index: 1.
+>> ? See `$stdout` for standard output.
+>> ---
+>> Backtrace:
+>> 1. pkgdown::build_site()
+>> 2. pkgdown:::build_site_external(pkg = pkg, examples = examples, run?
+>> 3. callr::r(function(..., cli_colors, pkgdown_internet) { ?
+>> 4. callr:::get_result(output = out, options)
+>> 5. callr:::throw(callr_remote_error(remerr, output), parent = fix_?
+>> ---
+>> Subprocess backtrace:
+>>  1. pkgdown::build_site(...)
+>>  2. pkgdown:::build_site_local(pkg = pkg, examples = examples, run_do?
+>>  3. pkgdown::build_reference(pkg, lazy = lazy, examples = examples, ?
+>>  4. pkgdown::build_reference_index(pkg)
+>>  5. pkgdown::render_page(pkg, "reference-index", data = data_referen?
+>>  6. pkgdown:::render_page_html(pkg, name = name, data = data, depth =?
+>>  7. utils::modifyList(data_template(pkg, depth = depth), da?
+>>  8. base::stopifnot(is.list(x), is.list(val))
+>>  9. pkgdown:::data_reference_index(pkg)
+>> 10. meta %>% purrr::imap(data_reference_index_rows, pkg = p?
+>> 11. base::unlist(., recursive = FALSE)
+>> 12. purrr::compact(.)
+>> 13. purrr::discard(.x, function(x) is_empty(.f(x)))
+>> 14. purrr:::where_if(.x, .p, ...)
+>> 15. purrr:::map_(.x, .p, ..., .type = "logical", .purrr_error_call ?
+>> 16. purrr:::vctrs_vec_compat(.x, .purrr_user_env)
+>> 17. purrr::imap(., data_reference_index_rows, pkg = pkg)
+>> 18. purrr::map2(.x, vec_index(.x), .f, ...)
+>> 19. purrr:::map2_("list", .x, .y, .f, ..., .progress = .progress)
+>> 20. purrr:::with_indexed_errors(i = i, names = names, error_call = ?
+>> 21. base::withCallingHandlers(expr, error = function(cnd) { ?
+>> 22. purrr:::call_with_cleanup(map2_impl, environment(), .type, .pro?
+>> 23. local .f(.x[[i]], .y[[i]], ...)
+>> 24. pkgdown:::section_topics(section$contents, pkg$topics, pkg$src_pa?
+>> 25. base::rbind(topics, ext_topics(ext_strings))
+>> 26. base::rbind(deparse.level, ...)
+>> 27. pkgdown:::ext_topics(ext_strings)
+>> 28. purrr::map2(pkg, fun, get_rd_from_help)
+>> 29. purrr:::map2_("list", .x, .y, .f, ..., .progress = .progress)
+>> 30. purrr:::with_indexed_errors(i = i, names = names, error_call = ?
+>> 31. base::withCallingHandlers(expr, error = function(cnd) { ?
+>> 32. purrr:::call_with_cleanup(map2_impl, environment(), .type, .pro?
+>> 33. local .f(.x[[i]], .y[[i]], ...)
+>> 34. rlang::check_installed(package, "as it's used in the reference?
+>> 35. base::stop(cnd)
+>> 36. (function (cnd) ?
+>> 37. cli::cli_abort(message, location = i, name = name, pare?
+>> 38. | rlang::abort(message, ..., call = call, use_cli_format ?
+>> 39. | rlang:::signal_abort(cnd, .file)
+>> 40. | base::signalCondition(cnd)
+>> 41. (function (cnd) ?
+>> 42. cli::cli_abort(message, location = i, name = name, pare?
+>> 43. | rlang::abort(message, ..., call = call, use_cli_format ?
+>> 44. | rlang:::signal_abort(cnd, .file)
+>> 45. | base::signalCondition(cnd)
+>> 46. global (function (e) ?
+>> ```
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>
+>
+> --
+> http://hadley.nz
+>
+>
+>
+
+-- 
+http://hadley.nz
+
+	[[alternative HTML version deleted]]
+
+
+From ke||ey @end|ng |rom d@|@c@  Wed Jan  3 20:18:05 2024
+From: ke||ey @end|ng |rom d@|@c@ (Daniel Kelley)
+Date: Wed, 3 Jan 2024 19:18:05 +0000
+Subject: [R-pkg-devel] 
+ how to use pkgdown::build_site() with a project using
+ S7 with a specialized plot()?
+In-Reply-To: <CABdHhvERBUSxpuQ4B+xhjtr=XvGQdRFm81KbADHFnvQcvY0uyA@mail.gmail.com>
+References: <99119974-B153-4584-A974-C4E423D3DB83@dal.ca>
+ <CABdHhvFtCY64ArC=qHG6Zmd2NQprhOxbehy4GVSL2k=sLc=FPg@mail.gmail.com>
+ <DF86B412-821B-45D0-9DE7-C55CE7DA6A8D@dal.ca>
+ <CABdHhvERBUSxpuQ4B+xhjtr=XvGQdRFm81KbADHFnvQcvY0uyA@mail.gmail.com>
+Message-ID: <217173AF-B7B6-443A-BC25-C0ACA4226A3A@dal.ca>
+
+Oh, Hadley, I'm sorry to bother you whilst you're on vacation.  Please don't take too much time on.  I'm certainly not in a rush at all.
+
+To answer your question, yes, I rebuilt the documentation (within RStudio, via the 'More/Document' scheme) and it still fails.
+
+I wonder if I need to do a
+
+method(plot, mooring:::mooringS7) <- function(ETC) {ETC}
+
+instead of
+
+`plot.mooring::mooring` <- function(ETC) {ETC}
+
+which is what I'm doing now, and which works for plotting but not webpage-building.
+
+PS. That `mooringS7` vs `mooring` name difference is because I am using
+
+mooringS7 <- S7::new_class("mooring", ETC
+
+because I want the user-facing function to be called `mooring`.  (I am having the user using the object constructor directly.  I guess I could, but I'm doing it this way to retain my old code, which used S3 methodology and had a fair bit of logic before constructing a return value.  I can change that, of course.  For now, my S7 steps are a bit timid, so I can fall back to my S3 code if I cannot figure things out.)
+
+
+
+On Jan 3, 2024, at 2:48?PM, Hadley Wickham <h.wickham at gmail.com> wrote:
+
+CAUTION: The Sender of this email is not from within Dalhousie.
+Did you re-document? You?ll need that to correctly regenerate the .Rd, I think. (Sorry I?m on vacation so I?m guessing at stuff from my phone)
+
+Hadley
+
+On Thursday, January 4, 2024, Daniel Kelley <kelley at dal.ca<mailto:kelley at dal.ca>> wrote:
+Thanks.  I installed the latest roxygen2 and pkgdown, and tried to make a simple reprex
+git clone https://github.com/dankelley/mooring.git
+cd mooring
+git checkout S7
+Rscript -e "pkgdown::clean_site()"
+Rscript -e "pkgdown::build_site()"
+
+but it still fails.  (Full output is below, for completeness.) I wonder whether I ought to be doing something extra in the Roxygen code (in file R/plot.R within this directory.). Please note that I can rename it as "draw()" or something, but I'm hoping to learn S7 properly, because I'm really quite keen to leave my S3 and S4 days behind me.  (PS to Hadley: I loved the presentation you gave on what was then R7, and have recommended it to colleagues not just for the R7 information, but for the concise explanation of the benefit of OOP and generics.)
+
+?? Installing package mooring into temporary library ???????????????????????????
+?? Building pkgdown site for package mooring ???????????????????????????????????
+Reading from: /Users/kelley/wednesday/mooring
+Writing to: /Users/kelley/wednesday/mooring/docs
+?? Initialising site ???????????????????????????????????????????????????????????
+Copying
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/bootstrap-toc.css,
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/bootstrap-toc.js,
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/docsearch.css,
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/docsearch.js,
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/link.svg,
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/pkgdown.css,
+and
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/pkgdown.js
+to bootstrap-toc.css, bootstrap-toc.js, docsearch.css, docsearch.js, link.svg,
+pkgdown.css, and pkgdown.js
+?? Building home ???????????????????????????????????????????????????????????????
+Writing authors.html
+Copying man/figures/Makefile, man/figures/README-example-1.png,
+man/figures/README-example-2.png, man/figures/force_diagram.R, and
+man/figures/force_diagram.png
+to reference/figures/Makefile, reference/figures/README-example-1.png,
+reference/figures/README-example-2.png, reference/figures/force_diagram.R, and
+reference/figures/force_diagram.png
+Writing 404.html
+?? Building function reference ?????????????????????????????????????????????????
+Error:
+! in callr subprocess.
+Caused by error in `map2(.x, vec_index(.x), .f, ...)`:
+! In index: 1.
+---
+Standard error:
+?? Building pkgdown site for package mooring ???????????????????????????????????
+Reading from: /Users/kelley/wednesday/mooring
+Writing to: /Users/kelley/wednesday/mooring/docs
+?? Initialising site ???????????????????????????????????????????????????????????
+Copying
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/bootstrap-toc.css,
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/bootstrap-toc.js,
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/docsearch.css,
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/docsearch.js,
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/link.svg,
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/pkgdown.css,
+and
+../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/pkgdown.js
+to bootstrap-toc.css, bootstrap-toc.js, docsearch.css, docsearch.js, link.svg,
+pkgdown.css, and pkgdown.js
+?? Building home ???????????????????????????????????????????????????????????????
+Writing authors.html
+Copying man/figures/Makefile, man/figures/README-example-1.png,
+man/figures/README-example-2.png, man/figures/force_diagram.R, and
+man/figures/force_diagram.png
+to reference/figures/Makefile, reference/figures/README-example-1.png,
+reference/figures/README-example-2.png, reference/figures/force_diagram.R, and
+reference/figures/force_diagram.png
+Writing 404.html
+?? Building function reference ?????????????????????????????????????????????????
+---
+Backtrace:
+1. pkgdown::build_site()
+2. pkgdown:::build_site_external(pkg = pkg, examples = examples, run_dont_run = run_don?
+3. callr::r(function(..., cli_colors, pkgdown_internet) { ?
+4. callr:::get_result(output = out, options)
+5. callr:::throw(callr_remote_error(remerr, output), parent = fix_msg(remerr[[3]]))
+---
+Subprocess backtrace:
+ 1. pkgdown::build_site(...)
+ 2. pkgdown:::build_site_local(pkg = pkg, examples = examples, run_dont_run = run_dont_r?
+ 3. pkgdown::build_reference(pkg, lazy = lazy, examples = examples, run_dont_run = run_?
+ 4. pkgdown::build_reference_index(pkg)
+ 5. pkgdown::render_page(pkg, "reference-index", data = data_reference_index(pkg), ?
+ 6. pkgdown:::render_page_html(pkg, name = name, data = data, depth = depth)
+ 7. utils::modifyList(data_template(pkg, depth = depth), data)
+ 8. base::stopifnot(is.list(x), is.list(val))
+ 9. pkgdown:::data_reference_index(pkg)
+10. meta %>% purrr::imap(data_reference_index_rows, pkg = pkg) %>% ?
+11. base::unlist(., recursive = FALSE)
+12. purrr::compact(.)
+13. purrr::discard(.x, function(x) is_empty(.f(x)))
+14. purrr:::where_if(.x, .p, ...)
+15. purrr:::map_(.x, .p, ..., .type = "logical", .purrr_error_call = .purrr_error_call)
+16. purrr:::vctrs_vec_compat(.x, .purrr_user_env)
+17. purrr::imap(., data_reference_index_rows, pkg = pkg)
+18. purrr::map2(.x, vec_index(.x), .f, ...)
+19. purrr:::map2_("list", .x, .y, .f, ..., .progress = .progress)
+20. purrr:::with_indexed_errors(i = i, names = names, error_call = .purrr_error_call, ?
+21. base::withCallingHandlers(expr, error = function(cnd) { ?
+22. purrr:::call_with_cleanup(map2_impl, environment(), .type, .progress, ?
+23. local .f(.x[[i]], .y[[i]], ...)
+24. pkgdown:::section_topics(section$contents, pkg$topics, pkg$src_path)
+25. base::rbind(topics, ext_topics(ext_strings))
+26. base::rbind(deparse.level, ...)
+27. pkgdown:::ext_topics(ext_strings)
+28. purrr::map2(pkg, fun, get_rd_from_help)
+29. purrr:::map2_("list", .x, .y, .f, ..., .progress = .progress)
+30. purrr:::with_indexed_errors(i = i, names = names, error_call = .purrr_error_call, ?
+31. base::withCallingHandlers(expr, error = function(cnd) { ?
+32. purrr:::call_with_cleanup(map2_impl, environment(), .type, .progress, ?
+33. local .f(.x[[i]], .y[[i]], ...)
+34. rlang::check_installed(package, "as it's used in the reference index.")
+35. base::stop(cnd)
+36. (function (cnd) ?
+37. cli::cli_abort(message, location = i, name = name, parent = cnd, ?
+38. | rlang::abort(message, ..., call = call, use_cli_format = TRUE, ?
+39. | rlang:::signal_abort(cnd, .file)
+40. | base::signalCondition(cnd)
+41. (function (cnd) ?
+42. cli::cli_abort(message, location = i, name = name, parent = cnd, ?
+43. | rlang::abort(message, ..., call = call, use_cli_format = TRUE, ?
+44. | rlang:::signal_abort(cnd, .file)
+45. | base::signalCondition(cnd)
+46. global (function (e) ?
+Execution halted
+
+
+
+On Jan 3, 2024, at 1:06?PM, Hadley Wickham <h.wickham at gmail.com<mailto:h.wickham at gmail.com>> wrote:
+
+CAUTION: The Sender of this email is not from within Dalhousie.
+This bug is fixed in the dev version (I don?t remember off the top of my head in which of pkgdown and roxygen2 you need but it might be both). I?m planning CRAN updates for both in the near future.
+
+Hadley
+
+On Thursday, January 4, 2024, Daniel Kelley <kelley at dal.ca<mailto:kelley at dal.ca>> wrote:
+# Question
+
+Is there an online example online of specializing `plot()` for S7 objects, such that `pkgdown::build_site()` will produce webpages?  I ask because I find lots of users (of other packages) tend to consult websites made with pkgdown, rather than using the online help within R.  I think the problem I am having (discussed in the following sections) has to do with my specialization of plot().  I say that because when I was using S3 objects in an earlier version of my package, `pkgdown::build_site()` worked as intended.
+
+# Background
+
+In my 'mooring' package (https://github.com/dankelley/mooring/tree/S7), I am writing code like (https://github.com/dankelley/mooring/blob/f70b53ca12e88968f65710c205b50a64f750a99d/R/plot.R#L69)
+
+```R
+#' @aliases plot.mooring
+#' ETC
+`plot.mooring::mooring` <- plot(ETC) ETC
+```
+
+to handle objects made with (https://github.com/dankelley/mooring/blob/f70b53ca12e88968f65710c205b50a64f750a99d/R/oo.R#L2)
+
+```R
+mooringS7 <- S7::new_class("mooring",
+    package = "mooring",
+ETC
+```
+
+Built up in Rstudio, with Roxygen2 being used to create documentation, things seem to work, e.g.
+
+```R
+m <- mooring(anchor(), wire(length = 80), float(), waterDepth = 100)
+plot(m)
+```
+
+produces a plot as intended, and
+
+```R
+?plot.mooring
+```
+
+produces documentation as intended.
+
+*However* I encounter a problem comes when I try building a website with
+
+```R
+pkgdown::build_site()
+```
+
+This yields results as in the next section.  (I apologize for the length. I'm including the whole thing because I thought that would be less bothersome than writing another email to the list.)
+
+I am not sure how to find the problem, and so I hope that someone on this list can point out an example of how to set up `plot()` to work with S7 objects, in such a way that documentation can be created with Roxygen2 and websites can be made with `pkgdown::build_site()`.
+
+# What pkgdown::build_site() gives
+
+```
+> library(pkgdown)
+> build_site()
+Warning: Failed to parse usage:
+
+S3method(`plot`, ``mooring::mooring``)(
+  x,
+  which = "shape",
+  showInterfaces = TRUE,
+  showDepths = FALSE,
+  showLabels = TRUE,
+  showDetails = FALSE,
+  fancy = FALSE,
+  title = "",
+  mar = c(1.5, 3.5, 3.5, 1),
+  mgp = c(2, 0.7, 0),
+  xlim = NULL,
+  xaxs = "r",
+  yaxs = "r",
+  type = "l",
+  debug = 0,
+  ...
+)
+
+-- Installing package into temporary library ----------------
+== Building pkgdown site =======================================================
+Reading from: '/Users/kelley/git/mooring'
+Writing to:   '/Users/kelley/git/mooring/docs'
+-- Initialising site -----------------------------------------------------------
+-- Building home ---------------------------------------------------------------
+Writing '404.html'
+-- Building function reference -------------------------------------------------
+Error:
+! in callr subprocess.
+Caused by error in `map2(.x, vec_index(.x), .f, ...)`:
+! In index: 1.
+? See `$stdout` for standard output.
+Type .Last.error to see the more details.
+> .Last.error
+<callr_error/rlib_error_3_0/rlib_error/error>
+Error:
+! in callr subprocess.
+Caused by error in `map2(.x, vec_index(.x), .f, ...)`:
+! In index: 1.
+? See `$stdout` for standard output.
+---
+Backtrace:
+1. pkgdown::build_site()
+2. pkgdown:::build_site_external(pkg = pkg, examples = examples, run?
+3. callr::r(function(..., cli_colors, pkgdown_internet) { ?
+4. callr:::get_result(output = out, options)
+5. callr:::throw(callr_remote_error(remerr, output), parent = fix_?
+---
+Subprocess backtrace:
+ 1. pkgdown::build_site(...)
+ 2. pkgdown:::build_site_local(pkg = pkg, examples = examples, run_do?
+ 3. pkgdown::build_reference(pkg, lazy = lazy, examples = examples, ?
+ 4. pkgdown::build_reference_index(pkg)
+ 5. pkgdown::render_page(pkg, "reference-index", data = data_referen?
+ 6. pkgdown:::render_page_html(pkg, name = name, data = data, depth =?
+ 7. utils::modifyList(data_template(pkg, depth = depth), da?
+ 8. base::stopifnot(is.list(x), is.list(val))
+ 9. pkgdown:::data_reference_index(pkg)
+10. meta %>% purrr::imap(data_reference_index_rows, pkg = p?
+11. base::unlist(., recursive = FALSE)
+12. purrr::compact(.)
+13. purrr::discard(.x, function(x) is_empty(.f(x)))
+14. purrr:::where_if(.x, .p, ...)
+15. purrr:::map_(.x, .p, ..., .type = "logical", .purrr_error_call ?
+16. purrr:::vctrs_vec_compat(.x, .purrr_user_env)
+17. purrr::imap(., data_reference_index_rows, pkg = pkg)
+18. purrr::map2(.x, vec_index(.x), .f, ...)
+19. purrr:::map2_("list", .x, .y, .f, ..., .progress = .progress)
+20. purrr:::with_indexed_errors(i = i, names = names, error_call = ?
+21. base::withCallingHandlers(expr, error = function(cnd) { ?
+22. purrr:::call_with_cleanup(map2_impl, environment(), .type, .pro?
+23. local .f(.x[[i]], .y[[i]], ...)
+24. pkgdown:::section_topics(section$contents, pkg$topics, pkg$src_pa?
+25. base::rbind(topics, ext_topics(ext_strings))
+26. base::rbind(deparse.level, ...)
+27. pkgdown:::ext_topics(ext_strings)
+28. purrr::map2(pkg, fun, get_rd_from_help)
+29. purrr:::map2_("list", .x, .y, .f, ..., .progress = .progress)
+30. purrr:::with_indexed_errors(i = i, names = names, error_call = ?
+31. base::withCallingHandlers(expr, error = function(cnd) { ?
+32. purrr:::call_with_cleanup(map2_impl, environment(), .type, .pro?
+33. local .f(.x[[i]], .y[[i]], ...)
+34. rlang::check_installed(package, "as it's used in the reference?
+35. base::stop(cnd)
+36. (function (cnd) ?
+37. cli::cli_abort(message, location = i, name = name, pare?
+38. | rlang::abort(message, ..., call = call, use_cli_format ?
+39. | rlang:::signal_abort(cnd, .file)
+40. | base::signalCondition(cnd)
+41. (function (cnd) ?
+42. cli::cli_abort(message, location = i, name = name, pare?
+43. | rlang::abort(message, ..., call = call, use_cli_format ?
+44. | rlang:::signal_abort(cnd, .file)
+45. | base::signalCondition(cnd)
+46. global (function (e) ?
+```
+
+______________________________________________
+R-package-devel at r-project.org<mailto:R-package-devel at r-project.org> mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+--
+http://hadley.nz<http://hadley.nz/>
+
+
+
+--
+http://hadley.nz<http://hadley.nz/>
+
+
+	[[alternative HTML version deleted]]
+
+
+From ke||ey @end|ng |rom d@|@c@  Wed Jan  3 20:38:17 2024
+From: ke||ey @end|ng |rom d@|@c@ (Daniel Kelley)
+Date: Wed, 3 Jan 2024 19:38:17 +0000
+Subject: [R-pkg-devel] 
+ how to use pkgdown::build_site() with a project using
+ S7 with a specialized plot()?
+In-Reply-To: <217173AF-B7B6-443A-BC25-C0ACA4226A3A@dal.ca>
+References: <99119974-B153-4584-A974-C4E423D3DB83@dal.ca>
+ <CABdHhvFtCY64ArC=qHG6Zmd2NQprhOxbehy4GVSL2k=sLc=FPg@mail.gmail.com>
+ <DF86B412-821B-45D0-9DE7-C55CE7DA6A8D@dal.ca>
+ <CABdHhvERBUSxpuQ4B+xhjtr=XvGQdRFm81KbADHFnvQcvY0uyA@mail.gmail.com>
+ <217173AF-B7B6-443A-BC25-C0ACA4226A3A@dal.ca>
+Message-ID: <BD26FD59-5E3D-4FC6-9E48-2DF71E9F436F@dal.ca>
+
+Answering my own question here ...
+
+The problem was that I was using
+
+	mooringS7 <- S7::new_class("mooring", ETC
+
+instead of
+
+	mooringS7 <- S7::new_class("mooringS7", ETC
+
+With the change to the latter, all works fine now.  Thanks very much to all who have helped, so generously and so quickly.  
+
+I wish a very Happy New Year, to all!!
+
+Dan.
+
+Dan Kelley / Oceanography Department / Dalhousie University / Halifax, Nova Scotia / Canada
+
+
+> On Jan 3, 2024, at 3:18?PM, Daniel Kelley <kelley at dal.ca> wrote:
+> 
+> Oh, Hadley, I'm sorry to bother you whilst you're on vacation.  Please don't take too much time on.  I'm certainly not in a rush at all.
+> 
+> To answer your question, yes, I rebuilt the documentation (within RStudio, via the 'More/Document' scheme) and it still fails.
+> 
+> I wonder if I need to do a
+> 
+> method(plot, mooring:::mooringS7) <- function(ETC) {ETC}
+> 
+> instead of
+> 
+> `plot.mooring::mooring` <- function(ETC) {ETC}
+> 
+> which is what I'm doing now, and which works for plotting but not webpage-building.
+> 
+> PS. That `mooringS7` vs `mooring` name difference is because I am using
+> 
+> mooringS7 <- S7::new_class("mooring", ETC
+> 
+> because I want the user-facing function to be called `mooring`.  (I am having the user using the object constructor directly.  I guess I could, but I'm doing it this way to retain my old code, which used S3 methodology and had a fair bit of logic before constructing a return value.  I can change that, of course.  For now, my S7 steps are a bit timid, so I can fall back to my S3 code if I cannot figure things out.)
+> 
+> 
+> 
+> On Jan 3, 2024, at 2:48?PM, Hadley Wickham <h.wickham at gmail.com> wrote:
+> 
+> CAUTION: The Sender of this email is not from within Dalhousie.
+> Did you re-document? You?ll need that to correctly regenerate the .Rd, I think. (Sorry I?m on vacation so I?m guessing at stuff from my phone)
+> 
+> Hadley
+> 
+> On Thursday, January 4, 2024, Daniel Kelley <kelley at dal.ca<mailto:kelley at dal.ca>> wrote:
+> Thanks.  I installed the latest roxygen2 and pkgdown, and tried to make a simple reprex
+> git clone https://github.com/dankelley/mooring.git
+> cd mooring
+> git checkout S7
+> Rscript -e "pkgdown::clean_site()"
+> Rscript -e "pkgdown::build_site()"
+> 
+> but it still fails.  (Full output is below, for completeness.) I wonder whether I ought to be doing something extra in the Roxygen code (in file R/plot.R within this directory.). Please note that I can rename it as "draw()" or something, but I'm hoping to learn S7 properly, because I'm really quite keen to leave my S3 and S4 days behind me.  (PS to Hadley: I loved the presentation you gave on what was then R7, and have recommended it to colleagues not just for the R7 information, but for the concise explanation of the benefit of OOP and generics.)
+> 
+> ?? Installing package mooring into temporary library ???????????????????????????
+> ?? Building pkgdown site for package mooring ???????????????????????????????????
+> Reading from: /Users/kelley/wednesday/mooring
+> Writing to: /Users/kelley/wednesday/mooring/docs
+> ?? Initialising site ???????????????????????????????????????????????????????????
+> Copying
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/bootstrap-toc.css,
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/bootstrap-toc.js,
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/docsearch.css,
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/docsearch.js,
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/link.svg,
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/pkgdown.css,
+> and
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/pkgdown.js
+> to bootstrap-toc.css, bootstrap-toc.js, docsearch.css, docsearch.js, link.svg,
+> pkgdown.css, and pkgdown.js
+> ?? Building home ???????????????????????????????????????????????????????????????
+> Writing authors.html
+> Copying man/figures/Makefile, man/figures/README-example-1.png,
+> man/figures/README-example-2.png, man/figures/force_diagram.R, and
+> man/figures/force_diagram.png
+> to reference/figures/Makefile, reference/figures/README-example-1.png,
+> reference/figures/README-example-2.png, reference/figures/force_diagram.R, and
+> reference/figures/force_diagram.png
+> Writing 404.html
+> ?? Building function reference ?????????????????????????????????????????????????
+> Error:
+> ! in callr subprocess.
+> Caused by error in `map2(.x, vec_index(.x), .f, ...)`:
+> ! In index: 1.
+> ---
+> Standard error:
+> ?? Building pkgdown site for package mooring ???????????????????????????????????
+> Reading from: /Users/kelley/wednesday/mooring
+> Writing to: /Users/kelley/wednesday/mooring/docs
+> ?? Initialising site ???????????????????????????????????????????????????????????
+> Copying
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/bootstrap-toc.css,
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/bootstrap-toc.js,
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/docsearch.css,
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/docsearch.js,
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/link.svg,
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/pkgdown.css,
+> and
+> ../../../../Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/pkgdown/BS3/assets/pkgdown.js
+> to bootstrap-toc.css, bootstrap-toc.js, docsearch.css, docsearch.js, link.svg,
+> pkgdown.css, and pkgdown.js
+> ?? Building home ???????????????????????????????????????????????????????????????
+> Writing authors.html
+> Copying man/figures/Makefile, man/figures/README-example-1.png,
+> man/figures/README-example-2.png, man/figures/force_diagram.R, and
+> man/figures/force_diagram.png
+> to reference/figures/Makefile, reference/figures/README-example-1.png,
+> reference/figures/README-example-2.png, reference/figures/force_diagram.R, and
+> reference/figures/force_diagram.png
+> Writing 404.html
+> ?? Building function reference ?????????????????????????????????????????????????
+> ---
+> Backtrace:
+> 1. pkgdown::build_site()
+> 2. pkgdown:::build_site_external(pkg = pkg, examples = examples, run_dont_run = run_don?
+> 3. callr::r(function(..., cli_colors, pkgdown_internet) { ?
+> 4. callr:::get_result(output = out, options)
+> 5. callr:::throw(callr_remote_error(remerr, output), parent = fix_msg(remerr[[3]]))
+> ---
+> Subprocess backtrace:
+> 1. pkgdown::build_site(...)
+> 2. pkgdown:::build_site_local(pkg = pkg, examples = examples, run_dont_run = run_dont_r?
+> 3. pkgdown::build_reference(pkg, lazy = lazy, examples = examples, run_dont_run = run_?
+> 4. pkgdown::build_reference_index(pkg)
+> 5. pkgdown::render_page(pkg, "reference-index", data = data_reference_index(pkg), ?
+> 6. pkgdown:::render_page_html(pkg, name = name, data = data, depth = depth)
+> 7. utils::modifyList(data_template(pkg, depth = depth), data)
+> 8. base::stopifnot(is.list(x), is.list(val))
+> 9. pkgdown:::data_reference_index(pkg)
+> 10. meta %>% purrr::imap(data_reference_index_rows, pkg = pkg) %>% ?
+> 11. base::unlist(., recursive = FALSE)
+> 12. purrr::compact(.)
+> 13. purrr::discard(.x, function(x) is_empty(.f(x)))
+> 14. purrr:::where_if(.x, .p, ...)
+> 15. purrr:::map_(.x, .p, ..., .type = "logical", .purrr_error_call = .purrr_error_call)
+> 16. purrr:::vctrs_vec_compat(.x, .purrr_user_env)
+> 17. purrr::imap(., data_reference_index_rows, pkg = pkg)
+> 18. purrr::map2(.x, vec_index(.x), .f, ...)
+> 19. purrr:::map2_("list", .x, .y, .f, ..., .progress = .progress)
+> 20. purrr:::with_indexed_errors(i = i, names = names, error_call = .purrr_error_call, ?
+> 21. base::withCallingHandlers(expr, error = function(cnd) { ?
+> 22. purrr:::call_with_cleanup(map2_impl, environment(), .type, .progress, ?
+> 23. local .f(.x[[i]], .y[[i]], ...)
+> 24. pkgdown:::section_topics(section$contents, pkg$topics, pkg$src_path)
+> 25. base::rbind(topics, ext_topics(ext_strings))
+> 26. base::rbind(deparse.level, ...)
+> 27. pkgdown:::ext_topics(ext_strings)
+> 28. purrr::map2(pkg, fun, get_rd_from_help)
+> 29. purrr:::map2_("list", .x, .y, .f, ..., .progress = .progress)
+> 30. purrr:::with_indexed_errors(i = i, names = names, error_call = .purrr_error_call, ?
+> 31. base::withCallingHandlers(expr, error = function(cnd) { ?
+> 32. purrr:::call_with_cleanup(map2_impl, environment(), .type, .progress, ?
+> 33. local .f(.x[[i]], .y[[i]], ...)
+> 34. rlang::check_installed(package, "as it's used in the reference index.")
+> 35. base::stop(cnd)
+> 36. (function (cnd) ?
+> 37. cli::cli_abort(message, location = i, name = name, parent = cnd, ?
+> 38. | rlang::abort(message, ..., call = call, use_cli_format = TRUE, ?
+> 39. | rlang:::signal_abort(cnd, .file)
+> 40. | base::signalCondition(cnd)
+> 41. (function (cnd) ?
+> 42. cli::cli_abort(message, location = i, name = name, parent = cnd, ?
+> 43. | rlang::abort(message, ..., call = call, use_cli_format = TRUE, ?
+> 44. | rlang:::signal_abort(cnd, .file)
+> 45. | base::signalCondition(cnd)
+> 46. global (function (e) ?
+> Execution halted
+> 
+> 
+> 
+> On Jan 3, 2024, at 1:06?PM, Hadley Wickham <h.wickham at gmail.com<mailto:h.wickham at gmail.com>> wrote:
+> 
+> CAUTION: The Sender of this email is not from within Dalhousie.
+> This bug is fixed in the dev version (I don?t remember off the top of my head in which of pkgdown and roxygen2 you need but it might be both). I?m planning CRAN updates for both in the near future.
+> 
+> Hadley
+> 
+> On Thursday, January 4, 2024, Daniel Kelley <kelley at dal.ca<mailto:kelley at dal.ca>> wrote:
+> # Question
+> 
+> Is there an online example online of specializing `plot()` for S7 objects, such that `pkgdown::build_site()` will produce webpages?  I ask because I find lots of users (of other packages) tend to consult websites made with pkgdown, rather than using the online help within R.  I think the problem I am having (discussed in the following sections) has to do with my specialization of plot().  I say that because when I was using S3 objects in an earlier version of my package, `pkgdown::build_site()` worked as intended.
+> 
+> # Background
+> 
+> In my 'mooring' package (https://github.com/dankelley/mooring/tree/S7), I am writing code like (https://github.com/dankelley/mooring/blob/f70b53ca12e88968f65710c205b50a64f750a99d/R/plot.R#L69)
+> 
+> ```R
+> #' @aliases plot.mooring
+> #' ETC
+> `plot.mooring::mooring` <- plot(ETC) ETC
+> ```
+> 
+> to handle objects made with (https://github.com/dankelley/mooring/blob/f70b53ca12e88968f65710c205b50a64f750a99d/R/oo.R#L2)
+> 
+> ```R
+> mooringS7 <- S7::new_class("mooring",
+>    package = "mooring",
+> ETC
+> ```
+> 
+> Built up in Rstudio, with Roxygen2 being used to create documentation, things seem to work, e.g.
+> 
+> ```R
+> m <- mooring(anchor(), wire(length = 80), float(), waterDepth = 100)
+> plot(m)
+> ```
+> 
+> produces a plot as intended, and
+> 
+> ```R
+> ?plot.mooring
+> ```
+> 
+> produces documentation as intended.
+> 
+> *However* I encounter a problem comes when I try building a website with
+> 
+> ```R
+> pkgdown::build_site()
+> ```
+> 
+> This yields results as in the next section.  (I apologize for the length. I'm including the whole thing because I thought that would be less bothersome than writing another email to the list.)
+> 
+> I am not sure how to find the problem, and so I hope that someone on this list can point out an example of how to set up `plot()` to work with S7 objects, in such a way that documentation can be created with Roxygen2 and websites can be made with `pkgdown::build_site()`.
+> 
+> # What pkgdown::build_site() gives
+> 
+> ```
+>> library(pkgdown)
+>> build_site()
+> Warning: Failed to parse usage:
+> 
+> S3method(`plot`, ``mooring::mooring``)(
+>  x,
+>  which = "shape",
+>  showInterfaces = TRUE,
+>  showDepths = FALSE,
+>  showLabels = TRUE,
+>  showDetails = FALSE,
+>  fancy = FALSE,
+>  title = "",
+>  mar = c(1.5, 3.5, 3.5, 1),
+>  mgp = c(2, 0.7, 0),
+>  xlim = NULL,
+>  xaxs = "r",
+>  yaxs = "r",
+>  type = "l",
+>  debug = 0,
+>  ...
+> )
+> 
+> -- Installing package into temporary library ----------------
+> == Building pkgdown site =======================================================
+> Reading from: '/Users/kelley/git/mooring'
+> Writing to:   '/Users/kelley/git/mooring/docs'
+> -- Initialising site -----------------------------------------------------------
+> -- Building home ---------------------------------------------------------------
+> Writing '404.html'
+> -- Building function reference -------------------------------------------------
+> Error:
+> ! in callr subprocess.
+> Caused by error in `map2(.x, vec_index(.x), .f, ...)`:
+> ! In index: 1.
+> ? See `$stdout` for standard output.
+> Type .Last.error to see the more details.
+>> .Last.error
+> <callr_error/rlib_error_3_0/rlib_error/error>
+> Error:
+> ! in callr subprocess.
+> Caused by error in `map2(.x, vec_index(.x), .f, ...)`:
+> ! In index: 1.
+> ? See `$stdout` for standard output.
+> ---
+> Backtrace:
+> 1. pkgdown::build_site()
+> 2. pkgdown:::build_site_external(pkg = pkg, examples = examples, run?
+> 3. callr::r(function(..., cli_colors, pkgdown_internet) { ?
+> 4. callr:::get_result(output = out, options)
+> 5. callr:::throw(callr_remote_error(remerr, output), parent = fix_?
+> ---
+> Subprocess backtrace:
+> 1. pkgdown::build_site(...)
+> 2. pkgdown:::build_site_local(pkg = pkg, examples = examples, run_do?
+> 3. pkgdown::build_reference(pkg, lazy = lazy, examples = examples, ?
+> 4. pkgdown::build_reference_index(pkg)
+> 5. pkgdown::render_page(pkg, "reference-index", data = data_referen?
+> 6. pkgdown:::render_page_html(pkg, name = name, data = data, depth =?
+> 7. utils::modifyList(data_template(pkg, depth = depth), da?
+> 8. base::stopifnot(is.list(x), is.list(val))
+> 9. pkgdown:::data_reference_index(pkg)
+> 10. meta %>% purrr::imap(data_reference_index_rows, pkg = p?
+> 11. base::unlist(., recursive = FALSE)
+> 12. purrr::compact(.)
+> 13. purrr::discard(.x, function(x) is_empty(.f(x)))
+> 14. purrr:::where_if(.x, .p, ...)
+> 15. purrr:::map_(.x, .p, ..., .type = "logical", .purrr_error_call ?
+> 16. purrr:::vctrs_vec_compat(.x, .purrr_user_env)
+> 17. purrr::imap(., data_reference_index_rows, pkg = pkg)
+> 18. purrr::map2(.x, vec_index(.x), .f, ...)
+> 19. purrr:::map2_("list", .x, .y, .f, ..., .progress = .progress)
+> 20. purrr:::with_indexed_errors(i = i, names = names, error_call = ?
+> 21. base::withCallingHandlers(expr, error = function(cnd) { ?
+> 22. purrr:::call_with_cleanup(map2_impl, environment(), .type, .pro?
+> 23. local .f(.x[[i]], .y[[i]], ...)
+> 24. pkgdown:::section_topics(section$contents, pkg$topics, pkg$src_pa?
+> 25. base::rbind(topics, ext_topics(ext_strings))
+> 26. base::rbind(deparse.level, ...)
+> 27. pkgdown:::ext_topics(ext_strings)
+> 28. purrr::map2(pkg, fun, get_rd_from_help)
+> 29. purrr:::map2_("list", .x, .y, .f, ..., .progress = .progress)
+> 30. purrr:::with_indexed_errors(i = i, names = names, error_call = ?
+> 31. base::withCallingHandlers(expr, error = function(cnd) { ?
+> 32. purrr:::call_with_cleanup(map2_impl, environment(), .type, .pro?
+> 33. local .f(.x[[i]], .y[[i]], ...)
+> 34. rlang::check_installed(package, "as it's used in the reference?
+> 35. base::stop(cnd)
+> 36. (function (cnd) ?
+> 37. cli::cli_abort(message, location = i, name = name, pare?
+> 38. | rlang::abort(message, ..., call = call, use_cli_format ?
+> 39. | rlang:::signal_abort(cnd, .file)
+> 40. | base::signalCondition(cnd)
+> 41. (function (cnd) ?
+> 42. cli::cli_abort(message, location = i, name = name, pare?
+> 43. | rlang::abort(message, ..., call = call, use_cli_format ?
+> 44. | rlang:::signal_abort(cnd, .file)
+> 45. | base::signalCondition(cnd)
+> 46. global (function (e) ?
+> ```
+> 
+> ______________________________________________
+> R-package-devel at r-project.org<mailto:R-package-devel at r-project.org> mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+> 
+> --
+> http://hadley.nz<http://hadley.nz/>
+> 
+> 
+> 
+> --
+> http://hadley.nz<http://hadley.nz/>
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
