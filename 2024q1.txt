@@ -4675,3 +4675,104 @@ Duncan Murdoch
 >
 
 
+From d@v|d_j_z|mmerm@nn @end|ng |rom hotm@||@com  Thu Jan 11 13:39:17 2024
+From: d@v|d_j_z|mmerm@nn @end|ng |rom hotm@||@com (D Z)
+Date: Thu, 11 Jan 2024 12:39:17 +0000
+Subject: [R-pkg-devel] "Examples with CPU time > 2.5 times elapsed time" and
+ other NOTEs on CRAN and rhub checks
+Message-ID: <AS8PR03MB101194981649434A5F83AB8A1D3682@AS8PR03MB10119.eurprd03.prod.outlook.com>
+
+Hi all,
+I submitted my package RITCH (https://github.com/DavZim/RITCH) to CRAN (used to be archived but I wanted to revive it again) but I got a NOTE (Question 1 below). Besides this NOTE from CRAN, I got two other NOTEs from rhub (Q2 and Q3).
+
+Q1) The CRAN NOTE (Debian only, does not surface on Windows or other platforms) reads
+
+*checking examples ... [7s/3s] NOTE
+Examples with CPU time > 2.5 times elapsed time
+                              user system elapsed ratio
+read_functions 3.968  0.092   0.831 4.886
+(https://github.com/DavZim/RITCH/blob/master/R/read_functions.R in case you need the source code, the full CRAN report can be found here https://win-builder.r-project.org/incoming_pretest/RITCH_0.1.23_20240110_120457/Debian/00check.log)
+
+The package itself has no parallelism built-in, but Imports data.table. This NOTE does not surface on other platforms (eg using rhub or on my GitHub actions runners). My unit tests already limit data.table to 2 cores using setDTthreads(2), but I would like to keep this line out of the help files for my functions.
+Is there anything that I can do or can I ignore the result and argue for an exception using the false positive argument?
+
+Q2) A second question that I have is that on rhub Ubuntu Linux 20.04.1 LTS, R-release, GCC (https://artifacts.r-hub.io/RITCH_0.1.22.tar.gz-d2b925faf6b24497abbfa6ff60e51d34/RITCH.Rcheck/00check.log) I receive the NOTE that my libs/ sub-directory is at 7.7Mb. Can I ignore this or do I need to figure out how to reduce the binary size of the package?
+
+* checking installed package size ... NOTE
+  installed size is  8.6Mb
+  sub-directories of 1Mb or more:
+    libs   7.7Mb
+
+My code uses Rcpp and has some classes and interdependencies between C++ functions, therefore a rewrite to make the binary size smaller might take a lot of work. From looking around online I find that other packages are a lot bigger. Are there any low-hanging fruits that I can use to reduce the size or should I ignore this NOTE?
+
+Q3) And last but not least, on some rhub instances (Fedora and Ubuntu GCC) I receive a NOTE that the package runs its examples too slowly (eg above 5secs). I have already tweaked the example code already that it runs reliably <4 secs on my development laptop
+
+Ubuntu Linux 20.04.1 LTS, R-release, GCC (https://builder.r-hub.io/status/original/RITCH_0.1.22.tar.gz-d2b925faf6b24497abbfa6ff60e51d34)
+* checking examples ... [6s/37s] NOTE
+Examples with CPU (user + system) or elapsed time > 5s
+               user system elapsed
+read_functions 2.51  0.028   12.57
+
+and on Fedora Linux, R-devel, clang, gfortran (https://builder.r-hub.io/status/original/RITCH_0.1.22.tar.gz-01bf475551eb4b30a722ea79ce421788)
+
+* checking examples ... [6s/26s] NOTE
+Examples with CPU (user + system) or elapsed time > 5s
+                user system elapsed
+read_functions 1.896  0.018   8.891
+
+As this does not surface on the CRAN checks, I would ignore it for now and concentrate only on the CRAN checks. Is this correct or should I pay more attention to these NOTEs?
+
+Any help/comment is appreciated.
+
+Thank you for your time and best regards,
+David
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Thu Jan 11 14:45:30 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 11 Jan 2024 16:45:30 +0300
+Subject: [R-pkg-devel] 
+ "Examples with CPU time > 2.5 times elapsed time" and
+ other NOTEs on CRAN and rhub checks
+In-Reply-To: <AS8PR03MB101194981649434A5F83AB8A1D3682@AS8PR03MB10119.eurprd03.prod.outlook.com>
+References: <AS8PR03MB101194981649434A5F83AB8A1D3682@AS8PR03MB10119.eurprd03.prod.outlook.com>
+Message-ID: <20240111164530.6244d332@arachnoid>
+
+? Thu, 11 Jan 2024 12:39:17 +0000
+D Z <david_j_zimmermann at hotmail.com> ?????:
+
+> The package itself has no parallelism built-in, but Imports
+> data.table. This NOTE does not surface on other platforms (eg using
+> rhub or on my GitHub actions runners). My unit tests already limit
+> data.table to 2 cores using setDTthreads(2), but I would like to keep
+> this line out of the help files for my functions.
+
+A breakpoint on pthread_create confirms that these are OpenMP threads
+created by data.table. You can wrap setDTthreads(2) in \dontshow{} to
+avoid visual pollution:
+https://cran.r-project.org/doc/manuals/R-exts.html#index-_005cdontshow
+
+> I receive the NOTE that my libs/ sub-directory is at 7.7Mb. Can I
+> ignore this or do I need to figure out how to reduce the binary size
+> of the package?
+
+I think this is typically accepted for packages using C++.
+
+> And last but not least, on some rhub instances (Fedora and Ubuntu
+> GCC) I receive a NOTE that the package runs its examples too slowly
+> (eg above 5secs). I have already tweaked the example code already
+> that it runs reliably <4 secs on my development laptop
+
+Then it should be fine.
+
+Additionally, you may need to cast some of your Rprintf arguments to
+avoid format warnings on Windows:
+https://win-builder.r-project.org/incoming_pretest/RITCH_0.1.23_20240110_120457/Windows/00check.log
+
+-- 
+Best regards,
+Ivan
+
+
