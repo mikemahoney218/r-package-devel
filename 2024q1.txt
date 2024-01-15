@@ -5179,3 +5179,483 @@ Le 12/01/2024 ? 20:14, Ivan Krylov a ?crit?:
 >
 
 
+From |kry|ov @end|ng |rom d|@root@org  Sat Jan 13 10:10:24 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sat, 13 Jan 2024 12:10:24 +0300
+Subject: [R-pkg-devel] Does dependencies up to date on the pretest CRAN
+ infrastructure
+In-Reply-To: <0b451d3b-198d-458e-8e0c-cba953715924@stkpp.org>
+References: <9d76dc3b-9f7b-4883-a866-221e46991e15@stkpp.org>
+ <20240112221419.1539ed08@Tarkus>
+ <0b451d3b-198d-458e-8e0c-cba953715924@stkpp.org>
+Message-ID: <20240113121024.5fd323c7@Tarkus>
+
+? Fri, 12 Jan 2024 21:19:00 +0100
+Serge <Serge.Iovleff at stkpp.org> ?????:
+
+> After somme minor midficiations, I make a try on the winbuilder site.
+> I was able to build the archive with the static library
+> but I get again a Bad address error. You can have a look to
+> 
+> https://win-builder.r-project.org/bw47qsMX3HTd/00install.out
+
+I think that Win-Builder is running out of memory. It took some
+experimenting, but I was able to reproduce something like this using
+the following:
+
+1. Set the swap file in the Windows settings to minimal recommended
+size and disable its automatic growth
+
+2. Write and run a program that does malloc(LARGE_NUMBER); getchar();
+so that almost all physical memory is allocated
+
+3. Run gcc -DFOO=`/path/to/Rscript -e 'some script'` & many times
+
+I got a lot of interesting errors, including the "Bad address":
+
+Warnings:
+1: .getGeneric(f, , package) : internal error -4 in R_decompress1
+2: package "methods" in options("defaultPackages") was not found
+
+0 [main] bash (2892) child_copy: cygheap read copy failed,
+0x0..0x800025420, done 0, windows pid 2892, Win32 error 299
+
+0 [main] bash (3256) C:\rtools43\usr\bin\bash.exe: *** fatal error in
+forked process - MEM_COMMIT failed, Win32 error 1455
+
+-bash: fork: retry: Resource temporarily unavailable
+
+-bash: R-devel/bin/Rscript.exe: Bad address
+
+Your package is written in C++, but that by itself shouldn't disqualify
+it. On my Linux computer, /usr/bin/time R -e
+'install.packages("MixAll")' says that the installation takes slightly
+less than a gigabyte of memory ("912516maxresident k"), which is par
+the course for such packages. (My small Rcpp-using package takes
+approximately half a gigabyte by the same metric.)
+
+I'm still not 100% sure (if Win-Builder is running out of memory, why
+are you seeing "Bad address" only and not the rest of the carnage?),
+but I'm not seeing a problem with your package, either. If EFAULT is
+Cygwin's way of saying "I caught a bad pointer in your system call"
+(which, I must stress, is happening inside /bin/sh, not your package
+or even R at all), it's not impossible that Win-Builder is having
+hardware problems. Unfortunately, they take a lot of effort and
+downtime to diagnose and could be hiding anywhere from RAM to the power
+supply.
+
+-- 
+Best regards,
+Ivan
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Sat Jan 13 14:08:39 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Sat, 13 Jan 2024 14:08:39 +0100
+Subject: [R-pkg-devel] Does dependencies up to date on the pretest CRAN
+ infrastructure
+In-Reply-To: <20240113121024.5fd323c7@Tarkus>
+References: <9d76dc3b-9f7b-4883-a866-221e46991e15@stkpp.org>
+ <20240112221419.1539ed08@Tarkus>
+ <0b451d3b-198d-458e-8e0c-cba953715924@stkpp.org>
+ <20240113121024.5fd323c7@Tarkus>
+Message-ID: <badf0fdf-8828-47fa-9768-0bbb925169c4@statistik.tu-dortmund.de>
+
+
+
+On 13.01.2024 10:10, Ivan Krylov via R-package-devel wrote:
+> ? Fri, 12 Jan 2024 21:19:00 +0100
+> Serge <Serge.Iovleff at stkpp.org> ?????:
+> 
+>> After somme minor midficiations, I make a try on the winbuilder site.
+>> I was able to build the archive with the static library
+>> but I get again a Bad address error. You can have a look to
+>>
+>> https://win-builder.r-project.org/bw47qsMX3HTd/00install.out
+> 
+> I think that Win-Builder is running out of memory. It took some
+> experimenting, but I was able to reproduce something like this using
+> the following:
+> 
+> 1. Set the swap file in the Windows settings to minimal recommended
+> size and disable its automatic growth
+> 
+> 2. Write and run a program that does malloc(LARGE_NUMBER); getchar();
+> so that almost all physical memory is allocated
+> 
+> 3. Run gcc -DFOO=`/path/to/Rscript -e 'some script'` & many times
+> 
+> I got a lot of interesting errors, including the "Bad address":
+> 
+> Warnings:
+> 1: .getGeneric(f, , package) : internal error -4 in R_decompress1
+> 2: package "methods" in options("defaultPackages") was not found
+> 
+> 0 [main] bash (2892) child_copy: cygheap read copy failed,
+> 0x0..0x800025420, done 0, windows pid 2892, Win32 error 299
+> 
+> 0 [main] bash (3256) C:\rtools43\usr\bin\bash.exe: *** fatal error in
+> forked process - MEM_COMMIT failed, Win32 error 1455
+> 
+> -bash: fork: retry: Resource temporarily unavailable
+> 
+> -bash: R-devel/bin/Rscript.exe: Bad address
+
+The above indeed happens if not sufficient memory would be available.
+Important to know: This includes unused but committed memory which may 
+be a lot.
+But I doubt it is the case on winbuilder as the machines has 256GB or 
+more (depending in the machine) and additionally 500GB swap space on SSD.
+
+Best,
+Uwe
+
+
+> Your package is written in C++, but that by itself shouldn't disqualify
+> it. On my Linux computer, /usr/bin/time R -e
+> 'install.packages("MixAll")' says that the installation takes slightly
+> less than a gigabyte of memory ("912516maxresident k"), which is par
+> the course for such packages. (My small Rcpp-using package takes
+> approximately half a gigabyte by the same metric.)
+> 
+> I'm still not 100% sure (if Win-Builder is running out of memory, why
+> are you seeing "Bad address" only and not the rest of the carnage?),
+> but I'm not seeing a problem with your package, either. If EFAULT is
+> Cygwin's way of saying "I caught a bad pointer in your system call"
+> (which, I must stress, is happening inside /bin/sh, not your package
+> or even R at all), it's not impossible that Win-Builder is having
+> hardware problems. Unfortunately, they take a lot of effort and
+> downtime to diagnose and could be hiding anywhere from RAM to the power
+> supply.
+> 
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Sat Jan 13 14:12:33 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Sat, 13 Jan 2024 14:12:33 +0100
+Subject: [R-pkg-devel] Does dependencies up to date on the pretest CRAN
+ infrastructure
+In-Reply-To: <badf0fdf-8828-47fa-9768-0bbb925169c4@statistik.tu-dortmund.de>
+References: <9d76dc3b-9f7b-4883-a866-221e46991e15@stkpp.org>
+ <20240112221419.1539ed08@Tarkus>
+ <0b451d3b-198d-458e-8e0c-cba953715924@stkpp.org>
+ <20240113121024.5fd323c7@Tarkus>
+ <badf0fdf-8828-47fa-9768-0bbb925169c4@statistik.tu-dortmund.de>
+Message-ID: <669c5f1d-a979-420c-aeda-63e92007fa82@statistik.tu-dortmund.de>
+
+I can take a look, but not sure if I get to it before monday.
+I haven't seen it for any other packages recently.
+
+My suspicion is currently a strange mix of cmd.exe and sh.exe calls. But 
+this is a very wild guess.
+
+Best,
+Uwe
+
+On 13.01.2024 14:08, Uwe Ligges wrote:
+> 
+> 
+> On 13.01.2024 10:10, Ivan Krylov via R-package-devel wrote:
+>> ? Fri, 12 Jan 2024 21:19:00 +0100
+>> Serge <Serge.Iovleff at stkpp.org> ?????:
+>>
+>>> After somme minor midficiations, I make a try on the winbuilder site.
+>>> I was able to build the archive with the static library
+>>> but I get again a Bad address error. You can have a look to
+>>>
+>>> https://win-builder.r-project.org/bw47qsMX3HTd/00install.out
+>>
+>> I think that Win-Builder is running out of memory. It took some
+>> experimenting, but I was able to reproduce something like this using
+>> the following:
+>>
+>> 1. Set the swap file in the Windows settings to minimal recommended
+>> size and disable its automatic growth
+>>
+>> 2. Write and run a program that does malloc(LARGE_NUMBER); getchar();
+>> so that almost all physical memory is allocated
+>>
+>> 3. Run gcc -DFOO=`/path/to/Rscript -e 'some script'` & many times
+>>
+>> I got a lot of interesting errors, including the "Bad address":
+>>
+>> Warnings:
+>> 1: .getGeneric(f, , package) : internal error -4 in R_decompress1
+>> 2: package "methods" in options("defaultPackages") was not found
+>>
+>> 0 [main] bash (2892) child_copy: cygheap read copy failed,
+>> 0x0..0x800025420, done 0, windows pid 2892, Win32 error 299
+>>
+>> 0 [main] bash (3256) C:\rtools43\usr\bin\bash.exe: *** fatal error in
+>> forked process - MEM_COMMIT failed, Win32 error 1455
+>>
+>> -bash: fork: retry: Resource temporarily unavailable
+>>
+>> -bash: R-devel/bin/Rscript.exe: Bad address
+> 
+> The above indeed happens if not sufficient memory would be available.
+> Important to know: This includes unused but committed memory which may 
+> be a lot.
+> But I doubt it is the case on winbuilder as the machines has 256GB or 
+> more (depending in the machine) and additionally 500GB swap space on SSD.
+> 
+> Best,
+> Uwe
+> 
+> 
+>> Your package is written in C++, but that by itself shouldn't disqualify
+>> it. On my Linux computer, /usr/bin/time R -e
+>> 'install.packages("MixAll")' says that the installation takes slightly
+>> less than a gigabyte of memory ("912516maxresident k"), which is par
+>> the course for such packages. (My small Rcpp-using package takes
+>> approximately half a gigabyte by the same metric.)
+>>
+>> I'm still not 100% sure (if Win-Builder is running out of memory, why
+>> are you seeing "Bad address" only and not the rest of the carnage?),
+>> but I'm not seeing a problem with your package, either. If EFAULT is
+>> Cygwin's way of saying "I caught a bad pointer in your system call"
+>> (which, I must stress, is happening inside /bin/sh, not your package
+>> or even R at all), it's not impossible that Win-Builder is having
+>> hardware problems. Unfortunately, they take a lot of effort and
+>> downtime to diagnose and could be hiding anywhere from RAM to the power
+>> supply.
+>>
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Sat Jan 13 15:01:48 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Sat, 13 Jan 2024 15:01:48 +0100
+Subject: [R-pkg-devel] Does dependencies up to date on the pretest CRAN
+ infrastructure
+In-Reply-To: <669c5f1d-a979-420c-aeda-63e92007fa82@statistik.tu-dortmund.de>
+References: <9d76dc3b-9f7b-4883-a866-221e46991e15@stkpp.org>
+ <20240112221419.1539ed08@Tarkus>
+ <0b451d3b-198d-458e-8e0c-cba953715924@stkpp.org>
+ <20240113121024.5fd323c7@Tarkus>
+ <badf0fdf-8828-47fa-9768-0bbb925169c4@statistik.tu-dortmund.de>
+ <669c5f1d-a979-420c-aeda-63e92007fa82@statistik.tu-dortmund.de>
+Message-ID: <f540a493-c521-461c-86d7-91d261664bdf@statistik.tu-dortmund.de>
+
+Fascinating, now it worked with the latest winbuilder submission 3 times 
+in a row when I checked it manually. So maybe Ivan was right and there 
+was a very demanding set of other packages compiling at the same time?
+I don't know.
+
+Serge, Can you somply submit your latest winbuilder upload to CRAN?
+
+Best,
+Uwe Ligges
+
+
+
+On 13.01.2024 14:12, Uwe Ligges wrote:
+> I can take a look, but not sure if I get to it before monday.
+> I haven't seen it for any other packages recently.
+> 
+> My suspicion is currently a strange mix of cmd.exe and sh.exe calls. But 
+> this is a very wild guess.
+> 
+> Best,
+> Uwe
+> 
+> On 13.01.2024 14:08, Uwe Ligges wrote:
+>>
+>>
+>> On 13.01.2024 10:10, Ivan Krylov via R-package-devel wrote:
+>>> ? Fri, 12 Jan 2024 21:19:00 +0100
+>>> Serge <Serge.Iovleff at stkpp.org> ?????:
+>>>
+>>>> After somme minor midficiations, I make a try on the winbuilder site.
+>>>> I was able to build the archive with the static library
+>>>> but I get again a Bad address error. You can have a look to
+>>>>
+>>>> https://win-builder.r-project.org/bw47qsMX3HTd/00install.out
+>>>
+>>> I think that Win-Builder is running out of memory. It took some
+>>> experimenting, but I was able to reproduce something like this using
+>>> the following:
+>>>
+>>> 1. Set the swap file in the Windows settings to minimal recommended
+>>> size and disable its automatic growth
+>>>
+>>> 2. Write and run a program that does malloc(LARGE_NUMBER); getchar();
+>>> so that almost all physical memory is allocated
+>>>
+>>> 3. Run gcc -DFOO=`/path/to/Rscript -e 'some script'` & many times
+>>>
+>>> I got a lot of interesting errors, including the "Bad address":
+>>>
+>>> Warnings:
+>>> 1: .getGeneric(f, , package) : internal error -4 in R_decompress1
+>>> 2: package "methods" in options("defaultPackages") was not found
+>>>
+>>> 0 [main] bash (2892) child_copy: cygheap read copy failed,
+>>> 0x0..0x800025420, done 0, windows pid 2892, Win32 error 299
+>>>
+>>> 0 [main] bash (3256) C:\rtools43\usr\bin\bash.exe: *** fatal error in
+>>> forked process - MEM_COMMIT failed, Win32 error 1455
+>>>
+>>> -bash: fork: retry: Resource temporarily unavailable
+>>>
+>>> -bash: R-devel/bin/Rscript.exe: Bad address
+>>
+>> The above indeed happens if not sufficient memory would be available.
+>> Important to know: This includes unused but committed memory which may 
+>> be a lot.
+>> But I doubt it is the case on winbuilder as the machines has 256GB or 
+>> more (depending in the machine) and additionally 500GB swap space on SSD.
+>>
+>> Best,
+>> Uwe
+>>
+>>
+>>> Your package is written in C++, but that by itself shouldn't disqualify
+>>> it. On my Linux computer, /usr/bin/time R -e
+>>> 'install.packages("MixAll")' says that the installation takes slightly
+>>> less than a gigabyte of memory ("912516maxresident k"), which is par
+>>> the course for such packages. (My small Rcpp-using package takes
+>>> approximately half a gigabyte by the same metric.)
+>>>
+>>> I'm still not 100% sure (if Win-Builder is running out of memory, why
+>>> are you seeing "Bad address" only and not the rest of the carnage?),
+>>> but I'm not seeing a problem with your package, either. If EFAULT is
+>>> Cygwin's way of saying "I caught a bad pointer in your system call"
+>>> (which, I must stress, is happening inside /bin/sh, not your package
+>>> or even R at all), it's not impossible that Win-Builder is having
+>>> hardware problems. Unfortunately, they take a lot of effort and
+>>> downtime to diagnose and could be hiding anywhere from RAM to the power
+>>> supply.
+>>>
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+From Serge@Iov|e|| @end|ng |rom @tkpp@org  Sat Jan 13 17:41:30 2024
+From: Serge@Iov|e|| @end|ng |rom @tkpp@org (Serge)
+Date: Sat, 13 Jan 2024 17:41:30 +0100
+Subject: [R-pkg-devel] Does dependencies up to date on the pretest CRAN
+ infrastructure
+In-Reply-To: <f540a493-c521-461c-86d7-91d261664bdf@statistik.tu-dortmund.de>
+References: <9d76dc3b-9f7b-4883-a866-221e46991e15@stkpp.org>
+ <20240112221419.1539ed08@Tarkus>
+ <0b451d3b-198d-458e-8e0c-cba953715924@stkpp.org>
+ <20240113121024.5fd323c7@Tarkus>
+ <badf0fdf-8828-47fa-9768-0bbb925169c4@statistik.tu-dortmund.de>
+ <669c5f1d-a979-420c-aeda-63e92007fa82@statistik.tu-dortmund.de>
+ <f540a493-c521-461c-86d7-91d261664bdf@statistik.tu-dortmund.de>
+Message-ID: <bc7131fb-b3ac-437b-8850-4cb1056f46e4@stkpp.org>
+
+Thank you both very much for your feedback.
+I'll submit the package tomorrow and see...
+
+Best,
+Serge
+
+
+
+Le 13/01/2024 ? 15:01, Uwe Ligges a ?crit?:
+> Fascinating, now it worked with the latest winbuilder submission 3 times in a row when I checked it 
+> manually. So maybe Ivan was right and there was a very demanding set of other packages compiling at 
+> the same time?
+> I don't know.
+> 
+> Serge, Can you somply submit your latest winbuilder upload to CRAN?
+> 
+> Best,
+> Uwe Ligges
+> 
+> 
+> 
+> On 13.01.2024 14:12, Uwe Ligges wrote:
+>> I can take a look, but not sure if I get to it before monday.
+>> I haven't seen it for any other packages recently.
+>>
+>> My suspicion is currently a strange mix of cmd.exe and sh.exe calls. But this is a very wild guess.
+>>
+>> Best,
+>> Uwe
+>>
+>> On 13.01.2024 14:08, Uwe Ligges wrote:
+>>>
+>>>
+>>> On 13.01.2024 10:10, Ivan Krylov via R-package-devel wrote:
+>>>> ? Fri, 12 Jan 2024 21:19:00 +0100
+>>>> Serge <Serge.Iovleff at stkpp.org> ?????:
+>>>>
+>>>>> After somme minor midficiations, I make a try on the winbuilder site.
+>>>>> I was able to build the archive with the static library
+>>>>> but I get again a Bad address error. You can have a look to
+>>>>>
+>>>>> https://win-builder.r-project.org/bw47qsMX3HTd/00install.out
+>>>>
+>>>> I think that Win-Builder is running out of memory. It took some
+>>>> experimenting, but I was able to reproduce something like this using
+>>>> the following:
+>>>>
+>>>> 1. Set the swap file in the Windows settings to minimal recommended
+>>>> size and disable its automatic growth
+>>>>
+>>>> 2. Write and run a program that does malloc(LARGE_NUMBER); getchar();
+>>>> so that almost all physical memory is allocated
+>>>>
+>>>> 3. Run gcc -DFOO=`/path/to/Rscript -e 'some script'` & many times
+>>>>
+>>>> I got a lot of interesting errors, including the "Bad address":
+>>>>
+>>>> Warnings:
+>>>> 1: .getGeneric(f, , package) : internal error -4 in R_decompress1
+>>>> 2: package "methods" in options("defaultPackages") was not found
+>>>>
+>>>> 0 [main] bash (2892) child_copy: cygheap read copy failed,
+>>>> 0x0..0x800025420, done 0, windows pid 2892, Win32 error 299
+>>>>
+>>>> 0 [main] bash (3256) C:\rtools43\usr\bin\bash.exe: *** fatal error in
+>>>> forked process - MEM_COMMIT failed, Win32 error 1455
+>>>>
+>>>> -bash: fork: retry: Resource temporarily unavailable
+>>>>
+>>>> -bash: R-devel/bin/Rscript.exe: Bad address
+>>>
+>>> The above indeed happens if not sufficient memory would be available.
+>>> Important to know: This includes unused but committed memory which may be a lot.
+>>> But I doubt it is the case on winbuilder as the machines has 256GB or more (depending in the 
+>>> machine) and additionally 500GB swap space on SSD.
+>>>
+>>> Best,
+>>> Uwe
+>>>
+>>>
+>>>> Your package is written in C++, but that by itself shouldn't disqualify
+>>>> it. On my Linux computer, /usr/bin/time R -e
+>>>> 'install.packages("MixAll")' says that the installation takes slightly
+>>>> less than a gigabyte of memory ("912516maxresident k"), which is par
+>>>> the course for such packages. (My small Rcpp-using package takes
+>>>> approximately half a gigabyte by the same metric.)
+>>>>
+>>>> I'm still not 100% sure (if Win-Builder is running out of memory, why
+>>>> are you seeing "Bad address" only and not the rest of the carnage?),
+>>>> but I'm not seeing a problem with your package, either. If EFAULT is
+>>>> Cygwin's way of saying "I caught a bad pointer in your system call"
+>>>> (which, I must stress, is happening inside /bin/sh, not your package
+>>>> or even R at all), it's not impossible that Win-Builder is having
+>>>> hardware problems. Unfortunately, they take a lot of effort and
+>>>> downtime to diagnose and could be hiding anywhere from RAM to the power
+>>>> supply.
+>>>>
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
