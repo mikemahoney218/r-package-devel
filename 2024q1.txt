@@ -5797,3 +5797,1023 @@ Uwe Ligges
 > R-package-devel at r-project.org mailing list
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
+From ro||turner @end|ng |rom po@teo@net  Tue Jan 16 06:15:22 2024
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Tue, 16 Jan 2024 05:15:22 +0000
+Subject: [R-pkg-devel] checking CRAN incoming feasibility
+Message-ID: <20240116181522.42573cc6@rolf-Latitude-E7470>
+
+
+This post essentially amounts to idle curiosity.  I don't really expect
+that anything can be done about the problem that I perceive.
+
+When I check a package using --as-cran, the code spits out a line
+
+    checking CRAN incoming feasibility ...
+
+and then disappears into a black hole for what seems an eternity (5 or
+10 minutes).
+
+Why does this step take so long?  Surely the software just has to check
+that there is web connection to a CRAN mirror.  I would have thought
+that this would be executed virtually instantaneously.
+
+cheers,
+
+Rolf Turner
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+
+From hugh@p@r@on@ge @end|ng |rom gm@||@com  Tue Jan 16 06:24:59 2024
+From: hugh@p@r@on@ge @end|ng |rom gm@||@com (Hugh Parsonage)
+Date: Tue, 16 Jan 2024 16:24:59 +1100
+Subject: [R-pkg-devel] checking CRAN incoming feasibility
+In-Reply-To: <20240116181522.42573cc6@rolf-Latitude-E7470>
+References: <20240116181522.42573cc6@rolf-Latitude-E7470>
+Message-ID: <CAJmOi+P3ba7YVChFxz8kvAY9tr8VBi_SE+spgTzBHpswaNkjeQ@mail.gmail.com>
+
+>  Surely the software just has to check
+that there is web connection to a CRAN mirror.
+
+Nope! The full code is in tools:::.check_package_CRAN_incoming  (the
+body of which filled up my entire console), but to name a few checks
+it has to do: check that the name of the package is not the same as
+any other, including archived packages (which means that it has to
+download the package metadata), make sure the licence is ok, see if
+the version number is ok. 10 minutes is quite a lot though. I suspect
+the initial connection may have been faulty.
+
+On Tue, 16 Jan 2024 at 16:15, Rolf Turner <rolfturner at posteo.net> wrote:
+>
+>
+> This post essentially amounts to idle curiosity.  I don't really expect
+> that anything can be done about the problem that I perceive.
+>
+> When I check a package using --as-cran, the code spits out a line
+>
+>     checking CRAN incoming feasibility ...
+>
+> and then disappears into a black hole for what seems an eternity (5 or
+> 10 minutes).
+>
+> Why does this step take so long?  Surely the software just has to check
+> that there is web connection to a CRAN mirror.  I would have thought
+> that this would be executed virtually instantaneously.
+>
+> cheers,
+>
+> Rolf Turner
+>
+> --
+> Honorary Research Fellow
+> Department of Statistics
+> University of Auckland
+> Stats. Dep't. (secretaries) phone:
+>          +64-9-373-7599 ext. 89622
+> Home phone: +64-9-480-4619
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From ro||turner @end|ng |rom po@teo@net  Tue Jan 16 06:49:01 2024
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Tue, 16 Jan 2024 05:49:01 +0000
+Subject: [R-pkg-devel] checking CRAN incoming feasibility
+In-Reply-To: <CAJmOi+P3ba7YVChFxz8kvAY9tr8VBi_SE+spgTzBHpswaNkjeQ@mail.gmail.com>
+References: <20240116181522.42573cc6@rolf-Latitude-E7470>
+ <CAJmOi+P3ba7YVChFxz8kvAY9tr8VBi_SE+spgTzBHpswaNkjeQ@mail.gmail.com>
+Message-ID: <20240116184901.3f33e87b@rolf-Latitude-E7470>
+
+
+On Tue, 16 Jan 2024 16:24:59 +1100
+Hugh Parsonage <hugh.parsonage at gmail.com> wrote:
+
+> >  Surely the software just has to check
+> that there is web connection to a CRAN mirror.
+> 
+> Nope! The full code is in tools:::.check_package_CRAN_incoming  (the
+> body of which filled up my entire console), but to name a few checks
+> it has to do: check that the name of the package is not the same as
+> any other, including archived packages (which means that it has to
+> download the package metadata), make sure the licence is ok, see if
+> the version number is ok. 10 minutes is quite a lot though. I suspect
+> the initial connection may have been faulty.
+
+Well, it may not have been 10 minutes, but it was at least 5.  The
+problem is persistent/repeatable.  I don't believe that there is any
+faulty connection.
+
+Thanks for the insight.
+
+cheers,
+
+Rolf Turner
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+
+From |kry|ov @end|ng |rom d|@root@org  Tue Jan 16 08:58:58 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 16 Jan 2024 10:58:58 +0300
+Subject: [R-pkg-devel] checking CRAN incoming feasibility
+In-Reply-To: <20240116184901.3f33e87b@rolf-Latitude-E7470>
+References: <20240116181522.42573cc6@rolf-Latitude-E7470>
+ <CAJmOi+P3ba7YVChFxz8kvAY9tr8VBi_SE+spgTzBHpswaNkjeQ@mail.gmail.com>
+ <20240116184901.3f33e87b@rolf-Latitude-E7470>
+Message-ID: <20240116105858.4e657b78@Tarkus>
+
+? Tue, 16 Jan 2024 05:49:01 +0000
+Rolf Turner <rolfturner at posteo.net> ?????:
+
+> The problem is persistent/repeatable.  I don't believe that there is
+> any faulty connection.
+
+One of the things done by R CMD check --as-cran at this point is
+sending a HEAD request to every Web link mentioned in the package
+documentation and DESCRIPTION. One of the hosts may be slow to respond,
+either by accident or due to misguided anti-robot countermeasures.
+(Most website protection systems would say that R CMD check counts as a
+robot because there's no human behind it to look at the ads.)
+
+Here's what you could try. Unpack your built source package. If you
+have a fresh .Rcheck directory from an R CMD check, use
+YOURPACKAGE.Rcheck/00_pkg_src/YOURPACKAGE. Then profile the check
+function, using the subdirectory from the source package archive as the
+argument:
+
+Rprof(); tools:::.check_package_CRAN_incoming(dir); Rprof('NULL')
+
+Does any one function stand out in the subsequent summaryRprof()
+output? For me, it's readRDS (not very helpful), but by reading
+Rprof.out I can see that it's used by CRAN_package_db and
+CRAN_archive_db to download web/packages/packages.rds and
+src/contrib/Meta/archive.rds from the chosen CRAN mirror, which for me
+takes a few seconds for both files.
+
+Do you have a CRAN mirror set up in ~/.Rprofile? It could be having a
+slow day.
+
+-- 
+Best regards,
+Ivan
+
+
+From d@v|dhughjone@ @end|ng |rom gm@||@com  Tue Jan 16 09:47:07 2024
+From: d@v|dhughjone@ @end|ng |rom gm@||@com (David Hugh-Jones)
+Date: Tue, 16 Jan 2024 08:47:07 +0000
+Subject: [R-pkg-devel] checking CRAN incoming feasibility
+In-Reply-To: <CAJmOi+P3ba7YVChFxz8kvAY9tr8VBi_SE+spgTzBHpswaNkjeQ@mail.gmail.com>
+References: <20240116181522.42573cc6@rolf-Latitude-E7470>
+ <CAJmOi+P3ba7YVChFxz8kvAY9tr8VBi_SE+spgTzBHpswaNkjeQ@mail.gmail.com>
+Message-ID: <CAARY7ki=8w7+5wySY6evjjao+uShJD1AsokDioX+cfYaui6FTg@mail.gmail.com>
+
+If I understand correctly, the current procedure is that the client
+downloads every package name from CRAN, and then checks its name is
+unique. Wouldn?t
+it be faster (for both parties) to check name uniqueness directly on the
+server?
+
+
+Writing: wyclif.substack.com
+Book: www.wyclifsdust.com
+
+
+On Tue, 16 Jan 2024 at 05:25, Hugh Parsonage <hugh.parsonage at gmail.com>
+wrote:
+
+> >  Surely the software just has to check
+> that there is web connection to a CRAN mirror.
+>
+> Nope! The full code is in tools:::.check_package_CRAN_incoming  (the
+> body of which filled up my entire console), but to name a few checks
+> it has to do: check that the name of the package is not the same as
+> any other, including archived packages (which means that it has to
+> download the package metadata), make sure the licence is ok, see if
+> the version number is ok. 10 minutes is quite a lot though. I suspect
+> the initial connection may have been faulty.
+>
+> On Tue, 16 Jan 2024 at 16:15, Rolf Turner <rolfturner at posteo.net> wrote:
+> >
+> >
+> > This post essentially amounts to idle curiosity.  I don't really expect
+> > that anything can be done about the problem that I perceive.
+> >
+> > When I check a package using --as-cran, the code spits out a line
+> >
+> >     checking CRAN incoming feasibility ...
+> >
+> > and then disappears into a black hole for what seems an eternity (5 or
+> > 10 minutes).
+> >
+> > Why does this step take so long?  Surely the software just has to check
+> > that there is web connection to a CRAN mirror.  I would have thought
+> > that this would be executed virtually instantaneously.
+> >
+> > cheers,
+> >
+> > Rolf Turner
+> >
+> > --
+> > Honorary Research Fellow
+> > Department of Statistics
+> > University of Auckland
+> > Stats. Dep't. (secretaries) phone:
+> >          +64-9-373-7599 ext. 89622
+> > Home phone: +64-9-480-4619
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Tue Jan 16 11:00:08 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Tue, 16 Jan 2024 11:00:08 +0100
+Subject: [R-pkg-devel] checking CRAN incoming feasibility
+In-Reply-To: <20240116184901.3f33e87b@rolf-Latitude-E7470>
+References: <20240116181522.42573cc6@rolf-Latitude-E7470>
+ <CAJmOi+P3ba7YVChFxz8kvAY9tr8VBi_SE+spgTzBHpswaNkjeQ@mail.gmail.com>
+ <20240116184901.3f33e87b@rolf-Latitude-E7470>
+Message-ID: <3804e258-e568-4005-924b-946299d04ca1@statistik.tu-dortmund.de>
+
+
+
+On 16.01.2024 06:49, Rolf Turner wrote:
+> 
+> On Tue, 16 Jan 2024 16:24:59 +1100
+> Hugh Parsonage <hugh.parsonage at gmail.com> wrote:
+> 
+>>>   Surely the software just has to check
+>> that there is web connection to a CRAN mirror.
+>>
+>> Nope! The full code is in tools:::.check_package_CRAN_incoming  (the
+>> body of which filled up my entire console), but to name a few checks
+>> it has to do: check that the name of the package is not the same as
+>> any other, including archived packages (which means that it has to
+>> download the package metadata), make sure the licence is ok, see if
+>> the version number is ok. 10 minutes is quite a lot though. I suspect
+>> the initial connection may have been faulty.
+> 
+> Well, it may not have been 10 minutes, but it was at least 5.  The
+> problem is persistent/repeatable.  I don't believe that there is any
+> faulty connection.
+> 
+> Thanks for the insight.
+> 
+> cheers,
+> 
+> Rolf Turner
+> 
+
+
+I'd suggest to choose a local CRAN mirror for the checks (particularly 
+as you are located at the most opposite side of the world from Vienna) 
+which may help if several requests to CRAN are done.
+Also, you may want to disable the URL checks, which also take some time 
+for us, but may be way more serious if you point to many URLs that do 
+not resolve to servers in your part of the world.
+
+Best,
+Uwe Ligges
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Tue Jan 16 15:46:41 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Tue, 16 Jan 2024 09:46:41 -0500
+Subject: [R-pkg-devel] test failure: oldrel
+Message-ID: <CAL3ufUJgCWZm0Kosxbt4Awha7Wag0EhUEc8bNp=PqCOGjYqyOA@mail.gmail.com>
+
+Hey folks! I've received note that a package of mine is failing tests on
+oldrel.
+
+Check results:
+https://www.r-project.org/nosvn/R.check/r-oldrel-windows-x86_64/arcgisutils-00check.html
+
+I think I've narrowed it down to the way that I've written the test which
+uses `as.POSIXct(Sys.Date(), tz = "UTC")`.
+
+If I understand the R release changelog correctly, this behavior did not
+exist prior to R 4.3.0.
+
+as.POSIXlt(<Date>) now does apply a tz (time zone) argument, as does
+> as.POSIXct(); partly suggested by Roland Fu? on the R-devel mailing list.
+
+
+https://cran.r-project.org/doc/manuals/r-release/NEWS.html
+
+Does this check out? If so, would be more effective to modify the test to
+use a the character method of `as.POSIXct()`?
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Tue Jan 16 15:59:21 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 16 Jan 2024 08:59:21 -0600
+Subject: [R-pkg-devel] test failure: oldrel
+In-Reply-To: <CAL3ufUJgCWZm0Kosxbt4Awha7Wag0EhUEc8bNp=PqCOGjYqyOA@mail.gmail.com>
+References: <CAL3ufUJgCWZm0Kosxbt4Awha7Wag0EhUEc8bNp=PqCOGjYqyOA@mail.gmail.com>
+Message-ID: <26022.39369.364674.947370@rob.eddelbuettel.com>
+
+
+Doesn't seem to be the case as it moderately easy to check (especially when
+you happen to have local images of r-base around anyway):
+
+edd at rob:~$ for v in 4.3.2 4.2.2 4.1.3 4.0.5 3.6.3 3.5.3 3.4.4 3.3.3; do echo -n "R ${v}: "; docker run --rm -ti r-base:${v} Rscript -e 'as.POSIXct(Sys.Date(), tz = "UTC")'; done
+R 4.3.2: [1] "2024-01-16 UTC"
+R 4.2.2: [1] "2024-01-16 UTC"
+R 4.1.3: [1] "2024-01-16 UTC"
+R 4.0.5: [1] "2024-01-16 UTC"
+R 3.6.3: [1] "2024-01-16 UTC"
+R 3.5.3: [1] "2024-01-16 UTC"
+R 3.4.4: [1] "2024-01-16 UTC"
+R 3.3.3: [1] "2024-01-16 UTC"
+edd at rob:~$ 
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From |kry|ov @end|ng |rom d|@root@org  Tue Jan 16 16:04:20 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 16 Jan 2024 18:04:20 +0300
+Subject: [R-pkg-devel] checking CRAN incoming feasibility
+In-Reply-To: <CAARY7ki=8w7+5wySY6evjjao+uShJD1AsokDioX+cfYaui6FTg@mail.gmail.com>
+References: <20240116181522.42573cc6@rolf-Latitude-E7470>
+ <CAJmOi+P3ba7YVChFxz8kvAY9tr8VBi_SE+spgTzBHpswaNkjeQ@mail.gmail.com>
+ <CAARY7ki=8w7+5wySY6evjjao+uShJD1AsokDioX+cfYaui6FTg@mail.gmail.com>
+Message-ID: <20240116180420.43895dee@arachnoid>
+
+? Tue, 16 Jan 2024 08:47:07 +0000
+David Hugh-Jones <davidhughjones at gmail.com> ?????:
+
+> If I understand correctly, the current procedure is that the client
+> downloads every package name from CRAN, and then checks its name is
+> unique.
+
+This is not the only check that relies on utils::available.packages().
+
+In particular, strong dependencies are ensured to be present in
+mainstream repositories, and the whole strong dependency tree is checked
+for packages with FOSS licenses to ensure that their dependencies do not
+restrict use.
+
+Additional checks require even more files:
+
+ - src/contrib/PACKAGES.in is checked for CRAN notes on packages
+ - src/contrib/Meta/archive.rds is also checked for potential name
+   collisions, case-insensitively.
+ - src/contrib/Meta/current.rds is checked together with archive.rds
+   for update frequency
+ - web/packages/packages.rds is checked for maintainer changes
+
+> Wouldn?t it be faster (for both parties) to check name uniqueness
+> directly on the server?
+
+The current scheme, if somewhat wasteful, makes it possible to run R
+CMD check with any CRAN mirror without making it run any code server
+side. (With the small exception of .htaccess to rewrite some paths, but
+that should be translatable for other servers like nginx too.)
+
+It's probably not impossible to transmit only data related to the
+current package while keeping this property, but recursive dependency
+checks in particular will not be easy. I think it's not worth the
+effort.
+
+-- 
+Best regards,
+Ivan
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Tue Jan 16 16:28:36 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Tue, 16 Jan 2024 10:28:36 -0500
+Subject: [R-pkg-devel] test failure: oldrel
+In-Reply-To: <26022.39369.364674.947370@rob.eddelbuettel.com>
+References: <CAL3ufUJgCWZm0Kosxbt4Awha7Wag0EhUEc8bNp=PqCOGjYqyOA@mail.gmail.com>
+ <26022.39369.364674.947370@rob.eddelbuettel.com>
+Message-ID: <CAL3ufULJYW-u8T9gr7n=1iAc5veqiEYP603RHGTAACOc+emGjA@mail.gmail.com>
+
+Oddly making the change has made CI happy.
+https://github.com/R-ArcGIS/arcgisutils/actions/runs/7543315551/job/20534063601
+
+It may be that the issue was OS related but I'm unsure since only oldrel
+for windows and macos check results are published
+https://cran.r-project.org/web/checks/check_results_arcgisutils.html
+
+
+On Tue, Jan 16, 2024 at 9:59?AM Dirk Eddelbuettel <edd at debian.org> wrote:
+
+>
+> Doesn't seem to be the case as it moderately easy to check (especially when
+> you happen to have local images of r-base around anyway):
+>
+> edd at rob:~$ for v in 4.3.2 4.2.2 4.1.3 4.0.5 3.6.3 3.5.3 3.4.4 3.3.3; do
+> echo -n "R ${v}: "; docker run --rm -ti r-base:${v} Rscript -e
+> 'as.POSIXct(Sys.Date(), tz = "UTC")'; done
+> R 4.3.2: [1] "2024-01-16 UTC"
+> R 4.2.2: [1] "2024-01-16 UTC"
+> R 4.1.3: [1] "2024-01-16 UTC"
+> R 4.0.5: [1] "2024-01-16 UTC"
+> R 3.6.3: [1] "2024-01-16 UTC"
+> R 3.5.3: [1] "2024-01-16 UTC"
+> R 3.4.4: [1] "2024-01-16 UTC"
+> R 3.3.3: [1] "2024-01-16 UTC"
+> edd at rob:~$
+>
+> Dirk
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Tue Jan 16 18:12:04 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 16 Jan 2024 11:12:04 -0600
+Subject: [R-pkg-devel] test failure: oldrel
+In-Reply-To: <CAL3ufULJYW-u8T9gr7n=1iAc5veqiEYP603RHGTAACOc+emGjA@mail.gmail.com>
+References: <CAL3ufUJgCWZm0Kosxbt4Awha7Wag0EhUEc8bNp=PqCOGjYqyOA@mail.gmail.com>
+ <26022.39369.364674.947370@rob.eddelbuettel.com>
+ <CAL3ufULJYW-u8T9gr7n=1iAc5veqiEYP603RHGTAACOc+emGjA@mail.gmail.com>
+Message-ID: <26022.47332.888136.397575@rob.eddelbuettel.com>
+
+
+On 16 January 2024 at 10:28, Josiah Parry wrote:
+| Oddly making the change has made CI happy.?
+| https://github.com/R-ArcGIS/arcgisutils/actions/runs/7543315551/job/20534063601
+| 
+| It may be that the issue was OS related but I'm unsure since only oldrel for
+| windows and macos check results are published?https://cran.r-project.org/web/
+| checks/check_results_arcgisutils.html
+
+Seb solved the puzzle (in direct email to me). It has to do with the fact
+that _the container_ defaults to UTC.  If I add '-e TZ=America/Chicago' to
+the invocation we do indeed see a difference between r-release and r-oldrel
+(and I also brought the version string display inside R):
+
+edd at rob:~$ for v in 4.3.2 4.2.2; do docker run --rm -ti -e TZ=America/Chicago r-base:${v} Rscript -e 'cat(format(getRversion()), format(as.POSIXct(Sys.Date(), tz = "UTC")), Sys.getenv("TZ"), "\n")'; done
+4.3.2 2024-01-16 America/Chicago 
+4.2.2 2024-01-15 18:00:00 America/Chicago 
+edd at rob:~$ 
+
+Thanks to Seb for the cluebat wave.
+
+Dirk
+
+| 
+| 
+| On Tue, Jan 16, 2024 at 9:59?AM Dirk Eddelbuettel <edd at debian.org> wrote:
+| 
+| 
+|     Doesn't seem to be the case as it moderately easy to check (especially when
+|     you happen to have local images of r-base around anyway):
+| 
+|     edd at rob:~$ for v in 4.3.2 4.2.2 4.1.3 4.0.5 3.6.3 3.5.3 3.4.4 3.3.3; do
+|     echo -n "R ${v}: "; docker run --rm -ti r-base:${v} Rscript -e 'as.POSIXct
+|     (Sys.Date(), tz = "UTC")'; done
+|     R 4.3.2: [1] "2024-01-16 UTC"
+|     R 4.2.2: [1] "2024-01-16 UTC"
+|     R 4.1.3: [1] "2024-01-16 UTC"
+|     R 4.0.5: [1] "2024-01-16 UTC"
+|     R 3.6.3: [1] "2024-01-16 UTC"
+|     R 3.5.3: [1] "2024-01-16 UTC"
+|     R 3.4.4: [1] "2024-01-16 UTC"
+|     R 3.3.3: [1] "2024-01-16 UTC"
+|     edd at rob:~$
+| 
+|     Dirk
+| 
+|     --
+|     dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+| 
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Tue Jan 16 18:54:53 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Tue, 16 Jan 2024 12:54:53 -0500
+Subject: [R-pkg-devel] test failure: oldrel
+In-Reply-To: <26022.47332.888136.397575@rob.eddelbuettel.com>
+References: <CAL3ufUJgCWZm0Kosxbt4Awha7Wag0EhUEc8bNp=PqCOGjYqyOA@mail.gmail.com>
+ <26022.39369.364674.947370@rob.eddelbuettel.com>
+ <CAL3ufULJYW-u8T9gr7n=1iAc5veqiEYP603RHGTAACOc+emGjA@mail.gmail.com>
+ <26022.47332.888136.397575@rob.eddelbuettel.com>
+Message-ID: <CAL3ufUJNZ-5mSqLMZZYbcBt6EO_vmzbtXx5a5-=vKQr1spp3Kw@mail.gmail.com>
+
+Thanks for the update!
+Ill be submitting a change in the coming days and will report back :)
+
+On Tue, Jan 16, 2024 at 12:12 Dirk Eddelbuettel <edd at debian.org> wrote:
+
+>
+> On 16 January 2024 at 10:28, Josiah Parry wrote:
+> | Oddly making the change has made CI happy.
+> |
+> https://github.com/R-ArcGIS/arcgisutils/actions/runs/7543315551/job/20534063601
+> |
+> | It may be that the issue was OS related but I'm unsure since only oldrel
+> for
+> | windows and macos check results are published
+> https://cran.r-project.org/web/
+> | checks/check_results_arcgisutils.html
+>
+> Seb solved the puzzle (in direct email to me). It has to do with the fact
+> that _the container_ defaults to UTC.  If I add '-e TZ=America/Chicago' to
+> the invocation we do indeed see a difference between r-release and r-oldrel
+> (and I also brought the version string display inside R):
+>
+> edd at rob:~$ for v in 4.3.2 4.2.2; do docker run --rm -ti -e
+> TZ=America/Chicago r-base:${v} Rscript -e 'cat(format(getRversion()),
+> format(as.POSIXct(Sys.Date(), tz = "UTC")), Sys.getenv("TZ"), "\n")'; done
+> 4.3.2 2024-01-16 America/Chicago
+> 4.2.2 2024-01-15 18:00:00 America/Chicago
+> edd at rob:~$
+>
+> Thanks to Seb for the cluebat wave.
+>
+> Dirk
+>
+> |
+> |
+> | On Tue, Jan 16, 2024 at 9:59?AM Dirk Eddelbuettel <edd at debian.org>
+> wrote:
+> |
+> |
+> |     Doesn't seem to be the case as it moderately easy to check
+> (especially when
+> |     you happen to have local images of r-base around anyway):
+> |
+> |     edd at rob:~$ for v in 4.3.2 4.2.2 4.1.3 4.0.5 3.6.3 3.5.3 3.4.4
+> 3.3.3; do
+> |     echo -n "R ${v}: "; docker run --rm -ti r-base:${v} Rscript -e
+> 'as.POSIXct
+> |     (Sys.Date(), tz = "UTC")'; done
+> |     R 4.3.2: [1] "2024-01-16 UTC"
+> |     R 4.2.2: [1] "2024-01-16 UTC"
+> |     R 4.1.3: [1] "2024-01-16 UTC"
+> |     R 4.0.5: [1] "2024-01-16 UTC"
+> |     R 3.6.3: [1] "2024-01-16 UTC"
+> |     R 3.5.3: [1] "2024-01-16 UTC"
+> |     R 3.4.4: [1] "2024-01-16 UTC"
+> |     R 3.3.3: [1] "2024-01-16 UTC"
+> |     edd at rob:~$
+> |
+> |     Dirk
+> |
+> |     --
+> |     dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> |
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Tue Jan 16 21:42:32 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Wed, 17 Jan 2024 09:42:32 +1300
+Subject: [R-pkg-devel] checking CRAN incoming feasibility
+In-Reply-To: <20240116184901.3f33e87b@rolf-Latitude-E7470>
+References: <20240116181522.42573cc6@rolf-Latitude-E7470>
+ <CAJmOi+P3ba7YVChFxz8kvAY9tr8VBi_SE+spgTzBHpswaNkjeQ@mail.gmail.com>
+ <20240116184901.3f33e87b@rolf-Latitude-E7470>
+Message-ID: <4B696484-4CF7-4D16-9D07-A546603532FB@R-project.org>
+
+Ralf,
+
+that check always hangs for me (I don't think it likes NZ ;)), so I just use
+
+_R_CHECK_CRAN_INCOMING_REMOTE_=0 R CMD check --as-cran ...
+
+Cheers,
+Simon
+
+
+> On Jan 16, 2024, at 6:49 PM, Rolf Turner <rolfturner at posteo.net> wrote:
+> 
+> 
+> On Tue, 16 Jan 2024 16:24:59 +1100
+> Hugh Parsonage <hugh.parsonage at gmail.com> wrote:
+> 
+>>> Surely the software just has to check
+>> that there is web connection to a CRAN mirror.
+>> 
+>> Nope! The full code is in tools:::.check_package_CRAN_incoming  (the
+>> body of which filled up my entire console), but to name a few checks
+>> it has to do: check that the name of the package is not the same as
+>> any other, including archived packages (which means that it has to
+>> download the package metadata), make sure the licence is ok, see if
+>> the version number is ok. 10 minutes is quite a lot though. I suspect
+>> the initial connection may have been faulty.
+> 
+> Well, it may not have been 10 minutes, but it was at least 5.  The
+> problem is persistent/repeatable.  I don't believe that there is any
+> faulty connection.
+> 
+> Thanks for the insight.
+> 
+> cheers,
+> 
+> Rolf Turner
+> 
+> -- 
+> Honorary Research Fellow
+> Department of Statistics
+> University of Auckland
+> Stats. Dep't. (secretaries) phone:
+>         +64-9-373-7599 ext. 89622
+> Home phone: +64-9-480-4619
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+From edd @end|ng |rom deb|@n@org  Tue Jan 16 21:58:15 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 16 Jan 2024 14:58:15 -0600
+Subject: [R-pkg-devel] checking CRAN incoming feasibility
+In-Reply-To: <4B696484-4CF7-4D16-9D07-A546603532FB@R-project.org>
+References: <20240116181522.42573cc6@rolf-Latitude-E7470>
+ <CAJmOi+P3ba7YVChFxz8kvAY9tr8VBi_SE+spgTzBHpswaNkjeQ@mail.gmail.com>
+ <20240116184901.3f33e87b@rolf-Latitude-E7470>
+ <4B696484-4CF7-4D16-9D07-A546603532FB@R-project.org>
+Message-ID: <26022.60903.629455.352417@rob.eddelbuettel.com>
+
+
+On 17 January 2024 at 09:42, Simon Urbanek wrote:
+| that check always hangs for me (I don't think it likes NZ ;)), so I just use
+| 
+| _R_CHECK_CRAN_INCOMING_REMOTE_=0 R CMD check --as-cran ...
+
+You can also set it in Renviron files consulted just for checks:
+
+  $ grep INCOMING_= ~/.R/check.Renviron*
+  /home/edd/.R/check.Renviron:_R_CHECK_CRAN_INCOMING_=FALSE
+  /home/edd/.R/check.Renviron-Rdevel:_R_CHECK_CRAN_INCOMING_=TRUE
+  $ 
+
+Best, Dirk
+
+| 
+| Cheers,
+| Simon
+| 
+| 
+| > On Jan 16, 2024, at 6:49 PM, Rolf Turner <rolfturner at posteo.net> wrote:
+| > 
+| > 
+| > On Tue, 16 Jan 2024 16:24:59 +1100
+| > Hugh Parsonage <hugh.parsonage at gmail.com> wrote:
+| > 
+| >>> Surely the software just has to check
+| >> that there is web connection to a CRAN mirror.
+| >> 
+| >> Nope! The full code is in tools:::.check_package_CRAN_incoming  (the
+| >> body of which filled up my entire console), but to name a few checks
+| >> it has to do: check that the name of the package is not the same as
+| >> any other, including archived packages (which means that it has to
+| >> download the package metadata), make sure the licence is ok, see if
+| >> the version number is ok. 10 minutes is quite a lot though. I suspect
+| >> the initial connection may have been faulty.
+| > 
+| > Well, it may not have been 10 minutes, but it was at least 5.  The
+| > problem is persistent/repeatable.  I don't believe that there is any
+| > faulty connection.
+| > 
+| > Thanks for the insight.
+| > 
+| > cheers,
+| > 
+| > Rolf Turner
+| > 
+| > -- 
+| > Honorary Research Fellow
+| > Department of Statistics
+| > University of Auckland
+| > Stats. Dep't. (secretaries) phone:
+| >         +64-9-373-7599 ext. 89622
+| > Home phone: +64-9-480-4619
+| > 
+| > ______________________________________________
+| > R-package-devel at r-project.org mailing list
+| > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+| >
+| 
+| ______________________________________________
+| R-package-devel at r-project.org mailing list
+| https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Tue Jan 16 22:24:16 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Wed, 17 Jan 2024 10:24:16 +1300
+Subject: [R-pkg-devel] test failure: oldrel
+In-Reply-To: <CAL3ufUJgCWZm0Kosxbt4Awha7Wag0EhUEc8bNp=PqCOGjYqyOA@mail.gmail.com>
+References: <CAL3ufUJgCWZm0Kosxbt4Awha7Wag0EhUEc8bNp=PqCOGjYqyOA@mail.gmail.com>
+Message-ID: <FF836548-B1B4-46EF-BF3E-6AB068554167@R-project.org>
+
+
+
+> On Jan 17, 2024, at 3:46 AM, Josiah Parry <josiah.parry at gmail.com> wrote:
+> 
+> Hey folks! I've received note that a package of mine is failing tests on
+> oldrel.
+> 
+> Check results:
+> https://www.r-project.org/nosvn/R.check/r-oldrel-windows-x86_64/arcgisutils-00check.html
+> 
+> I think I've narrowed it down to the way that I've written the test which
+> uses `as.POSIXct(Sys.Date(), tz = "UTC")`.
+> 
+
+That's not where it fails - it fails in
+
+today <- Sys.Date()
+today_ms <- date_to_ms(today)
+as.POSIXct(today_ms / 1000)
+
+which is equivalent to
+
+as.POSIXct(as.numeric(Sys.Date()) * 86400)
+
+and that is only supported since R 4.3.0 - from NEWS:
+
+  as.POSIXct(<numeric>) and as.POSIXlt(.) (without specifying origin) now work.
+
+so you have to add R >= 4.3.0 or use .POSIXct() instead.
+
+I didn't check your other tests so you may have more of the same ...
+
+Cheers,
+Simon
+
+
+> If I understand the R release changelog correctly, this behavior did not
+> exist prior to R 4.3.0.
+> 
+> as.POSIXlt(<Date>) now does apply a tz (time zone) argument, as does
+>> as.POSIXct(); partly suggested by Roland Fu? on the R-devel mailing list.
+> 
+> 
+> https://cran.r-project.org/doc/manuals/r-release/NEWS.html
+> 
+> Does this check out? If so, would be more effective to modify the test to
+> use a the character method of `as.POSIXct()`?
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From ro||turner @end|ng |rom po@teo@net  Tue Jan 16 23:13:22 2024
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Tue, 16 Jan 2024 22:13:22 +0000
+Subject: [R-pkg-devel] Warning when the --as-cran flag is used,
+ not otherwise.
+Message-ID: <20240117111322.1033ed0b@rolf-Latitude-E7470>
+
+
+In a package that I am updating, I have a data documentation file
+monoCyteSim.Rd.  In this file, two data sets are documented: bivarSim
+and ccSim.  The usage section is;
+
+> \usage{
+>     bivarSim
+>     ccSim
+> }
+
+Since the data are lazy-loaded I *don't* wrap the names of the data
+sets in "data()".
+
+I do this in another data documentation file (SydColDat.Rd) without
+problem. However when I check the package using --as-cran I get a
+warning:
+
+> * checking for code/documentation mismatches ... WARNING
+> Variables with usage in documentation object 'monoCyteSim' but not in
+> code: ?bivarSim? ?ccSim?
+
+No such warning seems to arise in respect of SydColDat.Rd.
+
+Can anyone explain what is going on, and what if anything I can do
+about it?  I would be grateful for any insight.
+
+I have attached the two help files, the one that triggers the
+warning and the one that doesn't.  I have changed the extension from
+.Rd to .txt so that (I hope!) the mailer doesn't strip them away.
+
+The complete package, as it currently stands (if this is of any
+interest), is available from my web page:
+
+    https://www.stat.auckland.ac.nz/~rolf/
+
+Scroll to near the bottom and click on "Eglhmm".
+
+Thanks.
+
+cheers,
+
+Rolf Turner
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+-------------- next part --------------
+An embedded and charset-unspecified text was scrubbed...
+Name: monoCyteSim.txt
+URL: <https://stat.ethz.ch/pipermail/r-package-devel/attachments/20240116/62eb780c/attachment.txt>
+
+-------------- next part --------------
+An embedded and charset-unspecified text was scrubbed...
+Name: SydColDat.txt
+URL: <https://stat.ethz.ch/pipermail/r-package-devel/attachments/20240116/62eb780c/attachment-0001.txt>
+
+From @eb@meyer @end|ng |rom |@u@de  Tue Jan 16 23:53:15 2024
+From: @eb@meyer @end|ng |rom |@u@de (Sebastian Meyer)
+Date: Tue, 16 Jan 2024 23:53:15 +0100
+Subject: [R-pkg-devel] Warning when the --as-cran flag is used,
+ not otherwise.
+In-Reply-To: <20240117111322.1033ed0b@rolf-Latitude-E7470>
+References: <20240117111322.1033ed0b@rolf-Latitude-E7470>
+Message-ID: <653EEC64-5568-4971-AC8D-067B79309ACD@fau.de>
+
+There is a note on your help page that says
+
+These data are **not** immediately available in the `eglhmm` package.
+
+which seems to be in line with the check warning.
+
+Best wishes,
+Sebastian Meyer
+
+Am 16. Januar 2024 23:13:22 MEZ schrieb Rolf Turner <rolfturner at posteo.net>:
+>
+>In a package that I am updating, I have a data documentation file
+>monoCyteSim.Rd.  In this file, two data sets are documented: bivarSim
+>and ccSim.  The usage section is;
+>
+>> \usage{
+>>     bivarSim
+>>     ccSim
+>> }
+>
+>Since the data are lazy-loaded I *don't* wrap the names of the data
+>sets in "data()".
+>
+>I do this in another data documentation file (SydColDat.Rd) without
+>problem. However when I check the package using --as-cran I get a
+>warning:
+>
+>> * checking for code/documentation mismatches ... WARNING
+>> Variables with usage in documentation object 'monoCyteSim' but not in
+>> code: ?bivarSim? ?ccSim?
+>
+>No such warning seems to arise in respect of SydColDat.Rd.
+>
+>Can anyone explain what is going on, and what if anything I can do
+>about it?  I would be grateful for any insight.
+>
+>I have attached the two help files, the one that triggers the
+>warning and the one that doesn't.  I have changed the extension from
+>.Rd to .txt so that (I hope!) the mailer doesn't strip them away.
+>
+>The complete package, as it currently stands (if this is of any
+>interest), is available from my web page:
+>
+>    https://www.stat.auckland.ac.nz/~rolf/
+>
+>Scroll to near the bottom and click on "Eglhmm".
+>
+>Thanks.
+>
+>cheers,
+>
+>Rolf Turner
+>
+
+
+From hugh@p@r@on@ge @end|ng |rom gm@||@com  Wed Jan 17 00:30:36 2024
+From: hugh@p@r@on@ge @end|ng |rom gm@||@com (Hugh Parsonage)
+Date: Wed, 17 Jan 2024 10:30:36 +1100
+Subject: [R-pkg-devel] Additional Issues: Intel
+Message-ID: <CAJmOi+PRCxcqL=RM_pHDnLMpHvNLP=xp9KOPgtER25C_eccXdQ@mail.gmail.com>
+
+My package grattan fails the Intel[1] check with
+
+  Error: segfault from C stack overflow
+
+I am unable to immediately see where in the test suite this error has
+occurred.  I seek advice on how to fix this error.  The only hunch I
+have is that the package uses C code and includes structs with arrays
+on the stack, which perhaps are excessive for the Intel check machine,
+but am far from confident that's the issue.  The repository is at
+<https://github.com/HughParsonage/grattan/>
+
+[1]https://www.stats.ox.ac.uk/pub/bdr/Intel/grattan.out
+
+
+From @teve@the@b@ye@|@n @end|ng |rom gm@||@com  Wed Jan 17 00:54:10 2024
+From: @teve@the@b@ye@|@n @end|ng |rom gm@||@com (Steven Scott)
+Date: Tue, 16 Jan 2024 15:54:10 -0800
+Subject: [R-pkg-devel] current docker image for ASAN
+Message-ID: <CAJqTW45g8KevjJ77CW0MX81vBxrw5hHOxTy6T-FX82TnRaZ2oQ@mail.gmail.com>
+
+Greetings everyone, though I expect this message is mainly for Dirk.
+
+CRAN checks of my bsts/Boom package generate an ASAN error that the CRAN
+maintainers have asked me to look into.  I recall doing this before (this
+error has been there for several years now) via a docker image that Dirk
+had set up.  I have two questions.
+
+1) Which docker image should I use?  I imagine it has been updated since
+the last time I tried.
+2) Is the image built with an asan-appropriate libc++?  I'm asking because
+the last time I tried tracking down this error, ASAN identified that there
+was an error, but pointed to an irrelevant section of code.  Brian thinks
+libc++ is the culprit.
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Wed Jan 17 01:18:14 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 16 Jan 2024 18:18:14 -0600
+Subject: [R-pkg-devel] current docker image for ASAN
+In-Reply-To: <CAJqTW45g8KevjJ77CW0MX81vBxrw5hHOxTy6T-FX82TnRaZ2oQ@mail.gmail.com>
+References: <CAJqTW45g8KevjJ77CW0MX81vBxrw5hHOxTy6T-FX82TnRaZ2oQ@mail.gmail.com>
+Message-ID: <26023.7366.705344.886467@rob.eddelbuettel.com>
+
+
+On 16 January 2024 at 15:54, Steven Scott wrote:
+| Greetings everyone, though I expect this message is mainly for Dirk.
+| 
+| CRAN checks of my bsts/Boom package generate an ASAN error that the CRAN
+| maintainers have asked me to look into.  I recall doing this before (this
+| error has been there for several years now) via a docker image that Dirk
+| had set up.  I have two questions.
+| 
+| 1) Which docker image should I use?  I imagine it has been updated since
+| the last time I tried.
+| 2) Is the image built with an asan-appropriate libc++?  I'm asking because
+| the last time I tried tracking down this error, ASAN identified that there
+| was an error, but pointed to an irrelevant section of code.  Brian thinks
+| libc++ is the culprit.
+
+Thanks -- maybe see prior messages. The container is on a scheduled weekly
+rebuild, but for reasons that long escape me I also switched at some point to
+relying on the 'sumo' container Winston builds by collating several such
+containers and have used this myself for several debugging trips:
+
+   https://github.com/wch/r-debug
+
+You want RDsan and/or RDcsan therein.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
