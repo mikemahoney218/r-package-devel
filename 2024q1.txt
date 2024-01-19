@@ -6817,3 +6817,721 @@ Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From vo|ody@ @end|ng |rom m|nd@pr|ng@com  Wed Jan 17 04:24:55 2024
+From: vo|ody@ @end|ng |rom m|nd@pr|ng@com (Vladimir Dergachev)
+Date: Tue, 16 Jan 2024 22:24:55 -0500 (EST)
+Subject: [R-pkg-devel] Additional Issues: Intel
+In-Reply-To: <CAJmOi+PRCxcqL=RM_pHDnLMpHvNLP=xp9KOPgtER25C_eccXdQ@mail.gmail.com>
+References: <CAJmOi+PRCxcqL=RM_pHDnLMpHvNLP=xp9KOPgtER25C_eccXdQ@mail.gmail.com>
+Message-ID: <alpine.DEB.2.22.394.2401162218570.3559@iridium>
+
+
+
+On Wed, 17 Jan 2024, Hugh Parsonage wrote:
+
+> My package grattan fails the Intel[1] check with
+>
+>  Error: segfault from C stack overflow
+>
+> I am unable to immediately see where in the test suite this error has
+> occurred.  I seek advice on how to fix this error.  The only hunch I
+> have is that the package uses C code and includes structs with arrays
+> on the stack, which perhaps are excessive for the Intel check machine,
+> but am far from confident that's the issue.  The repository is at
+> <https://github.com/HughParsonage/grattan/>
+
+Two possibilities to look into:
+
+    * your structures on the stack are large. Don't do this ! Your code 
+might run faster and would be easier to debug if you use regular memory 
+allocation instead. Since R does fair number of memory allocation calls 
+itself, the extra overhead from your calls will not be that noticeable.
+
+    * your stuctures are small, but you have a recursive function that is 
+called too often. In this case, the solution is to reimplement the 
+recurrence without doing function calls (using a loop, for example). Some 
+recurrences can be implemented without using any accumulating state. 
+Others need it and you can use heap memory for that.
+
+best
+
+Vladimir Dergachev
+
+>
+> [1]https://www.stats.ox.ac.uk/pub/bdr/Intel/grattan.out
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+From ro||turner @end|ng |rom po@teo@net  Wed Jan 17 07:39:03 2024
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Wed, 17 Jan 2024 06:39:03 +0000
+Subject: [R-pkg-devel] Warning when the --as-cran flag is used,
+ not otherwise.
+In-Reply-To: <653EEC64-5568-4971-AC8D-067B79309ACD@fau.de>
+References: <20240117111322.1033ed0b@rolf-Latitude-E7470>
+ <653EEC64-5568-4971-AC8D-067B79309ACD@fau.de>
+Message-ID: <20240117193903.1550f669@rolf-Latitude-E7470>
+
+
+On Tue, 16 Jan 2024 23:53:15 +0100
+Sebastian Meyer <seb.meyer at fau.de> wrote:
+
+> There is a note on your help page that says
+> 
+> These data are **not** immediately available in the `eglhmm` package.
+> 
+> which seems to be in line with the check warning.
+
+OK.  Thanks.  Now that you have pointed this out, it's all too obvious.
+The user is invited to install the monoCyteSim package (from a specified
+github repository).  After the user has done so, then the data sets
+bivarSim and ccSim are available in the usual way.
+
+When I ran R CMD check without the --as-cran flag, there was no problem
+because I had already installed the monoCyteSim package on my local
+computer.  *With* that flag, R CMD check carries on as if it were
+looking at the eghlmm package in the context of running on a CRAN
+server.  This server would *not* have the monoCyteSim package
+installed, whence it would not be able to find the data sets bivarSim
+and ccCM, whence the warning.  Makes perfect sense now.
+
+It turns out I can make the warning go away by removing the lines
+
+\usage{
+    bivarSim
+    ccSim
+}
+
+They serve no useful purpose and are not required.
+
+Thanks again.
+
+cheers,
+
+Rolf Turner
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+
+From dw|n@em|u@ @end|ng |rom comc@@t@net  Wed Jan 17 08:19:54 2024
+From: dw|n@em|u@ @end|ng |rom comc@@t@net (David Winsemius)
+Date: Tue, 16 Jan 2024 23:19:54 -0800
+Subject: [R-pkg-devel] Warning when the --as-cran flag is used,
+ not otherwise.
+In-Reply-To: <20240117193903.1550f669@rolf-Latitude-E7470>
+References: <20240117111322.1033ed0b@rolf-Latitude-E7470>
+ <653EEC64-5568-4971-AC8D-067B79309ACD@fau.de>
+ <20240117193903.1550f669@rolf-Latitude-E7470>
+Message-ID: <b492cfb0-dea5-70c5-6acc-371c919e8ccb@comcast.net>
+
+Speaking as a potential user of such a package, I wonder if that 
+information could be put in a help page for the entire package? I've 
+seen several packages that do such a "global" overview. I realize there 
+might be a Suggests: entry in the DESCRIPTION file but not everyone 
+knows how to find it and even those who do might first try for a help 
+page if it was in the Index.
+
+On 1/16/24 22:39, Rolf Turner wrote:
+> On Tue, 16 Jan 2024 23:53:15 +0100
+> Sebastian Meyer <seb.meyer at fau.de> wrote:
+>
+>> There is a note on your help page that says
+>>
+>> These data are **not** immediately available in the `eglhmm` package.
+>>
+>> which seems to be in line with the check warning.
+> OK.  Thanks.  Now that you have pointed this out, it's all too obvious.
+> The user is invited to install the monoCyteSim package (from a specified
+> github repository).  After the user has done so, then the data sets
+> bivarSim and ccSim are available in the usual way.
+>
+> When I ran R CMD check without the --as-cran flag, there was no problem
+> because I had already installed the monoCyteSim package on my local
+> computer.  *With* that flag, R CMD check carries on as if it were
+> looking at the eghlmm package in the context of running on a CRAN
+> server.  This server would *not* have the monoCyteSim package
+> installed, whence it would not be able to find the data sets bivarSim
+> and ccCM, whence the warning.  Makes perfect sense now.
+>
+> It turns out I can make the warning go away by removing the lines
+>
+> \usage{
+>      bivarSim
+>      ccSim
+> }
+>
+> They serve no useful purpose and are not required.
+>
+> Thanks again.
+>
+> cheers,
+>
+> Rolf Turner
+>
+
+
+From @@meh@@bdu|@h @end|ng |rom k@u@t@edu@@@  Wed Jan 17 08:37:20 2024
+From: @@meh@@bdu|@h @end|ng |rom k@u@t@edu@@@ (Sameh Abdulah)
+Date: Wed, 17 Jan 2024 07:37:20 +0000
+Subject: [R-pkg-devel] CMake on CRAN Systems
+In-Reply-To: <20240116180420.43895dee@arachnoid>
+References: <20240116181522.42573cc6@rolf-Latitude-E7470>
+ <CAJmOi+P3ba7YVChFxz8kvAY9tr8VBi_SE+spgTzBHpswaNkjeQ@mail.gmail.com>
+ <CAARY7ki=8w7+5wySY6evjjao+uShJD1AsokDioX+cfYaui6FTg@mail.gmail.com>
+ <20240116180420.43895dee@arachnoid>
+Message-ID: <VI1P192MB02855048046590780FE1BB3BFB722@VI1P192MB0285.EURP192.PROD.OUTLOOK.COM>
+
+Hi All,
+
+We recently encountered an installation issue with our package on CRAN. We've been depending on CMake, assuming it is readily available by default, but it appears to be only available on the M1mac system but not on the others. Should we include the CMake installation within our package?
+
+We encountered another issue with OpenMP, but we managed to resolve it by consulting the manual.
+
+https://urldefense.com/v3/__https://cran-archive.r-project.org/web/checks/2024/2024-01-12_check_results_MPCR.html__;!!Nmw4Hv0!1cg5mCeLOB9fBslqbEGB1S0_MEcOLMjk6m4hpfWDyXErAlWtm82xz9ZUU3aQ3q6jkXZBM2tNhUp3EI3JmigE4EvCLlrC$<https://urldefense.com/v3/__https:/cran-archive.r-project.org/web/checks/2024/2024-01-12_check_results_MPCR.html__;!!Nmw4Hv0!1cg5mCeLOB9fBslqbEGB1S0_MEcOLMjk6m4hpfWDyXErAlWtm82xz9ZUU3aQ3q6jkXZBM2tNhUp3EI3JmigE4EvCLlrC$>
+
+
+
+Best,
+--Sameh
+
+-- 
+
+This message and its contents, including attachments are intended solely 
+for the original recipient. If you are not the intended recipient or have 
+received this message in error, please notify me immediately and delete 
+this message from your computer system. Any unauthorized use or 
+distribution is prohibited. Please consider the environment before printing 
+this email.
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Wed Jan 17 08:54:13 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Wed, 17 Jan 2024 10:54:13 +0300
+Subject: [R-pkg-devel] CMake on CRAN Systems
+Message-ID: <20240117105413.4b87e347@Tarkus>
+
+Dear Sameh,
+
+Regarding your question about the MPCR package and the use of CMake
+<https://cran-archive.r-project.org/web/checks/2024/2024-01-12_check_results_MPCR.html>:
+on a Mac, you have to look for the cmake executable in more than one
+place because it is not guaranteed to be on the $PATH. As described in
+Writing R Extensions
+<https://cran.r-project.org/doc/manuals/R-exts.html#Using-cmake>, the
+following is one way to work around the problem:
+
+if test -z "$CMAKE"; then CMAKE="`which cmake`"; fi
+if test -z "$CMAKE"; then
+ CMAKE=/Applications/CMake.app/Contents/bin/cmake;
+fi
+if test -f "$CMAKE"; then echo "no ?cmake? command found"; exit 1; fi
+
+Please don't reply to existing threads when starting a new topic on
+mailing lists. Your message had a mangled link that went to
+urldefense.com instead of cran-archive.r-project.org, letting Amazon
+(who host the website) know about every visit to the link:
+https://stat.ethz.ch/pipermail/r-package-devel/2024q1/010328.html
+
+-- 
+Best regards,
+Ivan
+
+
+From m@tth|@@-gond@n @end|ng |rom gmx@de  Wed Jan 17 08:59:56 2024
+From: m@tth|@@-gond@n @end|ng |rom gmx@de (Matthias Gondan)
+Date: Wed, 17 Jan 2024 08:59:56 +0100
+Subject: [R-pkg-devel] CMake on CRAN Systems
+In-Reply-To: <VI1P192MB02855048046590780FE1BB3BFB722@VI1P192MB0285.EURP192.PROD.OUTLOOK.COM>
+References: <20240116181522.42573cc6@rolf-Latitude-E7470>
+ <CAJmOi+P3ba7YVChFxz8kvAY9tr8VBi_SE+spgTzBHpswaNkjeQ@mail.gmail.com>
+ <CAARY7ki=8w7+5wySY6evjjao+uShJD1AsokDioX+cfYaui6FTg@mail.gmail.com>
+ <20240116180420.43895dee@arachnoid>
+ <VI1P192MB02855048046590780FE1BB3BFB722@VI1P192MB0285.EURP192.PROD.OUTLOOK.COM>
+Message-ID: <trinity-8da34806-e9ec-45a6-9efb-ba607ce24087-1705478396401@msvc-mesg-gmx101>
+
+For package rswipl, cmake still seems to work, but
+
+* one has to search for it on MacOS, see the src/Makevars, as well as the relevant sections in Writing R extensions
+* Windows Defender (also on CRAN) complains about dubious exe-files when checking the "endianness" of the target system. That can be circumvented by telling cmake to compile static libraries instead of executables.
+
+I am unsure if my response is specific to your problem, but the links below do not seem to work.
+
+> Gesendet: Mittwoch, den 17.01.2024 um 08:37 Uhr
+> Von: "Sameh Abdulah" <sameh.abdulah at kaust.edu.sa>
+> An: "R Package Development" <r-package-devel at r-project.org>
+> Betreff: [R-pkg-devel] CMake on CRAN Systems
+>
+> Hi All,
+>
+> We recently encountered an installation issue with our package on CRAN. We've been depending on CMake, assuming it is readily available by default, but it appears to be only available on the M1mac system but not on the others. Should we include the CMake installation within our package?
+>
+> We encountered another issue with OpenMP, but we managed to resolve it by consulting the manual.
+>
+> https://urldefense.com/v3/__https://cran-archive.r-project.org/web/checks/2024/2024-01-12_check_results_MPCR.html__;!!Nmw4Hv0!1cg5mCeLOB9fBslqbEGB1S0_MEcOLMjk6m4hpfWDyXErAlWtm82xz9ZUU3aQ3q6jkXZBM2tNhUp3EI3JmigE4EvCLlrC$<https://urldefense.com/v3/__https:/cran-archive.r-project.org/web/checks/2024/2024-01-12_check_results_MPCR.html__;!!Nmw4Hv0!1cg5mCeLOB9fBslqbEGB1S0_MEcOLMjk6m4hpfWDyXErAlWtm82xz9ZUU3aQ3q6jkXZBM2tNhUp3EI3JmigE4EvCLlrC$>
+>
+>
+>
+> Best,
+> --Sameh
+>
+> --
+>
+> This message and its contents, including attachments are intended solely
+> for the original recipient. If you are not the intended recipient or have
+> received this message in error, please notify me immediately and delete
+> this message from your computer system. Any unauthorized use or
+> distribution is prohibited. Please consider the environment before printing
+> this email.
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From |kry|ov @end|ng |rom d|@root@org  Wed Jan 17 09:41:08 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Wed, 17 Jan 2024 11:41:08 +0300
+Subject: [R-pkg-devel] Additional Issues: Intel
+In-Reply-To: <CAJmOi+PRCxcqL=RM_pHDnLMpHvNLP=xp9KOPgtER25C_eccXdQ@mail.gmail.com>
+References: <CAJmOi+PRCxcqL=RM_pHDnLMpHvNLP=xp9KOPgtER25C_eccXdQ@mail.gmail.com>
+Message-ID: <20240117114108.7251bbe9@Tarkus>
+
+? Wed, 17 Jan 2024 10:30:36 +1100
+Hugh Parsonage <hugh.parsonage at gmail.com> ?????:
+
+> I am unable to immediately see where in the test suite this error has
+> occurred.
+
+Without testthat, you would have gotten a line by line printout of the code, letting you pinpoint the (top-level) place of the crash. With
+testthat, you will need a more verbose reporter that would print tests
+as they are executed to find out which test causes the crash.
+
+> The only hunch I have is that the package uses C code and includes
+> structs with arrays on the stack, which perhaps are excessive for the
+> Intel check machine, but am far from confident that's the issue.
+
+According to GNU cflow, your only recursive C functions are
+getListElement (from getListElement.c) and nthOffset (from Offset.c),
+but the recursion seems bounded in both cases.
+
+I've tried looking for variable-length arrays in your code using a
+Coccinelle patch, but found none. If you had variable-bounded recursion
+or variable-length stack arrays (VLA or alloca()), it would be prudent
+to use R_CheckStack() or R_CheckStack2(size_of_VLA), but your C code
+contains neither, so there's no obvious culprit. If you know about
+R-level recursion happening in your code and have a way to reduce it,
+that might help too.
+
+Otherwise, it's time to install Intel Everything and reproduce and
+debug the problem the hard way.
+
+-- 
+Best regards,
+Ivan
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Wed Jan 17 09:52:14 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Wed, 17 Jan 2024 09:52:14 +0100
+Subject: [R-pkg-devel] Additional Issues: Intel
+In-Reply-To: <20240117114108.7251bbe9@Tarkus>
+References: <CAJmOi+PRCxcqL=RM_pHDnLMpHvNLP=xp9KOPgtER25C_eccXdQ@mail.gmail.com>
+ <20240117114108.7251bbe9@Tarkus>
+Message-ID: <a8a532f6-fa84-4a9d-a0a3-8cc18d4a98ad@gmail.com>
+
+
+On 1/17/24 09:41, Ivan Krylov via R-package-devel wrote:
+> ? Wed, 17 Jan 2024 10:30:36 +1100
+> Hugh Parsonage <hugh.parsonage at gmail.com> ?????:
+>
+>> I am unable to immediately see where in the test suite this error has
+>> occurred.
+> Without testthat, you would have gotten a line by line printout of the code, letting you pinpoint the (top-level) place of the crash. With
+> testthat, you will need a more verbose reporter that would print tests
+> as they are executed to find out which test causes the crash.
+>
+>> The only hunch I have is that the package uses C code and includes
+>> structs with arrays on the stack, which perhaps are excessive for the
+>> Intel check machine, but am far from confident that's the issue.
+> According to GNU cflow, your only recursive C functions are
+> getListElement (from getListElement.c) and nthOffset (from Offset.c),
+> but the recursion seems bounded in both cases.
+>
+> I've tried looking for variable-length arrays in your code using a
+> Coccinelle patch, but found none. If you had variable-bounded recursion
+> or variable-length stack arrays (VLA or alloca()), it would be prudent
+> to use R_CheckStack() or R_CheckStack2(size_of_VLA), but your C code
+> contains neither, so there's no obvious culprit. If you know about
+> R-level recursion happening in your code and have a way to reduce it,
+> that might help too.
+>
+> Otherwise, it's time to install Intel Everything and reproduce and
+> debug the problem the hard way.
+
+You could also try debugging using your toolchain, but with reduced 
+stack size (e.g. ulimit -s). If you can make the error appear with a 
+smaller but still reasonable stack size, chances are it is due to the 
+same underlying problem.
+
+Tomas
+
+>
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Wed Jan 17 11:25:13 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Wed, 17 Jan 2024 11:25:13 +0100
+Subject: [R-pkg-devel] CMake on CRAN Systems
+In-Reply-To: <VI1P192MB02855048046590780FE1BB3BFB722@VI1P192MB0285.EURP192.PROD.OUTLOOK.COM>
+References: <20240116181522.42573cc6@rolf-Latitude-E7470>
+ <CAJmOi+P3ba7YVChFxz8kvAY9tr8VBi_SE+spgTzBHpswaNkjeQ@mail.gmail.com>
+ <CAARY7ki=8w7+5wySY6evjjao+uShJD1AsokDioX+cfYaui6FTg@mail.gmail.com>
+ <20240116180420.43895dee@arachnoid>
+ <VI1P192MB02855048046590780FE1BB3BFB722@VI1P192MB0285.EURP192.PROD.OUTLOOK.COM>
+Message-ID: <d0ac887d-c2d9-44e3-a9dc-a38fbf52b1f6@gmail.com>
+
+
+On 1/17/24 08:37, Sameh Abdulah wrote:
+> Hi All,
+>
+> We recently encountered an installation issue with our package on CRAN. We've been depending on CMake, assuming it is readily available by default, but it appears to be only available on the M1mac system but not on the others. Should we include the CMake installation within our package?
+
+Re Windows, see the documentation:
+
+https://cran.r-project.org/bin/windows/base/howto-R-devel.html
+https://cran.r-project.org/bin/windows/base/howto-R-4.3.html
+
+cmake executable is available. But another issue is how well maintained 
+are the cmake configuration files to find the software, etc.
+
+You have most control when you specify the libraries for linking 
+explicitly by yourself (and use just make/Makevars files), even though 
+this can sometimes require manual changes for newer versions of Rtools 
+(some libraries change linking often, most don't). This is the common 
+way to do it (see the documentation).
+
+You can also use pkg-config with the latest Rtools, and pkg-config is 
+used internally by MXE, which provides some testing, and I've manually 
+fixed a number of issues not detected by that testing. The advantage of 
+pkg-config is that you don't have to specify the libraries yourself and 
+it should reduce the need for updating your Makevars on Rtools updates. 
+At the same time, it is much more likely to work than cmake, yet you 
+could still easily run to issues, typically some dependency omitted.
+
+I would not use cmake for an R package on Windows.
+
+Tomas
+
+>
+> We encountered another issue with OpenMP, but we managed to resolve it by consulting the manual.
+>
+> https://urldefense.com/v3/__https://cran-archive.r-project.org/web/checks/2024/2024-01-12_check_results_MPCR.html__;!!Nmw4Hv0!1cg5mCeLOB9fBslqbEGB1S0_MEcOLMjk6m4hpfWDyXErAlWtm82xz9ZUU3aQ3q6jkXZBM2tNhUp3EI3JmigE4EvCLlrC$<https://urldefense.com/v3/__https:/cran-archive.r-project.org/web/checks/2024/2024-01-12_check_results_MPCR.html__;!!Nmw4Hv0!1cg5mCeLOB9fBslqbEGB1S0_MEcOLMjk6m4hpfWDyXErAlWtm82xz9ZUU3aQ3q6jkXZBM2tNhUp3EI3JmigE4EvCLlrC$>
+>
+>
+>
+> Best,
+> --Sameh
+>
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Wed Jan 17 16:52:40 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Wed, 17 Jan 2024 16:52:40 +0100
+Subject: [R-pkg-devel] CMake on CRAN Systems
+In-Reply-To: <trinity-8da34806-e9ec-45a6-9efb-ba607ce24087-1705478396401@msvc-mesg-gmx101>
+References: <20240116181522.42573cc6@rolf-Latitude-E7470>
+ <CAJmOi+P3ba7YVChFxz8kvAY9tr8VBi_SE+spgTzBHpswaNkjeQ@mail.gmail.com>
+ <CAARY7ki=8w7+5wySY6evjjao+uShJD1AsokDioX+cfYaui6FTg@mail.gmail.com>
+ <20240116180420.43895dee@arachnoid>
+ <VI1P192MB02855048046590780FE1BB3BFB722@VI1P192MB0285.EURP192.PROD.OUTLOOK.COM>
+ <trinity-8da34806-e9ec-45a6-9efb-ba607ce24087-1705478396401@msvc-mesg-gmx101>
+Message-ID: <0205afd5-ad1f-46d4-a04a-5e613c850b87@statistik.tu-dortmund.de>
+
+
+
+On 17.01.2024 08:59, Matthias Gondan wrote:
+> For package rswipl, cmake still seems to work, but
+> 
+> * one has to search for it on MacOS, see the src/Makevars, as well as the relevant sections in Writing R extensions
+> * Windows Defender (also on CRAN) complains about dubious exe-files when checking the "endianness" of the target system. That can be circumvented by telling cmake to compile static libraries instead of executables.
+
+Indeed, currently Windows Defender gives false positives for some 
+temprary .exe files that CMake creates. As thge filenames and locations 
+are random, there is no straightforward way to tell the defender about 
+exceptions. Hence please follow the advice and  tell cmake to compile 
+static libraries instead of executables (an excellent idea, thanks!). 
+[Microsoft knows about this for several weeks now without action.]
+
+Best,
+Uwe Ligges
+
+
+
+> 
+> I am unsure if my response is specific to your problem, but the links below do not seem to work.
+> 
+>> Gesendet: Mittwoch, den 17.01.2024 um 08:37 Uhr
+>> Von: "Sameh Abdulah" <sameh.abdulah at kaust.edu.sa>
+>> An: "R Package Development" <r-package-devel at r-project.org>
+>> Betreff: [R-pkg-devel] CMake on CRAN Systems
+>>
+>> Hi All,
+>>
+>> We recently encountered an installation issue with our package on CRAN. We've been depending on CMake, assuming it is readily available by default, but it appears to be only available on the M1mac system but not on the others. Should we include the CMake installation within our package?
+>>
+>> We encountered another issue with OpenMP, but we managed to resolve it by consulting the manual.
+>>
+>> https://urldefense.com/v3/__https://cran-archive.r-project.org/web/checks/2024/2024-01-12_check_results_MPCR.html__;!!Nmw4Hv0!1cg5mCeLOB9fBslqbEGB1S0_MEcOLMjk6m4hpfWDyXErAlWtm82xz9ZUU3aQ3q6jkXZBM2tNhUp3EI3JmigE4EvCLlrC$<https://urldefense.com/v3/__https:/cran-archive.r-project.org/web/checks/2024/2024-01-12_check_results_MPCR.html__;!!Nmw4Hv0!1cg5mCeLOB9fBslqbEGB1S0_MEcOLMjk6m4hpfWDyXErAlWtm82xz9ZUU3aQ3q6jkXZBM2tNhUp3EI3JmigE4EvCLlrC$>
+>>
+>>
+>>
+>> Best,
+>> --Sameh
+>>
+>> --
+>>
+>> This message and its contents, including attachments are intended solely
+>> for the original recipient. If you are not the intended recipient or have
+>> received this message in error, please notify me immediately and delete
+>> this message from your computer system. Any unauthorized use or
+>> distribution is prohibited. Please consider the environment before printing
+>> this email.
+>>
+>> 	[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+From m@tth|@@-gond@n @end|ng |rom gmx@de  Wed Jan 17 17:04:20 2024
+From: m@tth|@@-gond@n @end|ng |rom gmx@de (Matthias Gondan)
+Date: Wed, 17 Jan 2024 17:04:20 +0100
+Subject: [R-pkg-devel] CMake on CRAN Systems
+In-Reply-To: <0205afd5-ad1f-46d4-a04a-5e613c850b87@statistik.tu-dortmund.de>
+References: <20240116181522.42573cc6@rolf-Latitude-E7470>
+ <CAJmOi+P3ba7YVChFxz8kvAY9tr8VBi_SE+spgTzBHpswaNkjeQ@mail.gmail.com>
+ <CAARY7ki=8w7+5wySY6evjjao+uShJD1AsokDioX+cfYaui6FTg@mail.gmail.com>
+ <20240116180420.43895dee@arachnoid>
+ <VI1P192MB02855048046590780FE1BB3BFB722@VI1P192MB0285.EURP192.PROD.OUTLOOK.COM>
+ <trinity-8da34806-e9ec-45a6-9efb-ba607ce24087-1705478396401@msvc-mesg-gmx101>
+ <0205afd5-ad1f-46d4-a04a-5e613c850b87@statistik.tu-dortmund.de>
+Message-ID: <trinity-10f9a467-23ed-4821-b4e3-690ffded9f54-1705507460186@3c-app-gmx-bap38>
+
+Here's an example. It first checks if CMAKE_C_BYTE_ORDER is defined, which is available in recent versions of cmake. If it isn't, cmake's own macro TestBigEndian is invoked (deprecated, but still available). It would normally compile an executable, but we change the compile target to a static library (the test for endianness works anyway).
+
+if(DEFINED CMAKE_C_BYTE_ORDER)
+  if(CMAKE_C_BYTE_ORDER STREQUAL "BIG_ENDIAN")
+    set(WORDS_BIGENDIAN 1)
+  else()
+    set(WORDS_BIGENDIAN 0)
+  endif()
+else()
+  # From cmake docs: If CMAKE_OSX_ARCHITECTURES specifies multiple architectures, the value
+  # of CMAKE_<LANG>_BYTE_ORDER is non-empty only if all architectures share the same byte
+  # order.
+  include(TestBigEndian)
+  SET(CMAKE_TRY_COMPILE_TARGET_TYPE_SAVE ${CMAKE_TRY_COMPILE_TARGET_TYPE})
+  SET(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+  TEST_BIG_ENDIAN(WORDS_BIGENDIAN)
+  SET(CMAKE_TRY_COMPILE_TARGET_TYPE ${CMAKE_TRY_COMPILE_TARGET_TYPE_SAVE})
+endif()
+
+
+
+> Gesendet: Mittwoch, 17. Januar 2024 um 16:52 Uhr
+> Von: "Uwe Ligges" <ligges at statistik.tu-dortmund.de>
+> An: "Matthias Gondan" <matthias-gondan at gmx.de>, "Sameh Abdulah" <sameh.abdulah at kaust.edu.sa>
+> Cc: "R Package Development" <r-package-devel at r-project.org>
+> Betreff: Re: [R-pkg-devel] CMake on CRAN Systems
+>
+>
+>
+> On 17.01.2024 08:59, Matthias Gondan wrote:
+> > For package rswipl, cmake still seems to work, but
+> >
+> > * one has to search for it on MacOS, see the src/Makevars, as well as the relevant sections in Writing R extensions
+> > * Windows Defender (also on CRAN) complains about dubious exe-files when checking the "endianness" of the target system. That can be circumvented by telling cmake to compile static libraries instead of executables.
+>
+> Indeed, currently Windows Defender gives false positives for some
+> temprary .exe files that CMake creates. As thge filenames and locations
+> are random, there is no straightforward way to tell the defender about
+> exceptions. Hence please follow the advice and  tell cmake to compile
+> static libraries instead of executables (an excellent idea, thanks!).
+> [Microsoft knows about this for several weeks now without action.]
+>
+> Best,
+> Uwe Ligges
+>
+>
+>
+> >
+> > I am unsure if my response is specific to your problem, but the links below do not seem to work.
+> >
+> >> Gesendet: Mittwoch, den 17.01.2024 um 08:37 Uhr
+> >> Von: "Sameh Abdulah" <sameh.abdulah at kaust.edu.sa>
+> >> An: "R Package Development" <r-package-devel at r-project.org>
+> >> Betreff: [R-pkg-devel] CMake on CRAN Systems
+> >>
+> >> Hi All,
+> >>
+> >> We recently encountered an installation issue with our package on CRAN. We've been depending on CMake, assuming it is readily available by default, but it appears to be only available on the M1mac system but not on the others. Should we include the CMake installation within our package?
+> >>
+> >> We encountered another issue with OpenMP, but we managed to resolve it by consulting the manual.
+> >>
+> >> https://urldefense.com/v3/__https://cran-archive.r-project.org/web/checks/2024/2024-01-12_check_results_MPCR.html__;!!Nmw4Hv0!1cg5mCeLOB9fBslqbEGB1S0_MEcOLMjk6m4hpfWDyXErAlWtm82xz9ZUU3aQ3q6jkXZBM2tNhUp3EI3JmigE4EvCLlrC$<https://urldefense.com/v3/__https:/cran-archive.r-project.org/web/checks/2024/2024-01-12_check_results_MPCR.html__;!!Nmw4Hv0!1cg5mCeLOB9fBslqbEGB1S0_MEcOLMjk6m4hpfWDyXErAlWtm82xz9ZUU3aQ3q6jkXZBM2tNhUp3EI3JmigE4EvCLlrC$>
+> >>
+> >>
+> >>
+> >> Best,
+> >> --Sameh
+> >>
+> >> --
+> >>
+> >> This message and its contents, including attachments are intended solely
+> >> for the original recipient. If you are not the intended recipient or have
+> >> received this message in error, please notify me immediately and delete
+> >> this message from your computer system. Any unauthorized use or
+> >> distribution is prohibited. Please consider the environment before printing
+> >> this email.
+> >>
+> >> 	[[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-package-devel at r-project.org mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Wed Jan 17 23:23:39 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Thu, 18 Jan 2024 11:23:39 +1300
+Subject: [R-pkg-devel] CMake on CRAN Systems
+In-Reply-To: <20240117105413.4b87e347@Tarkus>
+References: <20240117105413.4b87e347@Tarkus>
+Message-ID: <7EEAC845-970E-4700-B66A-CC220E3D1CEA@R-project.org>
+
+I had a quick look and that package (assuming it's https://github.com/stsds/MPCR) does not adhere to any rules from R-exts (hence the removal from CRAN I presume) so the failure to detect cmake is the least problem. I would strongly recommend reading the  R documentation as cmake is just the wrong tool for the job in this case. R already has a fully working build system which will compile the package using the correct flags and tools - you only need to provide the C++ sources. You cannot generate the package shared object with cmake by definition - you must let R build it. [In rare case dependent static libraries are sometimes built with cmake inside the package if there is no other option and cmake is used upstream, but those are rare and you still have to use R to build the final shared object].
+
+Cheers,
+Simon
+
+
+> On Jan 17, 2024, at 8:54 PM, Ivan Krylov via R-package-devel <r-package-devel at r-project.org> wrote:
+> 
+> Dear Sameh,
+> 
+> Regarding your question about the MPCR package and the use of CMake
+> <https://cran-archive.r-project.org/web/checks/2024/2024-01-12_check_results_MPCR.html>:
+> on a Mac, you have to look for the cmake executable in more than one
+> place because it is not guaranteed to be on the $PATH. As described in
+> Writing R Extensions
+> <https://cran.r-project.org/doc/manuals/R-exts.html#Using-cmake>, the
+> following is one way to work around the problem:
+> 
+> if test -z "$CMAKE"; then CMAKE="`which cmake`"; fi
+> if test -z "$CMAKE"; then
+> CMAKE=/Applications/CMake.app/Contents/bin/cmake;
+> fi
+> if test -f "$CMAKE"; then echo "no ?cmake? command found"; exit 1; fi
+> 
+> Please don't reply to existing threads when starting a new topic on
+> mailing lists. Your message had a mangled link that went to
+> urldefense.com instead of cran-archive.r-project.org, letting Amazon
+> (who host the website) know about every visit to the link:
+> https://stat.ethz.ch/pipermail/r-package-devel/2024q1/010328.html
+> 
+> -- 
+> Best regards,
+> Ivan
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From r@c@rtwr|ght @end|ng |rom gm@||@com  Wed Jan 17 23:58:22 2024
+From: r@c@rtwr|ght @end|ng |rom gm@||@com (Reed A. Cartwright)
+Date: Wed, 17 Jan 2024 15:58:22 -0700
+Subject: [R-pkg-devel] CMake on CRAN Systems
+In-Reply-To: <7EEAC845-970E-4700-B66A-CC220E3D1CEA@R-project.org>
+References: <20240117105413.4b87e347@Tarkus>
+ <7EEAC845-970E-4700-B66A-CC220E3D1CEA@R-project.org>
+Message-ID: <CALOkxuxUMZO0oY2oXcM=AX-T-DLBXKEBAc8AVyKfQTgWeByYsg@mail.gmail.com>
+
+I think this is the same group that advertised an R package template a
+while back that also clearly didn't follow R-exts rules or use any of
+the best practices mentioned on this mailing list.
+
+https://github.com/stsds/Template-Rcpp
+
+
+On Wed, Jan 17, 2024 at 3:24?PM Simon Urbanek
+<simon.urbanek at r-project.org> wrote:
+>
+> I had a quick look and that package (assuming it's https://urldefense.com/v3/__https://github.com/stsds/MPCR__;!!IKRxdwAv5BmarQ!Yc-rZLeUomy6UfK2hWnlm7jSdZkb90h9QCvh1B8HkY97GxPB-zes4t2gnSD2fTupOOXR-HtLQODuWJl_l5l6nsZNGlfE$ ) does not adhere to any rules from R-exts (hence the removal from CRAN I presume) so the failure to detect cmake is the least problem. I would strongly recommend reading the  R documentation as cmake is just the wrong tool for the job in this case. R already has a fully working build system which will compile the package using the correct flags and tools - you only need to provide the C++ sources. You cannot generate the package shared object with cmake by definition - you must let R build it. [In rare case dependent static libraries are sometimes built with cmake inside the package if there is no other option and cmake is used upstream, but those are rare and you still have to use R to build the final shared object].
+>
+> Cheers,
+> Simon
+>
+>
+> > On Jan 17, 2024, at 8:54 PM, Ivan Krylov via R-package-devel <r-package-devel at r-project.org> wrote:
+> >
+> > Dear Sameh,
+> >
+> > Regarding your question about the MPCR package and the use of CMake
+> > <https://urldefense.com/v3/__https://cran-archive.r-project.org/web/checks/2024/2024-01-12_check_results_MPCR.html__;!!IKRxdwAv5BmarQ!Yc-rZLeUomy6UfK2hWnlm7jSdZkb90h9QCvh1B8HkY97GxPB-zes4t2gnSD2fTupOOXR-HtLQODuWJl_l5l6ntE5gM59$ >:
+> > on a Mac, you have to look for the cmake executable in more than one
+> > place because it is not guaranteed to be on the $PATH. As described in
+> > Writing R Extensions
+> > <https://urldefense.com/v3/__https://cran.r-project.org/doc/manuals/R-exts.html*Using-cmake__;Iw!!IKRxdwAv5BmarQ!Yc-rZLeUomy6UfK2hWnlm7jSdZkb90h9QCvh1B8HkY97GxPB-zes4t2gnSD2fTupOOXR-HtLQODuWJl_l5l6nhk6H1bw$ >, the
+> > following is one way to work around the problem:
+> >
+> > if test -z "$CMAKE"; then CMAKE="`which cmake`"; fi
+> > if test -z "$CMAKE"; then
+> > CMAKE=/Applications/CMake.app/Contents/bin/cmake;
+> > fi
+> > if test -f "$CMAKE"; then echo "no ?cmake? command found"; exit 1; fi
+> >
+> > Please don't reply to existing threads when starting a new topic on
+> > mailing lists. Your message had a mangled link that went to
+> > urldefense.com instead of cran-archive.r-project.org, letting Amazon
+> > (who host the website) know about every visit to the link:
+> > https://urldefense.com/v3/__https://stat.ethz.ch/pipermail/r-package-devel/2024q1/010328.html__;!!IKRxdwAv5BmarQ!Yc-rZLeUomy6UfK2hWnlm7jSdZkb90h9QCvh1B8HkY97GxPB-zes4t2gnSD2fTupOOXR-HtLQODuWJl_l5l6nnj6jJF1$
+> >
+> > --
+> > Best regards,
+> > Ivan
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!IKRxdwAv5BmarQ!Yc-rZLeUomy6UfK2hWnlm7jSdZkb90h9QCvh1B8HkY97GxPB-zes4t2gnSD2fTupOOXR-HtLQODuWJl_l5l6nsmyJVkA$
+> >
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!IKRxdwAv5BmarQ!Yc-rZLeUomy6UfK2hWnlm7jSdZkb90h9QCvh1B8HkY97GxPB-zes4t2gnSD2fTupOOXR-HtLQODuWJl_l5l6nsmyJVkA$
+
+
