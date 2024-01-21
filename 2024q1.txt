@@ -7628,3 +7628,595 @@ this email.
 	[[alternative HTML version deleted]]
 
 
+From Serge@Iov|e|| @end|ng |rom @tkpp@org  Fri Jan 19 15:18:42 2024
+From: Serge@Iov|e|| @end|ng |rom @tkpp@org (Serge)
+Date: Fri, 19 Jan 2024 15:18:42 +0100
+Subject: [R-pkg-devel] ERROR building MixAll on Windows platform
+In-Reply-To: <161938e1-9b59-4cc8-ac63-ee5b1bc32a34@statistik.tu-dortmund.de>
+References: <9d76dc3b-9f7b-4883-a866-221e46991e15@stkpp.org>
+ <20240112221419.1539ed08@Tarkus>
+ <0b451d3b-198d-458e-8e0c-cba953715924@stkpp.org>
+ <20240113121024.5fd323c7@Tarkus>
+ <badf0fdf-8828-47fa-9768-0bbb925169c4@statistik.tu-dortmund.de>
+ <669c5f1d-a979-420c-aeda-63e92007fa82@statistik.tu-dortmund.de>
+ <f540a493-c521-461c-86d7-91d261664bdf@statistik.tu-dortmund.de>
+ <161938e1-9b59-4cc8-ac63-ee5b1bc32a34@statistik.tu-dortmund.de>
+Message-ID: <1ce77471-1458-4c2b-a7ff-1af3d04eb400@stkpp.org>
+
+This post is a continuation of the post *[R-pkg-devel] Does dependencies up to date on the pretest 
+CRAN infrastructure*
+
+I made more (unsuccessful) tries:
+
+- I installed a Windows 11 version in a VM on my compuiter and try to buid the MixAll package using 
+Rtools42 and Rtools43 (it's quite easy, and funny, to do it on windows: you have just to rename 
+C:\rtools42 as C:\rtools43).
+The result is that MixAll is build using the 4.2 version and the buid failed using the 4.3 version.
+
+- I installed the version 12.3 of gcc on ubuntu (the same version used on windows) and could build 
+the package without problem
+
+- Inspecting the log of the Rtools4.3 
+(https://cran.r-project.org/bin/windows/Rtools/rtools43/news.html) and g++12..3 
+(https://gcc.gnu.org/gcc-12/changes.html) does not give insight.
+
+- The package is dependent of the rtkore package which use extensive use of templated class. As 
+rtkore is a port for R of stk++, I try to compile the stk++ library on windows (using g++12). All 
+tests are compiled without any troubles.
+
+These attempts eliminate some causes, but don't give me any insight why MixAll (and blockcluster) 
+failed to be build on the Windows-devel platform. It seems related to Rtools43. Does anyone else 
+(using for exemple Rcppeigen) is experiencing this problem ?
+
+Serge
+
+
+
+Le 14/01/2024 ? 18:50, Uwe Ligges a ?crit?:
+> 
+> 
+> On 13.01.2024 15:01, Uwe Ligges wrote:
+>> Fascinating, now it worked with the latest winbuilder submission 3 times in a row when I checked 
+>> it manually. So maybe Ivan was right and there was a very demanding set of other packages 
+>> compiling at the same time?
+>> I don't know.
+>>
+>> Serge, Can you somply submit your latest winbuilder upload to CRAN?
+> 
+> Really, I inspected some more. The underlying issue is simple:
+> The C++ compiler used under Windows asks for precomitted memory. If several processes are running at 
+> the same time, a lot of memory is precomitted. And Windows does not use it for other processes, even 
+> if almost nothing is actually used.
+> So while the used memory may be around 50GB, all of the rest (of 756 GB including swap space) may 
+> have been precomitted (but unused) and new processes failed to start correctly. Grrrr.
+> 
+> Best,
+> Uwe Ligges
+> 
+> 
+> 
+> 
+> 
+>> Best,
+>> Uwe Ligges
+>>
+>>
+>>
+>> On 13.01.2024 14:12, Uwe Ligges wrote:
+>>> I can take a look, but not sure if I get to it before monday.
+>>> I haven't seen it for any other packages recently.
+>>>
+>>> My suspicion is currently a strange mix of cmd.exe and sh.exe calls. But this is a very wild guess.
+>>>
+>>> Best,
+>>> Uwe
+>>>
+>>> On 13.01.2024 14:08, Uwe Ligges wrote:
+>>>>
+>>>>
+>>>> On 13.01.2024 10:10, Ivan Krylov via R-package-devel wrote:
+>>>>> ? Fri, 12 Jan 2024 21:19:00 +0100
+>>>>> Serge <Serge.Iovleff at stkpp.org> ?????:
+>>>>>
+>>>>>> After somme minor midficiations, I make a try on the winbuilder site.
+>>>>>> I was able to build the archive with the static library
+>>>>>> but I get again a Bad address error. You can have a look to
+>>>>>>
+>>>>>> https://win-builder.r-project.org/bw47qsMX3HTd/00install.out
+>>>>>
+>>>>> I think that Win-Builder is running out of memory. It took some
+>>>>> experimenting, but I was able to reproduce something like this using
+>>>>> the following:
+>>>>>
+>>>>> 1. Set the swap file in the Windows settings to minimal recommended
+>>>>> size and disable its automatic growth
+>>>>>
+>>>>> 2. Write and run a program that does malloc(LARGE_NUMBER); getchar();
+>>>>> so that almost all physical memory is allocated
+>>>>>
+>>>>> 3. Run gcc -DFOO=`/path/to/Rscript -e 'some script'` & many times
+>>>>>
+>>>>> I got a lot of interesting errors, including the "Bad address":
+>>>>>
+>>>>> Warnings:
+>>>>> 1: .getGeneric(f, , package) : internal error -4 in R_decompress1
+>>>>> 2: package "methods" in options("defaultPackages") was not found
+>>>>>
+>>>>> 0 [main] bash (2892) child_copy: cygheap read copy failed,
+>>>>> 0x0..0x800025420, done 0, windows pid 2892, Win32 error 299
+>>>>>
+>>>>> 0 [main] bash (3256) C:\rtools43\usr\bin\bash.exe: *** fatal error in
+>>>>> forked process - MEM_COMMIT failed, Win32 error 1455
+>>>>>
+>>>>> -bash: fork: retry: Resource temporarily unavailable
+>>>>>
+>>>>> -bash: R-devel/bin/Rscript.exe: Bad address
+>>>>
+>>>> The above indeed happens if not sufficient memory would be available.
+>>>> Important to know: This includes unused but committed memory which may be a lot.
+>>>> But I doubt it is the case on winbuilder as the machines has 256GB or more (depending in the 
+>>>> machine) and additionally 500GB swap space on SSD.
+>>>>
+>>>> Best,
+>>>> Uwe
+>>>>
+>>>>
+>>>>> Your package is written in C++, but that by itself shouldn't disqualify
+>>>>> it. On my Linux computer, /usr/bin/time R -e
+>>>>> 'install.packages("MixAll")' says that the installation takes slightly
+>>>>> less than a gigabyte of memory ("912516maxresident k"), which is par
+>>>>> the course for such packages. (My small Rcpp-using package takes
+>>>>> approximately half a gigabyte by the same metric.)
+>>>>>
+>>>>> I'm still not 100% sure (if Win-Builder is running out of memory, why
+>>>>> are you seeing "Bad address" only and not the rest of the carnage?),
+>>>>> but I'm not seeing a problem with your package, either. If EFAULT is
+>>>>> Cygwin's way of saying "I caught a bad pointer in your system call"
+>>>>> (which, I must stress, is happening inside /bin/sh, not your package
+>>>>> or even R at all), it's not impossible that Win-Builder is having
+>>>>> hardware problems. Unfortunately, they take a lot of effort and
+>>>>> downtime to diagnose and could be hiding anywhere from RAM to the power
+>>>>> supply.
+>>>>>
+>>>>
+>>>> ______________________________________________
+>>>> R-package-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Fri Jan 19 16:58:26 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Fri, 19 Jan 2024 16:58:26 +0100
+Subject: [R-pkg-devel] ERROR building MixAll on Windows platform
+In-Reply-To: <1ce77471-1458-4c2b-a7ff-1af3d04eb400@stkpp.org>
+References: <9d76dc3b-9f7b-4883-a866-221e46991e15@stkpp.org>
+ <20240112221419.1539ed08@Tarkus>
+ <0b451d3b-198d-458e-8e0c-cba953715924@stkpp.org>
+ <20240113121024.5fd323c7@Tarkus>
+ <badf0fdf-8828-47fa-9768-0bbb925169c4@statistik.tu-dortmund.de>
+ <669c5f1d-a979-420c-aeda-63e92007fa82@statistik.tu-dortmund.de>
+ <f540a493-c521-461c-86d7-91d261664bdf@statistik.tu-dortmund.de>
+ <161938e1-9b59-4cc8-ac63-ee5b1bc32a34@statistik.tu-dortmund.de>
+ <1ce77471-1458-4c2b-a7ff-1af3d04eb400@stkpp.org>
+Message-ID: <1e49598a-32cb-4500-9cf6-03160f637952@gmail.com>
+
+On 1/19/24 15:18, Serge wrote:
+> This post is a continuation of the post *[R-pkg-devel] Does 
+> dependencies up to date on the pretest CRAN infrastructure*
+>
+> I made more (unsuccessful) tries:
+>
+> - I installed a Windows 11 version in a VM on my compuiter and try to 
+> buid the MixAll package using Rtools42 and Rtools43 (it's quite easy, 
+> and funny, to do it on windows: you have just to rename C:\rtools42 as 
+> C:\rtools43).
+There should be no renaming, instead, one should use R 4.2.x with 
+Rtools42 and R 4.3.x (or current R-devel) with Rtools43. All of these 
+can co-exist (be installed at the same time). Mixing the two could lead 
+to different failures. I understand you want to test different versions 
+of GCC, but to do that reliable you would have to rebuild the rest of 
+Rtools with that, or just the part that is needed by the package.
+>
+> The result is that MixAll is build using the 4.2 version and the buid 
+> failed using the 4.3 version.
+Please make sure to use Rtools43 (the real one) with R 4.3.
+>
+> - I installed the version 12.3 of gcc on ubuntu (the same version used 
+> on windows) and could build the package without problem
+>
+> - Inspecting the log of the Rtools4.3 
+> (https://cran.r-project.org/bin/windows/Rtools/rtools43/news.html) and 
+> g++12..3 (https://gcc.gnu.org/gcc-12/changes.html) does not give insight.
+>
+> - The package is dependent of the rtkore package which use extensive 
+> use of templated class. As rtkore is a port for R of stk++, I try to 
+> compile the stk++ library on windows (using g++12). All tests are 
+> compiled without any troubles.
+>
+> These attempts eliminate some causes, but don't give me any insight 
+> why MixAll (and blockcluster) failed to be build on the Windows-devel 
+> platform. It seems related to Rtools43. Does anyone else (using for 
+> exemple Rcppeigen) is experiencing this problem ?
+
+If this is GCC running out of memory on Windows but not Linux, when 
+there really should be enough of memory available (i.e. due to the 
+problem that Uwe described, maybe the internal GC in GCC is asking for 
+too much memory for its heap given that the OS is not overcomiting), you 
+can try narrowing it down to a standalone C++ program (independent on R, 
+Rtools, R packages, compilable on both Windows and Linux with disabled 
+optimizations, etc) that still exhibits the problem and then submitting 
+it in a bug report to GCC bugzilla.
+
+In such case, it could be that some heuristics in the collector could be 
+improved.
+
+If you have such standalone example, it would be easier to test 
+different versions of GCC or even bisect to a concrete GCC version. You 
+might also compare memory usage when compiling and cross-compiling.
+
+You might also be able to find a work-around for your package by 
+disabling some compiler optimizations. Also if you can narrow this down 
+to a concrete GCC optimization then it would help to mention that in the 
+bug report.
+
+Certainly all of this would be out of scope of R-(pkg)-devel, this would 
+rather be a GCC/Windows thing.
+
+Tomas
+
+>
+> Serge
+>
+>
+>
+> Le 14/01/2024 ? 18:50, Uwe Ligges a ?crit?:
+>>
+>>
+>> On 13.01.2024 15:01, Uwe Ligges wrote:
+>>> Fascinating, now it worked with the latest winbuilder submission 3 
+>>> times in a row when I checked it manually. So maybe Ivan was right 
+>>> and there was a very demanding set of other packages compiling at 
+>>> the same time?
+>>> I don't know.
+>>>
+>>> Serge, Can you somply submit your latest winbuilder upload to CRAN?
+>>
+>> Really, I inspected some more. The underlying issue is simple:
+>> The C++ compiler used under Windows asks for precomitted memory. If 
+>> several processes are running at the same time, a lot of memory is 
+>> precomitted. And Windows does not use it for other processes, even if 
+>> almost nothing is actually used.
+>> So while the used memory may be around 50GB, all of the rest (of 756 
+>> GB including swap space) may have been precomitted (but unused) and 
+>> new processes failed to start correctly. Grrrr.
+>>
+>> Best,
+>> Uwe Ligges
+>>
+>>
+>>
+>>
+>>
+>>> Best,
+>>> Uwe Ligges
+>>>
+>>>
+>>>
+>>> On 13.01.2024 14:12, Uwe Ligges wrote:
+>>>> I can take a look, but not sure if I get to it before monday.
+>>>> I haven't seen it for any other packages recently.
+>>>>
+>>>> My suspicion is currently a strange mix of cmd.exe and sh.exe 
+>>>> calls. But this is a very wild guess.
+>>>>
+>>>> Best,
+>>>> Uwe
+>>>>
+>>>> On 13.01.2024 14:08, Uwe Ligges wrote:
+>>>>>
+>>>>>
+>>>>> On 13.01.2024 10:10, Ivan Krylov via R-package-devel wrote:
+>>>>>> ? Fri, 12 Jan 2024 21:19:00 +0100
+>>>>>> Serge <Serge.Iovleff at stkpp.org> ?????:
+>>>>>>
+>>>>>>> After somme minor midficiations, I make a try on the winbuilder 
+>>>>>>> site.
+>>>>>>> I was able to build the archive with the static library
+>>>>>>> but I get again a Bad address error. You can have a look to
+>>>>>>>
+>>>>>>> https://win-builder.r-project.org/bw47qsMX3HTd/00install.out
+>>>>>>
+>>>>>> I think that Win-Builder is running out of memory. It took some
+>>>>>> experimenting, but I was able to reproduce something like this using
+>>>>>> the following:
+>>>>>>
+>>>>>> 1. Set the swap file in the Windows settings to minimal recommended
+>>>>>> size and disable its automatic growth
+>>>>>>
+>>>>>> 2. Write and run a program that does malloc(LARGE_NUMBER); 
+>>>>>> getchar();
+>>>>>> so that almost all physical memory is allocated
+>>>>>>
+>>>>>> 3. Run gcc -DFOO=`/path/to/Rscript -e 'some script'` & many times
+>>>>>>
+>>>>>> I got a lot of interesting errors, including the "Bad address":
+>>>>>>
+>>>>>> Warnings:
+>>>>>> 1: .getGeneric(f, , package) : internal error -4 in R_decompress1
+>>>>>> 2: package "methods" in options("defaultPackages") was not found
+>>>>>>
+>>>>>> 0 [main] bash (2892) child_copy: cygheap read copy failed,
+>>>>>> 0x0..0x800025420, done 0, windows pid 2892, Win32 error 299
+>>>>>>
+>>>>>> 0 [main] bash (3256) C:\rtools43\usr\bin\bash.exe: *** fatal 
+>>>>>> error in
+>>>>>> forked process - MEM_COMMIT failed, Win32 error 1455
+>>>>>>
+>>>>>> -bash: fork: retry: Resource temporarily unavailable
+>>>>>>
+>>>>>> -bash: R-devel/bin/Rscript.exe: Bad address
+>>>>>
+>>>>> The above indeed happens if not sufficient memory would be available.
+>>>>> Important to know: This includes unused but committed memory which 
+>>>>> may be a lot.
+>>>>> But I doubt it is the case on winbuilder as the machines has 256GB 
+>>>>> or more (depending in the machine) and additionally 500GB swap 
+>>>>> space on SSD.
+>>>>>
+>>>>> Best,
+>>>>> Uwe
+>>>>>
+>>>>>
+>>>>>> Your package is written in C++, but that by itself shouldn't 
+>>>>>> disqualify
+>>>>>> it. On my Linux computer, /usr/bin/time R -e
+>>>>>> 'install.packages("MixAll")' says that the installation takes 
+>>>>>> slightly
+>>>>>> less than a gigabyte of memory ("912516maxresident k"), which is par
+>>>>>> the course for such packages. (My small Rcpp-using package takes
+>>>>>> approximately half a gigabyte by the same metric.)
+>>>>>>
+>>>>>> I'm still not 100% sure (if Win-Builder is running out of memory, 
+>>>>>> why
+>>>>>> are you seeing "Bad address" only and not the rest of the carnage?),
+>>>>>> but I'm not seeing a problem with your package, either. If EFAULT is
+>>>>>> Cygwin's way of saying "I caught a bad pointer in your system call"
+>>>>>> (which, I must stress, is happening inside /bin/sh, not your package
+>>>>>> or even R at all), it's not impossible that Win-Builder is having
+>>>>>> hardware problems. Unfortunately, they take a lot of effort and
+>>>>>> downtime to diagnose and could be hiding anywhere from RAM to the 
+>>>>>> power
+>>>>>> supply.
+>>>>>>
+>>>>>
+>>>>> ______________________________________________
+>>>>> R-package-devel at r-project.org mailing list
+>>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>
+>>>> ______________________________________________
+>>>> R-package-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From @ndr|y@prot@@k @end|ng |rom edu@u@h@e@  Fri Jan 19 15:34:25 2024
+From: @ndr|y@prot@@k @end|ng |rom edu@u@h@e@ (Protsak Andriy)
+Date: Fri, 19 Jan 2024 14:34:25 +0000
+Subject: [R-pkg-devel] Inquiry Regarding Package Organization in CRAN
+Message-ID: <AM0PR03MB4963B7B5C6480AD9736A3AD6A3702@AM0PR03MB4963.eurprd03.prod.outlook.com>
+
+Hi all!
+
+
+
+My name is Andriy, and I?m a student at University of Alcal?, currently working on my final year project.
+
+
+
+I?m tasked with organizing the R packages developed by our university that are currently available on CRAN. The goal is to enhance their discoverability, to achieve this the initial focus is on exploring the possibility of renaming the packages so that they share a common prefix, making it easier for uses to locate them in the package list.
+
+If you believe there are alternative strategies to achieve a similar result, please feel free to share your perspective.
+
+
+
+Additionally, I?m looking into the prospect of merging two packages that contain similar functionalities. The aim is to create a more comprehensive package by incorporation additional features and ensuring seamless compatibility.
+
+
+
+Your assistance is key to the successful completion of my final year project, and I would be immensely grateful for any insights you can provide. Thank you for your time and consideration.
+
+
+
+Best regards,
+
+
+
+Andriy
+
+	[[alternative HTML version deleted]]
+
+
+From d@v|dhughjone@ @end|ng |rom gm@||@com  Fri Jan 19 21:47:46 2024
+From: d@v|dhughjone@ @end|ng |rom gm@||@com (David Hugh-Jones)
+Date: Fri, 19 Jan 2024 20:47:46 +0000
+Subject: [R-pkg-devel] Inquiry Regarding Package Organization in CRAN
+In-Reply-To: <AM0PR03MB4963B7B5C6480AD9736A3AD6A3702@AM0PR03MB4963.eurprd03.prod.outlook.com>
+References: <AM0PR03MB4963B7B5C6480AD9736A3AD6A3702@AM0PR03MB4963.eurprd03.prod.outlook.com>
+Message-ID: <CAARY7khnWH+7CJkLFp_5iA4VKdL+tgBBasLRL0ACusLydbNk8g@mail.gmail.com>
+
+Hi Andriy
+
+Renaming the packages seems quite drastic. It?ll break existing code and
+the packages? dependencies, and any existing name recognition will be lost.
+I?m also a bit sceptical that it will greatly affect discoverability: I
+don?t think most users find packages by scrolling through the big
+alphabetical list.
+
+Here are some less drastic alternatives :
+
+* Post about new versions of the packages to r-pkgs mailing list.
+* Write announcements, articles and/or blog posts for rweekly.org.
+* if it?s appropriate, suggest the packages for one or more CRAN task
+views.
+* make sure you?ve got friendly online documentation. The pkgdown package
+is pretty good for this, and many people host documentation on GitHub pages.
+
+Best,
+David
+
+Writing: wyclif.substack.com
+Book: www.wyclifsdust.com
+
+
+On Fri, 19 Jan 2024 at 19:41, Protsak Andriy via R-package-devel <
+r-package-devel at r-project.org> wrote:
+
+> Hi all!
+>
+>
+>
+> My name is Andriy, and I?m a student at University of Alcal?, currently
+> working on my final year project.
+>
+>
+>
+> I?m tasked with organizing the R packages developed by our university that
+> are currently available on CRAN. The goal is to enhance their
+> discoverability, to achieve this the initial focus is on exploring the
+> possibility of renaming the packages so that they share a common prefix,
+> making it easier for uses to locate them in the package list.
+>
+> If you believe there are alternative strategies to achieve a similar
+> result, please feel free to share your perspective.
+>
+>
+>
+> Additionally, I?m looking into the prospect of merging two packages that
+> contain similar functionalities. The aim is to create a more comprehensive
+> package by incorporation additional features and ensuring seamless
+> compatibility.
+>
+>
+>
+> Your assistance is key to the successful completion of my final year
+> project, and I would be immensely grateful for any insights you can
+> provide. Thank you for your time and consideration.
+>
+>
+>
+> Best regards,
+>
+>
+>
+> Andriy
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Jan 19 21:58:55 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 19 Jan 2024 23:58:55 +0300
+Subject: [R-pkg-devel] Inquiry Regarding Package Organization in CRAN
+In-Reply-To: <AM0PR03MB4963B7B5C6480AD9736A3AD6A3702@AM0PR03MB4963.eurprd03.prod.outlook.com>
+References: <AM0PR03MB4963B7B5C6480AD9736A3AD6A3702@AM0PR03MB4963.eurprd03.prod.outlook.com>
+Message-ID: <20240119235855.150d3d77@Tarkus>
+
+Hello Andriy and welcome to R-package-devel!
+
+On Fri, 19 Jan 2024 14:34:25 +0000
+Protsak Andriy via R-package-devel <r-package-devel at r-project.org>
+wrote:
+
+> to achieve this the initial focus is on exploring the possibility of
+> renaming the packages so that they share a common prefix, making it
+> easier for uses to locate them in the package list.
+
+CRAN package names are long-term identifiers. Assume that there are
+many users happy with the packages as they are. If you rename a
+package, they will have to patch their scripts and their own packages
+just to keep them working as before. Red Queen's race is not something
+people like to participate in.
+
+It is certainly not impossible to rename a package, but there has to be
+a very good reason to break backwards compatibility and assume a new
+name, while the old name stays in the archive, unavailable for new
+packages.
+
+Here are some past responses to similar questions:
+
+https://stat.ethz.ch/pipermail/r-package-devel/2022q2/008140.html
+https://stat.ethz.ch/pipermail/r-package-devel/2017q2/001678.html
+https://stat.ethz.ch/pipermail/r-package-devel/2015q3/000271.html
+
+> If you believe there are alternative strategies to achieve a similar
+> result, please feel free to share your perspective.
+
+There are approximately 20000 active packages on CRAN. Looking for
+useful packages by scanning a list of names will not be very effective.
+Better results can be achieved using tools like RSiteSearch
+<https://search.r-project.org/>. If you want a package to be more
+visible, request its addition to a Task View
+<https://cran.r-project.org/web/views/>. If some packages are related,
+make them link to each other in their documentation. David's options
+are all very good.
+
+> Additionally, I'm looking into the prospect of merging two packages
+> that contain similar functionalities. The aim is to create a more
+> comprehensive package by incorporation additional features and
+> ensuring seamless compatibility.
+
+The previous point about keeping backwards compatibility still stands.
+It should be possible to move all the functions to one package and then
+import() it from the other package. Both packages can then export() all
+functions, making them available to the dependencies of either package.
+Eventually, the skeleton package may grow packageStartupMessage()s
+letting the users know that it is deprecated and could they please use
+the other package instead. After a while, it should be possible to
+archive the skeleton package. But deprecation cycles should be long:
+for example, rgeos and rgdal took more than a year to retire
+<https://r-spatial.org/r/2022/04/12/evolution.html>.
+
+Or do you intend to come up with a completely new API? Beware of the
+second system effect (although it's certainly not unheard of for second
+system projects to succeed).
+
+The spatstat package went through the opposite process a few years ago:
+it grew too big and had to be split into multiple packages. Here's one
+of its maintainers sharing the experience:
+https://stat.ethz.ch/pipermail/r-package-devel/2022q4/008557.html
+
+What is the nature of your final year project? If it can include
+technical writing, you could add well-written vignettes to the packages
+(only one of the CRAN packages maintained by people @uah.es has a
+vignette, and it's very terse). If it has to be mostly programming or
+maintenance of R packages, I'm out of ideas.
+
+Either way, good luck, and I hope your project succeeds!
+
+-- 
+Best regards,
+Ivan
+
+
