@@ -8220,3 +8220,562 @@ Best regards,
 Ivan
 
 
+From ||@t@ @end|ng |rom dewey@myzen@co@uk  Sat Jan 20 12:41:59 2024
+From: ||@t@ @end|ng |rom dewey@myzen@co@uk (Michael Dewey)
+Date: Sat, 20 Jan 2024 11:41:59 +0000
+Subject: [R-pkg-devel] Inquiry Regarding Package Organization in CRAN
+In-Reply-To: <AM0PR03MB4963B7B5C6480AD9736A3AD6A3702@AM0PR03MB4963.eurprd03.prod.outlook.com>
+References: <AM0PR03MB4963B7B5C6480AD9736A3AD6A3702@AM0PR03MB4963.eurprd03.prod.outlook.com>
+Message-ID: <0edd77a6-da02-3d0e-fe36-11d7f82d8933@dewey.myzen.co.uk>
+
+Dear Andriy
+
+I would second the advice that David and Ivan have already given.
+
+I woouls also add that I suspect that most users search for packages by 
+functionality so you might want to study techniques for search engine 
+optimisation and then advise authors how to increase the visibility of 
+their packages.
+
+If the goal is just to record all package from your university then why 
+not establish a page on your university website which links to all of 
+them? The main problem there will be updating it after you have 
+graduated and moved institutions.
+
+Michael
+
+On 19/01/2024 14:34, Protsak Andriy via R-package-devel wrote:
+> Hi all!
+> 
+> 
+> 
+> My name is Andriy, and I?m a student at University of Alcal?, currently working on my final year project.
+> 
+> 
+> 
+> I?m tasked with organizing the R packages developed by our university that are currently available on CRAN. The goal is to enhance their discoverability, to achieve this the initial focus is on exploring the possibility of renaming the packages so that they share a common prefix, making it easier for uses to locate them in the package list.
+> 
+> If you believe there are alternative strategies to achieve a similar result, please feel free to share your perspective.
+> 
+> 
+> 
+> Additionally, I?m looking into the prospect of merging two packages that contain similar functionalities. The aim is to create a more comprehensive package by incorporation additional features and ensuring seamless compatibility.
+> 
+> 
+> 
+> Your assistance is key to the successful completion of my final year project, and I would be immensely grateful for any insights you can provide. Thank you for your time and consideration.
+> 
+> 
+> 
+> Best regards,
+> 
+> 
+> 
+> Andriy
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> 
+> 
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Michael
+
+
+From me @end|ng |rom jg@eb@com  Sat Jan 20 20:38:55 2024
+From: me @end|ng |rom jg@eb@com (Johann Gaebler)
+Date: Sat, 20 Jan 2024 14:38:55 -0500
+Subject: [R-pkg-devel] New Package Removal because Shared Library Too Large
+ from Debugging Symbols
+Message-ID: <D94C0990-EC93-432F-B10A-C2B81E55BB2C@jgaeb.com>
+
+Hi everyone,
+
+I received the following message regarding  `rar` <https://cran.r-project.org/package=rar>, a package that I put up on CRAN two days ago:
+
+> Dear maintainer,
+> 
+> Please see the problems shown on
+> <https://cran.r-project.org/web/checks/check_results_rar.html>.
+> 
+> Please correct before 2024-02-02 to safely retain your package on CRAN.
+
+The issue is that the compiled libraries are too large. The Mac CRAN checks turned up the following note:
+
+> installed size is  8.9Mb
+> sub-directories of 1Mb or more:
+>  libs   8.7Mb
+
+I have not been able to reproduce the issue either locally or on any machine I have ready access to. I have built it on some of the Rhub and R-Project build systems, and the same issue (with very different `libs` sizes) came up on some of them:
+
+? (RHub) Ubuntu Linux 20.04.1 LTS, R-release, GCC: 18.2Mb,
+? (RHub) Fedora Linux, R-devel, clang, gfortran: 6.8Mb,
+? (R-Project) r-release-macosx-arm64: 8.5Mb.
+
+Based on trying to read up about this, it seems that this is a pretty common problem <http://dirk.eddelbuettel.com/blog/2017/08/14/#009_compact_shared_libraries> for compiled packages because of debugging symbols getting inserted into the shared library file. Using the fix from that blog post where you modify the Makevars to strip debugging symbols from the shared library seems to solve the issue on those build systems, so I feel reasonably confident that this is what?s going on.
+
+Apparently many, many existing packages on CRAN have the same issue. However, I?m very new to R package development, so I?m not exactly sure what to do. I have two questions:
+
+1. Is there anything I need to ?fix? here, or should I just make contact with the CRAN folks and bring the fact that this is being caused by debugging symbols to their attention?
+2. Regardless of whether or not I have to fix this issue for CRAN, is there a way to strip out the debugging symbols that comports with CRAN policies? The method suggested in the blog post above (adding a phony target in `Makevars` that strips the shared library) seems not to be CRAN-compliant, but I could be mistaken about that. (In particular, I had to modify it locally to get it to run, so I?m not sure what the platform-independent version of it looks like.)
+
+Thanks in advance for the help!
+
+Sincerely,
+Johann D. Gaebler
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Sat Jan 20 21:01:29 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Sat, 20 Jan 2024 14:01:29 -0600
+Subject: [R-pkg-devel] 
+ New Package Removal because Shared Library Too Large
+ from Debugging Symbols
+In-Reply-To: <D94C0990-EC93-432F-B10A-C2B81E55BB2C@jgaeb.com>
+References: <D94C0990-EC93-432F-B10A-C2B81E55BB2C@jgaeb.com>
+Message-ID: <26028.9881.344.127700@rob.eddelbuettel.com>
+
+
+Johann,
+
+On 20 January 2024 at 14:38, Johann Gaebler wrote:
+| Hi everyone,
+| 
+| I received the following message regarding  `rar` <https://cran.r-project.org/package=rar>, a package that I put up on CRAN two days ago:
+| 
+| > Dear maintainer,
+| > 
+| > Please see the problems shown on
+| > <https://cran.r-project.org/web/checks/check_results_rar.html>.
+| > 
+| > Please correct before 2024-02-02 to safely retain your package on CRAN.
+| 
+| The issue is that the compiled libraries are too large. The Mac CRAN checks turned up the following note:
+
+No you read that wrong. That is NOT the issue. That is a mere 'Note'.
+
+Your issue is the bright red link labeled 'LTO' on that pagem and going to
+
+  https://www.stats.ox.ac.uk/pub/bdr/LTO/rar.out
+  
+where it details an error on that platform / compilation choice:
+
+  g++-13 -std=gnu++17 -shared -L/usr/local/gcc13/lib64 -L/usr/local/lib64 -o rar.so cpp11.o distpt.o iter.o max.o min.o regdata.o sens.o test-distpt.o test-iter.o test-max.o test-min.o test-regdata.o test-runner.o test-sens.o
+  cpp11.cpp:18:13: warning: 'run_testthat_tests' violates the C++ One Definition Rule [-Wodr]
+     18 | extern SEXP run_testthat_tests(void *);
+        |             ^
+  /data/gannet/ripley/R/test-dev/testthat/include/testthat/testthat.h:172:17: note: 'run_testthat_tests' was previously declared here
+    172 | extern "C" SEXP run_testthat_tests(SEXP use_xml_sxp) {
+        |                 ^
+  make[2]: Leaving directory '/data/gannet/ripley/R/packages/tests-LTO/rar/src'
+  installing to /data/gannet/ripley/R/packages/tests-LTO/Libs/rar-lib/00LOCK-rar/00new/rar/libs
+
+This 'violates the C++ One Definition Rule' is something that started with
+g++-13, if memory serves. Without looking at the code, I think you did
+something that lead to a symbol being included multiple times, and it should
+not be.
+
+Cheers, Dirk
+
+ 
+| > installed size is  8.9Mb
+| > sub-directories of 1Mb or more:
+| >  libs   8.7Mb
+| 
+| I have not been able to reproduce the issue either locally or on any machine I have ready access to. I have built it on some of the Rhub and R-Project build systems, and the same issue (with very different `libs` sizes) came up on some of them:
+| 
+| ? (RHub) Ubuntu Linux 20.04.1 LTS, R-release, GCC: 18.2Mb,
+| ? (RHub) Fedora Linux, R-devel, clang, gfortran: 6.8Mb,
+| ? (R-Project) r-release-macosx-arm64: 8.5Mb.
+| 
+| Based on trying to read up about this, it seems that this is a pretty common problem <http://dirk.eddelbuettel.com/blog/2017/08/14/#009_compact_shared_libraries> for compiled packages because of debugging symbols getting inserted into the shared library file. Using the fix from that blog post where you modify the Makevars to strip debugging symbols from the shared library seems to solve the issue on those build systems, so I feel reasonably confident that this is what?s going on.
+| 
+| Apparently many, many existing packages on CRAN have the same issue. However, I?m very new to R package development, so I?m not exactly sure what to do. I have two questions:
+| 
+| 1. Is there anything I need to ?fix? here, or should I just make contact with the CRAN folks and bring the fact that this is being caused by debugging symbols to their attention?
+| 2. Regardless of whether or not I have to fix this issue for CRAN, is there a way to strip out the debugging symbols that comports with CRAN policies? The method suggested in the blog post above (adding a phony target in `Makevars` that strips the shared library) seems not to be CRAN-compliant, but I could be mistaken about that. (In particular, I had to modify it locally to get it to run, so I?m not sure what the platform-independent version of it looks like.)
+| 
+| Thanks in advance for the help!
+| 
+| Sincerely,
+| Johann D. Gaebler
+| 	[[alternative HTML version deleted]]
+| 
+| ______________________________________________
+| R-package-devel at r-project.org mailing list
+| https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From bbo|ker @end|ng |rom gm@||@com  Sat Jan 20 21:02:15 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Sat, 20 Jan 2024 15:02:15 -0500
+Subject: [R-pkg-devel] 
+ New Package Removal because Shared Library Too Large
+ from Debugging Symbols
+In-Reply-To: <D94C0990-EC93-432F-B10A-C2B81E55BB2C@jgaeb.com>
+References: <D94C0990-EC93-432F-B10A-C2B81E55BB2C@jgaeb.com>
+Message-ID: <5d74ddc9-51a0-4d3c-b29a-cec3728d5967@gmail.com>
+
+   Are you sure the issue that CRAN has is the library sizes, and not 
+the issues flagged by the "LTO" platform 
+<https://www.stats.ox.ac.uk/pub/bdr/LTO/README.txt> ?
+
+https://www.stats.ox.ac.uk/pub/bdr/LTO/rar.out
+
+   I would check with CRAN for clarification before you spend a lot of 
+time trying to reduce package sizes. As you point out, lots of packages 
+on CRAN have package sizes large enough to trigger this note -- it is my 
+impression that CRAN only object if the large package size is considered 
+unnecessary; some of the *inappropriate* reasons for large package size 
+are listed in the repository policy 
+<https://cran.r-project.org/web/packages/policies.html>
+
+===
+Packages should be of the minimum necessary size. Reasonable compression 
+should be used for data (not just .rda files) and PDF documentation: 
+CRAN will if necessary pass the latter through qpdf.
+
+As a general rule, neither data nor documentation should exceed 5MB 
+(which covers several books). A CRAN package is not an appropriate way 
+to distribute course notes, and authors will be asked to trim their 
+documentation to a maximum of 5MB.
+
+Where a large amount of data is required (even after compression), 
+consideration should be given to a separate data-only package which can 
+be updated only rarely (since older versions of packages are archived in 
+perpetuity).
+
+Similar considerations apply to other forms of ?data?, e.g., .jar files.
+
+Source package tarballs should if possible not exceed 10MB. It is much 
+preferred that third-party source software should be included within the 
+package (as e.g. a vendor.tar.xz file) than be downloaded at 
+installation: if this requires a larger tarball a modestly increased 
+limit can be requested at submission.
+====
+
+On 2024-01-20 2:38 p.m., Johann Gaebler wrote:
+> Hi everyone,
+> 
+> I received the following message regarding  `rar` <https://cran.r-project.org/package=rar>, a package that I put up on CRAN two days ago:
+> 
+>> Dear maintainer,
+>>
+>> Please see the problems shown on
+>> <https://cran.r-project.org/web/checks/check_results_rar.html>.
+>>
+>> Please correct before 2024-02-02 to safely retain your package on CRAN.
+> 
+> The issue is that the compiled libraries are too large. The Mac CRAN checks turned up the following note:
+> 
+>> installed size is  8.9Mb
+>> sub-directories of 1Mb or more:
+>>   libs   8.7Mb
+> 
+> I have not been able to reproduce the issue either locally or on any machine I have ready access to. I have built it on some of the Rhub and R-Project build systems, and the same issue (with very different `libs` sizes) came up on some of them:
+> 
+> ? (RHub) Ubuntu Linux 20.04.1 LTS, R-release, GCC: 18.2Mb,
+> ? (RHub) Fedora Linux, R-devel, clang, gfortran: 6.8Mb,
+> ? (R-Project) r-release-macosx-arm64: 8.5Mb.
+> 
+> Based on trying to read up about this, it seems that this is a pretty common problem <http://dirk.eddelbuettel.com/blog/2017/08/14/#009_compact_shared_libraries> for compiled packages because of debugging symbols getting inserted into the shared library file. Using the fix from that blog post where you modify the Makevars to strip debugging symbols from the shared library seems to solve the issue on those build systems, so I feel reasonably confident that this is what?s going on.
+> 
+> Apparently many, many existing packages on CRAN have the same issue. However, I?m very new to R package development, so I?m not exactly sure what to do. I have two questions:
+> 
+> 1. Is there anything I need to ?fix? here, or should I just make contact with the CRAN folks and bring the fact that this is being caused by debugging symbols to their attention?
+> 2. Regardless of whether or not I have to fix this issue for CRAN, is there a way to strip out the debugging symbols that comports with CRAN policies? The method suggested in the blog post above (adding a phony target in `Makevars` that strips the shared library) seems not to be CRAN-compliant, but I could be mistaken about that. (In particular, I had to modify it locally to get it to run, so I?m not sure what the platform-independent version of it looks like.)
+> 
+> Thanks in advance for the help!
+> 
+> Sincerely,
+> Johann D. Gaebler
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+(Acting) Graduate chair, Mathematics & Statistics
+ > E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
+From |kry|ov @end|ng |rom d|@root@org  Sat Jan 20 21:02:37 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sat, 20 Jan 2024 23:02:37 +0300
+Subject: [R-pkg-devel] 
+ New Package Removal because Shared Library Too Large
+ from Debugging Symbols
+In-Reply-To: <D94C0990-EC93-432F-B10A-C2B81E55BB2C@jgaeb.com>
+References: <D94C0990-EC93-432F-B10A-C2B81E55BB2C@jgaeb.com>
+Message-ID: <20240120230237.41df2796@Tarkus>
+
+? Sat, 20 Jan 2024 14:38:55 -0500
+Johann Gaebler <me at jgaeb.com> ?????:
+
+> The issue is that the compiled libraries are too large.
+
+Was it in the e-mail? As you quite correctly observed, many other
+packages get the NOTE about shared library size.
+
+It may be not exactly obvious, but the red link saying "LTO" on the
+check page that points to
+<https://www.stats.ox.ac.uk/pub/bdr/LTO/rar.out> is hiding a more
+serious issue:
+
+> cpp11.cpp:18:13: warning: 'run_testthat_tests' violates the C++ One Definition Rule [-Wodr]
+>    18 | extern SEXP run_testthat_tests(void *);
+>       |             ^
+> /data/gannet/ripley/R/test-dev/testthat/include/testthat/testthat.h:172:17: note: 'run_testthat_tests' was previously declared here
+>   172 | extern "C" SEXP run_testthat_tests(SEXP use_xml_sxp) {
+>       |                 ^
+
+Modern C++ compilers are painfully pedantic about undefined behaviour
+and can optimise away large sections of code if they think they have a
+proof that your code causes it [*]. If you edit cpp11.cpp to provide the
+correct declaration (#include the testthat header if possible), the
+error should go away.
+
+-- 
+Best regards,
+Ivan
+
+[*] For example, see this issue in R: https://bugs.r-project.org/show_bug.cgi?id=18430
+
+
+From jeroenoom@ @end|ng |rom gm@||@com  Sat Jan 20 23:51:28 2024
+From: jeroenoom@ @end|ng |rom gm@||@com (Jeroen Ooms)
+Date: Sat, 20 Jan 2024 23:51:28 +0100
+Subject: [R-pkg-devel] Inquiry Regarding Package Organization in CRAN
+In-Reply-To: <AM0PR03MB4963B7B5C6480AD9736A3AD6A3702@AM0PR03MB4963.eurprd03.prod.outlook.com>
+References: <AM0PR03MB4963B7B5C6480AD9736A3AD6A3702@AM0PR03MB4963.eurprd03.prod.outlook.com>
+Message-ID: <CABFfbXvb2UV0==pNn_5As+4ZZGx+dcw9mNWgxru484bREz6K4A@mail.gmail.com>
+
+On Fri, Jan 19, 2024 at 8:41?PM Protsak Andriy via R-package-devel
+<r-package-devel at r-project.org> wrote:
+>
+> Hi all!
+>
+>
+>
+> My name is Andriy, and I?m a student at University of Alcal?, currently working on my final year project.
+>
+>
+>
+> I?m tasked with organizing the R packages developed by our university that are currently available on CRAN. The goal is to enhance their discoverability, to achieve this the initial focus is on exploring the possibility of renaming the packages so that they share a common prefix, making it easier for uses to locate them in the package list.
+>
+> If you believe there are alternative strategies to achieve a similar result, please feel free to share your perspective.
+
+
+
+You could also set up a cranlike package repository on r-universe,
+where you include all the packages from your university (both those
+from CRAN and others). This will provide a nice overview of all the
+packages in your institute and makes them discoverable via web UI and
+r-universe search engine.
+
+Many other organisations are represented here as well, some examples:
+
+ - https://ropensci.r-universe.dev
+ - https://lcbc-uio.r-universe.dev
+ - https://vimc.r-universe.dev
+ - https://kwb-r.r-universe.dev
+ - https://mrcieu.r-universe.dev
+ - https://inbo.r-universe.dev
+
+And many more from: https://r-universe.dev/organizations/. Getting
+started is easy, see:
+https://github.com/r-universe-org/help?tab=readme-ov-file
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Sun Jan 21 01:12:56 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Sun, 21 Jan 2024 01:12:56 +0100
+Subject: [R-pkg-devel] 
+ New Package Removal because Shared Library Too Large
+ from Debugging Symbols
+In-Reply-To: <D94C0990-EC93-432F-B10A-C2B81E55BB2C@jgaeb.com>
+References: <D94C0990-EC93-432F-B10A-C2B81E55BB2C@jgaeb.com>
+Message-ID: <684ce040-8232-4599-ac25-cf5abcfc8b77@statistik.tu-dortmund.de>
+
+Others have pointed you to the Additional issue, namely LTO.
+
+But I really cannot resist:
+You omitted a line from our message that actually explains it. We wrote: 
+"Do remember to look at the 'Additional issues'."
+
+Best,
+Uwe Ligges
+
+
+
+On 20.01.2024 20:38, Johann Gaebler wrote:
+> Hi everyone,
+> 
+> I received the following message regarding  `rar` <https://cran.r-project.org/package=rar>, a package that I put up on CRAN two days ago:
+> 
+>> Dear maintainer,
+>>
+>> Please see the problems shown on
+>> <https://cran.r-project.org/web/checks/check_results_rar.html>.
+>>
+>> Please correct before 2024-02-02 to safely retain your package on CRAN.
+> 
+> The issue is that the compiled libraries are too large. The Mac CRAN checks turned up the following note:
+> 
+>> installed size is  8.9Mb
+>> sub-directories of 1Mb or more:
+>>   libs   8.7Mb
+> 
+> I have not been able to reproduce the issue either locally or on any machine I have ready access to. I have built it on some of the Rhub and R-Project build systems, and the same issue (with very different `libs` sizes) came up on some of them:
+> 
+> ? (RHub) Ubuntu Linux 20.04.1 LTS, R-release, GCC: 18.2Mb,
+> ? (RHub) Fedora Linux, R-devel, clang, gfortran: 6.8Mb,
+> ? (R-Project) r-release-macosx-arm64: 8.5Mb.
+> 
+> Based on trying to read up about this, it seems that this is a pretty common problem <http://dirk.eddelbuettel.com/blog/2017/08/14/#009_compact_shared_libraries> for compiled packages because of debugging symbols getting inserted into the shared library file. Using the fix from that blog post where you modify the Makevars to strip debugging symbols from the shared library seems to solve the issue on those build systems, so I feel reasonably confident that this is what?s going on.
+> 
+> Apparently many, many existing packages on CRAN have the same issue. However, I?m very new to R package development, so I?m not exactly sure what to do. I have two questions:
+> 
+> 1. Is there anything I need to ?fix? here, or should I just make contact with the CRAN folks and bring the fact that this is being caused by debugging symbols to their attention?
+> 2. Regardless of whether or not I have to fix this issue for CRAN, is there a way to strip out the debugging symbols that comports with CRAN policies? The method suggested in the blog post above (adding a phony target in `Makevars` that strips the shared library) seems not to be CRAN-compliant, but I could be mistaken about that. (In particular, I had to modify it locally to get it to run, so I?m not sure what the platform-independent version of it looks like.)
+> 
+> Thanks in advance for the help!
+> 
+> Sincerely,
+> Johann D. Gaebler
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+From me @end|ng |rom jg@eb@com  Sun Jan 21 02:28:00 2024
+From: me @end|ng |rom jg@eb@com (Johann Gaebler)
+Date: Sat, 20 Jan 2024 20:28:00 -0500
+Subject: [R-pkg-devel] 
+ New Package Removal because Shared Library Too Large
+ from Debugging Symbols
+In-Reply-To: <20240120230237.41df2796@Tarkus>
+References: <D94C0990-EC93-432F-B10A-C2B81E55BB2C@jgaeb.com>
+ <20240120230237.41df2796@Tarkus>
+Message-ID: <E8F43369-EC0C-4F59-99D5-2FC1C993DEC0@jgaeb.com>
+
+Hi Ivan,
+
+Thanks, this is very helpful! You are completely right that I misread the message.
+
+I will try including that header in `cpp11.cpp`. Unfortunately, that?s supposed to be programmatically generated, so I?m not sure what the ?right" fix is: most likely there?s some error on my part in how I?ve set up cpp11, but it also seems possible that cpp11 should have detected that that header needs to be included and added it automatically. 
+
+Best,
+Hans
+
+> Ivan Krylov <ikrylov at disroot.org> ? 2024?1?20? ??3:02 ???
+> 
+> ? Sat, 20 Jan 2024 14:38:55 -0500
+> Johann Gaebler <me at jgaeb.com> ?????:
+> 
+>> The issue is that the compiled libraries are too large.
+> 
+> Was it in the e-mail? As you quite correctly observed, many other
+> packages get the NOTE about shared library size.
+> 
+> It may be not exactly obvious, but the red link saying "LTO" on the
+> check page that points to
+> <https://www.stats.ox.ac.uk/pub/bdr/LTO/rar.out> is hiding a more
+> serious issue:
+> 
+>> cpp11.cpp:18:13: warning: 'run_testthat_tests' violates the C++ One Definition Rule [-Wodr]
+>>   18 | extern SEXP run_testthat_tests(void *);
+>>      |             ^
+>> /data/gannet/ripley/R/test-dev/testthat/include/testthat/testthat.h:172:17: note: 'run_testthat_tests' was previously declared here
+>>  172 | extern "C" SEXP run_testthat_tests(SEXP use_xml_sxp) {
+>>      |                 ^
+> 
+> Modern C++ compilers are painfully pedantic about undefined behaviour
+> and can optimise away large sections of code if they think they have a
+> proof that your code causes it [*]. If you edit cpp11.cpp to provide the
+> correct declaration (#include the testthat header if possible), the
+> error should go away.
+> 
+> -- 
+> Best regards,
+> Ivan
+> 
+> [*] For example, see this issue in R: https://bugs.r-project.org/show_bug.cgi?id=18430
+
+
+From me @end|ng |rom jg@eb@com  Sun Jan 21 02:29:15 2024
+From: me @end|ng |rom jg@eb@com (Johann Gaebler)
+Date: Sat, 20 Jan 2024 20:29:15 -0500
+Subject: [R-pkg-devel] 
+ New Package Removal because Shared Library Too Large
+ from Debugging Symbols
+In-Reply-To: <684ce040-8232-4599-ac25-cf5abcfc8b77@statistik.tu-dortmund.de>
+References: <D94C0990-EC93-432F-B10A-C2B81E55BB2C@jgaeb.com>
+ <684ce040-8232-4599-ac25-cf5abcfc8b77@statistik.tu-dortmund.de>
+Message-ID: <2117B1BC-A641-43B0-AAC2-E8908986E339@jgaeb.com>
+
+Hi Uwe,
+
+You?re completely right. I misunderstood the ?additional issue? and thought it was referring to the ?NOTE.?
+
+Thanks for the help!
+
+Best,
+Hans
+
+> Uwe Ligges <ligges at statistik.tu-dortmund.de> ? 2024?1?20? ??7:12 ???
+> 
+> Others have pointed you to the Additional issue, namely LTO.
+> 
+> But I really cannot resist:
+> You omitted a line from our message that actually explains it. We wrote: "Do remember to look at the 'Additional issues'."
+> 
+> Best,
+> Uwe Ligges
+> 
+> 
+> 
+> On 20.01.2024 20:38, Johann Gaebler wrote:
+>> Hi everyone,
+>> I received the following message regarding  `rar` <https://cran.r-project.org/package=rar>, a package that I put up on CRAN two days ago:
+>>> Dear maintainer,
+>>> 
+>>> Please see the problems shown on
+>>> <https://cran.r-project.org/web/checks/check_results_rar.html>.
+>>> 
+>>> Please correct before 2024-02-02 to safely retain your package on CRAN.
+>> The issue is that the compiled libraries are too large. The Mac CRAN checks turned up the following note:
+>>> installed size is  8.9Mb
+>>> sub-directories of 1Mb or more:
+>>>  libs   8.7Mb
+>> I have not been able to reproduce the issue either locally or on any machine I have ready access to. I have built it on some of the Rhub and R-Project build systems, and the same issue (with very different `libs` sizes) came up on some of them:
+>> ? (RHub) Ubuntu Linux 20.04.1 LTS, R-release, GCC: 18.2Mb,
+>> ? (RHub) Fedora Linux, R-devel, clang, gfortran: 6.8Mb,
+>> ? (R-Project) r-release-macosx-arm64: 8.5Mb.
+>> Based on trying to read up about this, it seems that this is a pretty common problem <http://dirk.eddelbuettel.com/blog/2017/08/14/#009_compact_shared_libraries> for compiled packages because of debugging symbols getting inserted into the shared library file. Using the fix from that blog post where you modify the Makevars to strip debugging symbols from the shared library seems to solve the issue on those build systems, so I feel reasonably confident that this is what?s going on.
+>> Apparently many, many existing packages on CRAN have the same issue. However, I?m very new to R package development, so I?m not exactly sure what to do. I have two questions:
+>> 1. Is there anything I need to ?fix? here, or should I just make contact with the CRAN folks and bring the fact that this is being caused by debugging symbols to their attention?
+>> 2. Regardless of whether or not I have to fix this issue for CRAN, is there a way to strip out the debugging symbols that comports with CRAN policies? The method suggested in the blog post above (adding a phony target in `Makevars` that strips the shared library) seems not to be CRAN-compliant, but I could be mistaken about that. (In particular, I had to modify it locally to get it to run, so I?m not sure what the platform-independent version of it looks like.)
+>> Thanks in advance for the help!
+>> Sincerely,
+>> Johann D. Gaebler
+>> 	[[alternative HTML version deleted]]
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
