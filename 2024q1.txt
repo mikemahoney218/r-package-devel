@@ -8878,3 +8878,470 @@ this email.
 	[[alternative HTML version deleted]]
 
 
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Mon Jan 22 12:30:46 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Mon, 22 Jan 2024 12:30:46 +0100
+Subject: [R-pkg-devel] 
+ New Package Removal because Shared Library Too Large
+ from Debugging Symbols
+In-Reply-To: <20240121114411.41ed2c5c@Tarkus>
+References: <D94C0990-EC93-432F-B10A-C2B81E55BB2C@jgaeb.com>
+ <20240120230237.41df2796@Tarkus>
+ <E8F43369-EC0C-4F59-99D5-2FC1C993DEC0@jgaeb.com>
+ <20240121114411.41ed2c5c@Tarkus>
+Message-ID: <e83ab772-b5cb-4d12-92d6-90c4712a8df8@gmail.com>
+
+
+On 1/21/24 09:44, Ivan Krylov via R-package-devel wrote:
+> ? Sat, 20 Jan 2024 20:28:00 -0500
+> Johann Gaebler <me at jgaeb.com> ?????:
+>
+>> most likely there?s some error on my part in how I?ve set up cpp11,
+>> but it also seems possible that cpp11 should have detected that that
+>> header needs to be included and added it automatically
+> Upon further investigation, it's more complicated than a missing
+> #include.
+>
+> cpp11::cpp_register() uses
+> tools::package_native_routine_registration_skeleton() to generate these
+> declarations. This function works by scanning the R code for calls to
+> .Call(), .C(), .Fortran(), and others and then trying to come up with
+> appropriate prototypes for the native functions being called. For
+> .Call()s, the function must output the correct type of SEXP for every
+> argument in the generated declaration.
+>
+> This works the right way, for example, in R-4.2.2 (2022-11-10) and
+> today's R-devel, but was broken for a while (e.g. in R-4.3.1 and
+> R-4.3.2), and the fix, unfortunately, hasn't been backported (not to
+> R-patched either): https://bugs.r-project.org/show_bug.cgi?id=18585
+Thanks, ported now to R-patched.
+Tomas
+>
+> I can suggest three workarounds.
+>
+> 1. Edit src/cpp11.cpp on a separate "for-CRAN" branch and rebase it on
+>     top of the main branch every time you update the package.
+>
+> 2. Install R-devel and use it to generate the source package. Strictly
+>     speaking, this would go against the letter of the CRAN policy
+>     (builds "should be done with current R-patched or the current
+>     release of R"), but would at least follow its spirit (use the
+>     version of R where the known package-building-related bug was fixed).
+>
+> 3. Add a configure script that would modify src/cpp11.cpp while the
+>     package is being installed. This way, the only thing modifying
+>     generated code would be more code, which is considered
+>     architecturally pure by some developers.
+>
+>     Lots of ways to implement it, too: you can do it in a single shell
+>     script (using sed or patch -- are these tools guaranteed to be
+>     available?), delegate to tools/configure.R (that you would also
+>     write yourself), or go full GNU Autoconf and generate a
+>     megabyte-sized ./configure from some m4 macros just to replace one
+>     line.
+>
+>     There is definitely a lot of performance art value if you go this
+>     way, but extra code means extra ways for it to go wrong. For more
+>     style points, make it a Makevars target instead of a configure
+>     script.
+>
+
+
+From iibi@giei m@iii@g oii si@@@com  Mon Jan 22 10:50:33 2024
+From: iibi@giei m@iii@g oii si@@@com (iibi@giei m@iii@g oii si@@@com)
+Date: Mon, 22 Jan 2024 17:50:33 +0800
+Subject: [R-pkg-devel] Assistance Needed for Resolving Submission Issues
+ with openaistream Package
+Message-ID: <65ae3a6977ee26.30025412.9e9f5f9c@m0.mail.sina.com.cn>
+
+Hi,I am writing to seek guidance regarding some challenges I've encountered while submitting my package, openaistream, to CRAN. I have recently received feedback from the CRAN team, and I'm looking for assistance to address the issues noted.The package in question aims to provide streaming capabilities for OpenAI API interactions and is based on the 'httr2' framework. While the last released version's CRAN status is marked as 'OK: 12', I have been advised to fix certain problems and resubmit a revised version.The specific areas of concern are:License Information: There's a note indicating that the license stub is an "invalid DCF". I've used 'MIT + file LICENSE' as the licensing terms. I would appreciate guidance on how to correctly format this section to meet the DCF standards.General Submission: I've been directed to win-builder pretest for more details. However, I'm finding it challenging to pinpoint the exact issues that need rectification. Any insights or suggestions on common pitfalls or areas to focus on would be immensely helpful.I have thoroughly reviewed the provided links and documentation but would greatly benefit from the community's expertise and experience in addressing these specific concerns. If there are any resources, examples, or advice you can share, it would be greatly appreciated.Windows: <https://win-builder.r-project.org/incoming_pretest/openaistream_0.2.0_20240122_043830/Windows/00check.log>Status: 2 NOTEsDebian: <https://win-builder.r-project.org/incoming_pretest/openaistream_0.2.0_20240122_043830/Debian/00check.log>Status: 2 NOTEs
+Best regards,Li Gen
+Email: libingfei at sina.comGitHub: https://github.com/libingfei/openaistream
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Mon Jan 22 15:18:38 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 22 Jan 2024 17:18:38 +0300
+Subject: [R-pkg-devel] Assistance Needed for Resolving Submission Issues
+ with openaistream Package
+In-Reply-To: <65ae3a6977ee26.30025412.9e9f5f9c@m0.mail.sina.com.cn>
+References: <65ae3a6977ee26.30025412.9e9f5f9c@m0.mail.sina.com.cn>
+Message-ID: <20240122171838.7ec7885a@arachnoid>
+
+Hello Li Gen and welcome to R-package-devel!
+
+? Mon, 22 Jan 2024 17:50:33 +0800
+<libingfei at sina.com> ?????:
+
+> The specific areas of concern are:License Information: There's a note
+> indicating that the license stub is an "invalid DCF". I've used 'MIT
+> + file LICENSE' as the licensing terms. I would appreciate guidance
+> on how to correctly format this section to meet the DCF standards.
+
+Leave just the following lines in the LICENSE file, as it currently is
+on CRAN [*]:
+
+YEAR: 2023
+COPYRIGHT HOLDER: openaistream authors
+
+Why would you like to change it? CRAN doesn't want packages to provide
+yet another copy of the MIT license inside the tarball. The text of the
+MIT license is always available in an R install at
+file.path(R.home('share'), 'licenses', 'MIT').
+
+If you need a copy of the MIT license inside your GitHub repository,
+store it elsewhere (e.g. LICENSE.md) and list it in .Rbuildignore [**].
+
+Since you composed your e-mail in HTML and left your mailer to generate
+a plain text equivalent, we only got the latter, somewhat mangled:
+https://stat.ethz.ch/pipermail/r-package-devel/2024q1/010356.html
+
+Please compose your messages to R mailing lists in plain text.
+
+-- 
+Best regards,
+Ivan
+
+[*]
+https://cran.r-project.org/web/packages/openaistream/LICENSE
+
+[**]
+https://cran.r-project.org/doc/manuals/R-exts.html#Building-package-tarballs
+
+
+From |kry|ov @end|ng |rom d|@root@org  Mon Jan 22 15:42:06 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 22 Jan 2024 17:42:06 +0300
+Subject: [R-pkg-devel] 
+ New Package Removal because Shared Library Too Large
+ from Debugging Symbols
+In-Reply-To: <e83ab772-b5cb-4d12-92d6-90c4712a8df8@gmail.com>
+References: <D94C0990-EC93-432F-B10A-C2B81E55BB2C@jgaeb.com>
+ <20240120230237.41df2796@Tarkus>
+ <E8F43369-EC0C-4F59-99D5-2FC1C993DEC0@jgaeb.com>
+ <20240121114411.41ed2c5c@Tarkus>
+ <e83ab772-b5cb-4d12-92d6-90c4712a8df8@gmail.com>
+Message-ID: <20240122174206.394ca24f@arachnoid>
+
+On Mon, 22 Jan 2024 12:30:46 +0100
+Tomas Kalibera <tomas.kalibera at gmail.com> wrote:
+
+> Thanks, ported now to R-patched.
+
+Thank you!
+
+Is it fine to mention problems like this one in the middle of an
+e-mail, or should I have left a note in the Bugzilla instead?
+
+-- 
+Best regards,
+Ivan
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Mon Jan 22 15:50:44 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Mon, 22 Jan 2024 15:50:44 +0100
+Subject: [R-pkg-devel] new maintainer for CRAN package XML
+Message-ID: <f6c68c43-54d1-4dde-a394-cc0263457133@statistik.tu-dortmund.de>
+
+Dear package developers,
+
+the CRAN team (and Professor Ripley in particular) has been the defacto 
+maintainer of CRAN package 'XML'.
+Our hope was that maintainers of packages depending on XML will migrate 
+to other packages for reading XML structures. This has not happened and 
+we still see dozens of strong dependencies on XML.
+
+So we are looking for a person volunteering to take over 'XML'.
+Please let us know if you are interested.
+
+For the CRAN team,
+Uwe Ligges
+
+From ||u|@@rev|||@ @end|ng |rom gm@||@com  Mon Jan 22 15:57:40 2024
+From: ||u|@@rev|||@ @end|ng |rom gm@||@com (=?UTF-8?Q?Llu=C3=ADs_Revilla?=)
+Date: Mon, 22 Jan 2024 15:57:40 +0100
+Subject: [R-pkg-devel] Assistance Needed for Resolving Submission Issues
+ with openaistream Package
+In-Reply-To: <20240122171838.7ec7885a@arachnoid>
+References: <65ae3a6977ee26.30025412.9e9f5f9c@m0.mail.sina.com.cn>
+ <20240122171838.7ec7885a@arachnoid>
+Message-ID: <CAN+W6_s2WuwhZh=Y7suU6KGXPWC0i-ViYLX2mqv29RibgsTU6A@mail.gmail.com>
+
+Hi Li Gen,
+
+This NOTE is part of the new checks on CRAN to comply with its policy.
+The error message was introduced in c85587 (2023/11/22), when
+incorporating this suggestion
+https://bugs.r-project.org/show_bug.cgi?id=18611.
+You can see the changes and checks in the browser here:
+https://github.com/r-devel/r-svn/commit/c82305de4adc1a8ee01aaf3b4c84bd55721e77fc)
+But the solution is what Ivan already wrote: simply provide a file
+LICENSE that can be read with read.dcf with those two fields.
+
+Best regards,
+
+Llu?s
+
+
+On Mon, 22 Jan 2024 at 15:19, Ivan Krylov via R-package-devel
+<r-package-devel at r-project.org> wrote:
+>
+> Hello Li Gen and welcome to R-package-devel!
+>
+> ? Mon, 22 Jan 2024 17:50:33 +0800
+> <libingfei at sina.com> ?????:
+>
+> > The specific areas of concern are:License Information: There's a note
+> > indicating that the license stub is an "invalid DCF". I've used 'MIT
+> > + file LICENSE' as the licensing terms. I would appreciate guidance
+> > on how to correctly format this section to meet the DCF standards.
+>
+> Leave just the following lines in the LICENSE file, as it currently is
+> on CRAN [*]:
+>
+> YEAR: 2023
+> COPYRIGHT HOLDER: openaistream authors
+>
+> Why would you like to change it? CRAN doesn't want packages to provide
+> yet another copy of the MIT license inside the tarball. The text of the
+> MIT license is always available in an R install at
+> file.path(R.home('share'), 'licenses', 'MIT').
+>
+> If you need a copy of the MIT license inside your GitHub repository,
+> store it elsewhere (e.g. LICENSE.md) and list it in .Rbuildignore [**].
+>
+> Since you composed your e-mail in HTML and left your mailer to generate
+> a plain text equivalent, we only got the latter, somewhat mangled:
+> https://stat.ethz.ch/pipermail/r-package-devel/2024q1/010356.html
+>
+> Please compose your messages to R mailing lists in plain text.
+>
+> --
+> Best regards,
+> Ivan
+>
+> [*]
+> https://cran.r-project.org/web/packages/openaistream/LICENSE
+>
+> [**]
+> https://cran.r-project.org/doc/manuals/R-exts.html#Building-package-tarballs
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From |kry|ov @end|ng |rom d|@root@org  Mon Jan 22 16:10:52 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 22 Jan 2024 18:10:52 +0300
+Subject: [R-pkg-devel] Cannot see the failure output on Fedora clang/gcc
+ falvor (page not found)
+In-Reply-To: <VI1P192MB0285585C5A4BE5B950FD7F6EFB762@VI1P192MB0285.EURP192.PROD.OUTLOOK.COM>
+References: <VI1P192MB0285585C5A4BE5B950FD7F6EFB762@VI1P192MB0285.EURP192.PROD.OUTLOOK.COM>
+Message-ID: <20240122181052.0eef0be8@arachnoid>
+
+On Sun, 21 Jan 2024 16:51:39 +0000
+Sameh Abdulah <sameh.abdulah at kaust.edu.sa> wrote:
+
+> However, we cannot access the webpage (page not found) to identify
+> and address the failures on Fedora systems.
+> 
+> https://cran-archive.r-project.org/web/checks/2024/2024-01-12_check_results_MPCR.html
+> 
+> How can we see the failures on these systems?
+
+I cannot help you with the exact output from the Fedora system (I think
+it's lost), but here's how the package fails on mine:
+
+* installing *source* package 'MPCR' ...
+** using staged installation
+Linux
+------------------------------------------------------------
+/tmp/RtmpCSPOGc/Rbuild6043fb1a651/MPCR
+/usr/bin/cmake
+CMake is installed in: /usr/bin
+-- The C compiler identification is GNU 12.2.0
+-- The CXX compiler identification is GNU 12.2.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/gcc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/g++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- WORKING ON RELEASE MODE
+MPCR Install Result : FALSE
+-- Found OpenMP_C: -fopenmp (found version "4.5")
+-- Found OpenMP_CXX: -fopenmp (found version "4.5")
+-- Found OpenMP: TRUE (found version "4.5")
+OpenMp Found
+R Include Path :  /home/ivan/R-build/include
+Rcpp Lib Path :  /home/ivan/R-build/library/Rcpp
+R Home Path :  /home/ivan/R-build
+CMake Error at cmake/FindR.cmake:63 (find_library):
+  Could not find R_LIB using the following names: libR.so
+Call Stack (most recent call first):
+  CMakeLists.txt:70 (FIND_PACKAGE)
+
+
+-- Configuring incomplete, errors occurred!
+See also "/tmp/RtmpCSPOGc/Rbuild6043fb1a651/MPCR/bin/CMakeFiles/CMakeOutput.log".
+make: *** No rule to make target 'clean'.  Stop.
+make: *** No rule to make target 'all'.  Stop.
+cp: cannot stat '/tmp/RtmpCSPOGc/Rbuild6043fb1a651/MPCR/bin/src/libmpcr.so': No such file or directory
+Failed: libmpcr.so -> src
+** libs
+make: Nothing to be done for 'all'.
+** R
+** inst
+** byte-compile and prepare package for lazy loading
+** help
+*** installing help indices
+** building package indices
+** installing vignettes
+** testing if installed package can be loaded from temporary location
+Error: package or namespace load failed for 'MPCR' in library.dynam(lib, package, package.lib):
+ shared object 'MPCR.so' not found
+
+It is not the default to build R as a shared library, and this
+installation of R has been built without --enable-R-shlib. I'm sure
+that with enough effort it's possible to propagate the information from
+R to CMake so that it would make you a shared library in the correct
+manner, but I think it's easier to separate your code into two parts:
+
+ 1. One part should contain most of your code, without the dependencies
+    on R. It can be built using CMake if that's what you prefer. It
+    will probably be more convenient to build it as a static library.
+
+ 2. The other part will be the R interface. Let the R build system
+    (described in WRE 1.2 [*] and below, especially 1.2.6) link the
+    final shared library from the small remaining part of the source
+    files (those that include R-related headers) and the static library
+    from the previous step. If you play your cards right, it will also
+    work on Windows without significant additional effort.
+
+Have you considered linking your R package against the BLAS and LAPACK
+that already come with R? This may not give the user the best possible
+performance ever, but those who do care about performance have probably
+installed a copy of BLAS of their own choice and may not prefer an
+extra copy of OpenBLAS that may or may not match the optimal parameters
+for their hardware. Same goes for libgfortran (that may be required
+depending on what you're linking) [**].
+
+This would also make it easier to comply with CRAN policy on external
+libraries [***]: if you want to download software during package
+installation, you may be required to host a fixed version of the
+package on something extra reliable (like Zenodo) and verify a
+cryptographic hash of the file you download before using it.
+
+-- 
+Best regards,
+Ivan
+
+[*]
+https://cran.r-project.org/doc/manuals/R-exts.html#Configure-and-cleanup
+
+[**]
+https://cran.r-project.org/doc/manuals/R-exts.html#index-FLIBS
+
+[***]
+https://cran.r-project.org/web/packages/using_rust.html
+https://cran.r-project.org/web/packages/external_libs.html
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Mon Jan 22 17:14:04 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Mon, 22 Jan 2024 17:14:04 +0100
+Subject: [R-pkg-devel] 
+ New Package Removal because Shared Library Too Large
+ from Debugging Symbols
+In-Reply-To: <20240122174206.394ca24f@arachnoid>
+References: <D94C0990-EC93-432F-B10A-C2B81E55BB2C@jgaeb.com>
+ <20240120230237.41df2796@Tarkus>
+ <E8F43369-EC0C-4F59-99D5-2FC1C993DEC0@jgaeb.com>
+ <20240121114411.41ed2c5c@Tarkus>
+ <e83ab772-b5cb-4d12-92d6-90c4712a8df8@gmail.com>
+ <20240122174206.394ca24f@arachnoid>
+Message-ID: <1d7380ca-53d9-417c-9ef6-1ff3509aef4c@gmail.com>
+
+
+On 1/22/24 15:42, Ivan Krylov via R-package-devel wrote:
+> On Mon, 22 Jan 2024 12:30:46 +0100
+> Tomas Kalibera <tomas.kalibera at gmail.com> wrote:
+>
+>> Thanks, ported now to R-patched.
+> Thank you!
+>
+> Is it fine to mention problems like this one in the middle of an
+> e-mail, or should I have left a note in the Bugzilla instead?
+>
+In this case a comment on bugzilla would have been well justified: it 
+was a regression, fixed many months ago, with a simple fix, so something 
+quite clearly intended to be ported. In other cases the decision what to 
+port and when may be harder.
+
+Yes, inside a bigger email, reports can get overlooked, particularly 
+when in a thread with a rather different subject. It wasn't overlooked 
+this time thanks to Martin.
+
+Tomas
+
+
+From ||u|@@rev|||@ @end|ng |rom gm@||@com  Tue Jan 23 01:03:41 2024
+From: ||u|@@rev|||@ @end|ng |rom gm@||@com (=?UTF-8?Q?Llu=C3=ADs_Revilla?=)
+Date: Tue, 23 Jan 2024 01:03:41 +0100
+Subject: [R-pkg-devel] new maintainer for CRAN package XML
+In-Reply-To: <f6c68c43-54d1-4dde-a394-cc0263457133@statistik.tu-dortmund.de>
+References: <f6c68c43-54d1-4dde-a394-cc0263457133@statistik.tu-dortmund.de>
+Message-ID: <CAN+W6_si-iXLZkBKCUgLzagUzGV7CT62NPzcrMAx=PM6KiwnVA@mail.gmail.com>
+
+Dear Uwe and the CRAN team,
+
+Many thanks for maintaining the package for so long (>10 years!).
+
+I see the latest changes are in some internal C code related to
+updating the libxml2 library.
+In CRAN's experience, is this the highest time consuming task?
+
+I have some questions about how the maintenance transfer will go:
+Would someone from the CRAN team help/review the new maintainer for some time?
+Or would there be a change in the "cre" role and that's all the
+further involvement of the CRAN team with the package (besides the
+excellent checks on CRAN)?
+
+For anyone considering it, I analyzed a bit the situation of XML and
+RCurl: https://llrs.dev/post/2023/05/03/cran-maintained-packages/
+In short, with ~300 direct dependencies, and many highly used, across
+CRAN and Bioconductor's packages.
+
+Kind regards,
+
+Llu?s
+
+
+On Mon, 22 Jan 2024 at 15:51, Uwe Ligges
+<ligges at statistik.tu-dortmund.de> wrote:
+>
+> Dear package developers,
+>
+> the CRAN team (and Professor Ripley in particular) has been the defacto
+> maintainer of CRAN package 'XML'.
+> Our hope was that maintainers of packages depending on XML will migrate
+> to other packages for reading XML structures. This has not happened and
+> we still see dozens of strong dependencies on XML.
+>
+> So we are looking for a person volunteering to take over 'XML'.
+> Please let us know if you are interested.
+>
+> For the CRAN team,
+> Uwe Ligges
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
