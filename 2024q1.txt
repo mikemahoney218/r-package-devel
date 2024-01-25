@@ -9345,3 +9345,257 @@ On Mon, 22 Jan 2024 at 15:51, Uwe Ligges
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From p@tr|ck@g|r@udoux @end|ng |rom un|v-|comte@|r  Tue Jan 23 19:39:54 2024
+From: p@tr|ck@g|r@udoux @end|ng |rom un|v-|comte@|r (Patrick Giraudoux)
+Date: Tue, 23 Jan 2024 19:39:54 +0100
+Subject: [R-pkg-devel] lost braces note on CRAN pretest related to \itemize
+In-Reply-To: <mailman.10169.9.1705921202.31571.r-package-devel@r-project.org>
+References: <mailman.10169.9.1705921202.31571.r-package-devel@r-project.org>
+Message-ID: <94a7abb7-fbcd-4852-8170-2532b9af58aa@univ-fcomte.fr>
+
+Dear listers,
+
+I meet a problem with the? submission of the package pgirmess. In fact 
+the package goes through R CMD check --as-cran and R-wind-builder 
+smoothly with no problem, but submitted to CRAN, I get this:
+
+Flavor: r-devel-linux-x86_64-debian-gcc, r-devel-windows-x86_64
+Check: CRAN incoming feasibility, Result: Note_to_CRAN_maintainers
+   Maintainer: 'Patrick Giraudoux<patrick.giraudoux at univ-fcomte.fr>'
+
+Flavor: r-devel-linux-x86_64-debian-gcc, r-devel-windows-x86_64
+Check: Rd files, Result: NOTE
+   checkRd: (-1) mergeTrackObs.rd:24: Lost braces in \itemize; \value handles \item{}{} directly
+   checkRd: (-1) mergeTrackObs.rd:25: Lost braces in \itemize; \value handles \item{}{} directly
+   checkRd: (-1) mergeTrackObs.rd:26: Lost braces in \itemize; \value handles \item{}{} directly
+   checkRd: (-1) selMod.rd:29-31: Lost braces in \itemize; meant \describe ?
+   checkRd: (-1) selMod.rd:32-33: Lost braces in \itemize; meant \describe ?
+   checkRd: (-1) selMod.rd:54: Lost braces in \itemize; meant \describe ?
+   checkRd: (-1) selMod.rd:55: Lost braces in \itemize; meant \describe ?
+
+The code that seems to make problem (although braces are balanced; I 
+wonder why a claim 'lost braces') is
+
+- for mergeTrackObs.rd
+
+\value{
+ ? A \code{\link[sf]{sfc}} object, of POINT geometry, with the following 
+columns:
+ ? \itemize{
+ ? \item{ID}{ ID number}
+ ? \item{nObs}{ The number of observations in the interval}
+ ? \item{geometry} {POINT geometry}
+ ? }
+}
+
+- for selMod.rd
+
+\details{
+ ? This function provides parameters used in the information theoretic 
+methods for model comparisons.
+ ? \itemize{
+ ? \item{.}{lm and glm objects can be passed directly as the upper scope 
+of term addition (all terms added).
+ ? Every model from y\eqn{\sim}{~}1 is computed adding one term at a 
+time until the upper scope model is derived. This is a stepwise analysis 
+where the terms are added sequentially and this does NOT provide all 
+combinations of terms and interactions. Offset terms cannot be proceeded 
+here.
+ ? }
+ ? \item{.}{A list of user specified lm, glm, nls, lme or nlme objects 
+(actually any object for which AIC and logLik functions are applicable) 
+to compare can alternately be passed.
+ ? }
+ ? }
+}
+
+Has anyone an idea about what is going wrong ?
+
+Patrick
+
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Tue Jan 23 19:58:46 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 23 Jan 2024 12:58:46 -0600
+Subject: [R-pkg-devel] 
+ lost braces note on CRAN pretest related to \itemize
+In-Reply-To: <94a7abb7-fbcd-4852-8170-2532b9af58aa@univ-fcomte.fr>
+References: <mailman.10169.9.1705921202.31571.r-package-devel@r-project.org>
+ <94a7abb7-fbcd-4852-8170-2532b9af58aa@univ-fcomte.fr>
+Message-ID: <26032.3174.970615.617686@rob.eddelbuettel.com>
+
+
+On 23 January 2024 at 19:39, Patrick Giraudoux wrote:
+| Has anyone an idea about what is going wrong ?
+
+\item has no braces following it.  From a package I submitted today and for
+which I still have NEWS.Rd in the editor (indented here):
+
+  \section{Changes in version 0.0.22 (2024-01-23)}{
+    \itemize{
+      \item Replace empty examples macros to satisfy CRAN request.
+    }
+  }
+
+Hth,  Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From |kry|ov @end|ng |rom d|@root@org  Tue Jan 23 19:59:54 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 23 Jan 2024 21:59:54 +0300
+Subject: [R-pkg-devel] 
+ lost braces note on CRAN pretest related to \itemize
+In-Reply-To: <94a7abb7-fbcd-4852-8170-2532b9af58aa@univ-fcomte.fr>
+References: <mailman.10169.9.1705921202.31571.r-package-devel@r-project.org>
+ <94a7abb7-fbcd-4852-8170-2532b9af58aa@univ-fcomte.fr>
+Message-ID: <20240123215954.0afb8e9d@Tarkus>
+
+? Tue, 23 Jan 2024 19:39:54 +0100
+Patrick Giraudoux <patrick.giraudoux at univ-fcomte.fr> ?????:
+
+>  ? \itemize{
+>  ? \item{.}{lm and glm objects can be passed directly as the upper
+> scope of term addition (all terms added).
+
+Inside the \itemize and \enumerate commands, the \item command doesn't
+take any arguments:
+https://cran.r-project.org/doc/manuals/R-exts.html#Lists-and-tables
+
+Instead, it starts a new paragraph with a number (\enumerate) or a
+bullet point (\itemize). R CMD check is reminding you that \itemize{
+\item{foo}{bar} } is equivalent to \itemize{ \item foo bar } without
+any braces.
+
+If you meant to highlight a word by making it an argument of the \item
+command, use the \describe command. Here, you're highlighting a dot,
+which would be rendered with a bullet point before it, so it's probably
+neither semantically nor visually appropriate.
+
+> \value{
+>  ? A \code{\link[sf]{sfc}} object, of POINT geometry, with the
+> following columns:
+>  ? \itemize{
+>  ? \item{ID}{ ID number}
+
+The same problem applies here.
+
+Additionally, R CMD check is reminding you that \value{} is implicitly
+a special case of a \describe{} environment:
+https://cran.r-project.org/doc/manuals/R-exts.html#index-_005cvalue
+
+Since you're already using \item{}{} labels to name the components of
+the value, just drop the \itemize{} (but keep its contents). \value{} is
+enough.
+
+-- 
+Best regards,
+Ivan
+
+
+From p@tr|ck@g|r@udoux @end|ng |rom un|v-|comte@|r  Tue Jan 23 20:08:20 2024
+From: p@tr|ck@g|r@udoux @end|ng |rom un|v-|comte@|r (Patrick Giraudoux)
+Date: Tue, 23 Jan 2024 20:08:20 +0100
+Subject: [R-pkg-devel] 
+ lost braces note on CRAN pretest related to \itemize
+In-Reply-To: <26032.3174.970615.617686@rob.eddelbuettel.com>
+References: <mailman.10169.9.1705921202.31571.r-package-devel@r-project.org>
+ <94a7abb7-fbcd-4852-8170-2532b9af58aa@univ-fcomte.fr>
+ <26032.3174.970615.617686@rob.eddelbuettel.com>
+Message-ID: <68b9da72-26ad-4f27-8839-aa5b2a65cc6a@univ-fcomte.fr>
+
+OK. Clear enough. CRAN applies a new "filter" as it was going through 
+without crying a note since decades ;-). However, indeed, re-checking 
+the manual "Writing R extensions" my syntax was wrong...
+Thanks for the guidance,
+Patrick
+
+Le 23/01/2024 ? 19:58, Dirk Eddelbuettel a ?crit?:
+> On 23 January 2024 at 19:39, Patrick Giraudoux wrote:
+> | Has anyone an idea about what is going wrong ?
+>
+> \item has no braces following it.  From a package I submitted today and for
+> which I still have NEWS.Rd in the editor (indented here):
+>
+>    \section{Changes in version 0.0.22 (2024-01-23)}{
+>      \itemize{
+>        \item Replace empty examples macros to satisfy CRAN request.
+>      }
+>    }
+>
+> Hth,  Dirk
+>
+
+	[[alternative HTML version deleted]]
+
+
+From georg|@bo@hn@kov @end|ng |rom m@nche@ter@@c@uk  Tue Jan 23 21:14:13 2024
+From: georg|@bo@hn@kov @end|ng |rom m@nche@ter@@c@uk (Georgi Boshnakov)
+Date: Tue, 23 Jan 2024 20:14:13 +0000
+Subject: [R-pkg-devel] 
+ lost braces note on CRAN pretest related to \itemize
+In-Reply-To: <68b9da72-26ad-4f27-8839-aa5b2a65cc6a@univ-fcomte.fr>
+References: <mailman.10169.9.1705921202.31571.r-package-devel@r-project.org>
+ <94a7abb7-fbcd-4852-8170-2532b9af58aa@univ-fcomte.fr>
+ <26032.3174.970615.617686@rob.eddelbuettel.com>
+ <68b9da72-26ad-4f27-8839-aa5b2a65cc6a@univ-fcomte.fr>
+Message-ID: <LO0P265MB63252FC9F918C154634DD11BAE742@LO0P265MB6325.GBRP265.PROD.OUTLOOK.COM>
+
+The notes you get illustrate why they are useful, if you look at your rendered documentation you probably will see something wrong. Thousands of packages on CRAN, including some of mines have had this kind of infelicities for years.
+
+Firstly, the two sets of braces suggest that you meant a description environment, not itemize (in which  its only argument doesn't need braces).
+
+Secondly, in the value section, \item is implicitly enclosed in \describe and you don't need to include the latter.
+
+Georgi Boshnakov
+
+
+Sent from Outlook for Android<https://aka.ms/AAb9ysg>
+
+________________________________
+From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Patrick Giraudoux <patrick.giraudoux at univ-fcomte.fr>
+Sent: Tuesday, January 23, 2024 7:09:22 pm
+To: Dirk Eddelbuettel <edd at debian.org>
+Cc: R Package Development <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel]  lost braces note on CRAN pretest related to \itemize
+
+OK. Clear enough. CRAN applies a new "filter" as it was going through
+without crying a note since decades ;-). However, indeed, re-checking
+the manual "Writing R extensions" my syntax was wrong...
+Thanks for the guidance,
+Patrick
+
+Le 23/01/2024 ? 19:58, Dirk Eddelbuettel a ?crit :
+> On 23 January 2024 at 19:39, Patrick Giraudoux wrote:
+> | Has anyone an idea about what is going wrong ?
+>
+> \item has no braces following it.  From a package I submitted today and for
+> which I still have NEWS.Rd in the editor (indented here):
+>
+>    \section{Changes in version 0.0.22 (2024-01-23)}{
+>      \itemize{
+>        \item Replace empty examples macros to satisfy CRAN request.
+>      }
+>    }
+>
+> Hth,  Dirk
+>
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!PDiH4ENfjr2_Jw!Gu9AhS4Yi4k5IC8TXv4B8xpznl-8-Jhl-cdxRZ6zVrRCdmDaSTVYpaG5XDoitdms9FuHQGV7adP-Q6WD6w2bMws_b5UnszsH5VsXFBMUIvFX4Nc$ [stat[.]ethz[.]ch]
+
+
+	[[alternative HTML version deleted]]
+
+
