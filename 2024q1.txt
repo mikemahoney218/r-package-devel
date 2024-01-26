@@ -9599,3 +9599,2873 @@ https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-deve
 	[[alternative HTML version deleted]]
 
 
+From c@chw@rz@t@t@|uc@ @end|ng |rom gm@||@com  Wed Jan 24 04:22:43 2024
+From: c@chw@rz@t@t@|uc@ @end|ng |rom gm@||@com (Carl Schwarz)
+Date: Tue, 23 Jan 2024 19:22:43 -0800
+Subject: [R-pkg-devel] How to debug segfault when running build -> document
+ in Rstudio that includes TMB module
+Message-ID: <CADtpigYViZ+2GJq+XQyJ6GeyEZ_CWMnUPg20-LcdLKC3GWvVxA@mail.gmail.com>
+
+I'm trying to update my SPAS package to respond to a CRAN check. Before
+starting the changes, I tried to rebuild my package, but now get a segfault
+when I try to do a devtools::document() or devtools::check(args =
+c('--as-cran')). See below for output from the Rstudio "Build" window.
+
+I've
+- reinstalled ALL packages
+- reinstalled R (4.3.2 on MacOS Intel Chip)
+- reinstalled Rstudio
+
+When I try a rebuild/document on a sister package it runs fine, so I
+suspect that the problem is related to using a TMB module that is part of
+the SPAS package written in Cpp.
+
+How do I start to "debug" this to identify the problem?
+
+Thanks
+Carl Schwarz
+
+
+
+
+==> devtools::document(roclets = c('rd', 'collate', 'namespace', 'vignette'))
+? Updating SPAS documentation? Loading SPAS
+
+ *** caught segfault ***
+address 0x54e40, cause 'memory not mapped'
+
+Traceback:
+ 1: dyn.load(dll_copy_file)
+ 2: library.dynam2(path, lib)
+ 3: load_dll(path)
+ 4: pkgload::load_all(path, helpers = FALSE, attach_testthat = FALSE)
+ 5: load_code(base_path)
+ 6: roxygen2::roxygenise(pkg$path, roclets)
+ 7: devtools::document(roclets = c("rd", "collate", "namespace",
+"vignette"))
+ 8: withCallingHandlers(expr, packageStartupMessage = function(c)
+tryInvokeRestart("muffleMessage"))
+ 9: suppressPackageStartupMessages({    oldLC <-
+Sys.getlocale(category = "LC_COLLATE")    Sys.setlocale(category =
+"LC_COLLATE", locale = "C")    on.exit(Sys.setlocale(category =
+"LC_COLLATE", locale = oldLC))    devtools::document(roclets = c("rd",
+"collate", "namespace",         "vignette"))})
+An irrecoverable exception occurred. R is aborting now ...
+
+Exited with status 139.
+
+	[[alternative HTML version deleted]]
+
+
+From j@y|@mb20 @end|ng |rom gm@||@com  Wed Jan 24 04:35:31 2024
+From: j@y|@mb20 @end|ng |rom gm@||@com (James Lamb)
+Date: Tue, 23 Jan 2024 21:35:31 -0600
+Subject: [R-pkg-devel] 
+ How to debug segfault when running build -> document
+ in Rstudio that includes TMB module
+In-Reply-To: <CADtpigYViZ+2GJq+XQyJ6GeyEZ_CWMnUPg20-LcdLKC3GWvVxA@mail.gmail.com>
+References: <CADtpigYViZ+2GJq+XQyJ6GeyEZ_CWMnUPg20-LcdLKC3GWvVxA@mail.gmail.com>
+Message-ID: <CADPubGQcowMyyZUCHYu=4ndjyB9xAu4gLLOjgKjtS1L_kqdNVQ@mail.gmail.com>
+
+Carl,
+
+Consider performing these tasks without the use of the 'devtools' package,
+running the following from a shell.
+
+```shell
+R CMD build .
+R CMD INSTALL --with-keep.source ./SPAS_*.tar.gz
+
+# (assuming you use roxygen2)
+Rscript -e "roxygen2::roxygenize(load = 'installed')"
+
+R CMD check --as-cran ./SPAS_*.tar.gz
+```
+
+If those commands are successful, then you know the problem lies somewhere
+in the difference between that approach and what 'devtools' does, which
+might help to narrow it down.
+
+Cheers,
+
+-James
+
+
+On Tue, Jan 23, 2024 at 9:23?PM Carl Schwarz <cschwarzstatsfuca at gmail.com>
+wrote:
+
+> I'm trying to update my SPAS package to respond to a CRAN check. Before
+> starting the changes, I tried to rebuild my package, but now get a segfault
+> when I try to do a devtools::document() or devtools::check(args =
+> c('--as-cran')). See below for output from the Rstudio "Build" window.
+>
+> I've
+> - reinstalled ALL packages
+> - reinstalled R (4.3.2 on MacOS Intel Chip)
+> - reinstalled Rstudio
+>
+> When I try a rebuild/document on a sister package it runs fine, so I
+> suspect that the problem is related to using a TMB module that is part of
+> the SPAS package written in Cpp.
+>
+> How do I start to "debug" this to identify the problem?
+>
+> Thanks
+> Carl Schwarz
+>
+>
+>
+>
+> ==> devtools::document(roclets = c('rd', 'collate', 'namespace',
+> 'vignette'))
+> ? Updating SPAS documentation? Loading SPAS
+>
+>  *** caught segfault ***
+> address 0x54e40, cause 'memory not mapped'
+>
+> Traceback:
+>  1: dyn.load(dll_copy_file)
+>  2: library.dynam2(path, lib)
+>  3: load_dll(path)
+>  4: pkgload::load_all(path, helpers = FALSE, attach_testthat = FALSE)
+>  5: load_code(base_path)
+>  6: roxygen2::roxygenise(pkg$path, roclets)
+>  7: devtools::document(roclets = c("rd", "collate", "namespace",
+> "vignette"))
+>  8: withCallingHandlers(expr, packageStartupMessage = function(c)
+> tryInvokeRestart("muffleMessage"))
+>  9: suppressPackageStartupMessages({    oldLC <-
+> Sys.getlocale(category = "LC_COLLATE")    Sys.setlocale(category =
+> "LC_COLLATE", locale = "C")    on.exit(Sys.setlocale(category =
+> "LC_COLLATE", locale = oldLC))    devtools::document(roclets = c("rd",
+> "collate", "namespace",         "vignette"))})
+> An irrecoverable exception occurred. R is aborting now ...
+>
+> Exited with status 139.
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+-- 
+James Lamb (he/him)
+GitHub <https://github.com/jameslamb> | LinkedIn
+<https://www.linkedin.com/in/jameslamb1/>
+
+	[[alternative HTML version deleted]]
+
+
+From @ergue|@@oko| @end|ng |rom gm@||@com  Wed Jan 24 09:03:11 2024
+From: @ergue|@@oko| @end|ng |rom gm@||@com (Serguei Sokol)
+Date: Wed, 24 Jan 2024 09:03:11 +0100
+Subject: [R-pkg-devel] 
+ How to debug segfault when running build -> document
+ in Rstudio that includes TMB module
+In-Reply-To: <CADtpigYViZ+2GJq+XQyJ6GeyEZ_CWMnUPg20-LcdLKC3GWvVxA@mail.gmail.com>
+References: <CADtpigYViZ+2GJq+XQyJ6GeyEZ_CWMnUPg20-LcdLKC3GWvVxA@mail.gmail.com>
+Message-ID: <8a8e07b0-2fe9-410b-a9f4-15ab6ebe9f91@gmail.com>
+
+Le 24/01/2024 ? 04:22, Carl Schwarz a ?crit?:
+> I'm trying to update my SPAS package to respond to a CRAN check. Before
+> starting the changes, I tried to rebuild my package, but now get a segfault
+> when I try to do a devtools::document() or devtools::check(args =
+> c('--as-cran')). See below for output from the Rstudio "Build" window.
+> 
+> I've
+> - reinstalled ALL packages
+> - reinstalled R (4.3.2 on MacOS Intel Chip)
+> - reinstalled Rstudio
+> 
+> When I try a rebuild/document on a sister package it runs fine, so I
+> suspect that the problem is related to using a TMB module that is part of
+> the SPAS package written in Cpp.
+> 
+> How do I start to "debug" this to identify the problem?
+Why not simply run devtools::document() from 'R -d gdb' ?
+
+Best,
+Serguei.
+
+> 
+> Thanks
+> Carl Schwarz
+> 
+> 
+> 
+> 
+> ==> devtools::document(roclets = c('rd', 'collate', 'namespace', 'vignette'))
+> ? Updating SPAS documentation? Loading SPAS
+> 
+>   *** caught segfault ***
+> address 0x54e40, cause 'memory not mapped'
+> 
+> Traceback:
+>   1: dyn.load(dll_copy_file)
+>   2: library.dynam2(path, lib)
+>   3: load_dll(path)
+>   4: pkgload::load_all(path, helpers = FALSE, attach_testthat = FALSE)
+>   5: load_code(base_path)
+>   6: roxygen2::roxygenise(pkg$path, roclets)
+>   7: devtools::document(roclets = c("rd", "collate", "namespace",
+> "vignette"))
+>   8: withCallingHandlers(expr, packageStartupMessage = function(c)
+> tryInvokeRestart("muffleMessage"))
+>   9: suppressPackageStartupMessages({    oldLC <-
+> Sys.getlocale(category = "LC_COLLATE")    Sys.setlocale(category =
+> "LC_COLLATE", locale = "C")    on.exit(Sys.setlocale(category =
+> "LC_COLLATE", locale = oldLC))    devtools::document(roclets = c("rd",
+> "collate", "namespace",         "vignette"))})
+> An irrecoverable exception occurred. R is aborting now ...
+> 
+> Exited with status 139.
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From jeroenoom@ @end|ng |rom gm@||@com  Wed Jan 24 15:59:39 2024
+From: jeroenoom@ @end|ng |rom gm@||@com (Jeroen Ooms)
+Date: Wed, 24 Jan 2024 15:59:39 +0100
+Subject: [R-pkg-devel] new maintainer for CRAN package XML
+In-Reply-To: <f6c68c43-54d1-4dde-a394-cc0263457133@statistik.tu-dortmund.de>
+References: <f6c68c43-54d1-4dde-a394-cc0263457133@statistik.tu-dortmund.de>
+Message-ID: <CABFfbXvZ4b9PQe=fA6CJ=Udq9ektOC+=ht+bH2HoKUktThRfeA@mail.gmail.com>
+
+On Mon, Jan 22, 2024 at 3:51?PM Uwe Ligges
+<ligges at statistik.tu-dortmund.de> wrote:
+>
+> Dear package developers,
+>
+> the CRAN team (and Professor Ripley in particular) has been the defacto
+> maintainer of CRAN package 'XML'.
+> Our hope was that maintainers of packages depending on XML will migrate
+> to other packages for reading XML structures. This has not happened and
+> we still see dozens of strong dependencies on XML.
+
+How is this hope communicated? Many R users assume that XML package is
+in great shape and the preferable choice because it is maintained by
+the CRAN team and r-core members.
+
+Perhaps one could follow the precedent from the rgdal retirement, and
+set a deadline.
+
+One way to communicate this effectively would be by introducing a
+formal deprecation field in the package description. This could then
+be displayed on the XML CRAN html page, and when loading the package
+interactively. Other packages that import such a deprecated package
+could be given a CMD check warning.
+
+
+From emm@nue|@b|onde|1 @end|ng |rom gm@||@com  Wed Jan 24 16:38:49 2024
+From: emm@nue|@b|onde|1 @end|ng |rom gm@||@com (Emmanuel Blondel)
+Date: Wed, 24 Jan 2024 16:38:49 +0100
+Subject: [R-pkg-devel] new maintainer for CRAN package XML
+In-Reply-To: <CABFfbXvZ4b9PQe=fA6CJ=Udq9ektOC+=ht+bH2HoKUktThRfeA@mail.gmail.com>
+References: <f6c68c43-54d1-4dde-a394-cc0263457133@statistik.tu-dortmund.de>
+ <CABFfbXvZ4b9PQe=fA6CJ=Udq9ektOC+=ht+bH2HoKUktThRfeA@mail.gmail.com>
+Message-ID: <21d76136-65f7-472d-b14c-322a53a559b7@gmail.com>
+
+if XML is deprecated, then what would be the choice for a package 
+maintainer? Move to xml2 probably at some point I assume
+
+I use XML in the R packages I've been developing. For some of them, I 
+started before CRAN started being the maintainer, and before xml2 
+inception. The thing is that XML fulfills requirements, it works and 
+fulfills needs of depending packages that made the choice to use it. For 
+this, it deserves to be maintained in CRAN, without having to enter into 
+comparison exercices with other packages that , as of today, may be 
+better to rely on (with certainly very good reasons).
+
+Moving to xml2 (or whatever other package), which although I could agree 
+on the principle, can be costly for packages that use extensively XML. 
+Doing so would mean that we first get the assurance that all XML 
+features are covered elsewhere, and can be migrated smoothly.
+
+In any case, please acknowledge that this kind of migration may take 
+time and require resources that vary (or even are missing) depending on 
+the package projects. I doubt having CRAN setting a common deadline for 
+retirement is a good way to foster an efficient maintenance of R 
+packages depending on XML. It would be good to receive guidance how to 
+migrate, while ensuring backward compatibility on our package features.
+
+Best
+
+Le 24/01/2024 ? 15:59, Jeroen Ooms a ?crit?:
+> On Mon, Jan 22, 2024 at 3:51?PM Uwe Ligges
+> <ligges at statistik.tu-dortmund.de> wrote:
+>> Dear package developers,
+>>
+>> the CRAN team (and Professor Ripley in particular) has been the defacto
+>> maintainer of CRAN package 'XML'.
+>> Our hope was that maintainers of packages depending on XML will migrate
+>> to other packages for reading XML structures. This has not happened and
+>> we still see dozens of strong dependencies on XML.
+> How is this hope communicated? Many R users assume that XML package is
+> in great shape and the preferable choice because it is maintained by
+> the CRAN team and r-core members.
+>
+> Perhaps one could follow the precedent from the rgdal retirement, and
+> set a deadline.
+>
+> One way to communicate this effectively would be by introducing a
+> formal deprecation field in the package description. This could then
+> be displayed on the XML CRAN html page, and when loading the package
+> interactively. Other packages that import such a deprecated package
+> could be given a CMD check warning.
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Wed Jan 24 17:06:01 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Wed, 24 Jan 2024 17:06:01 +0100
+Subject: [R-pkg-devel] new maintainer for CRAN package XML
+In-Reply-To: <21d76136-65f7-472d-b14c-322a53a559b7@gmail.com>
+References: <f6c68c43-54d1-4dde-a394-cc0263457133@statistik.tu-dortmund.de>
+ <CABFfbXvZ4b9PQe=fA6CJ=Udq9ektOC+=ht+bH2HoKUktThRfeA@mail.gmail.com>
+ <21d76136-65f7-472d-b14c-322a53a559b7@gmail.com>
+Message-ID: <9c7c5b69-13fa-4234-965f-0d834baf37c2@statistik.tu-dortmund.de>
+
+
+
+On 24.01.2024 16:38, Emmanuel Blondel wrote:
+> if XML is deprecated, then what would be the choice for a package 
+> maintainer? Move to xml2 probably at some point I assume
+> 
+> I use XML in the R packages I've been developing. For some of them, I 
+> started before CRAN started being the maintainer, and before xml2 
+> inception. The thing is that XML fulfills requirements, it works and 
+> fulfills needs of depending packages that made the choice to use it. For 
+> this, it deserves to be maintained in CRAN, without having to enter into 
+> comparison exercices with other packages that , as of today, may be 
+> better to rely on (with certainly very good reasons).
+> 
+> Moving to xml2 (or whatever other package), which although I could agree 
+> on the principle, can be costly for packages that use extensively XML. 
+> Doing so would mean that we first get the assurance that all XML 
+> features are covered elsewhere, and can be migrated smoothly.
+> 
+> In any case, please acknowledge that this kind of migration may take 
+> time and require resources that vary (or even are missing) depending on 
+> the package projects. I doubt having CRAN setting a common deadline for 
+> retirement is a good way to foster an efficient maintenance of R 
+> packages depending on XML. It would be good to receive guidance how to 
+> migrate, while ensuring backward compatibility on our package features.
+
+We learned that it is hard to fade out XML support, and CRAN took over 
+maintainance as XML had too many reverse dependencies.
+CRAN certainly does not have the resources to be able to deprecate XML 
+in the same way as Roger Bivand did for rgdal.
+So now we are looking for a new maintainer on a public list, feel free 
+to raise your hand and take over. Then you could even consider to 
+deprecate it and help other maintainers to migrate.
+
+I won't spend more time on any discussions. We are just looking for a 
+volunteer.
+
+Best,
+Uwe Ligges
+
+
+
+> Best
+> 
+> Le 24/01/2024 ? 15:59, Jeroen Ooms a ?crit?:
+>> On Mon, Jan 22, 2024 at 3:51?PM Uwe Ligges
+>> <ligges at statistik.tu-dortmund.de> wrote:
+>>> Dear package developers,
+>>>
+>>> the CRAN team (and Professor Ripley in particular) has been the defacto
+>>> maintainer of CRAN package 'XML'.
+>>> Our hope was that maintainers of packages depending on XML will migrate
+>>> to other packages for reading XML structures. This has not happened and
+>>> we still see dozens of strong dependencies on XML.
+>> How is this hope communicated? Many R users assume that XML package is
+>> in great shape and the preferable choice because it is maintained by
+>> the CRAN team and r-core members.
+>>
+>> Perhaps one could follow the precedent from the rgdal retirement, and
+>> set a deadline.
+>>
+>> One way to communicate this effectively would be by introducing a
+>> formal deprecation field in the package description. This could then
+>> be displayed on the XML CRAN html page, and when loading the package
+>> interactively. Other packages that import such a deprecated package
+>> could be given a CMD check warning.
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Wed Jan 24 17:06:38 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Wed, 24 Jan 2024 17:06:38 +0100
+Subject: [R-pkg-devel] new maintainer for CRAN package XML
+In-Reply-To: <CABFfbXvZ4b9PQe=fA6CJ=Udq9ektOC+=ht+bH2HoKUktThRfeA@mail.gmail.com>
+References: <f6c68c43-54d1-4dde-a394-cc0263457133@statistik.tu-dortmund.de>
+ <CABFfbXvZ4b9PQe=fA6CJ=Udq9ektOC+=ht+bH2HoKUktThRfeA@mail.gmail.com>
+Message-ID: <296998d9-8b16-4630-b3ba-07fa415248f1@statistik.tu-dortmund.de>
+
+
+
+On 24.01.2024 15:59, Jeroen Ooms wrote:
+> On Mon, Jan 22, 2024 at 3:51?PM Uwe Ligges
+> <ligges at statistik.tu-dortmund.de> wrote:
+>>
+>> Dear package developers,
+>>
+>> the CRAN team (and Professor Ripley in particular) has been the defacto
+>> maintainer of CRAN package 'XML'.
+>> Our hope was that maintainers of packages depending on XML will migrate
+>> to other packages for reading XML structures. This has not happened and
+>> we still see dozens of strong dependencies on XML.
+> 
+> How is this hope communicated? Many R users assume that XML package is
+> in great shape and the preferable choice because it is maintained by
+> the CRAN team and r-core members.
+> 
+> Perhaps one could follow the precedent from the rgdal retirement, and
+> set a deadline.
+> 
+> One way to communicate this effectively would be by introducing a
+> formal deprecation field in the package description. This could then
+> be displayed on the XML CRAN html page, and when loading the package
+> interactively. Other packages that import such a deprecated package
+> could be given a CMD check warning.
+
+Sure, the new maintainer may do all these things.
+
+Best,
+Uwe Ligges
+
+From c@chw@rz@t@t@|uc@ @end|ng |rom gm@||@com  Wed Jan 24 20:34:51 2024
+From: c@chw@rz@t@t@|uc@ @end|ng |rom gm@||@com (Carl Schwarz)
+Date: Wed, 24 Jan 2024 11:34:51 -0800
+Subject: [R-pkg-devel] R-package-devel Digest, Vol 105, Issue 19
+In-Reply-To: <CADtpigb0F6fPchnuu3cm0dV+-En14yHUuUURy5szfFn-3DTBXw@mail.gmail.com>
+References: <mailman.10186.5.1706094001.5533.r-package-devel@r-project.org>
+ <CADtpigb0F6fPchnuu3cm0dV+-En14yHUuUURy5szfFn-3DTBXw@mail.gmail.com>
+Message-ID: <CADtpigYezZfLRdDWGeWjBNXzJQnYPcrGL983BDBu0OO8q5STOQ@mail.gmail.com>
+
+Solved...
+
+The src/ directory also included a .o and .so objects from the last build
+of the package that must be "out of date" because once I removed those
+older objects, the Build -> Document and build -> Check package now work
+fine without crashing...A newer version of the .o and .so objects are now
+built and it now works fine.
+
+Thanks
+Carl Schwarz
+
+On Wed, Jan 24, 2024 at 10:57?AM Carl Schwarz <cschwarzstatsfuca at gmail.com>
+wrote:
+
+> Thanks for your suggestions.  I followed the suggestion in today's message
+> (see results below) which all run without issue.
+> I tried to isolate the problem more....
+>
+> The issue appears to be with load_dll()
+>
+> When I try
+> > getwd()
+> [1] "/Users/cschwarz/Library/CloudStorage/Dropbox/SPAS-R/SPAS"
+> > load_dll()
+>
+> It crashes.
+>
+>
+> I moved the package outside of CloudStorage to see if that is the issue.
+> > getwd()
+> [1] "/Users/cschwarz/Desktop/SPAS"
+> > load_dll()
+>
+> It crashes.
+>
+>
+> I tried doing a dll_load() where there is NO c++ object, i.e. a random
+> directory and it terminates with a sensible error message....
+> > setwd("/Users/cschwarz/Desktop/BikePics")
+> > library(pkgload)
+> > load_dll()
+> Error in `value[[3L]]()`:
+> ! Could not find a root 'DESCRIPTION' file that starts with '^Package' in
+> /Users/cschwarz/Desktop/BikePics.
+> ? Are you in your project directory and does your project have a
+> 'DESCRIPTION' file?
+> Run `rlang::last_trace()` to see where the error occurred.
+>
+> I'm following the suggestions on including TMB code in a package at
+>
+> https://stackoverflow.com/questions/48627069/guidelines-for-including-tmb-c-code-in-an-r-package
+> and appear to have all the necessary files
+>
+> I created my own load_dll() function by copying over the code and adding a
+> browser().
+> It appears to run fine until the statement library.dynam2(path.lib) where
+> it cannot find the function library.dynam2
+>
+>
+> > my_load_dll()
+> Called from: my_load_dll()
+> Browse[1]> n
+> debug at #4: package <- pkg_name(path)
+> Browse[2]> n
+> debug at #5: env <- ns_env(package)
+> Browse[2]> n
+> debug at #6: nsInfo <- parse_ns_file(path)
+> Browse[2]> n
+> debug at #7: dlls <- list()
+> Browse[2]> n
+> debug at #8: dynLibs <- nsInfo$dynlibs
+> Browse[2]> n
+> debug at #9: nativeRoutines <- list()
+> Browse[2]> n
+> debug at #10: for (i in seq_along(dynLibs)) {
+>     lib <- dynLibs[i]
+>     dlls[[lib]] <- library.dynam2(path, lib)
+>     routines <- assignNativeRoutines(dlls[[lib]], lib, env,
+> nsInfo$nativeRoutines[[lib]])
+>     nativeRoutines[[lib]] <- routines
+>     if (!is.null(names(nsInfo$dynlibs)) &&
+> nzchar(names(nsInfo$dynlibs)[i]))
+>         env[[names(nsInfo$dynlibs)[i]]] <- dlls[[lib]]
+>     setNamespaceInfo(env, "DLLs", dlls)
+> }
+> Browse[2]> n
+> debug at #11: lib <- dynLibs[i]
+> Browse[2]> n
+> debug at #12: dlls[[lib]] <- library.dynam2(path, lib)
+> Browse[2]> n
+> Error in library.dynam2(path, lib) :
+>   could not find function "library.dynam2"
+>
+> I'm unable to find where the library.dynam2() function lies... A google
+> search for library.dynam2 doesn't show anything except for a cryptic
+> comment in
+> https://rdrr.io/cran/pkgload/src/R/load-dll.R
+> which says
+>
+> ## The code below taken directly from base::loadNamespace
+>   ## https://github.com/wch/r-source/blob/tags/R-3-3-0/src/library/base/R/namespace.R#L466-L485
+>   ## except for the call to library.dynam2, which is a special version of
+>   ## library.dynam
+>
+> This is now beyond my pay grade..
+>
+> Suggestions?
+>
+>
+> ------------------------------
+>
+> From James Lamb <jaylamb20 at gmail.com>
+>
+> Using the shell:
+>
+> R CMD build .
+> - success with
+>
+> * checking for file ?./DESCRIPTION? ... OK
+>
+> * preparing ?SPAS?:
+>
+> * checking DESCRIPTION meta-information ... OK
+>
+> * cleaning src
+>
+> * installing the package to build vignettes
+>
+> * creating vignettes ... OK
+>
+> * cleaning src
+>
+> * checking for LF line-endings in source and make files and shell scripts
+>
+> * checking for empty or unneeded directories
+>
+> * building ?SPAS_2024.1.31.tar.gz?
+>
+>
+> R CMD INSTALL --with-keep.source ./SPAS_*.tar.gz
+> - success. Lots of warning from the C compiler but appears to terminate
+> successfully with
+> ....
+>
+> installing to /Users/cschwarz/Rlibs/00LOCK-SPAS/00new/SPAS/libs
+>
+> ** R
+>
+> ** inst
+>
+> ** byte-compile and prepare package for lazy loading
+>
+> ** help
+>
+> *** installing help indices
+>
+> ** building package indices
+>
+> ** installing vignettes
+>
+> ** testing if installed package can be loaded from temporary location
+>
+> ** checking absolute paths in shared objects and dynamic libraries
+>
+> ** testing if installed package can be loaded from final location
+>
+> ** testing if installed package keeps a record of temporary installation
+> path
+>
+> * DONE (SPAS)
+>
+>
+> # (assuming you use roxygen2)
+> Rscript -e "roxygen2::roxygenize(load = 'installed')"
+>
+>
+> - success?, it just returns with no messages
+>
+> cschwarz at schwarz-iMac-2020 SPAS % Rscript -e "roxygen2::roxygenize(load =
+> 'installed')"
+>
+> cschwarz at schwarz-iMac-2020 SPAS %
+>
+>
+> R CMD check --as-cran ./SPAS_*.tar.gz
+>
+> - successful...runs the checks, but does NOT find the note from the
+> development versions of R that triggered CRAN to ask for a resubmission..
+>
+> It does find some problems in the html which I will also need to check
+> out, but this appears to be ok as well.
+>
+>
+> cschwarz at schwarz-iMac-2020 SPAS % R CMD check --as-cran ./SPAS_*.tar.gz
+>
+> * using log directory
+> ?/Users/cschwarz/Library/CloudStorage/Dropbox/SPAS-R/SPAS/SPAS.Rcheck?
+>
+> * using R version 4.3.2 (2023-10-31)
+>
+> * using platform: x86_64-apple-darwin20 (64-bit)
+>
+> * R was compiled by
+>
+>     Apple clang version 14.0.0 (clang-1400.0.29.202)
+>
+>     GNU Fortran (GCC) 12.2.0
+>
+> * running under: macOS Sonoma 14.2.1
+>
+> * using session charset: UTF-8
+>
+> * using option ?--as-cran?
+>
+> * checking for file ?SPAS/DESCRIPTION? ... OK
+>
+> * checking extension type ... Package
+>
+> * this is package ?SPAS? version ?2024.1.31?
+>
+> * package encoding: UTF-8
+>
+> * checking CRAN incoming feasibility ... [3s/16s] NOTE
+>
+> Maintainer: ?Carl James Schwarz <cschwarz.stat.sfu.ca at gmail.com>?
+>
+>
+> Found the following (possibly) invalid URLs:
+>
+>   URL: https://cdnsciencepub.com/doi/10.1139/f97-238
+>
+>     From: DESCRIPTION
+>
+>     Status: 403
+>
+>     Message: Forbidden
+>
+>   URL: https://www.jstor.org/stable/2332748
+>
+>     From: DESCRIPTION
+>
+>     Status: 403
+>
+>     Message: Forbidden
+>
+> * checking package namespace information ... OK
+>
+> * checking package dependencies ... OK
+>
+> * checking if this is a source package ... OK
+>
+> * checking if there is a namespace ... OK
+>
+> * checking for executable files ... OK
+>
+> * checking for hidden files and directories ... OK
+>
+> * checking for portable file names ... OK
+>
+> * checking for sufficient/correct file permissions ... OK
+>
+> * checking serialization versions ... OK
+>
+> * checking whether package ?SPAS? can be installed ... [28s/30s] OK
+>
+> * used C++ compiler: ?Apple clang version 15.0.0 (clang-1500.1.0.2.5)?
+>
+> * used SDK: ??
+>
+> * checking installed package size ... NOTE
+>
+>   installed size is 12.8Mb
+>
+>   sub-directories of 1Mb or more:
+>
+>     libs  12.1Mb
+>
+> * checking package directory ... OK
+>
+> * checking for future file timestamps ... OK
+>
+> * checking ?build? directory ... OK
+>
+> * checking DESCRIPTION meta-information ... OK
+>
+> * checking top-level files ... OK
+>
+> * checking for left-over files ... OK
+>
+> * checking index information ... OK
+>
+> * checking package subdirectories ... OK
+>
+> * checking R files for non-ASCII characters ... OK
+>
+> * checking R files for syntax errors ... OK
+>
+> * checking whether the package can be loaded ... OK
+>
+> * checking whether the package can be loaded with stated dependencies ...
+> OK
+>
+> * checking whether the package can be unloaded cleanly ... OK
+>
+> * checking whether the namespace can be loaded with stated dependencies
+> ... OK
+>
+> * checking whether the namespace can be unloaded cleanly ... OK
+>
+> * checking loading without being on the library search path ... OK
+>
+> * checking startup messages can be suppressed ... OK
+>
+> * checking use of S3 registration ... OK
+>
+> * checking dependencies in R code ... OK
+>
+> * checking S3 generic/method consistency ... OK
+>
+> * checking replacement functions ... OK
+>
+> * checking foreign function calls ... OK
+>
+> * checking R code for possible problems ... OK
+>
+> * checking Rd files ... OK
+>
+> * checking Rd metadata ... OK
+>
+> * checking Rd line widths ... OK
+>
+> * checking Rd cross-references ... OK
+>
+> * checking for missing documentation entries ... OK
+>
+> * checking for code/documentation mismatches ... OK
+>
+> * checking Rd \usage sections ... OK
+>
+> * checking Rd contents ... OK
+>
+> * checking for unstated dependencies in examples ... OK
+>
+> * checking line endings in C/C++/Fortran sources/headers ... OK
+>
+> * checking pragmas in C/C++ headers and code ... OK
+>
+> * checking compilation flags used ... OK
+>
+> * checking compiled code ... OK
+>
+> * checking installed files from ?inst/doc? ... OK
+>
+> * checking files in ?vignettes? ... OK
+>
+> * checking examples ... OK
+>
+> * checking for unstated dependencies in vignettes ... OK
+>
+> * checking package vignettes in ?inst/doc? ... OK
+>
+> * checking re-building of vignette outputs ... [11s/13s] OK
+>
+> * checking PDF version of manual ... OK
+>
+> * checking HTML version of manual ... NOTE
+>
+> Found the following HTML validation problems:
+>
+> SPAS.autopool.html:4:1 (SPAS.autopool.Rd:5): Warning: <link> inserting
+> "type" attribute
+>
+> SPAS.autopool.html:12:1 (SPAS.autopool.Rd:5): Warning: <script>
+> proprietary attribute "onload"
+>
+> SPAS.autopool.html:12:1 (SPAS.autopool.Rd:5): Warning: <script> inserting
+> "type" attribute
+>
+> SPAS.autopool.html:17:1 (SPAS.autopool.Rd:5): Warning: <table> lacks
+> "summary" attribute
+>
+> SPAS.autopool.html:46:1 (SPAS.autopool.Rd:19): Warning: <table> lacks
+> "summary" attribute
+>
+> SPAS.extract.par.est.html:4:1 (SPAS.extract.par.est.Rd:5): Warning: <link>
+> inserting "type" attribute
+>
+> SPAS.extract.par.est.html:12:1 (SPAS.extract.par.est.Rd:5): Warning:
+> <script> proprietary attribute "onload"
+>
+> SPAS.extract.par.est.html:12:1 (SPAS.extract.par.est.Rd:5): Warning:
+> <script> inserting "type" attribute
+>
+> SPAS.extract.par.est.html:17:1 (SPAS.extract.par.est.Rd:5): Warning:
+> <table> lacks "summary" attribute
+>
+> SPAS.extract.par.est.html:35:1 (SPAS.extract.par.est.Rd:10): Warning:
+> <table> lacks "summary" attribute
+>
+> SPAS.fit.model.html:4:1 (SPAS.fit.model.Rd:5): Warning: <link> inserting
+> "type" attribute
+>
+> SPAS.fit.model.html:12:1 (SPAS.fit.model.Rd:5): Warning: <script>
+> proprietary attribute "onload"
+>
+> SPAS.fit.model.html:12:1 (SPAS.fit.model.Rd:5): Warning: <script>
+> inserting "type" attribute
+>
+> SPAS.fit.model.html:17:1 (SPAS.fit.model.Rd:5): Warning: <table> lacks
+> "summary" attribute
+>
+> SPAS.fit.model.html:56:1 (SPAS.fit.model.Rd:28): Warning: <table> lacks
+> "summary" attribute
+>
+> SPAS.likelihood.star.DM.html:4:1 (SPAS.likelihood.star.DM.Rd:5): Warning:
+> <link> inserting "type" attribute
+>
+> SPAS.likelihood.star.DM.html:12:1 (SPAS.likelihood.star.DM.Rd:5): Warning:
+> <script> proprietary attribute "onload"
+>
+> SPAS.likelihood.star.DM.html:12:1 (SPAS.likelihood.star.DM.Rd:5): Warning:
+> <script> inserting "type" attribute
+>
+> SPAS.likelihood.star.DM.html:17:1 (SPAS.likelihood.star.DM.Rd:5): Warning:
+> <table> lacks "summary" attribute
+>
+> SPAS.print.model.html:4:1 (SPAS.print.model.Rd:5): Warning: <link>
+> inserting "type" attribute
+>
+> SPAS.print.model.html:12:1 (SPAS.print.model.Rd:5): Warning: <script>
+> proprietary attribute "onload"
+>
+> SPAS.print.model.html:12:1 (SPAS.print.model.Rd:5): Warning: <script>
+> inserting "type" attribute
+>
+> SPAS.print.model.html:17:1 (SPAS.print.model.Rd:5): Warning: <table> lacks
+> "summary" attribute
+>
+> SPAS.print.model.html:36:1 (SPAS.print.model.Rd:10): Warning: <table>
+> lacks "summary" attribute
+>
+> dot-onAttach.html:4:1 (dot-onAttach.Rd:5): Warning: <link> inserting
+> "type" attribute
+>
+> dot-onAttach.html:12:1 (dot-onAttach.Rd:5): Warning: <script> proprietary
+> attribute "onload"
+>
+> dot-onAttach.html:12:1 (dot-onAttach.Rd:5): Warning: <script> inserting
+> "type" attribute
+>
+> dot-onAttach.html:17:1 (dot-onAttach.Rd:5): Warning: <table> lacks
+> "summary" attribute
+>
+> dot-onAttach.html:19:1 (dot-onAttach.Rd:5): Warning: <h2> attribute "id"
+> has invalid value ".onAttach"
+>
+> dummy.html:4:1 (dummy.Rd:5): Warning: <link> inserting "type" attribute
+>
+> dummy.html:12:1 (dummy.Rd:5): Warning: <script> proprietary attribute
+> "onload"
+>
+> dummy.html:12:1 (dummy.Rd:5): Warning: <script> inserting "type" attribute
+>
+> dummy.html:17:1 (dummy.Rd:5): Warning: <table> lacks "summary" attribute
+>
+> logit.html:4:1 (logit.Rd:5): Warning: <link> inserting "type" attribute
+>
+> logit.html:12:1 (logit.Rd:5): Warning: <script> proprietary attribute
+> "onload"
+>
+> logit.html:12:1 (logit.Rd:5): Warning: <script> inserting "type" attribute
+>
+> logit.html:17:1 (logit.Rd:5): Warning: <table> lacks "summary" attribute
+>
+> logit.html:35:1 (logit.Rd:10): Warning: <table> lacks "summary" attribute
+>
+> * checking for non-standard things in the check directory ... OK
+>
+> * checking for detritus in the temp directory ... OK
+>
+> * DONE
+>
+>
+> Status: 3 NOTEs
+>
+> See
+>
+>
+> ?/Users/cschwarz/Library/CloudStorage/Dropbox/SPAS-R/SPAS/SPAS.Rcheck/00check.log?
+>
+> for details.
+>
+>
+>
+> cschwarz at schwarz-iMac-2020 SPAS %
+>
+>
+>
+> From: Serguei Sokol <serguei.sokol at gmail.com>
+>
+> Why not simply run devtools::document() from 'R -d gdb' ?
+>
+>
+> This didn't work on my Mac
+>
+>
+> cschwarz at schwarz-iMac-2020 SPAS % R -d gdb
+>
+> /usr/local/bin/R: line 299: exec: gdb: not found
+>
+>
+> But then I tried launching R by it self, i.e. not from RStudios and
+> devtools::document()
+>
+> and it too crashes so it appears to be something in devtools::document()??
+>
+>
+>
+> [1] "/Users/cschwarz/Library/CloudStorage/Dropbox/SPAS-R/SPAS"
+>
+> > devtools::document()
+>
+> ? Updating SPAS documentation
+>
+> ? Loading SPAS
+>
+>
+>  *** caught segfault ***
+>
+> address 0x54e40, cause 'memory not mapped'
+>
+>
+> Traceback:
+>
+>  1: dyn.load(dll_copy_file)
+>
+>  2: library.dynam2(path, lib)
+>
+>  3: load_dll(path)
+>
+>  4: pkgload::load_all(path, helpers = FALSE, attach_testthat = FALSE)
+>
+>  5: load_code(base_path)
+>
+>  6: roxygen2::roxygenise(pkg$path, roclets)
+>
+>  7: devtools::document()
+>
+>
+> Possible actions:
+>
+> 1: abort (with core dump, if enabled)
+>
+> 2: normal R exit
+>
+> 3: exit R without saving workspace
+>
+> 4: exit R saving workspace
+>
+> Selection:
+>
+>
+>
+>
+>
+> On Wed, Jan 24, 2024 at 3:01?AM <r-package-devel-request at r-project.org>
+> wrote:
+>
+>> Send R-package-devel mailing list submissions to
+>>         r-package-devel at r-project.org
+>>
+>> To subscribe or unsubscribe via the World Wide Web, visit
+>>         https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>> or, via email, send a message with subject or body 'help' to
+>>         r-package-devel-request at r-project.org
+>>
+>> You can reach the person managing the list at
+>>         r-package-devel-owner at r-project.org
+>>
+>> When replying, please edit your Subject line so it is more specific
+>> than "Re: Contents of R-package-devel digest..."
+>>
+>>
+>> Today's Topics:
+>>
+>>    1. lost braces note on CRAN pretest related to \itemize
+>>       (Patrick Giraudoux)
+>>    2. Re:  lost braces note on CRAN pretest related to \itemize
+>>       (Dirk Eddelbuettel)
+>>    3. Re:  lost braces note on CRAN pretest related to \itemize
+>>       (Ivan Krylov)
+>>    4. Re:  lost braces note on CRAN pretest related to \itemize
+>>       (Patrick Giraudoux)
+>>    5. Re:  lost braces note on CRAN pretest related to \itemize
+>>       (Georgi Boshnakov)
+>>    6. How to debug segfault when running build -> document in
+>>       Rstudio that includes TMB module (Carl Schwarz)
+>>    7. Re:  How to debug segfault when running build -> document in
+>>       Rstudio that includes TMB module (James Lamb)
+>>    8. Re:  How to debug segfault when running build -> document in
+>>       Rstudio that includes TMB module (Serguei Sokol)
+>>
+>> ----------------------------------------------------------------------
+>>
+>> Message: 1
+>> Date: Tue, 23 Jan 2024 19:39:54 +0100
+>> From: Patrick Giraudoux <patrick.giraudoux at univ-fcomte.fr>
+>> To: R Package Development <r-package-devel at r-project.org>
+>> Subject: [R-pkg-devel] lost braces note on CRAN pretest related to
+>>         \itemize
+>> Message-ID: <94a7abb7-fbcd-4852-8170-2532b9af58aa at univ-fcomte.fr>
+>> Content-Type: text/plain; charset="utf-8"
+>>
+>> Dear listers,
+>>
+>> I meet a problem with the  submission of the package pgirmess. In fact
+>> the package goes through R CMD check --as-cran and R-wind-builder
+>> smoothly with no problem, but submitted to CRAN, I get this:
+>>
+>> Flavor: r-devel-linux-x86_64-debian-gcc, r-devel-windows-x86_64
+>> Check: CRAN incoming feasibility, Result: Note_to_CRAN_maintainers
+>>    Maintainer: 'Patrick Giraudoux<patrick.giraudoux at univ-fcomte.fr>'
+>>
+>> Flavor: r-devel-linux-x86_64-debian-gcc, r-devel-windows-x86_64
+>> Check: Rd files, Result: NOTE
+>>    checkRd: (-1) mergeTrackObs.rd:24: Lost braces in \itemize; \value
+>> handles \item{}{} directly
+>>    checkRd: (-1) mergeTrackObs.rd:25: Lost braces in \itemize; \value
+>> handles \item{}{} directly
+>>    checkRd: (-1) mergeTrackObs.rd:26: Lost braces in \itemize; \value
+>> handles \item{}{} directly
+>>    checkRd: (-1) selMod.rd:29-31: Lost braces in \itemize; meant
+>> \describe ?
+>>    checkRd: (-1) selMod.rd:32-33: Lost braces in \itemize; meant
+>> \describe ?
+>>    checkRd: (-1) selMod.rd:54: Lost braces in \itemize; meant \describe ?
+>>    checkRd: (-1) selMod.rd:55: Lost braces in \itemize; meant \describe ?
+>>
+>> The code that seems to make problem (although braces are balanced; I
+>> wonder why a claim 'lost braces') is
+>>
+>> - for mergeTrackObs.rd
+>>
+>> \value{
+>>    A \code{\link[sf]{sfc}} object, of POINT geometry, with the following
+>> columns:
+>>    \itemize{
+>>    \item{ID}{ ID number}
+>>    \item{nObs}{ The number of observations in the interval}
+>>    \item{geometry} {POINT geometry}
+>>    }
+>> }
+>>
+>> - for selMod.rd
+>>
+>> \details{
+>>    This function provides parameters used in the information theoretic
+>> methods for model comparisons.
+>>    \itemize{
+>>    \item{.}{lm and glm objects can be passed directly as the upper scope
+>> of term addition (all terms added).
+>>    Every model from y\eqn{\sim}{~}1 is computed adding one term at a
+>> time until the upper scope model is derived. This is a stepwise analysis
+>> where the terms are added sequentially and this does NOT provide all
+>> combinations of terms and interactions. Offset terms cannot be proceeded
+>> here.
+>>    }
+>>    \item{.}{A list of user specified lm, glm, nls, lme or nlme objects
+>> (actually any object for which AIC and logLik functions are applicable)
+>> to compare can alternately be passed.
+>>    }
+>>    }
+>> }
+>>
+>> Has anyone an idea about what is going wrong ?
+>>
+>> Patrick
+>>
+>>
+>>
+>>
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>>
+>>
+>>
+>> ------------------------------
+>>
+>> Message: 2
+>> Date: Tue, 23 Jan 2024 12:58:46 -0600
+>> From: Dirk Eddelbuettel <edd at debian.org>
+>> To: Patrick Giraudoux <patrick.giraudoux at univ-fcomte.fr>
+>> Cc: R Package Development <r-package-devel at r-project.org>
+>> Subject: Re: [R-pkg-devel]  lost braces note on CRAN pretest related
+>>         to \itemize
+>> Message-ID: <26032.3174.970615.617686 at rob.eddelbuettel.com>
+>> Content-Type: text/plain; charset="us-ascii"
+>>
+>>
+>> On 23 January 2024 at 19:39, Patrick Giraudoux wrote:
+>> | Has anyone an idea about what is going wrong ?
+>>
+>> \item has no braces following it.  From a package I submitted today and
+>> for
+>> which I still have NEWS.Rd in the editor (indented here):
+>>
+>>   \section{Changes in version 0.0.22 (2024-01-23)}{
+>>     \itemize{
+>>       \item Replace empty examples macros to satisfy CRAN request.
+>>     }
+>>   }
+>>
+>> Hth,  Dirk
+>>
+>> --
+>> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>>
+>>
+>>
+>>
+>> ------------------------------
+>>
+>> Message: 3
+>> Date: Tue, 23 Jan 2024 21:59:54 +0300
+>> From: Ivan Krylov <ikrylov at disroot.org>
+>> To: R Package Development <r-package-devel at r-project.org>
+>> Subject: Re: [R-pkg-devel]  lost braces note on CRAN pretest related
+>>         to \itemize
+>> Message-ID: <20240123215954.0afb8e9d at Tarkus>
+>> Content-Type: text/plain; charset="utf-8"
+>>
+>> ? Tue, 23 Jan 2024 19:39:54 +0100
+>> Patrick Giraudoux <patrick.giraudoux at univ-fcomte.fr> ?????:
+>>
+>> >    \itemize{
+>> >    \item{.}{lm and glm objects can be passed directly as the upper
+>> > scope of term addition (all terms added).
+>>
+>> Inside the \itemize and \enumerate commands, the \item command doesn't
+>> take any arguments:
+>> https://cran.r-project.org/doc/manuals/R-exts.html#Lists-and-tables
+>>
+>> Instead, it starts a new paragraph with a number (\enumerate) or a
+>> bullet point (\itemize). R CMD check is reminding you that \itemize{
+>> \item{foo}{bar} } is equivalent to \itemize{ \item foo bar } without
+>> any braces.
+>>
+>> If you meant to highlight a word by making it an argument of the \item
+>> command, use the \describe command. Here, you're highlighting a dot,
+>> which would be rendered with a bullet point before it, so it's probably
+>> neither semantically nor visually appropriate.
+>>
+>> > \value{
+>> >    A \code{\link[sf]{sfc}} object, of POINT geometry, with the
+>> > following columns:
+>> >    \itemize{
+>> >    \item{ID}{ ID number}
+>>
+>> The same problem applies here.
+>>
+>> Additionally, R CMD check is reminding you that \value{} is implicitly
+>> a special case of a \describe{} environment:
+>> https://cran.r-project.org/doc/manuals/R-exts.html#index-_005cvalue
+>>
+>> Since you're already using \item{}{} labels to name the components of
+>> the value, just drop the \itemize{} (but keep its contents). \value{} is
+>> enough.
+>>
+>> --
+>> Best regards,
+>> Ivan
+>>
+>>
+>>
+>>
+>> ------------------------------
+>>
+>> Message: 4
+>> Date: Tue, 23 Jan 2024 20:08:20 +0100
+>> From: Patrick Giraudoux <patrick.giraudoux at univ-fcomte.fr>
+>> To: Dirk Eddelbuettel <edd at debian.org>
+>> Cc: R Package Development <r-package-devel at r-project.org>
+>> Subject: Re: [R-pkg-devel]  lost braces note on CRAN pretest related
+>>         to \itemize
+>> Message-ID: <68b9da72-26ad-4f27-8839-aa5b2a65cc6a at univ-fcomte.fr>
+>> Content-Type: text/plain; charset="utf-8"
+>>
+>> OK. Clear enough. CRAN applies a new "filter" as it was going through
+>> without crying a note since decades ;-). However, indeed, re-checking
+>> the manual "Writing R extensions" my syntax was wrong...
+>> Thanks for the guidance,
+>> Patrick
+>>
+>> Le 23/01/2024 ? 19:58, Dirk Eddelbuettel a ?crit :
+>> > On 23 January 2024 at 19:39, Patrick Giraudoux wrote:
+>> > | Has anyone an idea about what is going wrong ?
+>> >
+>> > \item has no braces following it.  From a package I submitted today and
+>> for
+>> > which I still have NEWS.Rd in the editor (indented here):
+>> >
+>> >    \section{Changes in version 0.0.22 (2024-01-23)}{
+>> >      \itemize{
+>> >        \item Replace empty examples macros to satisfy CRAN request.
+>> >      }
+>> >    }
+>> >
+>> > Hth,  Dirk
+>> >
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>>
+>>
+>>
+>> ------------------------------
+>>
+>> Message: 5
+>> Date: Tue, 23 Jan 2024 20:14:13 +0000
+>> From: Georgi Boshnakov <georgi.boshnakov at manchester.ac.uk>
+>> To: Patrick Giraudoux <patrick.giraudoux at univ-fcomte.fr>, Dirk
+>>         Eddelbuettel <edd at debian.org>
+>> Cc: R Package Development <r-package-devel at r-project.org>
+>> Subject: Re: [R-pkg-devel]  lost braces note on CRAN pretest related
+>>         to \itemize
+>> Message-ID:
+>>         <
+>> LO0P265MB63252FC9F918C154634DD11BAE742 at LO0P265MB6325.GBRP265.PROD.OUTLOOK.COM
+>> >
+>>
+>> Content-Type: text/plain; charset="utf-8"
+>>
+>> The notes you get illustrate why they are useful, if you look at your
+>> rendered documentation you probably will see something wrong. Thousands of
+>> packages on CRAN, including some of mines have had this kind of
+>> infelicities for years.
+>>
+>> Firstly, the two sets of braces suggest that you meant a description
+>> environment, not itemize (in which  its only argument doesn't need braces).
+>>
+>> Secondly, in the value section, \item is implicitly enclosed in \describe
+>> and you don't need to include the latter.
+>>
+>> Georgi Boshnakov
+>>
+>>
+>> Sent from Outlook for Android<https://aka.ms/AAb9ysg>
+>>
+>> ________________________________
+>> From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf
+>> of Patrick Giraudoux <patrick.giraudoux at univ-fcomte.fr>
+>> Sent: Tuesday, January 23, 2024 7:09:22 pm
+>> To: Dirk Eddelbuettel <edd at debian.org>
+>> Cc: R Package Development <r-package-devel at r-project.org>
+>> Subject: Re: [R-pkg-devel]  lost braces note on CRAN pretest related to
+>> \itemize
+>>
+>> OK. Clear enough. CRAN applies a new "filter" as it was going through
+>> without crying a note since decades ;-). However, indeed, re-checking
+>> the manual "Writing R extensions" my syntax was wrong...
+>> Thanks for the guidance,
+>> Patrick
+>>
+>> Le 23/01/2024 ? 19:58, Dirk Eddelbuettel a ?crit :
+>> > On 23 January 2024 at 19:39, Patrick Giraudoux wrote:
+>> > | Has anyone an idea about what is going wrong ?
+>> >
+>> > \item has no braces following it.  From a package I submitted today and
+>> for
+>> > which I still have NEWS.Rd in the editor (indented here):
+>> >
+>> >    \section{Changes in version 0.0.22 (2024-01-23)}{
+>> >      \itemize{
+>> >        \item Replace empty examples macros to satisfy CRAN request.
+>> >      }
+>> >    }
+>> >
+>> > Hth,  Dirk
+>> >
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>>
+>> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!PDiH4ENfjr2_Jw!Gu9AhS4Yi4k5IC8TXv4B8xpznl-8-Jhl-cdxRZ6zVrRCdmDaSTVYpaG5XDoitdms9FuHQGV7adP-Q6WD6w2bMws_b5UnszsH5VsXFBMUIvFX4Nc$
+>> [stat[.]ethz[.]ch]
+>>
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>>
+>>
+>>
+>> ------------------------------
+>>
+>> Message: 6
+>> Date: Tue, 23 Jan 2024 19:22:43 -0800
+>> From: Carl Schwarz <cschwarzstatsfuca at gmail.com>
+>> To: r-package-devel at r-project.org
+>> Subject: [R-pkg-devel] How to debug segfault when running build ->
+>>         document in Rstudio that includes TMB module
+>> Message-ID:
+>>         <
+>> CADtpigYViZ+2GJq+XQyJ6GeyEZ_CWMnUPg20-LcdLKC3GWvVxA at mail.gmail.com>
+>> Content-Type: text/plain; charset="utf-8"
+>>
+>> I'm trying to update my SPAS package to respond to a CRAN check. Before
+>> starting the changes, I tried to rebuild my package, but now get a
+>> segfault
+>> when I try to do a devtools::document() or devtools::check(args =
+>> c('--as-cran')). See below for output from the Rstudio "Build" window.
+>>
+>> I've
+>> - reinstalled ALL packages
+>> - reinstalled R (4.3.2 on MacOS Intel Chip)
+>> - reinstalled Rstudio
+>>
+>> When I try a rebuild/document on a sister package it runs fine, so I
+>> suspect that the problem is related to using a TMB module that is part of
+>> the SPAS package written in Cpp.
+>>
+>> How do I start to "debug" this to identify the problem?
+>>
+>> Thanks
+>> Carl Schwarz
+>>
+>>
+>>
+>>
+>> ==> devtools::document(roclets = c('rd', 'collate', 'namespace',
+>> 'vignette'))
+>> ? Updating SPAS documentation? Loading SPAS
+>>
+>>  *** caught segfault ***
+>> address 0x54e40, cause 'memory not mapped'
+>>
+>> Traceback:
+>>  1: dyn.load(dll_copy_file)
+>>  2: library.dynam2(path, lib)
+>>  3: load_dll(path)
+>>  4: pkgload::load_all(path, helpers = FALSE, attach_testthat = FALSE)
+>>  5: load_code(base_path)
+>>  6: roxygen2::roxygenise(pkg$path, roclets)
+>>  7: devtools::document(roclets = c("rd", "collate", "namespace",
+>> "vignette"))
+>>  8: withCallingHandlers(expr, packageStartupMessage = function(c)
+>> tryInvokeRestart("muffleMessage"))
+>>  9: suppressPackageStartupMessages({    oldLC <-
+>> Sys.getlocale(category = "LC_COLLATE")    Sys.setlocale(category =
+>> "LC_COLLATE", locale = "C")    on.exit(Sys.setlocale(category =
+>> "LC_COLLATE", locale = oldLC))    devtools::document(roclets = c("rd",
+>> "collate", "namespace",         "vignette"))})
+>> An irrecoverable exception occurred. R is aborting now ...
+>>
+>> Exited with status 139.
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>>
+>>
+>>
+>> ------------------------------
+>>
+>> Message: 7
+>> Date: Tue, 23 Jan 2024 21:35:31 -0600
+>> From: James Lamb <jaylamb20 at gmail.com>
+>> To: cschwarzstatsfuca at gmail.com,  R Package Development
+>>         <r-package-devel at r-project.org>
+>> Subject: Re: [R-pkg-devel]  How to debug segfault when running build
+>>         -> document in Rstudio that includes TMB module
+>> Message-ID:
+>>         <CADPubGQcowMyyZUCHYu=
+>> 4ndjyB9xAu4gLLOjgKjtS1L_kqdNVQ at mail.gmail.com>
+>> Content-Type: text/plain; charset="utf-8"
+>>
+>> Carl,
+>>
+>> Consider performing these tasks without the use of the 'devtools' package,
+>> running the following from a shell.
+>>
+>> ```shell
+>> R CMD build .
+>> R CMD INSTALL --with-keep.source ./SPAS_*.tar.gz
+>>
+>> # (assuming you use roxygen2)
+>> Rscript -e "roxygen2::roxygenize(load = 'installed')"
+>>
+>> R CMD check --as-cran ./SPAS_*.tar.gz
+>> ```
+>>
+>> If those commands are successful, then you know the problem lies somewhere
+>> in the difference between that approach and what 'devtools' does, which
+>> might help to narrow it down.
+>>
+>> Cheers,
+>>
+>> -James
+>>
+>>
+>> On Tue, Jan 23, 2024 at 9:23?PM Carl Schwarz <cschwarzstatsfuca at gmail.com
+>> >
+>> wrote:
+>>
+>> > I'm trying to update my SPAS package to respond to a CRAN check. Before
+>> > starting the changes, I tried to rebuild my package, but now get a
+>> segfault
+>> > when I try to do a devtools::document() or devtools::check(args =
+>> > c('--as-cran')). See below for output from the Rstudio "Build" window.
+>> >
+>> > I've
+>> > - reinstalled ALL packages
+>> > - reinstalled R (4.3.2 on MacOS Intel Chip)
+>> > - reinstalled Rstudio
+>> >
+>> > When I try a rebuild/document on a sister package it runs fine, so I
+>> > suspect that the problem is related to using a TMB module that is part
+>> of
+>> > the SPAS package written in Cpp.
+>> >
+>> > How do I start to "debug" this to identify the problem?
+>> >
+>> > Thanks
+>> > Carl Schwarz
+>> >
+>> >
+>> >
+>> >
+>> > ==> devtools::document(roclets = c('rd', 'collate', 'namespace',
+>> > 'vignette'))
+>> > ? Updating SPAS documentation? Loading SPAS
+>> >
+>> >  *** caught segfault ***
+>> > address 0x54e40, cause 'memory not mapped'
+>> >
+>> > Traceback:
+>> >  1: dyn.load(dll_copy_file)
+>> >  2: library.dynam2(path, lib)
+>> >  3: load_dll(path)
+>> >  4: pkgload::load_all(path, helpers = FALSE, attach_testthat = FALSE)
+>> >  5: load_code(base_path)
+>> >  6: roxygen2::roxygenise(pkg$path, roclets)
+>> >  7: devtools::document(roclets = c("rd", "collate", "namespace",
+>> > "vignette"))
+>> >  8: withCallingHandlers(expr, packageStartupMessage = function(c)
+>> > tryInvokeRestart("muffleMessage"))
+>> >  9: suppressPackageStartupMessages({    oldLC <-
+>> > Sys.getlocale(category = "LC_COLLATE")    Sys.setlocale(category =
+>> > "LC_COLLATE", locale = "C")    on.exit(Sys.setlocale(category =
+>> > "LC_COLLATE", locale = oldLC))    devtools::document(roclets = c("rd",
+>> > "collate", "namespace",         "vignette"))})
+>> > An irrecoverable exception occurred. R is aborting now ...
+>> >
+>> > Exited with status 139.
+>> >
+>> >         [[alternative HTML version deleted]]
+>> >
+>> > ______________________________________________
+>> > R-package-devel at r-project.org mailing list
+>> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>> >
+>>
+>>
+>> --
+>> James Lamb (he/him)
+>> GitHub <https://github.com/jameslamb> | LinkedIn
+>> <https://www.linkedin.com/in/jameslamb1/>
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>>
+>>
+>>
+>> ------------------------------
+>>
+>> Message: 8
+>> Date: Wed, 24 Jan 2024 09:03:11 +0100
+>> From: Serguei Sokol <serguei.sokol at gmail.com>
+>> To: r-package-devel at r-project.org
+>> Subject: Re: [R-pkg-devel]  How to debug segfault when running build
+>>         -> document in Rstudio that includes TMB module
+>> Message-ID: <8a8e07b0-2fe9-410b-a9f4-15ab6ebe9f91 at gmail.com>
+>> Content-Type: text/plain; charset="utf-8"; Format="flowed"
+>>
+>> Le 24/01/2024 ? 04:22, Carl Schwarz a ?crit :
+>> > I'm trying to update my SPAS package to respond to a CRAN check. Before
+>> > starting the changes, I tried to rebuild my package, but now get a
+>> segfault
+>> > when I try to do a devtools::document() or devtools::check(args =
+>> > c('--as-cran')). See below for output from the Rstudio "Build" window.
+>> >
+>> > I've
+>> > - reinstalled ALL packages
+>> > - reinstalled R (4.3.2 on MacOS Intel Chip)
+>> > - reinstalled Rstudio
+>> >
+>> > When I try a rebuild/document on a sister package it runs fine, so I
+>> > suspect that the problem is related to using a TMB module that is part
+>> of
+>> > the SPAS package written in Cpp.
+>> >
+>> > How do I start to "debug" this to identify the problem?
+>> Why not simply run devtools::document() from 'R -d gdb' ?
+>>
+>> Best,
+>> Serguei.
+>>
+>> >
+>> > Thanks
+>> > Carl Schwarz
+>> >
+>> >
+>> >
+>> >
+>> > ==> devtools::document(roclets = c('rd', 'collate', 'namespace',
+>> 'vignette'))
+>> > ? Updating SPAS documentation? Loading SPAS
+>> >
+>> >   *** caught segfault ***
+>> > address 0x54e40, cause 'memory not mapped'
+>> >
+>> > Traceback:
+>> >   1: dyn.load(dll_copy_file)
+>> >   2: library.dynam2(path, lib)
+>> >   3: load_dll(path)
+>> >   4: pkgload::load_all(path, helpers = FALSE, attach_testthat = FALSE)
+>> >   5: load_code(base_path)
+>> >   6: roxygen2::roxygenise(pkg$path, roclets)
+>> >   7: devtools::document(roclets = c("rd", "collate", "namespace",
+>> > "vignette"))
+>> >   8: withCallingHandlers(expr, packageStartupMessage = function(c)
+>> > tryInvokeRestart("muffleMessage"))
+>> >   9: suppressPackageStartupMessages({    oldLC <-
+>> > Sys.getlocale(category = "LC_COLLATE")    Sys.setlocale(category =
+>> > "LC_COLLATE", locale = "C")    on.exit(Sys.setlocale(category =
+>> > "LC_COLLATE", locale = oldLC))    devtools::document(roclets = c("rd",
+>> > "collate", "namespace",         "vignette"))})
+>> > An irrecoverable exception occurred. R is aborting now ...
+>> >
+>> > Exited with status 139.
+>> >
+>> >       [[alternative HTML version deleted]]
+>> >
+>> > ______________________________________________
+>> > R-package-devel at r-project.org mailing list
+>> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>>
+>>
+>>
+>> ------------------------------
+>>
+>> Subject: Digest Footer
+>>
+>> _______________________________________________
+>> R-package-devel mailing list
+>> R-package-devel at r-project.org
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>>
+>> ------------------------------
+>>
+>> End of R-package-devel Digest, Vol 105, Issue 19
+>> ************************************************
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Wed Jan 24 23:36:26 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Thu, 25 Jan 2024 11:36:26 +1300
+Subject: [R-pkg-devel] R-package-devel Digest, Vol 105, Issue 19
+In-Reply-To: <CADtpigYezZfLRdDWGeWjBNXzJQnYPcrGL983BDBu0OO8q5STOQ@mail.gmail.com>
+References: <mailman.10186.5.1706094001.5533.r-package-devel@r-project.org>
+ <CADtpigb0F6fPchnuu3cm0dV+-En14yHUuUURy5szfFn-3DTBXw@mail.gmail.com>
+ <CADtpigYezZfLRdDWGeWjBNXzJQnYPcrGL983BDBu0OO8q5STOQ@mail.gmail.com>
+Message-ID: <E35A1CC3-BDA3-4A19-9307-1BBB1059F22D@R-project.org>
+
+This is a reminder why one should never build packages directly in their source directory since it can only be done once (for packages with native source code) - always use
+
+R CMD build --no-build-vignettes foo && R CMD INSTALL foo_*.tar.gz
+
+if you plan to edit files in the source directory and re-use it.
+
+Cheers,
+Simon
+
+
+> On 25/01/2024, at 8:34 AM, Carl Schwarz <cschwarzstatsfuca at gmail.com> wrote:
+> 
+> Solved...
+> 
+> The src/ directory also included a .o and .so objects from the last build
+> of the package that must be "out of date" because once I removed those
+> older objects, the Build -> Document and build -> Check package now work
+> fine without crashing...A newer version of the .o and .so objects are now
+> built and it now works fine.
+> 
+> Thanks
+> Carl Schwarz
+> 
+> On Wed, Jan 24, 2024 at 10:57?AM Carl Schwarz <cschwarzstatsfuca at gmail.com>
+> wrote:
+> 
+>> Thanks for your suggestions.  I followed the suggestion in today's message
+>> (see results below) which all run without issue.
+>> I tried to isolate the problem more....
+>> 
+>> The issue appears to be with load_dll()
+>> 
+>> When I try
+>>> getwd()
+>> [1] "/Users/cschwarz/Library/CloudStorage/Dropbox/SPAS-R/SPAS"
+>>> load_dll()
+>> 
+>> It crashes.
+>> 
+>> 
+>> I moved the package outside of CloudStorage to see if that is the issue.
+>>> getwd()
+>> [1] "/Users/cschwarz/Desktop/SPAS"
+>>> load_dll()
+>> 
+>> It crashes.
+>> 
+>> 
+>> I tried doing a dll_load() where there is NO c++ object, i.e. a random
+>> directory and it terminates with a sensible error message....
+>>> setwd("/Users/cschwarz/Desktop/BikePics")
+>>> library(pkgload)
+>>> load_dll()
+>> Error in `value[[3L]]()`:
+>> ! Could not find a root 'DESCRIPTION' file that starts with '^Package' in
+>> /Users/cschwarz/Desktop/BikePics.
+>> ? Are you in your project directory and does your project have a
+>> 'DESCRIPTION' file?
+>> Run `rlang::last_trace()` to see where the error occurred.
+>> 
+>> I'm following the suggestions on including TMB code in a package at
+>> 
+>> https://stackoverflow.com/questions/48627069/guidelines-for-including-tmb-c-code-in-an-r-package
+>> and appear to have all the necessary files
+>> 
+>> I created my own load_dll() function by copying over the code and adding a
+>> browser().
+>> It appears to run fine until the statement library.dynam2(path.lib) where
+>> it cannot find the function library.dynam2
+>> 
+>> 
+>>> my_load_dll()
+>> Called from: my_load_dll()
+>> Browse[1]> n
+>> debug at #4: package <- pkg_name(path)
+>> Browse[2]> n
+>> debug at #5: env <- ns_env(package)
+>> Browse[2]> n
+>> debug at #6: nsInfo <- parse_ns_file(path)
+>> Browse[2]> n
+>> debug at #7: dlls <- list()
+>> Browse[2]> n
+>> debug at #8: dynLibs <- nsInfo$dynlibs
+>> Browse[2]> n
+>> debug at #9: nativeRoutines <- list()
+>> Browse[2]> n
+>> debug at #10: for (i in seq_along(dynLibs)) {
+>>    lib <- dynLibs[i]
+>>    dlls[[lib]] <- library.dynam2(path, lib)
+>>    routines <- assignNativeRoutines(dlls[[lib]], lib, env,
+>> nsInfo$nativeRoutines[[lib]])
+>>    nativeRoutines[[lib]] <- routines
+>>    if (!is.null(names(nsInfo$dynlibs)) &&
+>> nzchar(names(nsInfo$dynlibs)[i]))
+>>        env[[names(nsInfo$dynlibs)[i]]] <- dlls[[lib]]
+>>    setNamespaceInfo(env, "DLLs", dlls)
+>> }
+>> Browse[2]> n
+>> debug at #11: lib <- dynLibs[i]
+>> Browse[2]> n
+>> debug at #12: dlls[[lib]] <- library.dynam2(path, lib)
+>> Browse[2]> n
+>> Error in library.dynam2(path, lib) :
+>>  could not find function "library.dynam2"
+>> 
+>> I'm unable to find where the library.dynam2() function lies... A google
+>> search for library.dynam2 doesn't show anything except for a cryptic
+>> comment in
+>> https://rdrr.io/cran/pkgload/src/R/load-dll.R
+>> which says
+>> 
+>> ## The code below taken directly from base::loadNamespace
+>>  ## https://github.com/wch/r-source/blob/tags/R-3-3-0/src/library/base/R/namespace.R#L466-L485
+>>  ## except for the call to library.dynam2, which is a special version of
+>>  ## library.dynam
+>> 
+>> This is now beyond my pay grade..
+>> 
+>> Suggestions?
+>> 
+>> 
+>> ------------------------------
+>> 
+>> From James Lamb <jaylamb20 at gmail.com>
+>> 
+>> Using the shell:
+>> 
+>> R CMD build .
+>> - success with
+>> 
+>> * checking for file ?./DESCRIPTION? ... OK
+>> 
+>> * preparing ?SPAS?:
+>> 
+>> * checking DESCRIPTION meta-information ... OK
+>> 
+>> * cleaning src
+>> 
+>> * installing the package to build vignettes
+>> 
+>> * creating vignettes ... OK
+>> 
+>> * cleaning src
+>> 
+>> * checking for LF line-endings in source and make files and shell scripts
+>> 
+>> * checking for empty or unneeded directories
+>> 
+>> * building ?SPAS_2024.1.31.tar.gz?
+>> 
+>> 
+>> R CMD INSTALL --with-keep.source ./SPAS_*.tar.gz
+>> - success. Lots of warning from the C compiler but appears to terminate
+>> successfully with
+>> ....
+>> 
+>> installing to /Users/cschwarz/Rlibs/00LOCK-SPAS/00new/SPAS/libs
+>> 
+>> ** R
+>> 
+>> ** inst
+>> 
+>> ** byte-compile and prepare package for lazy loading
+>> 
+>> ** help
+>> 
+>> *** installing help indices
+>> 
+>> ** building package indices
+>> 
+>> ** installing vignettes
+>> 
+>> ** testing if installed package can be loaded from temporary location
+>> 
+>> ** checking absolute paths in shared objects and dynamic libraries
+>> 
+>> ** testing if installed package can be loaded from final location
+>> 
+>> ** testing if installed package keeps a record of temporary installation
+>> path
+>> 
+>> * DONE (SPAS)
+>> 
+>> 
+>> # (assuming you use roxygen2)
+>> Rscript -e "roxygen2::roxygenize(load = 'installed')"
+>> 
+>> 
+>> - success?, it just returns with no messages
+>> 
+>> cschwarz at schwarz-iMac-2020 SPAS % Rscript -e "roxygen2::roxygenize(load =
+>> 'installed')"
+>> 
+>> cschwarz at schwarz-iMac-2020 SPAS %
+>> 
+>> 
+>> R CMD check --as-cran ./SPAS_*.tar.gz
+>> 
+>> - successful...runs the checks, but does NOT find the note from the
+>> development versions of R that triggered CRAN to ask for a resubmission..
+>> 
+>> It does find some problems in the html which I will also need to check
+>> out, but this appears to be ok as well.
+>> 
+>> 
+>> cschwarz at schwarz-iMac-2020 SPAS % R CMD check --as-cran ./SPAS_*.tar.gz
+>> 
+>> * using log directory
+>> ?/Users/cschwarz/Library/CloudStorage/Dropbox/SPAS-R/SPAS/SPAS.Rcheck?
+>> 
+>> * using R version 4.3.2 (2023-10-31)
+>> 
+>> * using platform: x86_64-apple-darwin20 (64-bit)
+>> 
+>> * R was compiled by
+>> 
+>>    Apple clang version 14.0.0 (clang-1400.0.29.202)
+>> 
+>>    GNU Fortran (GCC) 12.2.0
+>> 
+>> * running under: macOS Sonoma 14.2.1
+>> 
+>> * using session charset: UTF-8
+>> 
+>> * using option ?--as-cran?
+>> 
+>> * checking for file ?SPAS/DESCRIPTION? ... OK
+>> 
+>> * checking extension type ... Package
+>> 
+>> * this is package ?SPAS? version ?2024.1.31?
+>> 
+>> * package encoding: UTF-8
+>> 
+>> * checking CRAN incoming feasibility ... [3s/16s] NOTE
+>> 
+>> Maintainer: ?Carl James Schwarz <cschwarz.stat.sfu.ca at gmail.com>?
+>> 
+>> 
+>> Found the following (possibly) invalid URLs:
+>> 
+>>  URL: https://cdnsciencepub.com/doi/10.1139/f97-238
+>> 
+>>    From: DESCRIPTION
+>> 
+>>    Status: 403
+>> 
+>>    Message: Forbidden
+>> 
+>>  URL: https://www.jstor.org/stable/2332748
+>> 
+>>    From: DESCRIPTION
+>> 
+>>    Status: 403
+>> 
+>>    Message: Forbidden
+>> 
+>> * checking package namespace information ... OK
+>> 
+>> * checking package dependencies ... OK
+>> 
+>> * checking if this is a source package ... OK
+>> 
+>> * checking if there is a namespace ... OK
+>> 
+>> * checking for executable files ... OK
+>> 
+>> * checking for hidden files and directories ... OK
+>> 
+>> * checking for portable file names ... OK
+>> 
+>> * checking for sufficient/correct file permissions ... OK
+>> 
+>> * checking serialization versions ... OK
+>> 
+>> * checking whether package ?SPAS? can be installed ... [28s/30s] OK
+>> 
+>> * used C++ compiler: ?Apple clang version 15.0.0 (clang-1500.1.0.2.5)?
+>> 
+>> * used SDK: ??
+>> 
+>> * checking installed package size ... NOTE
+>> 
+>>  installed size is 12.8Mb
+>> 
+>>  sub-directories of 1Mb or more:
+>> 
+>>    libs  12.1Mb
+>> 
+>> * checking package directory ... OK
+>> 
+>> * checking for future file timestamps ... OK
+>> 
+>> * checking ?build? directory ... OK
+>> 
+>> * checking DESCRIPTION meta-information ... OK
+>> 
+>> * checking top-level files ... OK
+>> 
+>> * checking for left-over files ... OK
+>> 
+>> * checking index information ... OK
+>> 
+>> * checking package subdirectories ... OK
+>> 
+>> * checking R files for non-ASCII characters ... OK
+>> 
+>> * checking R files for syntax errors ... OK
+>> 
+>> * checking whether the package can be loaded ... OK
+>> 
+>> * checking whether the package can be loaded with stated dependencies ...
+>> OK
+>> 
+>> * checking whether the package can be unloaded cleanly ... OK
+>> 
+>> * checking whether the namespace can be loaded with stated dependencies
+>> ... OK
+>> 
+>> * checking whether the namespace can be unloaded cleanly ... OK
+>> 
+>> * checking loading without being on the library search path ... OK
+>> 
+>> * checking startup messages can be suppressed ... OK
+>> 
+>> * checking use of S3 registration ... OK
+>> 
+>> * checking dependencies in R code ... OK
+>> 
+>> * checking S3 generic/method consistency ... OK
+>> 
+>> * checking replacement functions ... OK
+>> 
+>> * checking foreign function calls ... OK
+>> 
+>> * checking R code for possible problems ... OK
+>> 
+>> * checking Rd files ... OK
+>> 
+>> * checking Rd metadata ... OK
+>> 
+>> * checking Rd line widths ... OK
+>> 
+>> * checking Rd cross-references ... OK
+>> 
+>> * checking for missing documentation entries ... OK
+>> 
+>> * checking for code/documentation mismatches ... OK
+>> 
+>> * checking Rd \usage sections ... OK
+>> 
+>> * checking Rd contents ... OK
+>> 
+>> * checking for unstated dependencies in examples ... OK
+>> 
+>> * checking line endings in C/C++/Fortran sources/headers ... OK
+>> 
+>> * checking pragmas in C/C++ headers and code ... OK
+>> 
+>> * checking compilation flags used ... OK
+>> 
+>> * checking compiled code ... OK
+>> 
+>> * checking installed files from ?inst/doc? ... OK
+>> 
+>> * checking files in ?vignettes? ... OK
+>> 
+>> * checking examples ... OK
+>> 
+>> * checking for unstated dependencies in vignettes ... OK
+>> 
+>> * checking package vignettes in ?inst/doc? ... OK
+>> 
+>> * checking re-building of vignette outputs ... [11s/13s] OK
+>> 
+>> * checking PDF version of manual ... OK
+>> 
+>> * checking HTML version of manual ... NOTE
+>> 
+>> Found the following HTML validation problems:
+>> 
+>> SPAS.autopool.html:4:1 (SPAS.autopool.Rd:5): Warning: <link> inserting
+>> "type" attribute
+>> 
+>> SPAS.autopool.html:12:1 (SPAS.autopool.Rd:5): Warning: <script>
+>> proprietary attribute "onload"
+>> 
+>> SPAS.autopool.html:12:1 (SPAS.autopool.Rd:5): Warning: <script> inserting
+>> "type" attribute
+>> 
+>> SPAS.autopool.html:17:1 (SPAS.autopool.Rd:5): Warning: <table> lacks
+>> "summary" attribute
+>> 
+>> SPAS.autopool.html:46:1 (SPAS.autopool.Rd:19): Warning: <table> lacks
+>> "summary" attribute
+>> 
+>> SPAS.extract.par.est.html:4:1 (SPAS.extract.par.est.Rd:5): Warning: <link>
+>> inserting "type" attribute
+>> 
+>> SPAS.extract.par.est.html:12:1 (SPAS.extract.par.est.Rd:5): Warning:
+>> <script> proprietary attribute "onload"
+>> 
+>> SPAS.extract.par.est.html:12:1 (SPAS.extract.par.est.Rd:5): Warning:
+>> <script> inserting "type" attribute
+>> 
+>> SPAS.extract.par.est.html:17:1 (SPAS.extract.par.est.Rd:5): Warning:
+>> <table> lacks "summary" attribute
+>> 
+>> SPAS.extract.par.est.html:35:1 (SPAS.extract.par.est.Rd:10): Warning:
+>> <table> lacks "summary" attribute
+>> 
+>> SPAS.fit.model.html:4:1 (SPAS.fit.model.Rd:5): Warning: <link> inserting
+>> "type" attribute
+>> 
+>> SPAS.fit.model.html:12:1 (SPAS.fit.model.Rd:5): Warning: <script>
+>> proprietary attribute "onload"
+>> 
+>> SPAS.fit.model.html:12:1 (SPAS.fit.model.Rd:5): Warning: <script>
+>> inserting "type" attribute
+>> 
+>> SPAS.fit.model.html:17:1 (SPAS.fit.model.Rd:5): Warning: <table> lacks
+>> "summary" attribute
+>> 
+>> SPAS.fit.model.html:56:1 (SPAS.fit.model.Rd:28): Warning: <table> lacks
+>> "summary" attribute
+>> 
+>> SPAS.likelihood.star.DM.html:4:1 (SPAS.likelihood.star.DM.Rd:5): Warning:
+>> <link> inserting "type" attribute
+>> 
+>> SPAS.likelihood.star.DM.html:12:1 (SPAS.likelihood.star.DM.Rd:5): Warning:
+>> <script> proprietary attribute "onload"
+>> 
+>> SPAS.likelihood.star.DM.html:12:1 (SPAS.likelihood.star.DM.Rd:5): Warning:
+>> <script> inserting "type" attribute
+>> 
+>> SPAS.likelihood.star.DM.html:17:1 (SPAS.likelihood.star.DM.Rd:5): Warning:
+>> <table> lacks "summary" attribute
+>> 
+>> SPAS.print.model.html:4:1 (SPAS.print.model.Rd:5): Warning: <link>
+>> inserting "type" attribute
+>> 
+>> SPAS.print.model.html:12:1 (SPAS.print.model.Rd:5): Warning: <script>
+>> proprietary attribute "onload"
+>> 
+>> SPAS.print.model.html:12:1 (SPAS.print.model.Rd:5): Warning: <script>
+>> inserting "type" attribute
+>> 
+>> SPAS.print.model.html:17:1 (SPAS.print.model.Rd:5): Warning: <table> lacks
+>> "summary" attribute
+>> 
+>> SPAS.print.model.html:36:1 (SPAS.print.model.Rd:10): Warning: <table>
+>> lacks "summary" attribute
+>> 
+>> dot-onAttach.html:4:1 (dot-onAttach.Rd:5): Warning: <link> inserting
+>> "type" attribute
+>> 
+>> dot-onAttach.html:12:1 (dot-onAttach.Rd:5): Warning: <script> proprietary
+>> attribute "onload"
+>> 
+>> dot-onAttach.html:12:1 (dot-onAttach.Rd:5): Warning: <script> inserting
+>> "type" attribute
+>> 
+>> dot-onAttach.html:17:1 (dot-onAttach.Rd:5): Warning: <table> lacks
+>> "summary" attribute
+>> 
+>> dot-onAttach.html:19:1 (dot-onAttach.Rd:5): Warning: <h2> attribute "id"
+>> has invalid value ".onAttach"
+>> 
+>> dummy.html:4:1 (dummy.Rd:5): Warning: <link> inserting "type" attribute
+>> 
+>> dummy.html:12:1 (dummy.Rd:5): Warning: <script> proprietary attribute
+>> "onload"
+>> 
+>> dummy.html:12:1 (dummy.Rd:5): Warning: <script> inserting "type" attribute
+>> 
+>> dummy.html:17:1 (dummy.Rd:5): Warning: <table> lacks "summary" attribute
+>> 
+>> logit.html:4:1 (logit.Rd:5): Warning: <link> inserting "type" attribute
+>> 
+>> logit.html:12:1 (logit.Rd:5): Warning: <script> proprietary attribute
+>> "onload"
+>> 
+>> logit.html:12:1 (logit.Rd:5): Warning: <script> inserting "type" attribute
+>> 
+>> logit.html:17:1 (logit.Rd:5): Warning: <table> lacks "summary" attribute
+>> 
+>> logit.html:35:1 (logit.Rd:10): Warning: <table> lacks "summary" attribute
+>> 
+>> * checking for non-standard things in the check directory ... OK
+>> 
+>> * checking for detritus in the temp directory ... OK
+>> 
+>> * DONE
+>> 
+>> 
+>> Status: 3 NOTEs
+>> 
+>> See
+>> 
+>> 
+>> ?/Users/cschwarz/Library/CloudStorage/Dropbox/SPAS-R/SPAS/SPAS.Rcheck/00check.log?
+>> 
+>> for details.
+>> 
+>> 
+>> 
+>> cschwarz at schwarz-iMac-2020 SPAS %
+>> 
+>> 
+>> 
+>> From: Serguei Sokol <serguei.sokol at gmail.com>
+>> 
+>> Why not simply run devtools::document() from 'R -d gdb' ?
+>> 
+>> 
+>> This didn't work on my Mac
+>> 
+>> 
+>> cschwarz at schwarz-iMac-2020 SPAS % R -d gdb
+>> 
+>> /usr/local/bin/R: line 299: exec: gdb: not found
+>> 
+>> 
+>> But then I tried launching R by it self, i.e. not from RStudios and
+>> devtools::document()
+>> 
+>> and it too crashes so it appears to be something in devtools::document()??
+>> 
+>> 
+>> 
+>> [1] "/Users/cschwarz/Library/CloudStorage/Dropbox/SPAS-R/SPAS"
+>> 
+>>> devtools::document()
+>> 
+>> ? Updating SPAS documentation
+>> 
+>> ? Loading SPAS
+>> 
+>> 
+>> *** caught segfault ***
+>> 
+>> address 0x54e40, cause 'memory not mapped'
+>> 
+>> 
+>> Traceback:
+>> 
+>> 1: dyn.load(dll_copy_file)
+>> 
+>> 2: library.dynam2(path, lib)
+>> 
+>> 3: load_dll(path)
+>> 
+>> 4: pkgload::load_all(path, helpers = FALSE, attach_testthat = FALSE)
+>> 
+>> 5: load_code(base_path)
+>> 
+>> 6: roxygen2::roxygenise(pkg$path, roclets)
+>> 
+>> 7: devtools::document()
+>> 
+>> 
+>> Possible actions:
+>> 
+>> 1: abort (with core dump, if enabled)
+>> 
+>> 2: normal R exit
+>> 
+>> 3: exit R without saving workspace
+>> 
+>> 4: exit R saving workspace
+>> 
+>> Selection:
+>> 
+>> 
+>> 
+>> 
+>> 
+>> On Wed, Jan 24, 2024 at 3:01?AM <r-package-devel-request at r-project.org>
+>> wrote:
+>> 
+>>> Send R-package-devel mailing list submissions to
+>>>        r-package-devel at r-project.org
+>>> 
+>>> To subscribe or unsubscribe via the World Wide Web, visit
+>>>        https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>> or, via email, send a message with subject or body 'help' to
+>>>        r-package-devel-request at r-project.org
+>>> 
+>>> You can reach the person managing the list at
+>>>        r-package-devel-owner at r-project.org
+>>> 
+>>> When replying, please edit your Subject line so it is more specific
+>>> than "Re: Contents of R-package-devel digest..."
+>>> 
+>>> 
+>>> Today's Topics:
+>>> 
+>>>   1. lost braces note on CRAN pretest related to \itemize
+>>>      (Patrick Giraudoux)
+>>>   2. Re:  lost braces note on CRAN pretest related to \itemize
+>>>      (Dirk Eddelbuettel)
+>>>   3. Re:  lost braces note on CRAN pretest related to \itemize
+>>>      (Ivan Krylov)
+>>>   4. Re:  lost braces note on CRAN pretest related to \itemize
+>>>      (Patrick Giraudoux)
+>>>   5. Re:  lost braces note on CRAN pretest related to \itemize
+>>>      (Georgi Boshnakov)
+>>>   6. How to debug segfault when running build -> document in
+>>>      Rstudio that includes TMB module (Carl Schwarz)
+>>>   7. Re:  How to debug segfault when running build -> document in
+>>>      Rstudio that includes TMB module (James Lamb)
+>>>   8. Re:  How to debug segfault when running build -> document in
+>>>      Rstudio that includes TMB module (Serguei Sokol)
+>>> 
+>>> ----------------------------------------------------------------------
+>>> 
+>>> Message: 1
+>>> Date: Tue, 23 Jan 2024 19:39:54 +0100
+>>> From: Patrick Giraudoux <patrick.giraudoux at univ-fcomte.fr>
+>>> To: R Package Development <r-package-devel at r-project.org>
+>>> Subject: [R-pkg-devel] lost braces note on CRAN pretest related to
+>>>        \itemize
+>>> Message-ID: <94a7abb7-fbcd-4852-8170-2532b9af58aa at univ-fcomte.fr>
+>>> Content-Type: text/plain; charset="utf-8"
+>>> 
+>>> Dear listers,
+>>> 
+>>> I meet a problem with the  submission of the package pgirmess. In fact
+>>> the package goes through R CMD check --as-cran and R-wind-builder
+>>> smoothly with no problem, but submitted to CRAN, I get this:
+>>> 
+>>> Flavor: r-devel-linux-x86_64-debian-gcc, r-devel-windows-x86_64
+>>> Check: CRAN incoming feasibility, Result: Note_to_CRAN_maintainers
+>>>   Maintainer: 'Patrick Giraudoux<patrick.giraudoux at univ-fcomte.fr>'
+>>> 
+>>> Flavor: r-devel-linux-x86_64-debian-gcc, r-devel-windows-x86_64
+>>> Check: Rd files, Result: NOTE
+>>>   checkRd: (-1) mergeTrackObs.rd:24: Lost braces in \itemize; \value
+>>> handles \item{}{} directly
+>>>   checkRd: (-1) mergeTrackObs.rd:25: Lost braces in \itemize; \value
+>>> handles \item{}{} directly
+>>>   checkRd: (-1) mergeTrackObs.rd:26: Lost braces in \itemize; \value
+>>> handles \item{}{} directly
+>>>   checkRd: (-1) selMod.rd:29-31: Lost braces in \itemize; meant
+>>> \describe ?
+>>>   checkRd: (-1) selMod.rd:32-33: Lost braces in \itemize; meant
+>>> \describe ?
+>>>   checkRd: (-1) selMod.rd:54: Lost braces in \itemize; meant \describe ?
+>>>   checkRd: (-1) selMod.rd:55: Lost braces in \itemize; meant \describe ?
+>>> 
+>>> The code that seems to make problem (although braces are balanced; I
+>>> wonder why a claim 'lost braces') is
+>>> 
+>>> - for mergeTrackObs.rd
+>>> 
+>>> \value{
+>>>   A \code{\link[sf]{sfc}} object, of POINT geometry, with the following
+>>> columns:
+>>>   \itemize{
+>>>   \item{ID}{ ID number}
+>>>   \item{nObs}{ The number of observations in the interval}
+>>>   \item{geometry} {POINT geometry}
+>>>   }
+>>> }
+>>> 
+>>> - for selMod.rd
+>>> 
+>>> \details{
+>>>   This function provides parameters used in the information theoretic
+>>> methods for model comparisons.
+>>>   \itemize{
+>>>   \item{.}{lm and glm objects can be passed directly as the upper scope
+>>> of term addition (all terms added).
+>>>   Every model from y\eqn{\sim}{~}1 is computed adding one term at a
+>>> time until the upper scope model is derived. This is a stepwise analysis
+>>> where the terms are added sequentially and this does NOT provide all
+>>> combinations of terms and interactions. Offset terms cannot be proceeded
+>>> here.
+>>>   }
+>>>   \item{.}{A list of user specified lm, glm, nls, lme or nlme objects
+>>> (actually any object for which AIC and logLik functions are applicable)
+>>> to compare can alternately be passed.
+>>>   }
+>>>   }
+>>> }
+>>> 
+>>> Has anyone an idea about what is going wrong ?
+>>> 
+>>> Patrick
+>>> 
+>>> 
+>>> 
+>>> 
+>>> 
+>>>        [[alternative HTML version deleted]]
+>>> 
+>>> 
+>>> 
+>>> 
+>>> ------------------------------
+>>> 
+>>> Message: 2
+>>> Date: Tue, 23 Jan 2024 12:58:46 -0600
+>>> From: Dirk Eddelbuettel <edd at debian.org>
+>>> To: Patrick Giraudoux <patrick.giraudoux at univ-fcomte.fr>
+>>> Cc: R Package Development <r-package-devel at r-project.org>
+>>> Subject: Re: [R-pkg-devel]  lost braces note on CRAN pretest related
+>>>        to \itemize
+>>> Message-ID: <26032.3174.970615.617686 at rob.eddelbuettel.com>
+>>> Content-Type: text/plain; charset="us-ascii"
+>>> 
+>>> 
+>>> On 23 January 2024 at 19:39, Patrick Giraudoux wrote:
+>>> | Has anyone an idea about what is going wrong ?
+>>> 
+>>> \item has no braces following it.  From a package I submitted today and
+>>> for
+>>> which I still have NEWS.Rd in the editor (indented here):
+>>> 
+>>>  \section{Changes in version 0.0.22 (2024-01-23)}{
+>>>    \itemize{
+>>>      \item Replace empty examples macros to satisfy CRAN request.
+>>>    }
+>>>  }
+>>> 
+>>> Hth,  Dirk
+>>> 
+>>> --
+>>> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>>> 
+>>> 
+>>> 
+>>> 
+>>> ------------------------------
+>>> 
+>>> Message: 3
+>>> Date: Tue, 23 Jan 2024 21:59:54 +0300
+>>> From: Ivan Krylov <ikrylov at disroot.org>
+>>> To: R Package Development <r-package-devel at r-project.org>
+>>> Subject: Re: [R-pkg-devel]  lost braces note on CRAN pretest related
+>>>        to \itemize
+>>> Message-ID: <20240123215954.0afb8e9d at Tarkus>
+>>> Content-Type: text/plain; charset="utf-8"
+>>> 
+>>> ? Tue, 23 Jan 2024 19:39:54 +0100
+>>> Patrick Giraudoux <patrick.giraudoux at univ-fcomte.fr> ?????:
+>>> 
+>>>>   \itemize{
+>>>>   \item{.}{lm and glm objects can be passed directly as the upper
+>>>> scope of term addition (all terms added).
+>>> 
+>>> Inside the \itemize and \enumerate commands, the \item command doesn't
+>>> take any arguments:
+>>> https://cran.r-project.org/doc/manuals/R-exts.html#Lists-and-tables
+>>> 
+>>> Instead, it starts a new paragraph with a number (\enumerate) or a
+>>> bullet point (\itemize). R CMD check is reminding you that \itemize{
+>>> \item{foo}{bar} } is equivalent to \itemize{ \item foo bar } without
+>>> any braces.
+>>> 
+>>> If you meant to highlight a word by making it an argument of the \item
+>>> command, use the \describe command. Here, you're highlighting a dot,
+>>> which would be rendered with a bullet point before it, so it's probably
+>>> neither semantically nor visually appropriate.
+>>> 
+>>>> \value{
+>>>>   A \code{\link[sf]{sfc}} object, of POINT geometry, with the
+>>>> following columns:
+>>>>   \itemize{
+>>>>   \item{ID}{ ID number}
+>>> 
+>>> The same problem applies here.
+>>> 
+>>> Additionally, R CMD check is reminding you that \value{} is implicitly
+>>> a special case of a \describe{} environment:
+>>> https://cran.r-project.org/doc/manuals/R-exts.html#index-_005cvalue
+>>> 
+>>> Since you're already using \item{}{} labels to name the components of
+>>> the value, just drop the \itemize{} (but keep its contents). \value{} is
+>>> enough.
+>>> 
+>>> --
+>>> Best regards,
+>>> Ivan
+>>> 
+>>> 
+>>> 
+>>> 
+>>> ------------------------------
+>>> 
+>>> Message: 4
+>>> Date: Tue, 23 Jan 2024 20:08:20 +0100
+>>> From: Patrick Giraudoux <patrick.giraudoux at univ-fcomte.fr>
+>>> To: Dirk Eddelbuettel <edd at debian.org>
+>>> Cc: R Package Development <r-package-devel at r-project.org>
+>>> Subject: Re: [R-pkg-devel]  lost braces note on CRAN pretest related
+>>>        to \itemize
+>>> Message-ID: <68b9da72-26ad-4f27-8839-aa5b2a65cc6a at univ-fcomte.fr>
+>>> Content-Type: text/plain; charset="utf-8"
+>>> 
+>>> OK. Clear enough. CRAN applies a new "filter" as it was going through
+>>> without crying a note since decades ;-). However, indeed, re-checking
+>>> the manual "Writing R extensions" my syntax was wrong...
+>>> Thanks for the guidance,
+>>> Patrick
+>>> 
+>>> Le 23/01/2024 ? 19:58, Dirk Eddelbuettel a ?crit :
+>>>> On 23 January 2024 at 19:39, Patrick Giraudoux wrote:
+>>>> | Has anyone an idea about what is going wrong ?
+>>>> 
+>>>> \item has no braces following it.  From a package I submitted today and
+>>> for
+>>>> which I still have NEWS.Rd in the editor (indented here):
+>>>> 
+>>>>   \section{Changes in version 0.0.22 (2024-01-23)}{
+>>>>     \itemize{
+>>>>       \item Replace empty examples macros to satisfy CRAN request.
+>>>>     }
+>>>>   }
+>>>> 
+>>>> Hth,  Dirk
+>>>> 
+>>> 
+>>>        [[alternative HTML version deleted]]
+>>> 
+>>> 
+>>> 
+>>> 
+>>> ------------------------------
+>>> 
+>>> Message: 5
+>>> Date: Tue, 23 Jan 2024 20:14:13 +0000
+>>> From: Georgi Boshnakov <georgi.boshnakov at manchester.ac.uk>
+>>> To: Patrick Giraudoux <patrick.giraudoux at univ-fcomte.fr>, Dirk
+>>>        Eddelbuettel <edd at debian.org>
+>>> Cc: R Package Development <r-package-devel at r-project.org>
+>>> Subject: Re: [R-pkg-devel]  lost braces note on CRAN pretest related
+>>>        to \itemize
+>>> Message-ID:
+>>>        <
+>>> LO0P265MB63252FC9F918C154634DD11BAE742 at LO0P265MB6325.GBRP265.PROD.OUTLOOK.COM
+>>>> 
+>>> 
+>>> Content-Type: text/plain; charset="utf-8"
+>>> 
+>>> The notes you get illustrate why they are useful, if you look at your
+>>> rendered documentation you probably will see something wrong. Thousands of
+>>> packages on CRAN, including some of mines have had this kind of
+>>> infelicities for years.
+>>> 
+>>> Firstly, the two sets of braces suggest that you meant a description
+>>> environment, not itemize (in which  its only argument doesn't need braces).
+>>> 
+>>> Secondly, in the value section, \item is implicitly enclosed in \describe
+>>> and you don't need to include the latter.
+>>> 
+>>> Georgi Boshnakov
+>>> 
+>>> 
+>>> Sent from Outlook for Android<https://aka.ms/AAb9ysg>
+>>> 
+>>> ________________________________
+>>> From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf
+>>> of Patrick Giraudoux <patrick.giraudoux at univ-fcomte.fr>
+>>> Sent: Tuesday, January 23, 2024 7:09:22 pm
+>>> To: Dirk Eddelbuettel <edd at debian.org>
+>>> Cc: R Package Development <r-package-devel at r-project.org>
+>>> Subject: Re: [R-pkg-devel]  lost braces note on CRAN pretest related to
+>>> \itemize
+>>> 
+>>> OK. Clear enough. CRAN applies a new "filter" as it was going through
+>>> without crying a note since decades ;-). However, indeed, re-checking
+>>> the manual "Writing R extensions" my syntax was wrong...
+>>> Thanks for the guidance,
+>>> Patrick
+>>> 
+>>> Le 23/01/2024 ? 19:58, Dirk Eddelbuettel a ?crit :
+>>>> On 23 January 2024 at 19:39, Patrick Giraudoux wrote:
+>>>> | Has anyone an idea about what is going wrong ?
+>>>> 
+>>>> \item has no braces following it.  From a package I submitted today and
+>>> for
+>>>> which I still have NEWS.Rd in the editor (indented here):
+>>>> 
+>>>>   \section{Changes in version 0.0.22 (2024-01-23)}{
+>>>>     \itemize{
+>>>>       \item Replace empty examples macros to satisfy CRAN request.
+>>>>     }
+>>>>   }
+>>>> 
+>>>> Hth,  Dirk
+>>>> 
+>>> 
+>>>        [[alternative HTML version deleted]]
+>>> 
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> 
+>>> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!PDiH4ENfjr2_Jw!Gu9AhS4Yi4k5IC8TXv4B8xpznl-8-Jhl-cdxRZ6zVrRCdmDaSTVYpaG5XDoitdms9FuHQGV7adP-Q6WD6w2bMws_b5UnszsH5VsXFBMUIvFX4Nc$
+>>> [stat[.]ethz[.]ch]
+>>> 
+>>> 
+>>>        [[alternative HTML version deleted]]
+>>> 
+>>> 
+>>> 
+>>> 
+>>> ------------------------------
+>>> 
+>>> Message: 6
+>>> Date: Tue, 23 Jan 2024 19:22:43 -0800
+>>> From: Carl Schwarz <cschwarzstatsfuca at gmail.com>
+>>> To: r-package-devel at r-project.org
+>>> Subject: [R-pkg-devel] How to debug segfault when running build ->
+>>>        document in Rstudio that includes TMB module
+>>> Message-ID:
+>>>        <
+>>> CADtpigYViZ+2GJq+XQyJ6GeyEZ_CWMnUPg20-LcdLKC3GWvVxA at mail.gmail.com>
+>>> Content-Type: text/plain; charset="utf-8"
+>>> 
+>>> I'm trying to update my SPAS package to respond to a CRAN check. Before
+>>> starting the changes, I tried to rebuild my package, but now get a
+>>> segfault
+>>> when I try to do a devtools::document() or devtools::check(args =
+>>> c('--as-cran')). See below for output from the Rstudio "Build" window.
+>>> 
+>>> I've
+>>> - reinstalled ALL packages
+>>> - reinstalled R (4.3.2 on MacOS Intel Chip)
+>>> - reinstalled Rstudio
+>>> 
+>>> When I try a rebuild/document on a sister package it runs fine, so I
+>>> suspect that the problem is related to using a TMB module that is part of
+>>> the SPAS package written in Cpp.
+>>> 
+>>> How do I start to "debug" this to identify the problem?
+>>> 
+>>> Thanks
+>>> Carl Schwarz
+>>> 
+>>> 
+>>> 
+>>> 
+>>> ==> devtools::document(roclets = c('rd', 'collate', 'namespace',
+>>> 'vignette'))
+>>> ? Updating SPAS documentation? Loading SPAS
+>>> 
+>>> *** caught segfault ***
+>>> address 0x54e40, cause 'memory not mapped'
+>>> 
+>>> Traceback:
+>>> 1: dyn.load(dll_copy_file)
+>>> 2: library.dynam2(path, lib)
+>>> 3: load_dll(path)
+>>> 4: pkgload::load_all(path, helpers = FALSE, attach_testthat = FALSE)
+>>> 5: load_code(base_path)
+>>> 6: roxygen2::roxygenise(pkg$path, roclets)
+>>> 7: devtools::document(roclets = c("rd", "collate", "namespace",
+>>> "vignette"))
+>>> 8: withCallingHandlers(expr, packageStartupMessage = function(c)
+>>> tryInvokeRestart("muffleMessage"))
+>>> 9: suppressPackageStartupMessages({    oldLC <-
+>>> Sys.getlocale(category = "LC_COLLATE")    Sys.setlocale(category =
+>>> "LC_COLLATE", locale = "C")    on.exit(Sys.setlocale(category =
+>>> "LC_COLLATE", locale = oldLC))    devtools::document(roclets = c("rd",
+>>> "collate", "namespace",         "vignette"))})
+>>> An irrecoverable exception occurred. R is aborting now ...
+>>> 
+>>> Exited with status 139.
+>>> 
+>>>        [[alternative HTML version deleted]]
+>>> 
+>>> 
+>>> 
+>>> 
+>>> ------------------------------
+>>> 
+>>> Message: 7
+>>> Date: Tue, 23 Jan 2024 21:35:31 -0600
+>>> From: James Lamb <jaylamb20 at gmail.com>
+>>> To: cschwarzstatsfuca at gmail.com,  R Package Development
+>>>        <r-package-devel at r-project.org>
+>>> Subject: Re: [R-pkg-devel]  How to debug segfault when running build
+>>>        -> document in Rstudio that includes TMB module
+>>> Message-ID:
+>>>        <CADPubGQcowMyyZUCHYu=
+>>> 4ndjyB9xAu4gLLOjgKjtS1L_kqdNVQ at mail.gmail.com>
+>>> Content-Type: text/plain; charset="utf-8"
+>>> 
+>>> Carl,
+>>> 
+>>> Consider performing these tasks without the use of the 'devtools' package,
+>>> running the following from a shell.
+>>> 
+>>> ```shell
+>>> R CMD build .
+>>> R CMD INSTALL --with-keep.source ./SPAS_*.tar.gz
+>>> 
+>>> # (assuming you use roxygen2)
+>>> Rscript -e "roxygen2::roxygenize(load = 'installed')"
+>>> 
+>>> R CMD check --as-cran ./SPAS_*.tar.gz
+>>> ```
+>>> 
+>>> If those commands are successful, then you know the problem lies somewhere
+>>> in the difference between that approach and what 'devtools' does, which
+>>> might help to narrow it down.
+>>> 
+>>> Cheers,
+>>> 
+>>> -James
+>>> 
+>>> 
+>>> On Tue, Jan 23, 2024 at 9:23?PM Carl Schwarz <cschwarzstatsfuca at gmail.com
+>>>> 
+>>> wrote:
+>>> 
+>>>> I'm trying to update my SPAS package to respond to a CRAN check. Before
+>>>> starting the changes, I tried to rebuild my package, but now get a
+>>> segfault
+>>>> when I try to do a devtools::document() or devtools::check(args =
+>>>> c('--as-cran')). See below for output from the Rstudio "Build" window.
+>>>> 
+>>>> I've
+>>>> - reinstalled ALL packages
+>>>> - reinstalled R (4.3.2 on MacOS Intel Chip)
+>>>> - reinstalled Rstudio
+>>>> 
+>>>> When I try a rebuild/document on a sister package it runs fine, so I
+>>>> suspect that the problem is related to using a TMB module that is part
+>>> of
+>>>> the SPAS package written in Cpp.
+>>>> 
+>>>> How do I start to "debug" this to identify the problem?
+>>>> 
+>>>> Thanks
+>>>> Carl Schwarz
+>>>> 
+>>>> 
+>>>> 
+>>>> 
+>>>> ==> devtools::document(roclets = c('rd', 'collate', 'namespace',
+>>>> 'vignette'))
+>>>> ? Updating SPAS documentation? Loading SPAS
+>>>> 
+>>>> *** caught segfault ***
+>>>> address 0x54e40, cause 'memory not mapped'
+>>>> 
+>>>> Traceback:
+>>>> 1: dyn.load(dll_copy_file)
+>>>> 2: library.dynam2(path, lib)
+>>>> 3: load_dll(path)
+>>>> 4: pkgload::load_all(path, helpers = FALSE, attach_testthat = FALSE)
+>>>> 5: load_code(base_path)
+>>>> 6: roxygen2::roxygenise(pkg$path, roclets)
+>>>> 7: devtools::document(roclets = c("rd", "collate", "namespace",
+>>>> "vignette"))
+>>>> 8: withCallingHandlers(expr, packageStartupMessage = function(c)
+>>>> tryInvokeRestart("muffleMessage"))
+>>>> 9: suppressPackageStartupMessages({    oldLC <-
+>>>> Sys.getlocale(category = "LC_COLLATE")    Sys.setlocale(category =
+>>>> "LC_COLLATE", locale = "C")    on.exit(Sys.setlocale(category =
+>>>> "LC_COLLATE", locale = oldLC))    devtools::document(roclets = c("rd",
+>>>> "collate", "namespace",         "vignette"))})
+>>>> An irrecoverable exception occurred. R is aborting now ...
+>>>> 
+>>>> Exited with status 139.
+>>>> 
+>>>>        [[alternative HTML version deleted]]
+>>>> 
+>>>> ______________________________________________
+>>>> R-package-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>> 
+>>> 
+>>> 
+>>> --
+>>> James Lamb (he/him)
+>>> GitHub <https://github.com/jameslamb> | LinkedIn
+>>> <https://www.linkedin.com/in/jameslamb1/>
+>>> 
+>>>        [[alternative HTML version deleted]]
+>>> 
+>>> 
+>>> 
+>>> 
+>>> ------------------------------
+>>> 
+>>> Message: 8
+>>> Date: Wed, 24 Jan 2024 09:03:11 +0100
+>>> From: Serguei Sokol <serguei.sokol at gmail.com>
+>>> To: r-package-devel at r-project.org
+>>> Subject: Re: [R-pkg-devel]  How to debug segfault when running build
+>>>        -> document in Rstudio that includes TMB module
+>>> Message-ID: <8a8e07b0-2fe9-410b-a9f4-15ab6ebe9f91 at gmail.com>
+>>> Content-Type: text/plain; charset="utf-8"; Format="flowed"
+>>> 
+>>> Le 24/01/2024 ? 04:22, Carl Schwarz a ?crit :
+>>>> I'm trying to update my SPAS package to respond to a CRAN check. Before
+>>>> starting the changes, I tried to rebuild my package, but now get a
+>>> segfault
+>>>> when I try to do a devtools::document() or devtools::check(args =
+>>>> c('--as-cran')). See below for output from the Rstudio "Build" window.
+>>>> 
+>>>> I've
+>>>> - reinstalled ALL packages
+>>>> - reinstalled R (4.3.2 on MacOS Intel Chip)
+>>>> - reinstalled Rstudio
+>>>> 
+>>>> When I try a rebuild/document on a sister package it runs fine, so I
+>>>> suspect that the problem is related to using a TMB module that is part
+>>> of
+>>>> the SPAS package written in Cpp.
+>>>> 
+>>>> How do I start to "debug" this to identify the problem?
+>>> Why not simply run devtools::document() from 'R -d gdb' ?
+>>> 
+>>> Best,
+>>> Serguei.
+>>> 
+>>>> 
+>>>> Thanks
+>>>> Carl Schwarz
+>>>> 
+>>>> 
+>>>> 
+>>>> 
+>>>> ==> devtools::document(roclets = c('rd', 'collate', 'namespace',
+>>> 'vignette'))
+>>>> ? Updating SPAS documentation? Loading SPAS
+>>>> 
+>>>>  *** caught segfault ***
+>>>> address 0x54e40, cause 'memory not mapped'
+>>>> 
+>>>> Traceback:
+>>>>  1: dyn.load(dll_copy_file)
+>>>>  2: library.dynam2(path, lib)
+>>>>  3: load_dll(path)
+>>>>  4: pkgload::load_all(path, helpers = FALSE, attach_testthat = FALSE)
+>>>>  5: load_code(base_path)
+>>>>  6: roxygen2::roxygenise(pkg$path, roclets)
+>>>>  7: devtools::document(roclets = c("rd", "collate", "namespace",
+>>>> "vignette"))
+>>>>  8: withCallingHandlers(expr, packageStartupMessage = function(c)
+>>>> tryInvokeRestart("muffleMessage"))
+>>>>  9: suppressPackageStartupMessages({    oldLC <-
+>>>> Sys.getlocale(category = "LC_COLLATE")    Sys.setlocale(category =
+>>>> "LC_COLLATE", locale = "C")    on.exit(Sys.setlocale(category =
+>>>> "LC_COLLATE", locale = oldLC))    devtools::document(roclets = c("rd",
+>>>> "collate", "namespace",         "vignette"))})
+>>>> An irrecoverable exception occurred. R is aborting now ...
+>>>> 
+>>>> Exited with status 139.
+>>>> 
+>>>>      [[alternative HTML version deleted]]
+>>>> 
+>>>> ______________________________________________
+>>>> R-package-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>> 
+>>> 
+>>> 
+>>> 
+>>> ------------------------------
+>>> 
+>>> Subject: Digest Footer
+>>> 
+>>> _______________________________________________
+>>> R-package-devel mailing list
+>>> R-package-devel at r-project.org
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>> 
+>>> 
+>>> ------------------------------
+>>> 
+>>> End of R-package-devel Digest, Vol 105, Issue 19
+>>> ************************************************
+>> 
+>> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From c@chw@rz@t@t@|uc@ @end|ng |rom gm@||@com  Thu Jan 25 01:14:05 2024
+From: c@chw@rz@t@t@|uc@ @end|ng |rom gm@||@com (Carl Schwarz)
+Date: Wed, 24 Jan 2024 16:14:05 -0800
+Subject: [R-pkg-devel] How to deal with issues when using
+ devtools::check_rhub(), rhub::check(), and web form
+In-Reply-To: <CADtpigYViZ+2GJq+XQyJ6GeyEZ_CWMnUPg20-LcdLKC3GWvVxA@mail.gmail.com>
+References: <CADtpigYViZ+2GJq+XQyJ6GeyEZ_CWMnUPg20-LcdLKC3GWvVxA@mail.gmail.com>
+Message-ID: <CADtpigaY9tjUsDp_e12q9EzRO-KEbAD_AJ40QjfL+D5Yq9Tn1g@mail.gmail.com>
+
+I fixed all of the new issues identified by CRAN, and these seem to be from
+the
+    r-devel-linux-x86_64-fedora-gcc
+and similar machines where it flags documentation in a function.
+
+However, when I use devtools::check_rhub(), it just "hangs", i.e. generates
+messages saying to check a web file that remains blank for several hours.
+Ditto for rhub::check().
+
+I tried using the web interface at https://builder.r-hub.io/ to select the
+denebian machines, and it returns a message saying
+
+We're sorry, but something went wrong.
+If you are the application owner check the logs for more information.
+We're sorry, but something went wrong.
+If you are the application owner check the logs for more information.
+
+Same thing happens when I select the windows release machine.
+
+Revised packages passes devtools::check_win_release() or
+devtools::check_win_devel() and my local (on a Mac) package checks.
+
+So how do I tell if this a "Rhub issue" or an issue with my package? Or do
+I just give up on using Rhub to check the denebian machines?
+
+THanks
+Carl Schwarz
+
+	[[alternative HTML version deleted]]
+
+
