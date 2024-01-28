@@ -13707,3 +13707,461 @@ On Thu, Jan 25, 2024 at 9:11?AM Heather Turner <ht at heatherturner.net> wrote:
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From @|mon@urb@nek @end|ng |rom R-project@org  Fri Jan 26 03:44:27 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Fri, 26 Jan 2024 15:44:27 +1300
+Subject: [R-pkg-devel] Possible malware(?) in a vignette
+In-Reply-To: <CALEXWq0vHqYeB_UT7A_oG+um1HqSP1WBYa7D3Ls+3yWQ_DCQdQ@mail.gmail.com>
+References: <CADbDLZnW6Rgk+Z2161yPOFBSMD+fHApPmRyrQLmgywGOTGaBVw@mail.gmail.com>
+ <CALEXWq0vHqYeB_UT7A_oG+um1HqSP1WBYa7D3Ls+3yWQ_DCQdQ@mail.gmail.com>
+Message-ID: <0EC824A6-0025-4FC2-9DE3-6364AC1F22D9@R-project.org>
+
+I?aki,
+
+I think you got it backwards in your conclusions: CRAN has not generated that PDF file (and Windows machines are not even involved here), it is the contents of a contributed package, so CRAN itself is not compromised. Also it is far from clear that it is really a malware - in fact it's certainly NOT what the website you linked claims as those tags imply trojans disguising ZIPped executables as PDF, but the file is an actual valid PDF and not even remotely a ZIP file (in fact is it consistent with pdflatex output). I looked at the decompressed payload of the PDF and the only binary payload are embedded fonts so my guess would be that some byte sequence in the fonts gets detected as false-positive trojan, but since there is no detail on the report we can just guess. False-positives are a common problem and this would not be the first one. Further indication that it's a false-positive is that a simple re-packaging the streams (i.e. NOT changing the actual PDF contents) make the same file pass the tests as clean.
+
+Also note that there is a bit of a confusion as the currently released version (poweRlaw 0.80.0) does not get flagged, so it is only the archived version (from 2020).
+
+Cheers,
+Simon
+
+
+
+> On 26/01/2024, at 12:02 AM, I?aki Ucar <iucar at fedoraproject.org> wrote:
+> 
+> On Thu, 25 Jan 2024 at 10:13, Colin Gillespie <csgillespie at gmail.com> wrote:
+>> 
+>> Hi All,
+>> 
+>> I've had two emails from users in the last 24 hours about malware
+>> around one of my vignettes. A snippet from the last user is:
+>> 
+>> ---
+>> I was trying to install a R package that depends on PowerRLaw two
+>> weeks ago.  However my virus protection software F secure did not
+>> allow me to install it from CRAN, while installation from GitHub
+>> worked normally. Virus protection software claimed that
+>> d_jss_paper.pdf is compromised. I asked about this from our IT support
+>> and they asked it from the company F secure. Now F secure has analysed
+>> the file and according them it is malware.
+>> 
+>> ?Upon analyzing, our analysis indicates that the file you submitted is
+>> malicious. Hence the verdict will remain
+> 
+> See https://www.virustotal.com/gui/file/9486d99c1c1f2d1b06f0b6c5d27c54d4f6e39d69a91d7fad845f323b0ab88de9/behavior
+> 
+> According to the sandboxed analysis, there's something there trying to
+> tamper with the Acrobat installation. It tries several Windows paths.
+> That's not good.
+> 
+> The good news is that, if I recreate the vignette from your repo, the
+> file is different, different hash, and it's clean.
+> 
+> The bad news is that... this means that CRAN may be compromised. I
+> urge CRAN maintainers to check all the PDF vignettes and scan the
+> Windows machines for viruses.
+> 
+> Best,
+> I?aki
+> 
+> 
+>> 
+>> ---
+>> 
+>> Other information is:
+>> 
+>> * Package in question:
+>> https://cran.r-project.org/web/packages/poweRlaw/index.html
+>> * Package hasn't been updated for three years
+>> * Vignette in question:
+>> https://cran.r-project.org/web/packages/poweRlaw/vignettes/d_jss_paper.pdf
+>> 
+>> CRAN asked me to fix
+>> https://cran.r-project.org/web/checks/check_results_poweRlaw.html a
+>> couple of days ago - which I'm in the process of doing.
+>> 
+>> Any ideas?
+>> 
+>> Thanks
+>> Colin
+>> 
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+> 
+> 
+> -- 
+> I?aki ?car
+> 
+
+
+From @ergue|@@oko| @end|ng |rom gm@||@com  Fri Jan 26 10:31:42 2024
+From: @ergue|@@oko| @end|ng |rom gm@||@com (Serguei Sokol)
+Date: Fri, 26 Jan 2024 10:31:42 +0100
+Subject: [R-pkg-devel] Native pipe in package examples
+In-Reply-To: <20240126020423.7e352852@absentia>
+References: <CAL3ufUJ1jWWt2qQRuZZuT5EiJ3YCYBHivPbqouZo77WhH=1Rkw@mail.gmail.com>
+ <c763b6cf-ba88-48dd-aff7-f63041f39649@gmail.com>
+ <CAFDcVCSjyPLQhcR-pSi-N3j5ShzrMd_DaQqYCuKeWK-5HwtnVg@mail.gmail.com>
+ <675ef40d-4371-4a54-b2f6-0a05839819d7@gmail.com>
+ <20240126012251.167dd0b6@absentia>
+ <CAFDcVCSVy9Q7mKMTi4orUbkoOXqdH-wo83H=Ghar_5Xfs1w3LA@mail.gmail.com>
+ <20240126020423.7e352852@absentia>
+Message-ID: <969390a1-b118-456e-8fb5-f901b7fc8deb@gmail.com>
+
+Le 25/01/2024 ? 19:04, Berwin A Turlach a ?crit?:
+> On Thu, 25 Jan 2024 09:44:26 -0800
+> Henrik Bengtsson <henrik.bengtsson at gmail.com> wrote:
+> 
+>> On Thu, Jan 25, 2024 at 9:23?AM Berwin A Turlach
+>> <berwin.turlach at gmail.com> wrote:
+>>>
+>>> G'day Duncon,
+> 
+> Uups, apologies for the misspelling of your name Duncan.  Fingers were
+> too fast. :)
+> 
+> [...]
+>>> But you could always code your example (not tested :-) ) along lines
+>>> similar to:
+>>>
+>>> if( with(version, all(as.numeric(c(major, minor)) >= c(4, 1))) ){
+>>>    ## code that uses native pipe
+>>> }else{
+>>>    cat("You have to upgrade to R >= 4.1.0 to run this example\n")
+>>> }
+>>
+>> That will unfortunately not work in this case, because |> is part of
+>> the new *syntax* that was introduced in R 4.1.0.  Older versions of R
+>> simply doesn't understand how to *parse* those two symbols next to
+>> each other, e.g.
+>>
+>> {R 4.1.0}> parse(text = "1:3 |> sum()")
+>> expression(1:3 |> sum())
+>>
+>> {R 4.0.5}> parse(text = "1:3 |> sum()")
+>> Error in parse(text = "1:3 |> sum()") : <text>:1:6: unexpected '>'
+>> 1: 1:3 |>
+>>           ^
+>>
+>> In order for R to execute some code, it needs to be able to parse it
+>> first. Only then, it can execute it.  So, here, we're not even getting
+>> past the parsing phase.
+> 
+> Well, not withstanding 'fortune(181)', you could code it as:
+> 
+> if( with(version, all(as.numeric(c(major, minor)) >= c(4, 1))) ){
+>     cat(eval(parse(text="1:3 |> sum()")), "\n")
+> }else{
+>    cat("You have to upgrade to R >= 4.1.0 to run this example\n")
+> }
+> 
+By nitpicking a little bit, this test won't work for v5.0 as minor "0" 
+is less then "1". There are a more canonical ways to test the version 
+and send a message (or a 'warning()'):
+
+if (getVersion() >= "4.1") {
+    cat(eval(parse(text="1:3 |> sum()")), "\n")
+} else {
+    message("You have to upgrade to R >= 4.1.0 to run this example")
+}
+
+Best,
+Serguei.
+
+
+From @ergue|@@oko| @end|ng |rom gm@||@com  Fri Jan 26 10:44:13 2024
+From: @ergue|@@oko| @end|ng |rom gm@||@com (Serguei Sokol)
+Date: Fri, 26 Jan 2024 10:44:13 +0100
+Subject: [R-pkg-devel] Native pipe in package examples
+In-Reply-To: <969390a1-b118-456e-8fb5-f901b7fc8deb@gmail.com>
+References: <CAL3ufUJ1jWWt2qQRuZZuT5EiJ3YCYBHivPbqouZo77WhH=1Rkw@mail.gmail.com>
+ <c763b6cf-ba88-48dd-aff7-f63041f39649@gmail.com>
+ <CAFDcVCSjyPLQhcR-pSi-N3j5ShzrMd_DaQqYCuKeWK-5HwtnVg@mail.gmail.com>
+ <675ef40d-4371-4a54-b2f6-0a05839819d7@gmail.com>
+ <20240126012251.167dd0b6@absentia>
+ <CAFDcVCSVy9Q7mKMTi4orUbkoOXqdH-wo83H=Ghar_5Xfs1w3LA@mail.gmail.com>
+ <20240126020423.7e352852@absentia>
+ <969390a1-b118-456e-8fb5-f901b7fc8deb@gmail.com>
+Message-ID: <dc299993-5022-4076-8f72-e4275345a5ba@gmail.com>
+
+Le 26/01/2024 ? 10:31, Serguei Sokol a ?crit?:
+> Le 25/01/2024 ? 19:04, Berwin A Turlach a ?crit?:
+>> On Thu, 25 Jan 2024 09:44:26 -0800
+>> Henrik Bengtsson <henrik.bengtsson at gmail.com> wrote:
+>>
+>>> On Thu, Jan 25, 2024 at 9:23?AM Berwin A Turlach
+>>> <berwin.turlach at gmail.com> wrote:
+>>>>
+>>>> G'day Duncon,
+>>
+>> Uups, apologies for the misspelling of your name Duncan. Fingers were
+>> too fast. :)
+>>
+>> [...]
+>>>> But you could always code your example (not tested :-) ) along lines
+>>>> similar to:
+>>>>
+>>>> if( with(version, all(as.numeric(c(major, minor)) >= c(4, 1))) ){
+>>>> ?? ## code that uses native pipe
+>>>> }else{
+>>>> ?? cat("You have to upgrade to R >= 4.1.0 to run this example\n")
+>>>> }
+>>>
+>>> That will unfortunately not work in this case, because |> is part of
+>>> the new *syntax* that was introduced in R 4.1.0.? Older versions of R
+>>> simply doesn't understand how to *parse* those two symbols next to
+>>> each other, e.g.
+>>>
+>>> {R 4.1.0}> parse(text = "1:3 |> sum()")
+>>> expression(1:3 |> sum())
+>>>
+>>> {R 4.0.5}> parse(text = "1:3 |> sum()")
+>>> Error in parse(text = "1:3 |> sum()") : <text>:1:6: unexpected '>'
+>>> 1: 1:3 |>
+>>> ????????? ^
+>>>
+>>> In order for R to execute some code, it needs to be able to parse it
+>>> first. Only then, it can execute it.? So, here, we're not even getting
+>>> past the parsing phase.
+>>
+>> Well, not withstanding 'fortune(181)', you could code it as:
+>>
+>> if( with(version, all(as.numeric(c(major, minor)) >= c(4, 1))) ){
+>> ??? cat(eval(parse(text="1:3 |> sum()")), "\n")
+>> }else{
+>> ?? cat("You have to upgrade to R >= 4.1.0 to run this example\n")
+>> }
+>>
+> By nitpicking a little bit, this test won't work for v5.0 as minor "0" 
+> is less then "1". There are a more canonical ways to test the version 
+> and send a message (or a 'warning()'):
+>
+> if (getVersion() >= "4.1") {
+Oops, it won't work for v10.0. Better would be:
+
+if (utils::compareVersion(getVersion(), "4.1.0") >= 0) {
+
+Best,
+Serguei.
+
+> cat(eval(parse(text="1:3 |> sum()")), "\n")
+> } else {
+> ?? message("You have to upgrade to R >= 4.1.0 to run this example")
+> }
+>
+> Best,
+> Serguei.
+
+
+From @ergue|@@oko| @end|ng |rom gm@||@com  Fri Jan 26 10:48:11 2024
+From: @ergue|@@oko| @end|ng |rom gm@||@com (Serguei Sokol)
+Date: Fri, 26 Jan 2024 10:48:11 +0100
+Subject: [R-pkg-devel] Native pipe in package examples
+In-Reply-To: <dc299993-5022-4076-8f72-e4275345a5ba@gmail.com>
+References: <CAL3ufUJ1jWWt2qQRuZZuT5EiJ3YCYBHivPbqouZo77WhH=1Rkw@mail.gmail.com>
+ <c763b6cf-ba88-48dd-aff7-f63041f39649@gmail.com>
+ <CAFDcVCSjyPLQhcR-pSi-N3j5ShzrMd_DaQqYCuKeWK-5HwtnVg@mail.gmail.com>
+ <675ef40d-4371-4a54-b2f6-0a05839819d7@gmail.com>
+ <20240126012251.167dd0b6@absentia>
+ <CAFDcVCSVy9Q7mKMTi4orUbkoOXqdH-wo83H=Ghar_5Xfs1w3LA@mail.gmail.com>
+ <20240126020423.7e352852@absentia>
+ <969390a1-b118-456e-8fb5-f901b7fc8deb@gmail.com>
+ <dc299993-5022-4076-8f72-e4275345a5ba@gmail.com>
+Message-ID: <b8d37df2-debb-4fc8-8ac1-b21008fef717@gmail.com>
+
+Le 26/01/2024 ? 10:44, Serguei Sokol a ?crit?:
+> Le 26/01/2024 ? 10:31, Serguei Sokol a ?crit?:
+>> Le 25/01/2024 ? 19:04, Berwin A Turlach a ?crit?:
+>>> On Thu, 25 Jan 2024 09:44:26 -0800
+>>> Henrik Bengtsson <henrik.bengtsson at gmail.com> wrote:
+>>>
+>>>> On Thu, Jan 25, 2024 at 9:23?AM Berwin A Turlach
+>>>> <berwin.turlach at gmail.com> wrote:
+>>>>>
+>>>>> G'day Duncon,
+>>>
+>>> Uups, apologies for the misspelling of your name Duncan. Fingers were
+>>> too fast. :)
+>>>
+>>> [...]
+>>>>> But you could always code your example (not tested :-) ) along lines
+>>>>> similar to:
+>>>>>
+>>>>> if( with(version, all(as.numeric(c(major, minor)) >= c(4, 1))) ){
+>>>>> ?? ## code that uses native pipe
+>>>>> }else{
+>>>>> ?? cat("You have to upgrade to R >= 4.1.0 to run this example\n")
+>>>>> }
+>>>>
+>>>> That will unfortunately not work in this case, because |> is part of
+>>>> the new *syntax* that was introduced in R 4.1.0.? Older versions of R
+>>>> simply doesn't understand how to *parse* those two symbols next to
+>>>> each other, e.g.
+>>>>
+>>>> {R 4.1.0}> parse(text = "1:3 |> sum()")
+>>>> expression(1:3 |> sum())
+>>>>
+>>>> {R 4.0.5}> parse(text = "1:3 |> sum()")
+>>>> Error in parse(text = "1:3 |> sum()") : <text>:1:6: unexpected '>'
+>>>> 1: 1:3 |>
+>>>> ????????? ^
+>>>>
+>>>> In order for R to execute some code, it needs to be able to parse it
+>>>> first. Only then, it can execute it.? So, here, we're not even getting
+>>>> past the parsing phase.
+>>>
+>>> Well, not withstanding 'fortune(181)', you could code it as:
+>>>
+>>> if( with(version, all(as.numeric(c(major, minor)) >= c(4, 1))) ){
+>>> ??? cat(eval(parse(text="1:3 |> sum()")), "\n")
+>>> }else{
+>>> ?? cat("You have to upgrade to R >= 4.1.0 to run this example\n")
+>>> }
+>>>
+>> By nitpicking a little bit, this test won't work for v5.0 as minor 
+>> "0" is less then "1". There are a more canonical ways to test the 
+>> version and send a message (or a 'warning()'):
+>>
+>> if (getVersion() >= "4.1") {
+> Oops, it won't work for v10.0. Better would be:
+>
+> if (utils::compareVersion(getVersion(), "4.1.0") >= 0) {
+Sorry for annoyance (not a good day for sending messages), obviously it 
+should be 'getRversion()'
+
+Best,
+Serguei.
+
+>
+> Best,
+> Serguei.
+>
+>> cat(eval(parse(text="1:3 |> sum()")), "\n")
+>> } else {
+>> ?? message("You have to upgrade to R >= 4.1.0 to run this example")
+>> }
+>>
+>> Best,
+>> Serguei.
+>
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Jan 26 16:18:52 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 26 Jan 2024 10:18:52 -0500
+Subject: [R-pkg-devel] Native pipe in package examples
+In-Reply-To: <CAFDcVCSAZYL3puuUc8nvnfUAdWMk9X87A_ydM3Axuoczxao+rQ@mail.gmail.com>
+References: <CAL3ufUJ1jWWt2qQRuZZuT5EiJ3YCYBHivPbqouZo77WhH=1Rkw@mail.gmail.com>
+ <c763b6cf-ba88-48dd-aff7-f63041f39649@gmail.com>
+ <CAFDcVCSjyPLQhcR-pSi-N3j5ShzrMd_DaQqYCuKeWK-5HwtnVg@mail.gmail.com>
+ <675ef40d-4371-4a54-b2f6-0a05839819d7@gmail.com>
+ <CAFDcVCSAZYL3puuUc8nvnfUAdWMk9X87A_ydM3Axuoczxao+rQ@mail.gmail.com>
+Message-ID: <3b025664-cdf4-4ac9-b6b1-f818e013258a@gmail.com>
+
+On 25/01/2024 12:38 p.m., Henrik Bengtsson wrote:
+> On Thu, Jan 25, 2024 at 8:27?AM Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>>
+>> On 25/01/2024 11:18 a.m., Henrik Bengtsson wrote:
+>>> On Thu, Jan 25, 2024 at 7:48?AM Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>>>>
+>>>> On 25/01/2024 10:27 a.m., Josiah Parry wrote:
+>>>>> Hey all,
+>>>>>
+>>>>> I've encountered use of the native pipe operator in the examples for
+>>>>> 'httr2' e.g.
+>>>>>
+>>>>> request("http://example.com") |> req_dry_run()
+>>>>>
+>>>>>
+>>>>> Since r-oldrel (according to rversions::r_oldrel()) is now 4.2.3, can the
+>>>>> native pipe be used in example code?
+>>>>>
+>>>>> I do notice that the package httr2 requires R >= 3.6.0 which implies that
+>>>>> the code itself does not use the native pipe, but the examples do.
+>>>>
+>>>> I think that the package should state it requires R (>= 4.1.0), since
+>>>> that code won't work in earlier versions.
+>>>>
+>>>> I believe it's a syntax error before 4.1.0, but don't have a copy handy
+>>>> to test.
+>>>
+>>> Yes, support for the |> syntax was introduced in R 4.1.0;
+>>>
+>>> $ Rscript --vanilla -e "getRversion()" -e "1:10 |> sum()"
+>>> [1] ?4.0.5?
+>>> Error: unexpected '>' in "1:10 |>"
+>>> Execution halted
+>>>
+>>> $ Rscript --vanilla -e "getRversion()" -e "1:10 |> sum()"
+>>> [1] ?4.1.0?
+>>> [1] 55
+>>>
+>>>> That means the package won't pass R CMD check in those old
+>>>> versions.  If it wasn't a syntax error, just a case of using a new
+>>>> feature, then I think it would be fine to put in a run-time test of the
+>>>> R version to skip code that won't run properly.
+>>>
+>>> There's also the distinction of package code versus code in
+>>> documentation. If it's only example code in help pages that use the
+>>> native pipe, but the code in R/*.R does not, then the package will
+>>> still install and work with R (< 4.1.0).  The only thing that won't
+>>> work is when the user tries to run the code in the documented
+>>> examples.  I'd argue that it's okay to specify, say, R (>= 3.6.0) in
+>>> such an example.  It allows users with older versions to still use the
+>>> package, while already now migrating the documentation to use newer
+>>> syntax.
+>>
+>> Is there a way to do that so that R will pay attention, or do you mean
+>> just saying it in a comment?
+> 
+> As a "comment".
+> 
+>>
+>> I think you're right that syntax errors in help page examples will be
+>> installable, but I don't think there's a way to make them pass "R CMD
+>> check" other than wrapping them in \dontrun{}, and I don't know a way to
+>> do that conditional on the R version.
+> 
+> I think
+> 
+> $ R CMD check --no-examples --no-vignettes ...
+> 
+> would check everything else but examples and vignettes.
+> 
+>>
+>> I would say that a package that doesn't pass "R CMD check" without
+>> errors shouldn't be trusted.
+> 
+> Somewhat agree, but we still get some "trust" from the fact that the
+> package passes R CMD check --as-cran on R (>= 4.1.0).  Also, if the
+> maintainer documents something like "On R (> 4.1.0), the package
+> passes 'R CMD check --no-examples ...'; we use R (>= 4.1.0)-specific
+> syntax in some of the help-age examples", then there's additional
+> "trust" in it's working there.  But, yes, there's less "trust" here,
+> but I think it's okay for maintainers to declare "R (>= 3.6.0)" to be
+> backward compatible. Another way to put it, it would be extreme to
+> require "R (>= 4.1.0)" just because of a single "1:3 |> sum()" in some
+> example code.
+> 
+> /Henrik
+> 
+> PS. Personally, I'd skip the use of |> in examples to avoid these concerns.
+
+I think we agree.  If I was determined to support 3.6.0 users, I'd 
+recode that example as
+
+   req_dry_run(request("http://example.com"))
+
+   # It is convenient to use the native pipe |> in R 4.1.0 or greater:
+
+   #   request("http://example.com") |> req_dry_run()
+
+   # ... or the magrittr pipe if available:
+
+   #   request("http://example.com") %>% req_dry_run()
+
+Duncan Murdoch
+
+
