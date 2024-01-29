@@ -14165,3 +14165,1168 @@ recode that example as
 Duncan Murdoch
 
 
+From bob @end|ng |rom rud@|@  Sat Jan 27 09:52:01 2024
+From: bob @end|ng |rom rud@|@ (Bob Rudis)
+Date: Sat, 27 Jan 2024 03:52:01 -0500
+Subject: [R-pkg-devel] Possible malware(?) in a vignette
+In-Reply-To: <0EC824A6-0025-4FC2-9DE3-6364AC1F22D9@R-project.org>
+References: <CADbDLZnW6Rgk+Z2161yPOFBSMD+fHApPmRyrQLmgywGOTGaBVw@mail.gmail.com>
+ <CALEXWq0vHqYeB_UT7A_oG+um1HqSP1WBYa7D3Ls+3yWQ_DCQdQ@mail.gmail.com>
+ <0EC824A6-0025-4FC2-9DE3-6364AC1F22D9@R-project.org>
+Message-ID: <CAA-FpKU=1nJ2W1TjHQt8GGCtd4Dt9STrePXw9igGE9_P+xW-vw@mail.gmail.com>
+
+The current one on CRAN does get flagged for some low-level Sigma rules b/c
+of one of way a few URLs interact. I don't know if f-secure is
+pedantic enough to call that malicious (it probably is, though). The
+*current* PDF is "fine".
+
+There is a major problem with the 2020 version. The file I?aki's URL
+matches the PDF that I grabbed from the Wayback Machine for the 2020 PDF
+from that URL.
+
+Simon's assertion about this *2020* file is flat out wrong. It's very bad.
+
+Two VT sandboxes used Adobe Acrobat Reader to open the PDF and the PDF
+seems to either had malicious JavaScript or had been crafted sufficiently
+to caused a buffer overflow in Reader that then let it perform other
+functions on those sandboxes.
+
+They are most certainly *not* false positives, and dismissing that outright
+is not great.
+
+I'm not going to check every 2020 PDF from CRAN, but this is a big signal
+to me there was an issue *somewhere* in that time period.
+
+I do not know what cran.r-project.org resolved to for the Common Crawl at
+that date (which is where archive.org picked it up to archive for the 2020
+PDF version). I highly doubt the Common Crawl DNS resolution process was
+spoofed _just for that PDF URL_, but it may have been for CRAN in general
+or just "in general" during that crawl period.
+
+It is also possible some malware hit CRAN during portions of that time
+period and infected more than one PDF.
+
+But, outright suggesting there is no issue was not the way to go, here.
+And, someone should likely at least poke at more 2020 PDFs from CRAN
+vignette builds (perhaps just the ones built that were JSS articles?it's
+possible the header image sourced at that time was tampered with during
+some time window, since image decoding issues have plagued Adobe Reader in
+buffer overflow land for a long while).
+
+- boB
+
+
+On Thu, Jan 25, 2024 at 9:44?PM Simon Urbanek <simon.urbanek at r-project.org>
+wrote:
+
+> I?aki,
+>
+> I think you got it backwards in your conclusions: CRAN has not generated
+> that PDF file (and Windows machines are not even involved here), it is the
+> contents of a contributed package, so CRAN itself is not compromised. Also
+> it is far from clear that it is really a malware - in fact it's certainly
+> NOT what the website you linked claims as those tags imply trojans
+> disguising ZIPped executables as PDF, but the file is an actual valid PDF
+> and not even remotely a ZIP file (in fact is it consistent with pdflatex
+> output). I looked at the decompressed payload of the PDF and the only
+> binary payload are embedded fonts so my guess would be that some byte
+> sequence in the fonts gets detected as false-positive trojan, but since
+> there is no detail on the report we can just guess. False-positives are a
+> common problem and this would not be the first one. Further indication that
+> it's a false-positive is that a simple re-packaging the streams (i.e. NOT
+> changing the actual PDF contents) make the same file pass the tests as
+> clean.
+>
+> Also note that there is a bit of a confusion as the currently released
+> version (poweRlaw 0.80.0) does not get flagged, so it is only the archived
+> version (from 2020).
+>
+> Cheers,
+> Simon
+>
+>
+>
+> > On 26/01/2024, at 12:02 AM, I?aki Ucar <iucar at fedoraproject.org> wrote:
+> >
+> > On Thu, 25 Jan 2024 at 10:13, Colin Gillespie <csgillespie at gmail.com>
+> wrote:
+> >>
+> >> Hi All,
+> >>
+> >> I've had two emails from users in the last 24 hours about malware
+> >> around one of my vignettes. A snippet from the last user is:
+> >>
+> >> ---
+> >> I was trying to install a R package that depends on PowerRLaw two
+> >> weeks ago.  However my virus protection software F secure did not
+> >> allow me to install it from CRAN, while installation from GitHub
+> >> worked normally. Virus protection software claimed that
+> >> d_jss_paper.pdf is compromised. I asked about this from our IT support
+> >> and they asked it from the company F secure. Now F secure has analysed
+> >> the file and according them it is malware.
+> >>
+> >> ?Upon analyzing, our analysis indicates that the file you submitted is
+> >> malicious. Hence the verdict will remain
+> >
+> > See
+> https://www.virustotal.com/gui/file/9486d99c1c1f2d1b06f0b6c5d27c54d4f6e39d69a91d7fad845f323b0ab88de9/behavior
+> >
+> > According to the sandboxed analysis, there's something there trying to
+> > tamper with the Acrobat installation. It tries several Windows paths.
+> > That's not good.
+> >
+> > The good news is that, if I recreate the vignette from your repo, the
+> > file is different, different hash, and it's clean.
+> >
+> > The bad news is that... this means that CRAN may be compromised. I
+> > urge CRAN maintainers to check all the PDF vignettes and scan the
+> > Windows machines for viruses.
+> >
+> > Best,
+> > I?aki
+> >
+> >
+> >>
+> >> ---
+> >>
+> >> Other information is:
+> >>
+> >> * Package in question:
+> >> https://cran.r-project.org/web/packages/poweRlaw/index.html
+> >> * Package hasn't been updated for three years
+> >> * Vignette in question:
+> >>
+> https://cran.r-project.org/web/packages/poweRlaw/vignettes/d_jss_paper.pdf
+> >>
+> >> CRAN asked me to fix
+> >> https://cran.r-project.org/web/checks/check_results_poweRlaw.html a
+> >> couple of days ago - which I'm in the process of doing.
+> >>
+> >> Any ideas?
+> >>
+> >> Thanks
+> >> Colin
+> >>
+> >> ______________________________________________
+> >> R-package-devel at r-project.org mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >
+> >
+> >
+> > --
+> > I?aki ?car
+> >
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Sat Jan 27 11:18:47 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Sat, 27 Jan 2024 23:18:47 +1300
+Subject: [R-pkg-devel] Possible malware(?) in a vignette
+In-Reply-To: <CAA-FpKU=1nJ2W1TjHQt8GGCtd4Dt9STrePXw9igGE9_P+xW-vw@mail.gmail.com>
+References: <CADbDLZnW6Rgk+Z2161yPOFBSMD+fHApPmRyrQLmgywGOTGaBVw@mail.gmail.com>
+ <CALEXWq0vHqYeB_UT7A_oG+um1HqSP1WBYa7D3Ls+3yWQ_DCQdQ@mail.gmail.com>
+ <0EC824A6-0025-4FC2-9DE3-6364AC1F22D9@R-project.org>
+ <CAA-FpKU=1nJ2W1TjHQt8GGCtd4Dt9STrePXw9igGE9_P+xW-vw@mail.gmail.com>
+Message-ID: <5020FB99-7AD6-47C6-8DB0-C4D909FFBDD6@R-project.org>
+
+Bob,
+
+I was not making assertions, I was only dismissing clearly false claims: CRAN did NOT generate the file in question, it is not a ZIP file trojan as indicated by the AV flags and content inspection did not reveal any other streams than what is usual in pdflatex output. The information about the alleged malware was terribly vague and incomplete to put it mildly so if you have any additional forensic information that sheds more light on whether this was a malware or not, it would be welcome. If it was indeed one, knowing what kind would help to see how any other instances could be detected. Please contact the CRAN team if you have any such information and we can take it from there.
+
+As you hinted yourself - there is no such thing as absolute safety - as the webp exploits have illustrated very clearly a simple image can be malware and the only read defense is to keep your software up to date.
+
+Cheers,
+Simon
+
+
+
+> On Jan 27, 2024, at 9:52 PM, Bob Rudis <bob at rud.is> wrote:
+> 
+> The current one on CRAN does get flagged for some low-level Sigma rules b/c of one of way a few URLs interact. I don't know if f-secure is pedantic enough to call that malicious (it probably is, though). The *current* PDF is "fine".
+> 
+> There is a major problem with the 2020 version. The file I?aki's URL matches the PDF that I grabbed from the Wayback Machine for the 2020 PDF from that URL.
+> 
+> Simon's assertion about this *2020* file is flat out wrong. It's very bad.
+> 
+> Two VT sandboxes used Adobe Acrobat Reader to open the PDF and the PDF seems to either had malicious JavaScript or had been crafted sufficiently to caused a buffer overflow in Reader that then let it perform other functions on those sandboxes.
+> 
+> They are most certainly *not* false positives, and dismissing that outright is not great.
+> 
+> I'm not going to check every 2020 PDF from CRAN, but this is a big signal to me there was an issue *somewhere* in that time period.
+> 
+> I do not know what cran.r-project.org resolved to for the Common Crawl at that date (which is where archive.org picked it up to archive for the 2020 PDF version). I highly doubt the Common Crawl DNS resolution process was spoofed _just for that PDF URL_, but it may have been for CRAN in general or just "in general" during that crawl period.
+> 
+> It is also possible some malware hit CRAN during portions of that time period and infected more than one PDF.
+> 
+> But, outright suggesting there is no issue was not the way to go, here. And, someone should likely at least poke at more 2020 PDFs from CRAN vignette builds (perhaps just the ones built that were JSS articles?it's possible the header image sourced at that time was tampered with during some time window, since image decoding issues have plagued Adobe Reader in buffer overflow land for a long while).
+> 
+> - boB
+> 
+> 
+> On Thu, Jan 25, 2024 at 9:44?PM Simon Urbanek <simon.urbanek at r-project.org> wrote:
+> I?aki,
+> 
+> I think you got it backwards in your conclusions: CRAN has not generated that PDF file (and Windows machines are not even involved here), it is the contents of a contributed package, so CRAN itself is not compromised. Also it is far from clear that it is really a malware - in fact it's certainly NOT what the website you linked claims as those tags imply trojans disguising ZIPped executables as PDF, but the file is an actual valid PDF and not even remotely a ZIP file (in fact is it consistent with pdflatex output). I looked at the decompressed payload of the PDF and the only binary payload are embedded fonts so my guess would be that some byte sequence in the fonts gets detected as false-positive trojan, but since there is no detail on the report we can just guess. False-positives are a common problem and this would not be the first one. Further indication that it's a false-positive is that a simple re-packaging the streams (i.e. NOT changing the actual PDF contents) make the same file pass the tests as clean.
+> 
+> Also note that there is a bit of a confusion as the currently released version (poweRlaw 0.80.0) does not get flagged, so it is only the archived version (from 2020).
+> 
+> Cheers,
+> Simon
+> 
+> 
+> 
+> > On 26/01/2024, at 12:02 AM, I?aki Ucar <iucar at fedoraproject.org> wrote:
+> > 
+> > On Thu, 25 Jan 2024 at 10:13, Colin Gillespie <csgillespie at gmail.com> wrote:
+> >> 
+> >> Hi All,
+> >> 
+> >> I've had two emails from users in the last 24 hours about malware
+> >> around one of my vignettes. A snippet from the last user is:
+> >> 
+> >> ---
+> >> I was trying to install a R package that depends on PowerRLaw two
+> >> weeks ago.  However my virus protection software F secure did not
+> >> allow me to install it from CRAN, while installation from GitHub
+> >> worked normally. Virus protection software claimed that
+> >> d_jss_paper.pdf is compromised. I asked about this from our IT support
+> >> and they asked it from the company F secure. Now F secure has analysed
+> >> the file and according them it is malware.
+> >> 
+> >> ?Upon analyzing, our analysis indicates that the file you submitted is
+> >> malicious. Hence the verdict will remain
+> > 
+> > See https://www.virustotal.com/gui/file/9486d99c1c1f2d1b06f0b6c5d27c54d4f6e39d69a91d7fad845f323b0ab88de9/behavior
+> > 
+> > According to the sandboxed analysis, there's something there trying to
+> > tamper with the Acrobat installation. It tries several Windows paths.
+> > That's not good.
+> > 
+> > The good news is that, if I recreate the vignette from your repo, the
+> > file is different, different hash, and it's clean.
+> > 
+> > The bad news is that... this means that CRAN may be compromised. I
+> > urge CRAN maintainers to check all the PDF vignettes and scan the
+> > Windows machines for viruses.
+> > 
+> > Best,
+> > I?aki
+> > 
+> > 
+> >> 
+> >> ---
+> >> 
+> >> Other information is:
+> >> 
+> >> * Package in question:
+> >> https://cran.r-project.org/web/packages/poweRlaw/index.html
+> >> * Package hasn't been updated for three years
+> >> * Vignette in question:
+> >> https://cran.r-project.org/web/packages/poweRlaw/vignettes/d_jss_paper.pdf
+> >> 
+> >> CRAN asked me to fix
+> >> https://cran.r-project.org/web/checks/check_results_poweRlaw.html a
+> >> couple of days ago - which I'm in the process of doing.
+> >> 
+> >> Any ideas?
+> >> 
+> >> Thanks
+> >> Colin
+> >> 
+> >> ______________________________________________
+> >> R-package-devel at r-project.org mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> > 
+> > 
+> > 
+> > -- 
+> > I?aki ?car
+> > 
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From |uc@r @end|ng |rom |edor@project@org  Sat Jan 27 11:44:12 2024
+From: |uc@r @end|ng |rom |edor@project@org (=?UTF-8?Q?I=C3=B1aki_Ucar?=)
+Date: Sat, 27 Jan 2024 11:44:12 +0100
+Subject: [R-pkg-devel] Possible malware(?) in a vignette
+In-Reply-To: <5020FB99-7AD6-47C6-8DB0-C4D909FFBDD6@R-project.org>
+References: <CADbDLZnW6Rgk+Z2161yPOFBSMD+fHApPmRyrQLmgywGOTGaBVw@mail.gmail.com>
+ <CALEXWq0vHqYeB_UT7A_oG+um1HqSP1WBYa7D3Ls+3yWQ_DCQdQ@mail.gmail.com>
+ <0EC824A6-0025-4FC2-9DE3-6364AC1F22D9@R-project.org>
+ <CAA-FpKU=1nJ2W1TjHQt8GGCtd4Dt9STrePXw9igGE9_P+xW-vw@mail.gmail.com>
+ <5020FB99-7AD6-47C6-8DB0-C4D909FFBDD6@R-project.org>
+Message-ID: <CALEXWq1Su3_saZg3MXP3EHKXsWJdoNibjMkYYHKJW=yGs2BQrQ@mail.gmail.com>
+
+Simon,
+
+Please re-read my email. I did *not* say that CRAN *generated* that file. I
+said that CRAN *may* be compromised (some virus may have modified files).
+
+I did *not* claim that the report was necessarily 100% accurate. But "that
+page I linked" was created by a security firm, and it would be wise to
+further investigate any potential threat reported there, which is what I
+was suggesting.
+
+I don't think these are "false claims".
+
+I?aki
+
+El s?b., 27 ene. 2024 11:19, Simon Urbanek <simon.urbanek at r-project.org>
+escribi?:
+
+> Bob,
+>
+> I was not making assertions, I was only dismissing clearly false claims:
+> CRAN did NOT generate the file in question, it is not a ZIP file trojan as
+> indicated by the AV flags and content inspection did not reveal any other
+> streams than what is usual in pdflatex output. The information about the
+> alleged malware was terribly vague and incomplete to put it mildly so if
+> you have any additional forensic information that sheds more light on
+> whether this was a malware or not, it would be welcome. If it was indeed
+> one, knowing what kind would help to see how any other instances could be
+> detected. Please contact the CRAN team if you have any such information and
+> we can take it from there.
+>
+> As you hinted yourself - there is no such thing as absolute safety - as
+> the webp exploits have illustrated very clearly a simple image can be
+> malware and the only read defense is to keep your software up to date.
+>
+> Cheers,
+> Simon
+>
+>
+>
+> > On Jan 27, 2024, at 9:52 PM, Bob Rudis <bob at rud.is> wrote:
+> >
+> > The current one on CRAN does get flagged for some low-level Sigma rules
+> b/c of one of way a few URLs interact. I don't know if f-secure is pedantic
+> enough to call that malicious (it probably is, though). The *current* PDF
+> is "fine".
+> >
+> > There is a major problem with the 2020 version. The file I?aki's URL
+> matches the PDF that I grabbed from the Wayback Machine for the 2020 PDF
+> from that URL.
+> >
+> > Simon's assertion about this *2020* file is flat out wrong. It's very
+> bad.
+> >
+> > Two VT sandboxes used Adobe Acrobat Reader to open the PDF and the PDF
+> seems to either had malicious JavaScript or had been crafted sufficiently
+> to caused a buffer overflow in Reader that then let it perform other
+> functions on those sandboxes.
+> >
+> > They are most certainly *not* false positives, and dismissing that
+> outright is not great.
+> >
+> > I'm not going to check every 2020 PDF from CRAN, but this is a big
+> signal to me there was an issue *somewhere* in that time period.
+> >
+> > I do not know what cran.r-project.org resolved to for the Common Crawl
+> at that date (which is where archive.org picked it up to archive for the
+> 2020 PDF version). I highly doubt the Common Crawl DNS resolution process
+> was spoofed _just for that PDF URL_, but it may have been for CRAN in
+> general or just "in general" during that crawl period.
+> >
+> > It is also possible some malware hit CRAN during portions of that time
+> period and infected more than one PDF.
+> >
+> > But, outright suggesting there is no issue was not the way to go, here.
+> And, someone should likely at least poke at more 2020 PDFs from CRAN
+> vignette builds (perhaps just the ones built that were JSS articles?it's
+> possible the header image sourced at that time was tampered with during
+> some time window, since image decoding issues have plagued Adobe Reader in
+> buffer overflow land for a long while).
+> >
+> > - boB
+> >
+> >
+> > On Thu, Jan 25, 2024 at 9:44?PM Simon Urbanek <
+> simon.urbanek at r-project.org> wrote:
+> > I?aki,
+> >
+> > I think you got it backwards in your conclusions: CRAN has not generated
+> that PDF file (and Windows machines are not even involved here), it is the
+> contents of a contributed package, so CRAN itself is not compromised. Also
+> it is far from clear that it is really a malware - in fact it's certainly
+> NOT what the website you linked claims as those tags imply trojans
+> disguising ZIPped executables as PDF, but the file is an actual valid PDF
+> and not even remotely a ZIP file (in fact is it consistent with pdflatex
+> output). I looked at the decompressed payload of the PDF and the only
+> binary payload are embedded fonts so my guess would be that some byte
+> sequence in the fonts gets detected as false-positive trojan, but since
+> there is no detail on the report we can just guess. False-positives are a
+> common problem and this would not be the first one. Further indication that
+> it's a false-positive is that a simple re-packaging the streams (i.e. NOT
+> changing the actual PDF contents) make the same file pass the tests as
+> clean.
+> >
+> > Also note that there is a bit of a confusion as the currently released
+> version (poweRlaw 0.80.0) does not get flagged, so it is only the archived
+> version (from 2020).
+> >
+> > Cheers,
+> > Simon
+> >
+> >
+> >
+> > > On 26/01/2024, at 12:02 AM, I?aki Ucar <iucar at fedoraproject.org>
+> wrote:
+> > >
+> > > On Thu, 25 Jan 2024 at 10:13, Colin Gillespie <csgillespie at gmail.com>
+> wrote:
+> > >>
+> > >> Hi All,
+> > >>
+> > >> I've had two emails from users in the last 24 hours about malware
+> > >> around one of my vignettes. A snippet from the last user is:
+> > >>
+> > >> ---
+> > >> I was trying to install a R package that depends on PowerRLaw two
+> > >> weeks ago.  However my virus protection software F secure did not
+> > >> allow me to install it from CRAN, while installation from GitHub
+> > >> worked normally. Virus protection software claimed that
+> > >> d_jss_paper.pdf is compromised. I asked about this from our IT support
+> > >> and they asked it from the company F secure. Now F secure has analysed
+> > >> the file and according them it is malware.
+> > >>
+> > >> ?Upon analyzing, our analysis indicates that the file you submitted is
+> > >> malicious. Hence the verdict will remain
+> > >
+> > > See
+> https://www.virustotal.com/gui/file/9486d99c1c1f2d1b06f0b6c5d27c54d4f6e39d69a91d7fad845f323b0ab88de9/behavior
+> > >
+> > > According to the sandboxed analysis, there's something there trying to
+> > > tamper with the Acrobat installation. It tries several Windows paths.
+> > > That's not good.
+> > >
+> > > The good news is that, if I recreate the vignette from your repo, the
+> > > file is different, different hash, and it's clean.
+> > >
+> > > The bad news is that... this means that CRAN may be compromised. I
+> > > urge CRAN maintainers to check all the PDF vignettes and scan the
+> > > Windows machines for viruses.
+> > >
+> > > Best,
+> > > I?aki
+> > >
+> > >
+> > >>
+> > >> ---
+> > >>
+> > >> Other information is:
+> > >>
+> > >> * Package in question:
+> > >> https://cran.r-project.org/web/packages/poweRlaw/index.html
+> > >> * Package hasn't been updated for three years
+> > >> * Vignette in question:
+> > >>
+> https://cran.r-project.org/web/packages/poweRlaw/vignettes/d_jss_paper.pdf
+> > >>
+> > >> CRAN asked me to fix
+> > >> https://cran.r-project.org/web/checks/check_results_poweRlaw.html a
+> > >> couple of days ago - which I'm in the process of doing.
+> > >>
+> > >> Any ideas?
+> > >>
+> > >> Thanks
+> > >> Colin
+> > >>
+> > >> ______________________________________________
+> > >> R-package-devel at r-project.org mailing list
+> > >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> > >
+> > >
+> > >
+> > > --
+> > > I?aki ?car
+> > >
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Sat Jan 27 11:51:10 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sat, 27 Jan 2024 13:51:10 +0300
+Subject: [R-pkg-devel] Possible malware(?) in a vignette
+In-Reply-To: <CAA-FpKU=1nJ2W1TjHQt8GGCtd4Dt9STrePXw9igGE9_P+xW-vw@mail.gmail.com>
+References: <CADbDLZnW6Rgk+Z2161yPOFBSMD+fHApPmRyrQLmgywGOTGaBVw@mail.gmail.com>
+ <CALEXWq0vHqYeB_UT7A_oG+um1HqSP1WBYa7D3Ls+3yWQ_DCQdQ@mail.gmail.com>
+ <0EC824A6-0025-4FC2-9DE3-6364AC1F22D9@R-project.org>
+ <CAA-FpKU=1nJ2W1TjHQt8GGCtd4Dt9STrePXw9igGE9_P+xW-vw@mail.gmail.com>
+Message-ID: <20240127135110.59610a16@Tarkus>
+
+? Sat, 27 Jan 2024 03:52:01 -0500
+Bob Rudis <bob at rud.is> ?????:
+
+> Two VT sandboxes used Adobe Acrobat Reader to open the PDF and the PDF
+> seems to either had malicious JavaScript or had been crafted
+> sufficiently to caused a buffer overflow in Reader that then let it
+> perform other functions on those sandboxes.
+
+Let's talk package versions and SHA256 hashes of
+poweRlaw/inst/doc/d_jss_paper.pdf.
+
+poweRlaw version 0.70.4:
+Packaged: 2020-04-07 14:55:32 UTC
+Date/Publication: 2020-04-07 16:10:02 UTC
+SHA-256(poweRlaw/inst/doc/d_jss_paper.pdf):
+96535de112f471c66e29b74c77444b34a29b82d6525c04d477ed2d987ea6ccae
+
+Not previously uploaded to VirusTotal, currently checks out clean:
+https://www.virustotal.com/gui/file/96535de112f471c66e29b74c77444b34a29b82d6525c04d477ed2d987ea6ccae
+
+poweRlaw version 0.70.5:
+Packaged: 2020-04-23 15:36:49 UTC
+Date/Publication: 2020-04-23 16:40:06 UTC
+SHA-256(poweRlaw/inst/doc/d_jss_paper.pdf):
+5f827302ede74e1345fba5ba52c279129823da3c104baa821d654ebb8d7a67fb
+
+Not previously uploaded to VirusTotal, also checks out clean:
+https://www.virustotal.com/gui/file/5f827302ede74e1345fba5ba52c279129823da3c104baa821d654ebb8d7a67fb/behavior
+
+For some reason, the Zenbox report shows a browser starting up and
+someone (something?) moving the mouse:
+https://vtbehaviour.commondatastorage.googleapis.com/5f827302ede74e1345fba5ba52c279129823da3c104baa821d654ebb8d7a67fb_Zenbox.html?GoogleAccessId=758681729565-rc7fgq07icj8c9dm2gi34a4cckv235v1 at developer.gserviceaccount.com&Expires=1706348766&Signature=KSTxSZJJUUv0FOA51Kwuot89ep4PKUDTY6tHL7kTyG7VwaMlF8VjmU90loeF4ytLBxKjkEtAk%2Ffr39xFrTTyOym3mehtc3HLyT9DS3C5qGa9OPVcu%2BfQfd8qr%2BRubBWb3SKNnhGpi%2Bn%2BTDhaiRx3PilEz%2BwVGiukfNUzWGBlGweG%2BmR1Y%2F0fIgDxJ3eyZ8KwTaocbywMoOLJeC1GSmoW8VYUAnFS2bb8P9Jt%2Bs%2F0axvAkc0M2pmSN3s2lpMq8u5P%2FZZ8yRIMdmv%2B1kUR5ajBdIa%2FHV8Vw8xAdNjZID6ozwAsmBOOizJmHgzr4zh1tX4V65qmcz8D3jctvDRKsuEqXA%3D%3D&response-content-type=text%2Fhtml;#overview
+
+Lots of file activity. I think that all of it can be attributed to
+either normal Acrobat Reader activity or normal Chrome activity.
+
+Then we come to poweRlaw version 0.70.6:
+Packaged: 2020-04-24 10:44:31 UTC
+Date/Publication: 2020-04-25 07:30:12 UTC
+SHA-256(inst/doc/d_jss_paper.pdf):
+9486d99c1c1f2d1b06f0b6c5d27c54d4f6e39d69a91d7fad845f323b0ab88de9
+
+The Web Archive capture version 20201205222617 for the address
+https://cran.r-project.org/web/packages/poweRlaw/vignettes/d_jss_paper.pdf
+has the same SHA-256 hash.
+
+This file is being disputed because some antivirus applications flag it:
+https://www.virustotal.com/gui/file/9486d99c1c1f2d1b06f0b6c5d27c54d4f6e39d69a91d7fad845f323b0ab88de9/behavior
+
+The behaviour is exactly the same as the one from version 0.70.5:
+browser opens with a link to a wrong DOI. Some links are followed.
+https://vtbehaviour.commondatastorage.googleapis.com/9486d99c1c1f2d1b06f0b6c5d27c54d4f6e39d69a91d7fad845f323b0ab88de9_Zenbox.html?GoogleAccessId=758681729565-rc7fgq07icj8c9dm2gi34a4cckv235v1 at developer.gserviceaccount.com&Expires=1706347808&Signature=Kv1LXUGvDe988Br0pU1AMlttjYY1K9sDwouvZrlzAVSspkdOGS9Ow%2Bg%2F3VjnQLEshx08QqgOHZzQcghownumPDUJLBbEHbOk6KG9IZSH43rxkYhTIy%2BYT5PfNFIupevbJA5XrnJHrm1wKho2%2BDb4t8vA4cgOJJY0UahXTbIMKUeUmPCKAzx9W5kYKj55WhNDrIPrEuni9EeGWkFV45kPr%2BBwYfl2hK4%2BWv6K78CB7zJtzFltF6P3pewafn5Lg3M3AY5YcZ4TryXi01t0dq04Fha83fLRP7JUkmcfpAJauA48Ct0XN7RdCRPSogb0TAGwG%2BDstxNzLAphOEsVju9LUQ%3D%3D&response-content-type=text%2Fhtml;#dropped-info
+
+I've uploaded a decompressed version (prepared using qpdf in.pdf
+--stream-data=uncompress out.pdf) of the same file to VirusTotal, and
+there are no detections. Zero detections, but the behaviour is the same:
+some files are "dropped", but all of them relate to cache in Acrobat
+Reader (which is nowadays a piece of Chrome) and Chrome itself:
+https://www.virustotal.com/gui/file/5acbc41f103c88a801db36fa72f01d4fa81b9afa1879c36235b1f5373d46ee1a/behavior
+
+Finally, there's poweRlaw version 0.80.0:
+Packaged: 2024-01-25 10:39:42 UTC
+Date/Publication: 2024-01-25 18:00:02 UTC
+SHA-256(inst/doc/d_jss_paper.pdf):
+17c252a38e6c9bcfab90a69070b17c5e9d8a1713b7bb376badaeba28b3a38739
+Same zero flags, same behaviour of starting the browser, same "dropped"
+files in the cache:
+https://www.virustotal.com/gui/file/17c252a38e6c9bcfab90a69070b17c5e9d8a1713b7bb376badaeba28b3a38739/behavior
+https://vtbehaviour.commondatastorage.googleapis.com/17c252a38e6c9bcfab90a69070b17c5e9d8a1713b7bb376badaeba28b3a38739_Zenbox.html?GoogleAccessId=758681729565-rc7fgq07icj8c9dm2gi34a4cckv235v1 at developer.gserviceaccount.com&Expires=1706348864&Signature=UjXMjCvz0uTjS1sqyr5y%2FOwluE%2BskW9F2XupXuOs5JgODlsL1BuwJcWJ56xddQNEtKDHDOaXoRfNxynsffmSaza4yJD9hvPJ6%2BrNMibbB8hojY53g07WKnCd3wdaOmOHEqIP7Md06QWD4CnLEN0KlRvWdsUUA%2F9YTB1bAVqkIR%2FtiaJcRrOTAmdG%2F9Hwrq4xpiEBaFZzO%2FsQPVj3dzNS1LQEXOHFAfnOTaC1LlbBfn9QQWCPib%2FpCOL7huVYqIFSm%2FO8VHWv67JD1qwcTOY7JSl8XPw1ueyumRpF5xF1rpWYCPjC1awU8tho25A2COA7f7LSkku0BRqkuHYW3kuZaw%3D%3D&response-content-type=text%2Fhtml;#dropped-info
+
+I've also uploaded a PDF that came directly from a US agency (NOAA) and
+got a similar report:
+https://www.virustotal.com/gui/file/0dcffd0096f106229f3aa630bdc460c106c6dab81907535317e27ed00ddb4544/behavior
+https://vtbehaviour.commondatastorage.googleapis.com/0dcffd0096f106229f3aa630bdc460c106c6dab81907535317e27ed00ddb4544_Zenbox.html?GoogleAccessId=758681729565-rc7fgq07icj8c9dm2gi34a4cckv235v1 at developer.gserviceaccount.com&Expires=1706352702&Signature=rjPfqYbtDFcBAtwaqOQbnAvXe%2B%2FoxKUXqliRCqXh77vi2s0lK81O1m8t0YdYIT9KQdcBwGS2Dk2l2tfdC9DmdWEzAukgJVMJ3uqrs0RDQVTP83Y5jmPghvT6OeiTzC%2BMNCs%2F3CVgHSwjQy2dAvWD1vLly0GnkueJAHjs%2BrWXfoSdMfzb96hzXF0kgPS8VoEogOeDG1DZ7oEZVUlQ3jEv3sBkrt3rFIqeV8LW2xdN7bsiGGRNyjdaF7i1tOvi5UrT87D7vVgT2FRVxySzTPQ3d9JnSLO2t%2B1Gk9Of1l6ASUuTWj3hS5JXao8a0Qm%2BDnNhgSKZ9Bq7LaXCs%2Fc7PIJT5w%3D%3D&response-content-type=text%2Fhtml;#dropped-info
+(It's actually worse because there's a Firefox crash, but there's still
+a lot of "dropped" files in Acrobat Reader cache.)
+
+How is the potentially malicious
+poweRlaw_0.70.6.tar.gz/poweRlaw/inst/doc/d_jss_paper.pdf with SHA-256
+hash 9486d99c1c1f2d1b06f0b6c5d27c54d4f6e39d69a91d7fad845f323b0ab88de9
+different from all the other files considered here, besides a few flags
+from non-major AVs that disappear when the PDF is repacked using a
+content-preserving program?
+
+-- 
+Best regards,
+Ivan
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Sat Jan 27 12:18:05 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Sun, 28 Jan 2024 00:18:05 +1300
+Subject: [R-pkg-devel] Possible malware(?) in a vignette
+In-Reply-To: <CALEXWq1Su3_saZg3MXP3EHKXsWJdoNibjMkYYHKJW=yGs2BQrQ@mail.gmail.com>
+References: <CADbDLZnW6Rgk+Z2161yPOFBSMD+fHApPmRyrQLmgywGOTGaBVw@mail.gmail.com>
+ <CALEXWq0vHqYeB_UT7A_oG+um1HqSP1WBYa7D3Ls+3yWQ_DCQdQ@mail.gmail.com>
+ <0EC824A6-0025-4FC2-9DE3-6364AC1F22D9@R-project.org>
+ <CAA-FpKU=1nJ2W1TjHQt8GGCtd4Dt9STrePXw9igGE9_P+xW-vw@mail.gmail.com>
+ <5020FB99-7AD6-47C6-8DB0-C4D909FFBDD6@R-project.org>
+ <CALEXWq1Su3_saZg3MXP3EHKXsWJdoNibjMkYYHKJW=yGs2BQrQ@mail.gmail.com>
+Message-ID: <32A265A1-5973-4D41-9DE2-03E71020E25D@R-project.org>
+
+I?aki,
+
+> On Jan 27, 2024, at 11:44 PM, I?aki Ucar <iucar at fedoraproject.org> wrote:
+> 
+> Simon,
+> 
+> Please re-read my email. I did *not* say that CRAN *generated* that file. I said that CRAN *may* be compromised (some virus may have modified files).
+> 
+
+
+I guess I should have been more clear in my response: the file could not have been modified by CRAN, because the package files are checksummed (the hashes match) so that's how we know this could not have been a virus on the CRAN machine.
+
+
+> I did *not* claim that the report was necessarily 100% accurate. But "that page I linked" was created by a security firm, and it would be wise to further investigate any potential threat reported there, which is what I was suggesting.
+> 
+
+
+I appreciate the report, there was no objection to that. Unfortunately, the report has turned out to have virtually no useful information that would make it possible for us to investigate. The little information it provided has proven to be false (at least as much as could be gleamed from the tags), so unless we can get some real security expert to give us more details, there is not much more we can do given that the file is no longer distributed. And without more detailed information of the threat it's hard to see if there are any steps we could take. 
+
+Back to my main original point - as far as CRAN machines are concerned, we did check the integrity of the files, machines and tools and found no link there. Hence the only path left is to get more details on the particular file to see if it is indeed a malware and if so, if it was just some random infection at the source or something bigger like Bob hinted at some compromised material that may have been circling in the community.
+
+Cheers,
+Simon
+
+
+
+> I don't think these are "false claims".
+> 
+> I?aki
+> 
+> El s?b., 27 ene. 2024 11:19, Simon Urbanek <simon.urbanek at r-project.org <mailto:simon.urbanek at r-project.org>> escribi?:
+> Bob,
+> 
+> I was not making assertions, I was only dismissing clearly false claims: CRAN did NOT generate the file in question, it is not a ZIP file trojan as indicated by the AV flags and content inspection did not reveal any other streams than what is usual in pdflatex output. The information about the alleged malware was terribly vague and incomplete to put it mildly so if you have any additional forensic information that sheds more light on whether this was a malware or not, it would be welcome. If it was indeed one, knowing what kind would help to see how any other instances could be detected. Please contact the CRAN team if you have any such information and we can take it from there.
+> 
+> As you hinted yourself - there is no such thing as absolute safety - as the webp exploits have illustrated very clearly a simple image can be malware and the only read defense is to keep your software up to date.
+> 
+> Cheers,
+> Simon
+> 
+> 
+> 
+> > On Jan 27, 2024, at 9:52 PM, Bob Rudis <bob at rud.is <mailto:bob at rud.is>> wrote:
+> > 
+> > The current one on CRAN does get flagged for some low-level Sigma rules b/c of one of way a few URLs interact. I don't know if f-secure is pedantic enough to call that malicious (it probably is, though). The *current* PDF is "fine".
+> > 
+> > There is a major problem with the 2020 version. The file I?aki's URL matches the PDF that I grabbed from the Wayback Machine for the 2020 PDF from that URL.
+> > 
+> > Simon's assertion about this *2020* file is flat out wrong. It's very bad.
+> > 
+> > Two VT sandboxes used Adobe Acrobat Reader to open the PDF and the PDF seems to either had malicious JavaScript or had been crafted sufficiently to caused a buffer overflow in Reader that then let it perform other functions on those sandboxes.
+> > 
+> > They are most certainly *not* false positives, and dismissing that outright is not great.
+> > 
+> > I'm not going to check every 2020 PDF from CRAN, but this is a big signal to me there was an issue *somewhere* in that time period.
+> > 
+> > I do not know what cran.r-project.org <http://cran.r-project.org/> resolved to for the Common Crawl at that date (which is where archive.org <http://archive.org/> picked it up to archive for the 2020 PDF version). I highly doubt the Common Crawl DNS resolution process was spoofed _just for that PDF URL_, but it may have been for CRAN in general or just "in general" during that crawl period.
+> > 
+> > It is also possible some malware hit CRAN during portions of that time period and infected more than one PDF.
+> > 
+> > But, outright suggesting there is no issue was not the way to go, here. And, someone should likely at least poke at more 2020 PDFs from CRAN vignette builds (perhaps just the ones built that were JSS articles?it's possible the header image sourced at that time was tampered with during some time window, since image decoding issues have plagued Adobe Reader in buffer overflow land for a long while).
+> > 
+> > - boB
+> > 
+> > 
+> > On Thu, Jan 25, 2024 at 9:44?PM Simon Urbanek <simon.urbanek at r-project.org <mailto:simon.urbanek at r-project.org>> wrote:
+> > I?aki,
+> > 
+> > I think you got it backwards in your conclusions: CRAN has not generated that PDF file (and Windows machines are not even involved here), it is the contents of a contributed package, so CRAN itself is not compromised. Also it is far from clear that it is really a malware - in fact it's certainly NOT what the website you linked claims as those tags imply trojans disguising ZIPped executables as PDF, but the file is an actual valid PDF and not even remotely a ZIP file (in fact is it consistent with pdflatex output). I looked at the decompressed payload of the PDF and the only binary payload are embedded fonts so my guess would be that some byte sequence in the fonts gets detected as false-positive trojan, but since there is no detail on the report we can just guess. False-positives are a common problem and this would not be the first one. Further indication that it's a false-positive is that a simple re-packaging the streams (i.e. NOT changing the actual PDF contents) make the same file pass the tests as clean.
+> > 
+> > Also note that there is a bit of a confusion as the currently released version (poweRlaw 0.80.0) does not get flagged, so it is only the archived version (from 2020).
+> > 
+> > Cheers,
+> > Simon
+> > 
+> > 
+> > 
+> > > On 26/01/2024, at 12:02 AM, I?aki Ucar <iucar at fedoraproject.org <mailto:iucar at fedoraproject.org>> wrote:
+> > > 
+> > > On Thu, 25 Jan 2024 at 10:13, Colin Gillespie <csgillespie at gmail.com <mailto:csgillespie at gmail.com>> wrote:
+> > >> 
+> > >> Hi All,
+> > >> 
+> > >> I've had two emails from users in the last 24 hours about malware
+> > >> around one of my vignettes. A snippet from the last user is:
+> > >> 
+> > >> ---
+> > >> I was trying to install a R package that depends on PowerRLaw two
+> > >> weeks ago.  However my virus protection software F secure did not
+> > >> allow me to install it from CRAN, while installation from GitHub
+> > >> worked normally. Virus protection software claimed that
+> > >> d_jss_paper.pdf is compromised. I asked about this from our IT support
+> > >> and they asked it from the company F secure. Now F secure has analysed
+> > >> the file and according them it is malware.
+> > >> 
+> > >> ?Upon analyzing, our analysis indicates that the file you submitted is
+> > >> malicious. Hence the verdict will remain
+> > > 
+> > > See https://www.virustotal.com/gui/file/9486d99c1c1f2d1b06f0b6c5d27c54d4f6e39d69a91d7fad845f323b0ab88de9/behavior <https://www.virustotal.com/gui/file/9486d99c1c1f2d1b06f0b6c5d27c54d4f6e39d69a91d7fad845f323b0ab88de9/behavior>
+> > > 
+> > > According to the sandboxed analysis, there's something there trying to
+> > > tamper with the Acrobat installation. It tries several Windows paths.
+> > > That's not good.
+> > > 
+> > > The good news is that, if I recreate the vignette from your repo, the
+> > > file is different, different hash, and it's clean.
+> > > 
+> > > The bad news is that... this means that CRAN may be compromised. I
+> > > urge CRAN maintainers to check all the PDF vignettes and scan the
+> > > Windows machines for viruses.
+> > > 
+> > > Best,
+> > > I?aki
+> > > 
+> > > 
+> > >> 
+> > >> ---
+> > >> 
+> > >> Other information is:
+> > >> 
+> > >> * Package in question:
+> > >> https://cran.r-project.org/web/packages/poweRlaw/index.html <https://cran.r-project.org/web/packages/poweRlaw/index.html>
+> > >> * Package hasn't been updated for three years
+> > >> * Vignette in question:
+> > >> https://cran.r-project.org/web/packages/poweRlaw/vignettes/d_jss_paper.pdf <https://cran.r-project.org/web/packages/poweRlaw/vignettes/d_jss_paper.pdf>
+> > >> 
+> > >> CRAN asked me to fix
+> > >> https://cran.r-project.org/web/checks/check_results_poweRlaw.html <https://cran.r-project.org/web/checks/check_results_poweRlaw.html> a
+> > >> couple of days ago - which I'm in the process of doing.
+> > >> 
+> > >> Any ideas?
+> > >> 
+> > >> Thanks
+> > >> Colin
+> > >> 
+> > >> ______________________________________________
+> > >> R-package-devel at r-project.org <mailto:R-package-devel at r-project.org> mailing list
+> > >> https://stat.ethz.ch/mailman/listinfo/r-package-devel <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+> > > 
+> > > 
+> > > 
+> > > -- 
+> > > I?aki ?car
+> > > 
+> > 
+> > ______________________________________________
+> > R-package-devel at r-project.org <mailto:R-package-devel at r-project.org> mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+> 
+
+
+	[[alternative HTML version deleted]]
+
+
+From bob @end|ng |rom rud@|@  Sat Jan 27 13:10:53 2024
+From: bob @end|ng |rom rud@|@ (Bob Rudis)
+Date: Sat, 27 Jan 2024 07:10:53 -0500
+Subject: [R-pkg-devel] Possible malware(?) in a vignette
+In-Reply-To: <32A265A1-5973-4D41-9DE2-03E71020E25D@R-project.org>
+References: <CADbDLZnW6Rgk+Z2161yPOFBSMD+fHApPmRyrQLmgywGOTGaBVw@mail.gmail.com>
+ <CALEXWq0vHqYeB_UT7A_oG+um1HqSP1WBYa7D3Ls+3yWQ_DCQdQ@mail.gmail.com>
+ <0EC824A6-0025-4FC2-9DE3-6364AC1F22D9@R-project.org>
+ <CAA-FpKU=1nJ2W1TjHQt8GGCtd4Dt9STrePXw9igGE9_P+xW-vw@mail.gmail.com>
+ <5020FB99-7AD6-47C6-8DB0-C4D909FFBDD6@R-project.org>
+ <CALEXWq1Su3_saZg3MXP3EHKXsWJdoNibjMkYYHKJW=yGs2BQrQ@mail.gmail.com>
+ <32A265A1-5973-4D41-9DE2-03E71020E25D@R-project.org>
+Message-ID: <CAA-FpKWZOipv4P68eVOMj3sfvTYYcgkMJHsrCxotFn5z4WNWGA@mail.gmail.com>
+
+Simon: Is there a historical record of the hashes of just the PDFs
+that show up in the CRAN web view?
+
+Ivan: do you know what mirror NOAA used at that time to get that version of
+the package? Or, did they pull it "directly" from cran.r-project.org
+(scare-quotes only b/c DNS spoofing is and has been a pretty solid attack
+vector)?
+
+I've asked the infosec community if anyone has VT Enterprise to do a
+historical search on any PDFs that come directly from cran.r-project.org (I
+don't have VT Enterprise). It is possible there are other PDFs from that
+timeframe with similar issues (again, not saying CRAN had any issues; this
+could still be crawler cache poisoning).
+
+I don't know if any university folks have grad student labor to harness,
+but having a few of them do some archive.org searches for other PDFs in
+that timeframe, and note the source of the archive (likely Common Crawl) if
+there are other real issues, that'd be a solid path forward for triage.
+
+The fact that the current PDF on CRAN ? which uses some of the same
+7-year-old PDF & JPEG images from ?
+https://github.com/csgillespie/poweRlaw/tree/main/vignettes ? is not being
+flagged, means it's likely not an issue with Colin's sources.
+
+Simon: it might be a good idea for all *.r-project.org sites to set up CAA
+records (
+https://en.wikipedia.org/wiki/DNS_Certification_Authority_Authorization)
+since that could help prevent adjacent TLS spoofing.
+
+Also having something running ? https://github.com/SSLMate/certspotter ?
+can let y'all know if certs are created for *.r-project.org domains. That
+won't help for well-resourced attacks, but it does add some layers that may
+give a heads-up for any mid-grade spoofing attacks.
+
+On Sat, Jan 27, 2024 at 6:18?AM Simon Urbanek <simon.urbanek at r-project.org>
+wrote:
+
+> I?aki,
+>
+> On Jan 27, 2024, at 11:44 PM, I?aki Ucar <iucar at fedoraproject.org> wrote:
+>
+> Simon,
+>
+> Please re-read my email. I did *not* say that CRAN *generated* that file.
+> I said that CRAN *may* be compromised (some virus may have modified files).
+>
+>
+>
+> I guess I should have been more clear in my response: the file could not
+> have been modified by CRAN, because the package files are checksummed (the
+> hashes match) so that's how we know this could not have been a virus on the
+> CRAN machine.
+>
+>
+> I did *not* claim that the report was necessarily 100% accurate. But "that
+> page I linked" was created by a security firm, and it would be wise to
+> further investigate any potential threat reported there, which is what I
+> was suggesting.
+>
+>
+>
+> I appreciate the report, there was no objection to that. Unfortunately,
+> the report has turned out to have virtually no useful information that
+> would make it possible for us to investigate. The little information it
+> provided has proven to be false (at least as much as could be gleamed from
+> the tags), so unless we can get some real security expert to give us more
+> details, there is not much more we can do given that the file is no longer
+> distributed. And without more detailed information of the threat it's hard
+> to see if there are any steps we could take.
+>
+> Back to my main original point - as far as CRAN machines are concerned, we
+> did check the integrity of the files, machines and tools and found no link
+> there. Hence the only path left is to get more details on the particular
+> file to see if it is indeed a malware and if so, if it was just some random
+> infection at the source or something bigger like Bob hinted at some
+> compromised material that may have been circling in the community.
+>
+> Cheers,
+> Simon
+>
+>
+>
+> I don't think these are "false claims".
+>
+> I?aki
+>
+> El s?b., 27 ene. 2024 11:19, Simon Urbanek <simon.urbanek at r-project.org>
+> escribi?:
+>
+>> Bob,
+>>
+>> I was not making assertions, I was only dismissing clearly false claims:
+>> CRAN did NOT generate the file in question, it is not a ZIP file trojan as
+>> indicated by the AV flags and content inspection did not reveal any other
+>> streams than what is usual in pdflatex output. The information about the
+>> alleged malware was terribly vague and incomplete to put it mildly so if
+>> you have any additional forensic information that sheds more light on
+>> whether this was a malware or not, it would be welcome. If it was indeed
+>> one, knowing what kind would help to see how any other instances could be
+>> detected. Please contact the CRAN team if you have any such information and
+>> we can take it from there.
+>>
+>> As you hinted yourself - there is no such thing as absolute safety - as
+>> the webp exploits have illustrated very clearly a simple image can be
+>> malware and the only read defense is to keep your software up to date.
+>>
+>> Cheers,
+>> Simon
+>>
+>>
+>>
+>> > On Jan 27, 2024, at 9:52 PM, Bob Rudis <bob at rud.is> wrote:
+>> >
+>> > The current one on CRAN does get flagged for some low-level Sigma rules
+>> b/c of one of way a few URLs interact. I don't know if f-secure is pedantic
+>> enough to call that malicious (it probably is, though). The *current* PDF
+>> is "fine".
+>> >
+>> > There is a major problem with the 2020 version. The file I?aki's URL
+>> matches the PDF that I grabbed from the Wayback Machine for the 2020 PDF
+>> from that URL.
+>> >
+>> > Simon's assertion about this *2020* file is flat out wrong. It's very
+>> bad.
+>> >
+>> > Two VT sandboxes used Adobe Acrobat Reader to open the PDF and the PDF
+>> seems to either had malicious JavaScript or had been crafted sufficiently
+>> to caused a buffer overflow in Reader that then let it perform other
+>> functions on those sandboxes.
+>> >
+>> > They are most certainly *not* false positives, and dismissing that
+>> outright is not great.
+>> >
+>> > I'm not going to check every 2020 PDF from CRAN, but this is a big
+>> signal to me there was an issue *somewhere* in that time period.
+>> >
+>> > I do not know what cran.r-project.org resolved to for the Common Crawl
+>> at that date (which is where archive.org picked it up to archive for the
+>> 2020 PDF version). I highly doubt the Common Crawl DNS resolution process
+>> was spoofed _just for that PDF URL_, but it may have been for CRAN in
+>> general or just "in general" during that crawl period.
+>> >
+>> > It is also possible some malware hit CRAN during portions of that time
+>> period and infected more than one PDF.
+>> >
+>> > But, outright suggesting there is no issue was not the way to go, here.
+>> And, someone should likely at least poke at more 2020 PDFs from CRAN
+>> vignette builds (perhaps just the ones built that were JSS articles?it's
+>> possible the header image sourced at that time was tampered with during
+>> some time window, since image decoding issues have plagued Adobe Reader in
+>> buffer overflow land for a long while).
+>> >
+>> > - boB
+>> >
+>> >
+>> > On Thu, Jan 25, 2024 at 9:44?PM Simon Urbanek <
+>> simon.urbanek at r-project.org> wrote:
+>> > I?aki,
+>> >
+>> > I think you got it backwards in your conclusions: CRAN has not
+>> generated that PDF file (and Windows machines are not even involved here),
+>> it is the contents of a contributed package, so CRAN itself is not
+>> compromised. Also it is far from clear that it is really a malware - in
+>> fact it's certainly NOT what the website you linked claims as those tags
+>> imply trojans disguising ZIPped executables as PDF, but the file is an
+>> actual valid PDF and not even remotely a ZIP file (in fact is it consistent
+>> with pdflatex output). I looked at the decompressed payload of the PDF and
+>> the only binary payload are embedded fonts so my guess would be that some
+>> byte sequence in the fonts gets detected as false-positive trojan, but
+>> since there is no detail on the report we can just guess. False-positives
+>> are a common problem and this would not be the first one. Further
+>> indication that it's a false-positive is that a simple re-packaging the
+>> streams (i.e. NOT changing the actual PDF contents) make the same file pass
+>> the tests as clean.
+>> >
+>> > Also note that there is a bit of a confusion as the currently released
+>> version (poweRlaw 0.80.0) does not get flagged, so it is only the archived
+>> version (from 2020).
+>> >
+>> > Cheers,
+>> > Simon
+>> >
+>> >
+>> >
+>> > > On 26/01/2024, at 12:02 AM, I?aki Ucar <iucar at fedoraproject.org>
+>> wrote:
+>> > >
+>> > > On Thu, 25 Jan 2024 at 10:13, Colin Gillespie <csgillespie at gmail.com>
+>> wrote:
+>> > >>
+>> > >> Hi All,
+>> > >>
+>> > >> I've had two emails from users in the last 24 hours about malware
+>> > >> around one of my vignettes. A snippet from the last user is:
+>> > >>
+>> > >> ---
+>> > >> I was trying to install a R package that depends on PowerRLaw two
+>> > >> weeks ago.  However my virus protection software F secure did not
+>> > >> allow me to install it from CRAN, while installation from GitHub
+>> > >> worked normally. Virus protection software claimed that
+>> > >> d_jss_paper.pdf is compromised. I asked about this from our IT
+>> support
+>> > >> and they asked it from the company F secure. Now F secure has
+>> analysed
+>> > >> the file and according them it is malware.
+>> > >>
+>> > >> ?Upon analyzing, our analysis indicates that the file you submitted
+>> is
+>> > >> malicious. Hence the verdict will remain
+>> > >
+>> > > See
+>> https://www.virustotal.com/gui/file/9486d99c1c1f2d1b06f0b6c5d27c54d4f6e39d69a91d7fad845f323b0ab88de9/behavior
+>> > >
+>> > > According to the sandboxed analysis, there's something there trying to
+>> > > tamper with the Acrobat installation. It tries several Windows paths.
+>> > > That's not good.
+>> > >
+>> > > The good news is that, if I recreate the vignette from your repo, the
+>> > > file is different, different hash, and it's clean.
+>> > >
+>> > > The bad news is that... this means that CRAN may be compromised. I
+>> > > urge CRAN maintainers to check all the PDF vignettes and scan the
+>> > > Windows machines for viruses.
+>> > >
+>> > > Best,
+>> > > I?aki
+>> > >
+>> > >
+>> > >>
+>> > >> ---
+>> > >>
+>> > >> Other information is:
+>> > >>
+>> > >> * Package in question:
+>> > >> https://cran.r-project.org/web/packages/poweRlaw/index.html
+>> > >> * Package hasn't been updated for three years
+>> > >> * Vignette in question:
+>> > >>
+>> https://cran.r-project.org/web/packages/poweRlaw/vignettes/d_jss_paper.pdf
+>> > >>
+>> > >> CRAN asked me to fix
+>> > >> https://cran.r-project.org/web/checks/check_results_poweRlaw.html a
+>> > >> couple of days ago - which I'm in the process of doing.
+>> > >>
+>> > >> Any ideas?
+>> > >>
+>> > >> Thanks
+>> > >> Colin
+>> > >>
+>> > >> ______________________________________________
+>> > >> R-package-devel at r-project.org mailing list
+>> > >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>> > >
+>> > >
+>> > >
+>> > > --
+>> > > I?aki ?car
+>> > >
+>> >
+>> > ______________________________________________
+>> > R-package-devel at r-project.org mailing list
+>> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Sat Jan 27 14:05:26 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sat, 27 Jan 2024 16:05:26 +0300
+Subject: [R-pkg-devel] Possible malware(?) in a vignette
+In-Reply-To: <CAA-FpKWZOipv4P68eVOMj3sfvTYYcgkMJHsrCxotFn5z4WNWGA@mail.gmail.com>
+References: <CADbDLZnW6Rgk+Z2161yPOFBSMD+fHApPmRyrQLmgywGOTGaBVw@mail.gmail.com>
+ <CALEXWq0vHqYeB_UT7A_oG+um1HqSP1WBYa7D3Ls+3yWQ_DCQdQ@mail.gmail.com>
+ <0EC824A6-0025-4FC2-9DE3-6364AC1F22D9@R-project.org>
+ <CAA-FpKU=1nJ2W1TjHQt8GGCtd4Dt9STrePXw9igGE9_P+xW-vw@mail.gmail.com>
+ <5020FB99-7AD6-47C6-8DB0-C4D909FFBDD6@R-project.org>
+ <CALEXWq1Su3_saZg3MXP3EHKXsWJdoNibjMkYYHKJW=yGs2BQrQ@mail.gmail.com>
+ <32A265A1-5973-4D41-9DE2-03E71020E25D@R-project.org>
+ <CAA-FpKWZOipv4P68eVOMj3sfvTYYcgkMJHsrCxotFn5z4WNWGA@mail.gmail.com>
+Message-ID: <1BCD3265-A018-4FEC-8188-676660CFCE2A@disroot.org>
+
+Apologies for being insufficiently clear. By "a file straight from NOAA" I meant a completely different PDF, <https://www.ncei.noaa.gov/sites/default/files/2022-06/woa18documentation.pdf>, that gives the same SHA-256 hash whether downloaded by VirusTotal <https://www.virustotal.com/gui/url/ebff41f79720bcd2bbccf343874a584f2b3d78f3cd390a19f11b7576c3a38ad1?nocache=1> or me, comes from a supposedly trusted source, and still makes Acrobat Reader behave like it's infected, show a crashed Firefox on the screenshot and drop a number of scary-looking files. Surely there will be a difference between reading an infected file and a non-infected file?
+
+27 ?????? 2024 ?. 15:10:53 GMT+03:00, Bob Rudis <bob at rud.is> ?????:
+>Ivan: do you know what mirror NOAA used at that time to get that version of
+>the package? Or, did they pull it "directly" from cran.r-project.org
+>(scare-quotes only b/c DNS spoofing is and has been a pretty solid attack
+>vector)?
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Sat Jan 27 15:35:13 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Sun, 28 Jan 2024 03:35:13 +1300
+Subject: [R-pkg-devel] Possible malware(?) in a vignette
+In-Reply-To: <CAA-FpKWZOipv4P68eVOMj3sfvTYYcgkMJHsrCxotFn5z4WNWGA@mail.gmail.com>
+References: <CADbDLZnW6Rgk+Z2161yPOFBSMD+fHApPmRyrQLmgywGOTGaBVw@mail.gmail.com>
+ <CALEXWq0vHqYeB_UT7A_oG+um1HqSP1WBYa7D3Ls+3yWQ_DCQdQ@mail.gmail.com>
+ <0EC824A6-0025-4FC2-9DE3-6364AC1F22D9@R-project.org>
+ <CAA-FpKU=1nJ2W1TjHQt8GGCtd4Dt9STrePXw9igGE9_P+xW-vw@mail.gmail.com>
+ <5020FB99-7AD6-47C6-8DB0-C4D909FFBDD6@R-project.org>
+ <CALEXWq1Su3_saZg3MXP3EHKXsWJdoNibjMkYYHKJW=yGs2BQrQ@mail.gmail.com>
+ <32A265A1-5973-4D41-9DE2-03E71020E25D@R-project.org>
+ <CAA-FpKWZOipv4P68eVOMj3sfvTYYcgkMJHsrCxotFn5z4WNWGA@mail.gmail.com>
+Message-ID: <429E3EFD-E570-434A-8DC8-98DDF27F37D8@R-project.org>
+
+First, let's take a step back, because I think there is way too much confusion here.
+
+The original report was about the vignette from the poweRlaw package version 0.70.6. That package contains a vignette file d_jss_paper.pdf with the SHA256 hash 9486d99c1c1f2d1b06f0b6c5d27c54d4f6e39d69a91d7fad845f323b0ab88de9 (md5 e0439db551e1d34e9bf8713fca27887b). This is the same file that would be available for download from the web view until the new version was published. However, I assume we are talking about the same file based on the fact that I?aki's VirusTotal URL has exactly the same hash, i.e., web view and the package are identical (I also checked the other hashes just to be really sure). That's why I think we're barking up the wrong tree here since this is not about cache poisoning, file swaps or anything like that - the file has never been modified - it is the same file that has been submitted to CRAN in 2020.
+
+That's why I was saying that this most likely has nothing to do with CRAN at all, but rather the question is if that old file has included some malware for the last 4 years or if simply the AV software is misclassifying due to a false-positive detection. I'm not a security expert, but based on the little information available and inspection of the streams I came to the conclusion that it's likely a false-positive. The main reason that made me think so was that submitting the exact same *identical* PDF payload with just one-byte change to the /ID (which is functionally not used by Acrobat) results in the file NOT being flagged as malicious by VirusTotal by any of the security vendors. That said, I'm not a security expert, so I may be wrong or I'm missing something, that's why I was asking for someone with more expertise to actually look at the file as opposed to just trusting auto-generated reports that may be wrong. But that is not beyond my power.
+
+(Also if it turns out that the file did contain malware, it would be good to know what we can do - for example, nowadays we are re-compressing streams and/or filtering through GS so one could imagine that it could be also effective at removing PDF malware - if it is real.)
+
+More responses inline.
+
+
+> On Jan 28, 2024, at 1:10 AM, Bob Rudis <bob at rud.is> wrote:
+> 
+> Simon: Is there a historical record of the hashes of just the PDFs
+> that show up in the CRAN web view?
+> 
+
+Not the website, but hashes are recorded in the packages - so you can verify that the file has not changed for years (I can directly confirm it has not changed as far back as May 2021).
+
+
+> Ivan: do you know what mirror NOAA used at that time to get that version of
+> the package? Or, did they pull it "directly" from cran.r-project.org
+> (scare-quotes only b/c DNS spoofing is and has been a pretty solid attack
+> vector)?
+> 
+> I've asked the infosec community if anyone has VT Enterprise to do a
+> historical search on any PDFs that come directly from cran.r-project.org (I
+> don't have VT Enterprise). It is possible there are other PDFs from that
+> timeframe with similar issues (again, not saying CRAN had any issues; this
+> could still be crawler cache poisoning).
+> 
+> I don't know if any university folks have grad student labor to harness,
+> but having a few of them do some archive.org searches for other PDFs in
+> that timeframe, and note the source of the archive (likely Common Crawl) if
+> there are other real issues, that'd be a solid path forward for triage.
+> 
+> The fact that the current PDF on CRAN ? which uses some of the same
+> 7-year-old PDF & JPEG images from ?
+> https://github.com/csgillespie/poweRlaw/tree/main/vignettes ? is not being
+> flagged, means it's likely not an issue with Colin's sources.
+> 
+> Simon: it might be a good idea for all *.r-project.org sites to set up CAA
+> records (
+> https://en.wikipedia.org/wiki/DNS_Certification_Authority_Authorization)
+> since that could help prevent adjacent TLS spoofing.
+> 
+> Also having something running ? https://github.com/SSLMate/certspotter ?
+> can let y'all know if certs are created for *.r-project.org domains. That
+> won't help for well-resourced attacks, but it does add some layers that may
+> give a heads-up for any mid-grade spoofing attacks.
+> 
+
+
+All well meant, but remember that CRAN is mirrored worldwide, we have control pretty much only over the WU master. That said, we can have a look, but DNS changes are not as easy as you would think.
+
+Cheers,
+Simon
+
+
+From jonthegeek @end|ng |rom gm@||@com  Fri Jan 26 12:21:43 2024
+From: jonthegeek @end|ng |rom gm@||@com (Jon Harmon)
+Date: Fri, 26 Jan 2024 05:21:43 -0600
+Subject: [R-pkg-devel] Native pipe in package examples
+Message-ID: <CAAEaqJG9=6j3HwHgvP23F-gip8TyzvzZ6_ArLwvDH7dKBk836w@mail.gmail.com>
+
+See
+https://github.com/r-lib/httr2/blob/main/configure
+and
+https://github.com/r-lib/httr2/blob/main/tools%2Fexamples.R
+
+(and https://r-pkgs.org/misc.html#sec-misc-tools if you're not sure what
+you're looking at).
+
+They use a build-time script to change the examples. It looks like it just
+puts a header on them saying they won't run (and stops them from executing
+in checks, I think?). It'd be interesting to use that trick to actually
+change the code, but probably more trouble than it's worth.
+
+	[[alternative HTML version deleted]]
+
+
