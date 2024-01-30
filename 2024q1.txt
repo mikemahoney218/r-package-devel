@@ -15330,3 +15330,80 @@ change the code, but probably more trouble than it's worth.
 	[[alternative HTML version deleted]]
 
 
+From |kry|ov @end|ng |rom d|@root@org  Sun Jan 28 11:08:27 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sun, 28 Jan 2024 13:08:27 +0300
+Subject: [R-pkg-devel] Possible malware(?) in a vignette
+In-Reply-To: <429E3EFD-E570-434A-8DC8-98DDF27F37D8@R-project.org>
+References: <CADbDLZnW6Rgk+Z2161yPOFBSMD+fHApPmRyrQLmgywGOTGaBVw@mail.gmail.com>
+ <CALEXWq0vHqYeB_UT7A_oG+um1HqSP1WBYa7D3Ls+3yWQ_DCQdQ@mail.gmail.com>
+ <0EC824A6-0025-4FC2-9DE3-6364AC1F22D9@R-project.org>
+ <CAA-FpKU=1nJ2W1TjHQt8GGCtd4Dt9STrePXw9igGE9_P+xW-vw@mail.gmail.com>
+ <5020FB99-7AD6-47C6-8DB0-C4D909FFBDD6@R-project.org>
+ <CALEXWq1Su3_saZg3MXP3EHKXsWJdoNibjMkYYHKJW=yGs2BQrQ@mail.gmail.com>
+ <32A265A1-5973-4D41-9DE2-03E71020E25D@R-project.org>
+ <CAA-FpKWZOipv4P68eVOMj3sfvTYYcgkMJHsrCxotFn5z4WNWGA@mail.gmail.com>
+ <429E3EFD-E570-434A-8DC8-98DDF27F37D8@R-project.org>
+Message-ID: <20240128130827.61c66b08@Tarkus>
+
+There used to be a long analysis in the draft of this e-mail [*], but
+let me cut to the chase.
+
+Even something as simple as replacing the four-byte comment [**] at the
+beginning of the file ("%\xd0\xd4\xc5\xd8" -> "%    ") that keeps the
+file fully readable (!) results in the same behaviour but zero
+detections:
+
+$ sha256sum d_jss_paper*.pdf
+0ae3b229fdd763a0571463dc98e02010752bb0213a672db6826afcd72ccaf291  d_jss_paper1.pdf
+9486d99c1c1f2d1b06f0b6c5d27c54d4f6e39d69a91d7fad845f323b0ab88de9  d_jss_paper.pdf
+$ diff -u <(hd d_jss_paper.pdf) <(hd d_jss_paper1.pdf)
+--- /dev/fd/63  2024-01-28 13:00:43.454419322 +0300
++++ /dev/fd/62  2024-01-28 13:00:43.454419322 +0300
+@@ -1,4 +1,4 @@
+-00000000  25 50 44 46 2d 31 2e 35  0a 25 d0 d4 c5 d8 0a 37  |%PDF-1.5.%.....7|
++00000000  25 50 44 46 2d 31 2e 35  0a 25 20 20 20 20 0a 37  |%PDF-1.5.%    .7|
+ 00000010  37 20 30 20 6f 62 6a 0a  3c 3c 0a 2f 4c 65 6e 67  |7 0 obj.<<./Leng|
+ 00000020  74 68 20 32 36 32 38 20  20 20 20 20 20 0a 2f 46  |th 2628      ./F|
+ 00000030  69 6c 74 65 72 20 2f 46  6c 61 74 65 44 65 63 6f  |ilter /FlateDeco|
+
+https://www.virustotal.com/gui/file/0ae3b229fdd763a0571463dc98e02010752bb0213a672db6826afcd72ccaf291
+
+The scary-looking files and hosts being accessed are just Adobe Reader
+and Chrome behaving in a manner indistinguishable from spyware. Upload
+any PDF file with links in it and you'll see the same picture. Even the
+original report for d_jss_paper.pdf from poweRlaw_0.70.6 says "no
+sandboxes flagged this file as malicious".
+
+I think that the few non-major antivirus products that "detected" the
+original file remembered a low-quality checksum of a different file,
+and this whole thread resulted from a checksum collision. 0x043BC33F
+(71025471) is what, four bytes? Doesn't seem to be a standard CRC-32 or
+the sum of all bytes modulo 2^32, though.
+
+I cannot prove a negative, but I invite infosec people with more PDF
+experience to comment further on the issue.
+
+-- 
+Best regards,
+Ivan
+
+[*] Colin seems to have used the Debian build of TeX Live 2017 to
+generate it, which is non-trivial but possible to reproduce by
+installing it from Debian Snapshots on top of Stretch. The resulting
+file has a different hash (for valid reasons), the same behaviour, but
+zero detections:
+https://www.virustotal.com/gui/file/f7b0e0400167e06970ac61fcadfda29daec1c2ee685d4c9ff805e375bcffc985/behavior
+
+Trying a "binary search" by removing PDF objects or replacing byte
+ranges with ASCII spaces was also a dead end: any change results in no
+detections.
+
+[**] PDF 1.5 specification, section 3.1.2:
+
+>> Comments (other than the %PDF?1.4 and %%EOF comments described in
+>> Section 3.4, ?File Structure?) have no semantics.
+
+https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/pdfreference1.5_v6.pdf#G8.1860480
+
+
