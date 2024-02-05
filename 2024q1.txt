@@ -16743,3 +16743,213 @@ On 2/1/24 7:40 AM, Uwe Ligges wrote:
 >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From @n248 @end|ng |rom corne||@edu  Sat Feb  3 16:38:35 2024
+From: @n248 @end|ng |rom corne||@edu (Satyaprakash Nayak)
+Date: Sat, 3 Feb 2024 10:38:35 -0500
+Subject: [R-pkg-devel] Warnings from upstream C library in CRAN submission
+Message-ID: <CAM3CqvLWwvjNFSo5yqOJK4hK75JRbSMpEHVt9v3MirHALuBUHQ@mail.gmail.com>
+
+Hi
+
+I had a package 'sundialr' which was archived from CRAN. It is an interface
+to some of the solvers in SUNDIALS ODE Solving library. I have fixed the
+issue which was related to emails being forwarded from the maintainer's
+email address.
+
+The repository code can be found at - https://github.com/sn248/sundialr
+
+I have updated the upstream library and now I am getting the following
+warnings from CRAN which are all related to the upstream library. The
+package compiles without any other issues and can be used.
+
+Flavor: r-devel-windows-x86_64
+Check: whether package can be installed, Result: WARNING
+  Found the following significant warnings:
+    ./sundials/sundials/sundials_hashmap.h:26:48: warning: conversion from
+'long long unsigned int' to 'long unsigned int' changes value from
+'14695981039346656037' to '2216829733' [-Woverflow]
+    ./sundials/sundials/sundials_hashmap.h:27:48: warning: conversion from
+'long long unsigned int' to 'long unsigned int' changes value from
+'1099511628211' to '435' [-Woverflow]
+    sundials/sundials/sundials_hashmap.h:26:48: warning: conversion from
+'long long unsigned int' to 'long unsigned int' changes value from
+'14695981039346656037' to '2216829733' [-Woverflow]
+    sundials/sundials/sundials_hashmap.h:27:48: warning: conversion from
+'long long unsigned int' to 'long unsigned int' changes value from
+'1099511628211' to '435' [-Woverflow]
+    sundials/sundials/sundials_profiler.c:71:24: warning: function
+declaration isn't a prototype [-Wstrict-prototypes]
+  See 'd:/RCompile/CRANincoming/R-devel/sundialr.Rcheck/00install.out' for
+details.
+  Used C++ compiler: 'g++.exe (GCC) 12.3.0'
+
+Flavor: r-devel-linux-x86_64-debian-gcc
+Check: whether package can be installed, Result: WARNING
+  Found the following significant warnings:
+    sundials/sundials/sundials_profiler.c:71:41: warning: a function
+declaration without a prototype is deprecated in all versions of C
+[-Wstrict-prototypes]
+  See '/srv/hornik/tmp/CRAN/sundialr.Rcheck/00install.out' for details.
+  Used C++ compiler: 'Debian clang version 17.0.6 (5)'
+
+I am hesitant to change anything in the SUNDIALS library C code because I
+don't understand the consequences of changing anything there.
+
+Any help will be kindly appreciated.
+
+Thank you.
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Sat Feb  3 16:51:23 2024
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Sat, 03 Feb 2024 07:51:23 -0800
+Subject: [R-pkg-devel] 
+ Warnings from upstream C library in CRAN submission
+In-Reply-To: <CAM3CqvLWwvjNFSo5yqOJK4hK75JRbSMpEHVt9v3MirHALuBUHQ@mail.gmail.com>
+References: <CAM3CqvLWwvjNFSo5yqOJK4hK75JRbSMpEHVt9v3MirHALuBUHQ@mail.gmail.com>
+Message-ID: <8A2C1756-E48D-43C9-B51F-1CB047F9FD73@dcn.davis.ca.us>
+
+Type conversions are always a bit risky... this one appears to be likely to corrupt data. If they actually intended to truncate values like this then they should have cast explicitly.
+
+Looks like you need to report this to the SUNDIALS maintainers.
+
+On February 3, 2024 7:38:35 AM PST, Satyaprakash Nayak <sn248 at cornell.edu> wrote:
+>Hi
+>
+>I had a package 'sundialr' which was archived from CRAN. It is an interface
+>to some of the solvers in SUNDIALS ODE Solving library. I have fixed the
+>issue which was related to emails being forwarded from the maintainer's
+>email address.
+>
+>The repository code can be found at - https://github.com/sn248/sundialr
+>
+>I have updated the upstream library and now I am getting the following
+>warnings from CRAN which are all related to the upstream library. The
+>package compiles without any other issues and can be used.
+>
+>Flavor: r-devel-windows-x86_64
+>Check: whether package can be installed, Result: WARNING
+>  Found the following significant warnings:
+>    ./sundials/sundials/sundials_hashmap.h:26:48: warning: conversion from
+>'long long unsigned int' to 'long unsigned int' changes value from
+>'14695981039346656037' to '2216829733' [-Woverflow]
+>    ./sundials/sundials/sundials_hashmap.h:27:48: warning: conversion from
+>'long long unsigned int' to 'long unsigned int' changes value from
+>'1099511628211' to '435' [-Woverflow]
+>    sundials/sundials/sundials_hashmap.h:26:48: warning: conversion from
+>'long long unsigned int' to 'long unsigned int' changes value from
+>'14695981039346656037' to '2216829733' [-Woverflow]
+>    sundials/sundials/sundials_hashmap.h:27:48: warning: conversion from
+>'long long unsigned int' to 'long unsigned int' changes value from
+>'1099511628211' to '435' [-Woverflow]
+>    sundials/sundials/sundials_profiler.c:71:24: warning: function
+>declaration isn't a prototype [-Wstrict-prototypes]
+>  See 'd:/RCompile/CRANincoming/R-devel/sundialr.Rcheck/00install.out' for
+>details.
+>  Used C++ compiler: 'g++.exe (GCC) 12.3.0'
+>
+>Flavor: r-devel-linux-x86_64-debian-gcc
+>Check: whether package can be installed, Result: WARNING
+>  Found the following significant warnings:
+>    sundials/sundials/sundials_profiler.c:71:41: warning: a function
+>declaration without a prototype is deprecated in all versions of C
+>[-Wstrict-prototypes]
+>  See '/srv/hornik/tmp/CRAN/sundialr.Rcheck/00install.out' for details.
+>  Used C++ compiler: 'Debian clang version 17.0.6 (5)'
+>
+>I am hesitant to change anything in the SUNDIALS library C code because I
+>don't understand the consequences of changing anything there.
+>
+>Any help will be kindly appreciated.
+>
+>Thank you.
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-package-devel at r-project.org mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Sat Feb  3 22:52:56 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Sun, 4 Feb 2024 10:52:56 +1300
+Subject: [R-pkg-devel] 
+ Warnings from upstream C library in CRAN submission
+In-Reply-To: <CAM3CqvLWwvjNFSo5yqOJK4hK75JRbSMpEHVt9v3MirHALuBUHQ@mail.gmail.com>
+References: <CAM3CqvLWwvjNFSo5yqOJK4hK75JRbSMpEHVt9v3MirHALuBUHQ@mail.gmail.com>
+Message-ID: <F45FFE41-EF9C-4606-A0F7-84EF8F5055D5@R-project.org>
+
+Satyaprakash,
+
+those are clear bugs in the SUNDIALS library - they assume that "unsigned long" type is 64-bit wide (that assumption is also mentioned in the comments), but there is no such guarantee and on Windows it is only 32-bit wide, so the code has to be changed to replace "unsigned long" with the proper unsigned 64-bit type which is uint64_t. The code is simply wrong and won't work unless those issues are solved, so those are not just warnings but actual errors. It would be also prudent to check the rest of the code in the library for similar incorrect use of the "long" type where 64-bit use was intended.
+
+Cheers,
+Simon
+
+
+> On Feb 4, 2024, at 4:38 AM, Satyaprakash Nayak <sn248 at cornell.edu> wrote:
+> 
+> Hi
+> 
+> I had a package 'sundialr' which was archived from CRAN. It is an interface
+> to some of the solvers in SUNDIALS ODE Solving library. I have fixed the
+> issue which was related to emails being forwarded from the maintainer's
+> email address.
+> 
+> The repository code can be found at - https://github.com/sn248/sundialr
+> 
+> I have updated the upstream library and now I am getting the following
+> warnings from CRAN which are all related to the upstream library. The
+> package compiles without any other issues and can be used.
+> 
+> Flavor: r-devel-windows-x86_64
+> Check: whether package can be installed, Result: WARNING
+>  Found the following significant warnings:
+>    ./sundials/sundials/sundials_hashmap.h:26:48: warning: conversion from
+> 'long long unsigned int' to 'long unsigned int' changes value from
+> '14695981039346656037' to '2216829733' [-Woverflow]
+>    ./sundials/sundials/sundials_hashmap.h:27:48: warning: conversion from
+> 'long long unsigned int' to 'long unsigned int' changes value from
+> '1099511628211' to '435' [-Woverflow]
+>    sundials/sundials/sundials_hashmap.h:26:48: warning: conversion from
+> 'long long unsigned int' to 'long unsigned int' changes value from
+> '14695981039346656037' to '2216829733' [-Woverflow]
+>    sundials/sundials/sundials_hashmap.h:27:48: warning: conversion from
+> 'long long unsigned int' to 'long unsigned int' changes value from
+> '1099511628211' to '435' [-Woverflow]
+>    sundials/sundials/sundials_profiler.c:71:24: warning: function
+> declaration isn't a prototype [-Wstrict-prototypes]
+>  See 'd:/RCompile/CRANincoming/R-devel/sundialr.Rcheck/00install.out' for
+> details.
+>  Used C++ compiler: 'g++.exe (GCC) 12.3.0'
+> 
+> Flavor: r-devel-linux-x86_64-debian-gcc
+> Check: whether package can be installed, Result: WARNING
+>  Found the following significant warnings:
+>    sundials/sundials/sundials_profiler.c:71:41: warning: a function
+> declaration without a prototype is deprecated in all versions of C
+> [-Wstrict-prototypes]
+>  See '/srv/hornik/tmp/CRAN/sundialr.Rcheck/00install.out' for details.
+>  Used C++ compiler: 'Debian clang version 17.0.6 (5)'
+> 
+> I am hesitant to change anything in the SUNDIALS library C code because I
+> don't understand the consequences of changing anything there.
+> 
+> Any help will be kindly appreciated.
+> 
+> Thank you.
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
