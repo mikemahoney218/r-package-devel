@@ -17026,3 +17026,130 @@ wrote:
 	[[alternative HTML version deleted]]
 
 
+From |kry|ov @end|ng |rom d|@root@org  Mon Feb  5 20:42:48 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 5 Feb 2024 22:42:48 +0300
+Subject: [R-pkg-devel] Bioconductor reverse dependency checks for a CRAN
+ package
+In-Reply-To: <26041.9380.865238.237313@rob.eddelbuettel.com>
+References: <20240130185628.347bbaee@arachnoid>
+ <26041.9380.865238.237313@rob.eddelbuettel.com>
+Message-ID: <20240205224248.3e9dec02@Tarkus>
+
+Dear Dirk,
+
+Thank you very much for your help here and over on GitHub!
+
+I have finally managed to get the reverse dependency checks working. It
+took some additional disk space and a few more system dependencies. If
+not for r2u, I would have been stuck for much longer. I really
+appreciate the work that went into packaging all these R packages.
+
+On Tue, 30 Jan 2024 10:32:36 -0600
+Dirk Eddelbuettel <edd at debian.org> wrote:
+
+> For what it is worth, my own go-to for many years has been a VM in
+> which I install 'all packages needed' for the rev.dep to be checked.
+
+This approach seems to be working for me, too. I had initially hoped to
+set something up using CI infrastructure, but there's too many
+dependencies to install in a prepare step and it's too much work to
+make a container image with all dependencies anew every time I want to
+run a reverse dependency check. Easier to just let it run overnight on
+a spare computer.
+
+> Well a few of us maintain packages with quite a tail and cope. Rcpp
+> has 2700, RcppArmadillo have over 100, BH a few hundred. These aren't
+> 'light'.
+
+Maintaining a top-5 CRAN package by in-degree rank
+[10.32614/RJ-2023-060] is indeed a very serious responsibility. 
+
+> I wrote myself the `prrd` package (on CRAN) for this, others have
+> other tools -- Team data.table managed to release 1.5.0 to CRAN today
+> too. So this clearly is possible.
+
+I'll check out `prrd` next, thanks. tools::check_packages_in_dir is
+nice, but it could be faster if I could disable mc.preschedule. 
+
+-- 
+Best regards,
+Ivan
+
+
+From |kry|ov @end|ng |rom d|@root@org  Mon Feb  5 20:47:55 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 5 Feb 2024 22:47:55 +0300
+Subject: [R-pkg-devel] Bioconductor reverse dependency checks for a CRAN
+ package
+In-Reply-To: <DS7PR10MB72772BE31259003B9625B283FA7D2@DS7PR10MB7277.namprd10.prod.outlook.com>
+References: <20240130185628.347bbaee@arachnoid>
+ <DS7PR10MB72772BE31259003B9625B283FA7D2@DS7PR10MB7277.namprd10.prod.outlook.com>
+Message-ID: <20240205224551.0304cb8c@Tarkus>
+
+On Tue, 30 Jan 2024 16:24:40 +0000
+Martin Morgan <mtmorgan.xyz at gmail.com> wrote:
+
+> BiocManager (the recommended way to install Bioconductor packages) at
+> the end of the day does essentially install.packages(repos =
+> BiocManager::repositories()), ensuring that the right versions of
+> Bioconductor packages are installed for the version of R in use.
+
+That's great to know, thanks! I think I will use BiocManager::install
+for now, both because it uses the correct repositories and because it
+doesn't forcibly reinstall the packages I am asking for. With bspm, I
+can run BiocManager::install(all_the_dependencies) and have the system
+perform the least amount of work required to reach the desired state.
+
+-- 
+Best regards,
+Ivan
+
+
+From |kry|ov @end|ng |rom d|@root@org  Mon Feb  5 21:19:31 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 5 Feb 2024 23:19:31 +0300
+Subject: [R-pkg-devel] Bioconductor reverse dependency checks for a CRAN
+ package
+In-Reply-To: <LO0P265MB6325302A53C8AC7779673481AE7D2@LO0P265MB6325.GBRP265.PROD.OUTLOOK.COM>
+References: <20240130185628.347bbaee@arachnoid>
+ <51003fa4-f72e-4073-976b-74fe38f63978@gmail.com>
+ <CAA-ibayfuo+-3J_GSAinVOGvsoGbMM-k2DMZoHZ1iMu1O6f3NA@mail.gmail.com>
+ <LO0P265MB6325302A53C8AC7779673481AE7D2@LO0P265MB6325.GBRP265.PROD.OUTLOOK.COM>
+Message-ID: <20240205231931.44f1f7e8@Tarkus>
+
+Thank you Georgi Boshnakov, Ben Bolker, and Diego Hernang?mez Herrero
+for introducing me to `revdepcheck`!
+
+On Tue, 30 Jan 2024 12:38:57 -0500
+Ben Bolker <bbolker at gmail.com> wrote:
+
+> I have had a few issues with it 
+> <https://github.com/r-lib/revdepcheck/issues/330> but overall it's
+> been very helpful.
+
+Indeed that looks perplexing. Writable .Library can also cause problems
+for people running R-svn built in their home directories without
+R_LIBS_USER set when they check their packages without Suggests.
+I'm also relying on .Library.site for the dependencies of the reverse
+dependencies. So far, my setup seems to be working as intended, but I'll
+keep this issue in mind.
+
+On Tue, 30 Jan 2024 18:57:41 +0100
+Diego Hernang?mez Herrero <diego.hernangomezherrero at gmail.com> wrote:
+
+> Haven?t tried with a package with such an amount of revdeps, but my
+> approach is revdepcheck in GH actions and commiting the result to the
+> repo (that is somehow similar to the docker approach if you host the
+> package in GitHub).
+
+Great to know that reverse dependency checks can run in CI! I think
+I'll keep a stateful virtual machine for now, because otherwise I would
+need to find space for 4 to 32 gigabytes of cache somewhere (or download
+everything from the repository mirrors every time).
+
+-- 
+Best regards,
+Ivan
+
+
