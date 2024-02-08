@@ -17153,3 +17153,121 @@ Best regards,
 Ivan
 
 
+From |kry|ov @end|ng |rom d|@root@org  Tue Feb  6 08:37:35 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 6 Feb 2024 10:37:35 +0300
+Subject: [R-pkg-devel] new maintainer for CRAN package XML
+In-Reply-To: <f6c68c43-54d1-4dde-a394-cc0263457133@statistik.tu-dortmund.de>
+References: <f6c68c43-54d1-4dde-a394-cc0263457133@statistik.tu-dortmund.de>
+Message-ID: <20240206103735.21fe6875@Tarkus>
+
+Dear Uwe Ligges,
+
+On Mon, 22 Jan 2024 15:50:44 +0100
+Uwe Ligges <ligges at statistik.tu-dortmund.de> wrote:
+
+> So we are looking for a person volunteering to take over 'XML'.
+> Please let us know if you are interested.
+
+Unless someone else has been discussing this with CRAN in private or
+had a package depending on XML and was planning to step up but forgot,
+I would like to volunteer.
+
+I'm assuming that the Omegahat page is best preserved in its current
+form for historical reasons, so instead I have prepared a Git
+repository and a page with an option to file issues on the Codeberg
+forge: https://codeberg.org/aitap/XML
+
+With the help of the amazing list members, I have also set up a virtual
+machine to run the reverse dependency checks, so it should be possible
+to avoid immediate breakage if I have to make any changes.
+
+That's the theory, at least.
+
+(Also, thank you for your reply to my question!)
+
+-- 
+Best regards,
+Ivan
+
+
+From v|ncentv@nhee@ @end|ng |rom gm@||@com  Tue Feb  6 18:27:32 2024
+From: v|ncentv@nhee@ @end|ng |rom gm@||@com (Vincent van Hees)
+Date: Tue, 6 Feb 2024 18:27:32 +0100
+Subject: [R-pkg-devel] r-oldrel-linux- not in CRAN checks?
+Message-ID: <CALnEB15-U1KNKhPdiNYJi8182kGM2hm2JR8uBSmF=Nn_UGQKLw@mail.gmail.com>
+
+Hello,
+
+I noticed that there is no r-oldrel-linux-x86_64... on the CRAN
+package results page. Does this mean that CRAN checks no longer run on
+old Debian releases?
+
+The reason for asking this is that I am struggling to install Rfast on
+Ubuntu 18, which made me wonder whether CRAN/R community no longer
+support Ubuntu 18? For details see:
+https://github.com/RfastOfficial/Rfast/issues/99
+
+Thanks,
+
+Vincent
+
+
+From |kry|ov @end|ng |rom d|@root@org  Tue Feb  6 21:34:37 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 6 Feb 2024 23:34:37 +0300
+Subject: [R-pkg-devel] r-oldrel-linux- not in CRAN checks?
+In-Reply-To: <CALnEB15-U1KNKhPdiNYJi8182kGM2hm2JR8uBSmF=Nn_UGQKLw@mail.gmail.com>
+References: <CALnEB15-U1KNKhPdiNYJi8182kGM2hm2JR8uBSmF=Nn_UGQKLw@mail.gmail.com>
+Message-ID: <20240206233437.30bf182b@Tarkus>
+
+? Tue, 6 Feb 2024 18:27:32 +0100
+Vincent van Hees <vincentvanhees at gmail.com> ?????:
+
+> For details see:
+> https://github.com/RfastOfficial/Rfast/issues/99
+
+GitHub processed your plain text description of the problem as if it
+was Markdown and among other things ate the text that used to be there
+between angle brackets:
+
+>     #include
+>              ^~~~~~~~~~~
+
+By digging through the raw source code of the issue at
+https://api.github.com/repos/RfastOfficial/Rfast/issues/99 it is
+possible to find out which header was missing for Rfast:
+
+> ../inst/include/Rfast/parallel.h:20:10:fatal error: tion: No such
+> file or directory
+>     #include <execution>
+>              ^~~~~~~~~~~
+>    compilation terminated.
+
+Indeed, <execution> is a C++17 header [1]. While g++ version
+7.5.0-3ubuntu1~18.04 seems to accept --std=c++17 without complaint, its
+libstdc++-7-dev package is missing this header. Moreover, there's still
+no <execution> in libstdc++-8-dev. I think that you need libstdc++-9
+for that to work, which is not in Bionic; older versions aren't
+C++17-compliant enough to compile Rfast, and C++17 is listed in the
+SystemRequirements of the package.
+
+Installing clang-10 and editing Makeconf to use clang++-10 instead of
+g++ seems to let the compilation proceed. In order to successfully link
+the resulting shared object, I also had to edit Makeconf to specify
+-L/usr/lib/gcc/x86_64-linux-gnu/7 when linking -lgfortran.
+
+If you plan to use this in production, be very careful. I don't know
+about binary compatibility guarantees between g++-7 and clang++-10, so
+you might have to recompile every C++-using R package from source with
+clang++-10 in order to avoid hard-to-debug problems when using them
+together. (It might also work fine. That's the worst thing about such
+problems.)
+
+-- 
+Best regards,
+Ivan
+
+[1] https://en.cppreference.com/w/cpp/header/execution
+
+
