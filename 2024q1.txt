@@ -17271,3 +17271,158 @@ Ivan
 [1] https://en.cppreference.com/w/cpp/header/execution
 
 
+From v|ncentv@nhee@ @end|ng |rom gm@||@com  Wed Feb  7 09:15:48 2024
+From: v|ncentv@nhee@ @end|ng |rom gm@||@com (Vincent van Hees)
+Date: Wed, 7 Feb 2024 09:15:48 +0100
+Subject: [R-pkg-devel] r-oldrel-linux- not in CRAN checks?
+In-Reply-To: <20240206233437.30bf182b@Tarkus>
+References: <CALnEB15-U1KNKhPdiNYJi8182kGM2hm2JR8uBSmF=Nn_UGQKLw@mail.gmail.com>
+ <20240206233437.30bf182b@Tarkus>
+Message-ID: <CALnEB15t3OzUi1j+7Fp-o6Er_2rKrXrnKvuWeLayB1J5xBZEYg@mail.gmail.com>
+
+Thanks Ivan, In that case I will conclude that it is time to upgrade my
+Ubuntu 18 machine. I just wasn't sure whether there is still a need for
+keeping my own package Ubuntu 18 compatible, but if dependencies like Rfast
+do not do it and if it is even not in the CRAN checks anymore then there is
+also limited value in me making the effort.
+
+I have now fixed the message formatting in that issue just in case Rfast
+maintainers want to have a look at it.
+
+Vincent
+
+Op di 6 feb. 2024 21:34 schreef Ivan Krylov <ikrylov at disroot.org>:
+
+> ? Tue, 6 Feb 2024 18:27:32 +0100
+> Vincent van Hees <vincentvanhees at gmail.com> ?????:
+>
+> > For details see:
+> > https://github.com/RfastOfficial/Rfast/issues/99
+>
+> GitHub processed your plain text description of the problem as if it
+> was Markdown and among other things ate the text that used to be there
+> between angle brackets:
+>
+> >     #include
+> >              ^~~~~~~~~~~
+>
+> By digging through the raw source code of the issue at
+> https://api.github.com/repos/RfastOfficial/Rfast/issues/99 it is
+> possible to find out which header was missing for Rfast:
+>
+> > ../inst/include/Rfast/parallel.h:20:10:fatal error: tion: No such
+> > file or directory
+> >     #include <execution>
+> >              ^~~~~~~~~~~
+> >    compilation terminated.
+>
+> Indeed, <execution> is a C++17 header [1]. While g++ version
+> 7.5.0-3ubuntu1~18.04 seems to accept --std=c++17 without complaint, its
+> libstdc++-7-dev package is missing this header. Moreover, there's still
+> no <execution> in libstdc++-8-dev. I think that you need libstdc++-9
+> for that to work, which is not in Bionic; older versions aren't
+> C++17-compliant enough to compile Rfast, and C++17 is listed in the
+> SystemRequirements of the package.
+>
+> Installing clang-10 and editing Makeconf to use clang++-10 instead of
+> g++ seems to let the compilation proceed. In order to successfully link
+> the resulting shared object, I also had to edit Makeconf to specify
+> -L/usr/lib/gcc/x86_64-linux-gnu/7 when linking -lgfortran.
+>
+> If you plan to use this in production, be very careful. I don't know
+> about binary compatibility guarantees between g++-7 and clang++-10, so
+> you might have to recompile every C++-using R package from source with
+> clang++-10 in order to avoid hard-to-debug problems when using them
+> together. (It might also work fine. That's the worst thing about such
+> problems.)
+>
+> --
+> Best regards,
+> Ivan
+>
+> [1] https://en.cppreference.com/w/cpp/header/execution
+>
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Wed Feb  7 12:56:05 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 7 Feb 2024 05:56:05 -0600
+Subject: [R-pkg-devel] r-oldrel-linux- not in CRAN checks?
+In-Reply-To: <CALnEB15t3OzUi1j+7Fp-o6Er_2rKrXrnKvuWeLayB1J5xBZEYg@mail.gmail.com>
+References: <CALnEB15-U1KNKhPdiNYJi8182kGM2hm2JR8uBSmF=Nn_UGQKLw@mail.gmail.com>
+ <20240206233437.30bf182b@Tarkus>
+ <CALnEB15t3OzUi1j+7Fp-o6Er_2rKrXrnKvuWeLayB1J5xBZEYg@mail.gmail.com>
+Message-ID: <26051.28629.413313.133095@rob.eddelbuettel.com>
+
+
+On 7 February 2024 at 09:15, Vincent van Hees wrote:
+| Thanks Ivan, In that case I will conclude that it is time to upgrade my
+| Ubuntu 18 machine. I just wasn't sure whether there is still a need for
+| keeping my own package Ubuntu 18 compatible, but if dependencies like Rfast
+| do not do it and if it is even not in the CRAN checks anymore then there is
+| also limited value in me making the effort.
+
+I think that is a good conclusion.  A few more observations:
+
+- for #r2u I package / build all of CRAN for Ubuntu (both 20.04 and 22.04),
+  there are a handful of CRAN packages I cannot build on Ubuntu 20.04 (!!!)
+  because they use C++20 which the default compiler on 20.04 does not support
+
+- in my dayjob (also behind one large CRAN package I maintain) we had to move
+  all CI jobs from 20.04 to 22.04 for the same reason. I think this will me
+  more, not less, common.
+
+- your premise in your initial email was not quite supported by either
+  "Writing R Extensions" nor the "CRAN Repository Policy": Neither stipulates
+  a minimum 'old' environment.
+
+FWIW I am a fairly happy camper with 22.04 for deployment, 23.10 for my use
+and will likely move to 22.04 fairly soon this summer after it is released.
+
+Cheers, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From m@rc|njurek1988 @end|ng |rom gm@||@com  Wed Feb  7 15:40:44 2024
+From: m@rc|njurek1988 @end|ng |rom gm@||@com (Marcin Jurek)
+Date: Wed, 7 Feb 2024 08:40:44 -0600
+Subject: [R-pkg-devel] failing CRAN checks due to problems with dependencies
+Message-ID: <CAKpFkB0ebZnhNbk2qaVOXW3Sny+V1NAs4fE6VA9hWDO==SrXBg@mail.gmail.com>
+
+Dear community,
+
+I've been trying to submit an update to my GPvecchia package recently. This
+morning I was notified that my package didn't pass incoming checks. When I
+looked at the log this was the problem:
+
+* checking package dependencies ... ERROR
+Packages required but not available: 'sparseinv', 'GpGp'* checking
+package dependencies ... ERROR
+
+Packages required but not available: 'sparseinv', 'GpGp'
+
+Like my package, these have been on CRAN for a while now and still seem to
+be. However they both report an error in their respective CRAN checks, but
+it's a weird one.
+
+This is taken from GpGp checks but it's similar for sparseinv:
+
+Result: ERROR  Packages required but not available: 'Rcpp', 'FNN',
+'RcppArmadillo' Packages suggested but not available for checking:
+'fields', 'rmarkdown', 'testthat', 'maptools' See section ?The DESCRIPTION
+file? in the ?Writing R Extensions?
+
+I'm not sure how to proceed. I know the maintainer of the GpGp package but
+I'm not sure what to alert him to if Rcpp does not work.
+
+I really appreciate your help.
+
+Marcin
+
+	[[alternative HTML version deleted]]
+
+
