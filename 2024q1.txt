@@ -17426,3 +17426,967 @@ Marcin
 	[[alternative HTML version deleted]]
 
 
+From d@v|dhughjone@ @end|ng |rom gm@||@com  Thu Feb  8 10:24:09 2024
+From: d@v|dhughjone@ @end|ng |rom gm@||@com (David Hugh-Jones)
+Date: Thu, 8 Feb 2024 09:24:09 +0000
+Subject: [R-pkg-devel] Package failing reverse dependency checks
+Message-ID: <CAARY7kgUtrKJh9ukw_iCv7DMY3+9Mdyq+D3NO0366M_fnsZjXA@mail.gmail.com>
+
+Hi all,
+
+I'm trying to upload a new version of my "huxtable" package. It is
+currently failing reverse dependency checks for two packages (homnormal and
+RSStest). The relevant failures are below.
+
+I got this failure one time, and fixed the problem, which relates to
+mistakenly relying on the Suggested: knitr package (see here for the
+commit: https://github.com/hughjonesd/huxtable/commit/5a3edc). After the
+commit, reverse dependency checks for homnormal and RSStest pass on my
+machine, when testing either with revdepcheck::revdep_check or
+tools::check_packages_in_dir, and even when knitr is not installed. But,
+after I uploaded the new package to CRAN, the same failure recurred.
+
+My new release candidate had the same version number as the previous one
+(which had failed the revdep check, and therefore not been published on
+CRAN). Is it possible that CRAN just tested the old version again?
+
+If not, then can anyone suggest the best way to debug a revdep check on as
+close a setup to the CRAN machines as possible?
+
+Cheers,
+David
+
+Git tag for the last CRAN submission:
+https://github.com/hughjonesd/huxtable/releases/tag/v5.5.4-rc3
+
+Info from the CRAN email:
+--
+Debian: <
+https://win-builder.r-project.org/incoming_pretest/huxtable_5.5.4_20240205_164815/reverseDependencies/summary.txt
+>
+RSStest, homnormal
+
+Log dir: <
+https://win-builder.r-project.org/incoming_pretest/huxtable_5.5.4_20240205_164815/
+>
+The files will be removed after roughly 7 days.
+
+Pretests:
+Windows: <
+https://win-builder.r-project.org/incoming_pretest/huxtable_5.5.4_20240205_164815/Windows/00check.log
+>
+Debian: <
+https://win-builder.r-project.org/incoming_pretest/huxtable_5.5.4_20240205_164815/Debian/00check.log
+>
+--
+Changes to worse in reverse depends:
+
+Package: homnormal
+Check: examples
+New result: ERROR
+  Running examples in ?homnormal-Ex.R? failed
+  The error most likely occurred in:
+
+  > base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+  > ### Name: Brown_Forsythe
+  > ### Title: Brown-Forsythe Test for Homogeniety
+  > ### Aliases: Brown_Forsythe
+  >
+  > ### ** Examples
+  >
+  >     data(FH_data)
+  >    x1=FH_data$SurvivalTime
+  >    x2=FH_data$HospitalNo
+  >    Brown_Forsythe(x1,x2)
+  Error in loadNamespace(x) : there is no package called ?knitr?
+  Calls: Brown_Forsythe ... loadNamespace -> withRestarts -> withOneRestart
+-> doWithOneRestart
+  Execution halted
+
+Package: RSStest
+Check: examples
+New result: ERROR
+  Running examples in ?RSStest-Ex.R? failed
+  The error most likely occurred in:
+
+  > base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+  > ### Name: teststat_MRSS
+  > ### Title: Median Ranked Set Sampling Test
+  > ### Aliases: teststat_MRSS
+  >
+  > ### ** Examples
+  >
+  > x1=matrix(c(1,2.3, 3.4,4.5,5.6,4 ),nrow=3)
+  > x2=matrix(c(2,3.2, 4.2,6.5,4.6,6 ),nrow=3)
+  > teststat_MRSS(x1,x2,tn=1000)
+  Error in loadNamespace(x) : there is no package called ?knitr?
+  Calls: teststat_MRSS ... loadNamespace -> withRestarts -> withOneRestart
+-> doWithOneRestart
+  Execution halted
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Feb  8 11:23:43 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 8 Feb 2024 05:23:43 -0500
+Subject: [R-pkg-devel] Package failing reverse dependency checks
+In-Reply-To: <CAARY7kgUtrKJh9ukw_iCv7DMY3+9Mdyq+D3NO0366M_fnsZjXA@mail.gmail.com>
+References: <CAARY7kgUtrKJh9ukw_iCv7DMY3+9Mdyq+D3NO0366M_fnsZjXA@mail.gmail.com>
+Message-ID: <54fb6fc3-4ac4-45a0-a683-4dd9a866c28f@gmail.com>
+
+On 08/02/2024 4:24 a.m., David Hugh-Jones wrote:
+> Hi all,
+> 
+> I'm trying to upload a new version of my "huxtable" package. It is
+> currently failing reverse dependency checks for two packages (homnormal and
+> RSStest). The relevant failures are below.
+> 
+> I got this failure one time, and fixed the problem, which relates to
+> mistakenly relying on the Suggested: knitr package (see here for the
+> commit: https://github.com/hughjonesd/huxtable/commit/5a3edc). After the
+> commit, reverse dependency checks for homnormal and RSStest pass on my
+> machine, when testing either with revdepcheck::revdep_check or
+> tools::check_packages_in_dir, and even when knitr is not installed. But,
+> after I uploaded the new package to CRAN, the same failure recurred.
+> 
+> My new release candidate had the same version number as the previous one
+> (which had failed the revdep check, and therefore not been published on
+> CRAN). Is it possible that CRAN just tested the old version again?
+
+The CRAN policy on re-submission says "Increasing the version number at 
+each submission reduces confusion so is preferred even when a previous 
+submission was not accepted."
+
+So yes, I think confusion with the previous submission could have happened.
+
+Duncan Murdoch
+
+> 
+> If not, then can anyone suggest the best way to debug a revdep check on as
+> close a setup to the CRAN machines as possible?
+> 
+> Cheers,
+> David
+> 
+> Git tag for the last CRAN submission:
+> https://github.com/hughjonesd/huxtable/releases/tag/v5.5.4-rc3
+> 
+> Info from the CRAN email:
+> --
+> Debian: <
+> https://win-builder.r-project.org/incoming_pretest/huxtable_5.5.4_20240205_164815/reverseDependencies/summary.txt
+>>
+> RSStest, homnormal
+> 
+> Log dir: <
+> https://win-builder.r-project.org/incoming_pretest/huxtable_5.5.4_20240205_164815/
+>>
+> The files will be removed after roughly 7 days.
+> 
+> Pretests:
+> Windows: <
+> https://win-builder.r-project.org/incoming_pretest/huxtable_5.5.4_20240205_164815/Windows/00check.log
+>>
+> Debian: <
+> https://win-builder.r-project.org/incoming_pretest/huxtable_5.5.4_20240205_164815/Debian/00check.log
+>>
+> --
+> Changes to worse in reverse depends:
+> 
+> Package: homnormal
+> Check: examples
+> New result: ERROR
+>    Running examples in ?homnormal-Ex.R? failed
+>    The error most likely occurred in:
+> 
+>    > base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+>    > ### Name: Brown_Forsythe
+>    > ### Title: Brown-Forsythe Test for Homogeniety
+>    > ### Aliases: Brown_Forsythe
+>    >
+>    > ### ** Examples
+>    >
+>    >     data(FH_data)
+>    >    x1=FH_data$SurvivalTime
+>    >    x2=FH_data$HospitalNo
+>    >    Brown_Forsythe(x1,x2)
+>    Error in loadNamespace(x) : there is no package called ?knitr?
+>    Calls: Brown_Forsythe ... loadNamespace -> withRestarts -> withOneRestart
+> -> doWithOneRestart
+>    Execution halted
+> 
+> Package: RSStest
+> Check: examples
+> New result: ERROR
+>    Running examples in ?RSStest-Ex.R? failed
+>    The error most likely occurred in:
+> 
+>    > base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+>    > ### Name: teststat_MRSS
+>    > ### Title: Median Ranked Set Sampling Test
+>    > ### Aliases: teststat_MRSS
+>    >
+>    > ### ** Examples
+>    >
+>    > x1=matrix(c(1,2.3, 3.4,4.5,5.6,4 ),nrow=3)
+>    > x2=matrix(c(2,3.2, 4.2,6.5,4.6,6 ),nrow=3)
+>    > teststat_MRSS(x1,x2,tn=1000)
+>    Error in loadNamespace(x) : there is no package called ?knitr?
+>    Calls: teststat_MRSS ... loadNamespace -> withRestarts -> withOneRestart
+> -> doWithOneRestart
+>    Execution halted
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From ||u|@@rev|||@ @end|ng |rom gm@||@com  Thu Feb  8 11:26:15 2024
+From: ||u|@@rev|||@ @end|ng |rom gm@||@com (=?UTF-8?Q?Llu=C3=ADs_Revilla?=)
+Date: Thu, 8 Feb 2024 11:26:15 +0100
+Subject: [R-pkg-devel] Package failing reverse dependency checks
+In-Reply-To: <CAARY7kgUtrKJh9ukw_iCv7DMY3+9Mdyq+D3NO0366M_fnsZjXA@mail.gmail.com>
+References: <CAARY7kgUtrKJh9ukw_iCv7DMY3+9Mdyq+D3NO0366M_fnsZjXA@mail.gmail.com>
+Message-ID: <CAN+W6_tZKEYWdkT4Ro+HReHykBO5Pw_7+OP=cCNQ87Y1rex24g@mail.gmail.com>
+
+Hi David,
+
+If you didn't increase the version number it could happen that the old
+version of the package was used (as CRAN might not be aware that there is a
+new version).
+The CRAN repository policy says: "Increasing the version number at each
+submission reduces confusion so is preferred even when a previous
+submission was not accepted".
+In addition, it is easier to track how smooth the submission process is for
+maintainers/developers.
+
+I would recommend submitting again, changing the version number of the
+package.
+Checking on  win builders and macos builders CRAN provides is the closest
+one, other approaches include rhub2.
+
+Best,
+
+Llu?s
+
+
+
+On Thu, 8 Feb 2024 at 10:24, David Hugh-Jones <davidhughjones at gmail.com>
+wrote:
+
+> Hi all,
+>
+> I'm trying to upload a new version of my "huxtable" package. It is
+> currently failing reverse dependency checks for two packages (homnormal and
+> RSStest). The relevant failures are below.
+>
+> I got this failure one time, and fixed the problem, which relates to
+> mistakenly relying on the Suggested: knitr package (see here for the
+> commit: https://github.com/hughjonesd/huxtable/commit/5a3edc). After the
+> commit, reverse dependency checks for homnormal and RSStest pass on my
+> machine, when testing either with revdepcheck::revdep_check or
+> tools::check_packages_in_dir, and even when knitr is not installed. But,
+> after I uploaded the new package to CRAN, the same failure recurred.
+>
+> My new release candidate had the same version number as the previous one
+> (which had failed the revdep check, and therefore not been published on
+> CRAN). Is it possible that CRAN just tested the old version again?
+>
+> If not, then can anyone suggest the best way to debug a revdep check on as
+> close a setup to the CRAN machines as possible?
+>
+> Cheers,
+> David
+>
+> Git tag for the last CRAN submission:
+> https://github.com/hughjonesd/huxtable/releases/tag/v5.5.4-rc3
+>
+> Info from the CRAN email:
+> --
+> Debian: <
+>
+> https://win-builder.r-project.org/incoming_pretest/huxtable_5.5.4_20240205_164815/reverseDependencies/summary.txt
+> >
+> RSStest, homnormal
+>
+> Log dir: <
+>
+> https://win-builder.r-project.org/incoming_pretest/huxtable_5.5.4_20240205_164815/
+> >
+> The files will be removed after roughly 7 days.
+>
+> Pretests:
+> Windows: <
+>
+> https://win-builder.r-project.org/incoming_pretest/huxtable_5.5.4_20240205_164815/Windows/00check.log
+> >
+> Debian: <
+>
+> https://win-builder.r-project.org/incoming_pretest/huxtable_5.5.4_20240205_164815/Debian/00check.log
+> >
+> --
+> Changes to worse in reverse depends:
+>
+> Package: homnormal
+> Check: examples
+> New result: ERROR
+>   Running examples in ?homnormal-Ex.R? failed
+>   The error most likely occurred in:
+>
+>   > base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+>   > ### Name: Brown_Forsythe
+>   > ### Title: Brown-Forsythe Test for Homogeniety
+>   > ### Aliases: Brown_Forsythe
+>   >
+>   > ### ** Examples
+>   >
+>   >     data(FH_data)
+>   >    x1=FH_data$SurvivalTime
+>   >    x2=FH_data$HospitalNo
+>   >    Brown_Forsythe(x1,x2)
+>   Error in loadNamespace(x) : there is no package called ?knitr?
+>   Calls: Brown_Forsythe ... loadNamespace -> withRestarts -> withOneRestart
+> -> doWithOneRestart
+>   Execution halted
+>
+> Package: RSStest
+> Check: examples
+> New result: ERROR
+>   Running examples in ?RSStest-Ex.R? failed
+>   The error most likely occurred in:
+>
+>   > base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+>   > ### Name: teststat_MRSS
+>   > ### Title: Median Ranked Set Sampling Test
+>   > ### Aliases: teststat_MRSS
+>   >
+>   > ### ** Examples
+>   >
+>   > x1=matrix(c(1,2.3, 3.4,4.5,5.6,4 ),nrow=3)
+>   > x2=matrix(c(2,3.2, 4.2,6.5,4.6,6 ),nrow=3)
+>   > teststat_MRSS(x1,x2,tn=1000)
+>   Error in loadNamespace(x) : there is no package called ?knitr?
+>   Calls: teststat_MRSS ... loadNamespace -> withRestarts -> withOneRestart
+> -> doWithOneRestart
+>   Execution halted
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From d@v|dhughjone@ @end|ng |rom gm@||@com  Thu Feb  8 13:52:32 2024
+From: d@v|dhughjone@ @end|ng |rom gm@||@com (David Hugh-Jones)
+Date: Thu, 8 Feb 2024 12:52:32 +0000
+Subject: [R-pkg-devel] Package failing reverse dependency checks
+In-Reply-To: <CAN+W6_tZKEYWdkT4Ro+HReHykBO5Pw_7+OP=cCNQ87Y1rex24g@mail.gmail.com>
+References: <CAARY7kgUtrKJh9ukw_iCv7DMY3+9Mdyq+D3NO0366M_fnsZjXA@mail.gmail.com>
+ <CAN+W6_tZKEYWdkT4Ro+HReHykBO5Pw_7+OP=cCNQ87Y1rex24g@mail.gmail.com>
+Message-ID: <CAARY7kjhTobag34rsZfn0yPPVEJK4US45GO2FegQZxrPguseMA@mail.gmail.com>
+
+Thanks for this tip. Out of interest, is there a way to make win/Mac
+builder run revdep checks?
+
+Writing: wyclif.substack.com
+Book: www.wyclifsdust.com
+
+
+On Thu, 8 Feb 2024 at 10:26, Llu?s Revilla <lluis.revilla at gmail.com> wrote:
+
+> Hi David,
+>
+> If you didn't increase the version number it could happen that the old
+> version of the package was used (as CRAN might not be aware that there is a
+> new version).
+> The CRAN repository policy says: "Increasing the version number at each
+> submission reduces confusion so is preferred even when a previous
+> submission was not accepted".
+> In addition, it is easier to track how smooth the submission process is
+> for maintainers/developers.
+>
+> I would recommend submitting again, changing the version number of the
+> package.
+> Checking on  win builders and macos builders CRAN provides is the closest
+> one, other approaches include rhub2.
+>
+> Best,
+>
+> Llu?s
+>
+>
+>
+> On Thu, 8 Feb 2024 at 10:24, David Hugh-Jones <davidhughjones at gmail.com>
+> wrote:
+>
+>> Hi all,
+>>
+>> I'm trying to upload a new version of my "huxtable" package. It is
+>> currently failing reverse dependency checks for two packages (homnormal
+>> and
+>> RSStest). The relevant failures are below.
+>>
+>> I got this failure one time, and fixed the problem, which relates to
+>> mistakenly relying on the Suggested: knitr package (see here for the
+>> commit: https://github.com/hughjonesd/huxtable/commit/5a3edc). After the
+>> commit, reverse dependency checks for homnormal and RSStest pass on my
+>> machine, when testing either with revdepcheck::revdep_check or
+>> tools::check_packages_in_dir, and even when knitr is not installed. But,
+>> after I uploaded the new package to CRAN, the same failure recurred.
+>>
+>> My new release candidate had the same version number as the previous one
+>> (which had failed the revdep check, and therefore not been published on
+>> CRAN). Is it possible that CRAN just tested the old version again?
+>>
+>> If not, then can anyone suggest the best way to debug a revdep check on as
+>> close a setup to the CRAN machines as possible?
+>>
+>> Cheers,
+>> David
+>>
+>> Git tag for the last CRAN submission:
+>> https://github.com/hughjonesd/huxtable/releases/tag/v5.5.4-rc3
+>>
+>> Info from the CRAN email:
+>> --
+>> Debian: <
+>>
+>> https://win-builder.r-project.org/incoming_pretest/huxtable_5.5.4_20240205_164815/reverseDependencies/summary.txt
+>> >
+>> RSStest, homnormal
+>>
+>> Log dir: <
+>>
+>> https://win-builder.r-project.org/incoming_pretest/huxtable_5.5.4_20240205_164815/
+>> >
+>> The files will be removed after roughly 7 days.
+>>
+>> Pretests:
+>> Windows: <
+>>
+>> https://win-builder.r-project.org/incoming_pretest/huxtable_5.5.4_20240205_164815/Windows/00check.log
+>> >
+>> Debian: <
+>>
+>> https://win-builder.r-project.org/incoming_pretest/huxtable_5.5.4_20240205_164815/Debian/00check.log
+>> >
+>> --
+>> Changes to worse in reverse depends:
+>>
+>> Package: homnormal
+>> Check: examples
+>> New result: ERROR
+>>   Running examples in ?homnormal-Ex.R? failed
+>>   The error most likely occurred in:
+>>
+>>   > base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+>>   > ### Name: Brown_Forsythe
+>>   > ### Title: Brown-Forsythe Test for Homogeniety
+>>   > ### Aliases: Brown_Forsythe
+>>   >
+>>   > ### ** Examples
+>>   >
+>>   >     data(FH_data)
+>>   >    x1=FH_data$SurvivalTime
+>>   >    x2=FH_data$HospitalNo
+>>   >    Brown_Forsythe(x1,x2)
+>>   Error in loadNamespace(x) : there is no package called ?knitr?
+>>   Calls: Brown_Forsythe ... loadNamespace -> withRestarts ->
+>> withOneRestart
+>> -> doWithOneRestart
+>>   Execution halted
+>>
+>> Package: RSStest
+>> Check: examples
+>> New result: ERROR
+>>   Running examples in ?RSStest-Ex.R? failed
+>>   The error most likely occurred in:
+>>
+>>   > base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+>>   > ### Name: teststat_MRSS
+>>   > ### Title: Median Ranked Set Sampling Test
+>>   > ### Aliases: teststat_MRSS
+>>   >
+>>   > ### ** Examples
+>>   >
+>>   > x1=matrix(c(1,2.3, 3.4,4.5,5.6,4 ),nrow=3)
+>>   > x2=matrix(c(2,3.2, 4.2,6.5,4.6,6 ),nrow=3)
+>>   > teststat_MRSS(x1,x2,tn=1000)
+>>   Error in loadNamespace(x) : there is no package called ?knitr?
+>>   Calls: teststat_MRSS ... loadNamespace -> withRestarts -> withOneRestart
+>> -> doWithOneRestart
+>>   Execution halted
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Thu Feb  8 17:37:50 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Thu, 8 Feb 2024 11:37:50 -0500
+Subject: [R-pkg-devel] Changing package maintainers
+Message-ID: <CAL3ufULeTu-pTa_-U+VFbLHeTQ1QSmd9MpOmWRQDu04b3Y4Jrw@mail.gmail.com>
+
+I intend to change the maintainer of my package {sfdep}
+https://cran.r-project.org/package=sfdep.
+Is the process as simple as submitting a new release where the DESCRIPTION
+file changes who has the role of `aut`?
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Thu Feb  8 18:01:11 2024
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Thu, 08 Feb 2024 09:01:11 -0800
+Subject: [R-pkg-devel] Changing package maintainers
+In-Reply-To: <CAL3ufULeTu-pTa_-U+VFbLHeTQ1QSmd9MpOmWRQDu04b3Y4Jrw@mail.gmail.com>
+References: <CAL3ufULeTu-pTa_-U+VFbLHeTQ1QSmd9MpOmWRQDu04b3Y4Jrw@mail.gmail.com>
+Message-ID: <27B4DA86-41D9-4CDC-8676-9E1199E1ADA0@dcn.davis.ca.us>
+
+Are you aware of this [1]? J. Random Lurker may not be a reliable source, and actual CRAN repo maintainers are probably a bit busy...
+
+[1] https://cran.r-project.org/web/packages/policies.html#Submission
+
+On February 8, 2024 8:37:50 AM PST, Josiah Parry <josiah.parry at gmail.com> wrote:
+>I intend to change the maintainer of my package {sfdep}
+>https://cran.r-project.org/package=sfdep.
+>Is the process as simple as submitting a new release where the DESCRIPTION
+>file changes who has the role of `aut`?
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-package-devel at r-project.org mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Thu Feb  8 18:16:47 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Thu, 8 Feb 2024 12:16:47 -0500
+Subject: [R-pkg-devel] Changing package maintainers
+In-Reply-To: <27B4DA86-41D9-4CDC-8676-9E1199E1ADA0@dcn.davis.ca.us>
+References: <CAL3ufULeTu-pTa_-U+VFbLHeTQ1QSmd9MpOmWRQDu04b3Y4Jrw@mail.gmail.com>
+ <27B4DA86-41D9-4CDC-8676-9E1199E1ADA0@dcn.davis.ca.us>
+Message-ID: <CAL3ufU+t-=MKdkG17dq=R5-DsdV7nGXnqQSi9ECu841LUgxmHQ@mail.gmail.com>
+
+I?m sorry? I do not follow.
+
+On Thu, Feb 8, 2024 at 12:01 Jeff Newmiller via R-package-devel <
+r-package-devel at r-project.org> wrote:
+
+> Are you aware of this [1]? J. Random Lurker may not be a reliable source,
+> and actual CRAN repo maintainers are probably a bit busy...
+>
+> [1] https://cran.r-project.org/web/packages/policies.html#Submission
+>
+> On February 8, 2024 8:37:50 AM PST, Josiah Parry <josiah.parry at gmail.com>
+> wrote:
+> >I intend to change the maintainer of my package {sfdep}
+> >https://cran.r-project.org/package=sfdep.
+> >Is the process as simple as submitting a new release where the DESCRIPTION
+> >file changes who has the role of `aut`?
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> >______________________________________________
+> >R-package-devel at r-project.org mailing list
+> >https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+> --
+> Sent from my phone. Please excuse my brevity.
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From jo@h@m@u|r|ch @end|ng |rom gm@||@com  Thu Feb  8 18:31:58 2024
+From: jo@h@m@u|r|ch @end|ng |rom gm@||@com (Joshua Ulrich)
+Date: Thu, 8 Feb 2024 11:31:58 -0600
+Subject: [R-pkg-devel] Changing package maintainers
+In-Reply-To: <CAL3ufULeTu-pTa_-U+VFbLHeTQ1QSmd9MpOmWRQDu04b3Y4Jrw@mail.gmail.com>
+References: <CAL3ufULeTu-pTa_-U+VFbLHeTQ1QSmd9MpOmWRQDu04b3Y4Jrw@mail.gmail.com>
+Message-ID: <CAPPM_gSU9bVUQKYD-dDvcsbVJnDWFt10GCmfyEyFUnZR4TBXXQ@mail.gmail.com>
+
+The process is described in the 6th bullet of the "Source Packages"
+section of the CRAN Policies:
+https://cran.r-project.org/web/packages/policies.html
+
+"When a new maintainer wishes to take over a package, this should be
+accompanied by the written agreement of the previous maintainer
+(unless the package has been formally orphaned)."
+
+So the current maintainer needs to send CRAN an email with the name
+and email address of the new maintainer.
+
+Best,
+Josh
+
+
+On Thu, Feb 8, 2024 at 10:38?AM Josiah Parry <josiah.parry at gmail.com> wrote:
+>
+> I intend to change the maintainer of my package {sfdep}
+> https://cran.r-project.org/package=sfdep.
+> Is the process as simple as submitting a new release where the DESCRIPTION
+> file changes who has the role of `aut`?
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+
+--
+Joshua Ulrich  |  about.me/joshuaulrich
+FOSS Trading  |  www.fosstrading.com
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Thu Feb  8 18:37:44 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Thu, 8 Feb 2024 12:37:44 -0500
+Subject: [R-pkg-devel] Changing package maintainers
+In-Reply-To: <CAPPM_gSU9bVUQKYD-dDvcsbVJnDWFt10GCmfyEyFUnZR4TBXXQ@mail.gmail.com>
+References: <CAL3ufULeTu-pTa_-U+VFbLHeTQ1QSmd9MpOmWRQDu04b3Y4Jrw@mail.gmail.com>
+ <CAPPM_gSU9bVUQKYD-dDvcsbVJnDWFt10GCmfyEyFUnZR4TBXXQ@mail.gmail.com>
+Message-ID: <CAL3ufU+-BjSKDGwir_-7-1U6iu2aUWoRvm2YYb2fC7vJ13S__A@mail.gmail.com>
+
+Much appreciated, Josh! One day I?ll internalize everything in the
+policies.
+
+On Thu, Feb 8, 2024 at 12:32 Joshua Ulrich <josh.m.ulrich at gmail.com> wrote:
+
+> The process is described in the 6th bullet of the "Source Packages"
+> section of the CRAN Policies:
+> https://cran.r-project.org/web/packages/policies.html
+>
+> "When a new maintainer wishes to take over a package, this should be
+> accompanied by the written agreement of the previous maintainer
+> (unless the package has been formally orphaned)."
+>
+> So the current maintainer needs to send CRAN an email with the name
+> and email address of the new maintainer.
+>
+> Best,
+> Josh
+>
+>
+> On Thu, Feb 8, 2024 at 10:38?AM Josiah Parry <josiah.parry at gmail.com>
+> wrote:
+> >
+> > I intend to change the maintainer of my package {sfdep}
+> > https://cran.r-project.org/package=sfdep.
+> > Is the process as simple as submitting a new release where the
+> DESCRIPTION
+> > file changes who has the role of `aut`?
+> >
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+>
+>
+> --
+> Joshua Ulrich  |  about.me/joshuaulrich
+> FOSS Trading  |  www.fosstrading.com
+>
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Thu Feb  8 20:17:28 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 8 Feb 2024 22:17:28 +0300
+Subject: [R-pkg-devel] 
+ failing CRAN checks due to problems with dependencies
+In-Reply-To: <CAKpFkB0ebZnhNbk2qaVOXW3Sny+V1NAs4fE6VA9hWDO==SrXBg@mail.gmail.com>
+References: <CAKpFkB0ebZnhNbk2qaVOXW3Sny+V1NAs4fE6VA9hWDO==SrXBg@mail.gmail.com>
+Message-ID: <20240208221728.5f2132fb@Tarkus>
+
+? Wed, 7 Feb 2024 08:40:44 -0600
+Marcin Jurek <marcinjurek1988 at gmail.com> ?????:
+
+> Packages required but not available: 'Rcpp', 'FNN',
+> 'RcppArmadillo' Packages suggested but not available for checking:
+> 'fields', 'rmarkdown', 'testthat', 'maptools'
+
+One of the machines running the incoming checks was having problems. If
+you followed the failing dependency chain by looking at the CRAN check
+results of the packages described as "not available", you could
+eventually find a package needing compilation (Rcpp or stringi or
+something else), look at the installation log and see Make trying to
+run commands that are completely wrong.
+
+It looked like the path to the compiler was empty:
+https://web.archive.org/web/20240208191430/https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-debian-clang/Rcpp-00install.html
+
+I think that the problems are solved now, so it should be safe to
+increment the version and submit it again.
+
+-- 
+Best regards,
+Ivan
+
+
+From m@rc|njurek1988 @end|ng |rom gm@||@com  Thu Feb  8 20:28:52 2024
+From: m@rc|njurek1988 @end|ng |rom gm@||@com (Marcin Jurek)
+Date: Thu, 8 Feb 2024 13:28:52 -0600
+Subject: [R-pkg-devel] 
+ failing CRAN checks due to problems with dependencies
+In-Reply-To: <20240208221728.5f2132fb@Tarkus>
+References: <CAKpFkB0ebZnhNbk2qaVOXW3Sny+V1NAs4fE6VA9hWDO==SrXBg@mail.gmail.com>
+ <20240208221728.5f2132fb@Tarkus>
+Message-ID: <CAKpFkB14RyjeXqup815=BT1pJ5hU_Hq4_c17ZhtWAy9nk=2uLw@mail.gmail.com>
+
+Ok, this makes sense! I saw that Rcpp was failing the checks too but I
+wasn't sure if I should resubmit or wait. Thanks!
+
+On Thu, Feb 8, 2024 at 1:17?PM Ivan Krylov <ikrylov at disroot.org> wrote:
+
+> ? Wed, 7 Feb 2024 08:40:44 -0600
+> Marcin Jurek <marcinjurek1988 at gmail.com> ?????:
+>
+> > Packages required but not available: 'Rcpp', 'FNN',
+> > 'RcppArmadillo' Packages suggested but not available for checking:
+> > 'fields', 'rmarkdown', 'testthat', 'maptools'
+>
+> One of the machines running the incoming checks was having problems. If
+> you followed the failing dependency chain by looking at the CRAN check
+> results of the packages described as "not available", you could
+> eventually find a package needing compilation (Rcpp or stringi or
+> something else), look at the installation log and see Make trying to
+> run commands that are completely wrong.
+>
+> It looked like the path to the compiler was empty:
+>
+> https://web.archive.org/web/20240208191430/https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-debian-clang/Rcpp-00install.html
+>
+> I think that the problems are solved now, so it should be safe to
+> increment the version and submit it again.
+>
+> --
+> Best regards,
+> Ivan
+>
+
+	[[alternative HTML version deleted]]
+
+
+From ||u|@@rev|||@ @end|ng |rom gm@||@com  Thu Feb  8 20:30:56 2024
+From: ||u|@@rev|||@ @end|ng |rom gm@||@com (=?UTF-8?Q?Llu=C3=ADs_Revilla?=)
+Date: Thu, 8 Feb 2024 20:30:56 +0100
+Subject: [R-pkg-devel] Package failing reverse dependency checks
+In-Reply-To: <CAARY7kjhTobag34rsZfn0yPPVEJK4US45GO2FegQZxrPguseMA@mail.gmail.com>
+References: <CAARY7kgUtrKJh9ukw_iCv7DMY3+9Mdyq+D3NO0366M_fnsZjXA@mail.gmail.com>
+ <CAN+W6_tZKEYWdkT4Ro+HReHykBO5Pw_7+OP=cCNQ87Y1rex24g@mail.gmail.com>
+ <CAARY7kjhTobag34rsZfn0yPPVEJK4US45GO2FegQZxrPguseMA@mail.gmail.com>
+Message-ID: <CAN+W6_t8czysEET7Abd-zdBYBPJ_vpU3paGdiqCj3qcZSfE15Q@mail.gmail.com>
+
+Hi David,
+
+Dependency checks cannot be run on win /Mac builders as far as I know.
+Some packages have more than 2000 packages depending on them.
+It would be too much for the heavily used CRAN's machines.
+
+Best,
+
+Llu?s
+
+On Thu, 8 Feb 2024 at 13:52, David Hugh-Jones <davidhughjones at gmail.com>
+wrote:
+
+> Thanks for this tip. Out of interest, is there a way to make win/Mac
+> builder run revdep checks?
+>
+> Writing: wyclif.substack.com
+> Book: www.wyclifsdust.com
+>
+>
+> On Thu, 8 Feb 2024 at 10:26, Llu?s Revilla <lluis.revilla at gmail.com>
+> wrote:
+>
+>> Hi David,
+>>
+>> If you didn't increase the version number it could happen that the old
+>> version of the package was used (as CRAN might not be aware that there is a
+>> new version).
+>> The CRAN repository policy says: "Increasing the version number at each
+>> submission reduces confusion so is preferred even when a previous
+>> submission was not accepted".
+>> In addition, it is easier to track how smooth the submission process is
+>> for maintainers/developers.
+>>
+>> I would recommend submitting again, changing the version number of the
+>> package.
+>> Checking on  win builders and macos builders CRAN provides is the closest
+>> one, other approaches include rhub2.
+>>
+>> Best,
+>>
+>> Llu?s
+>>
+>>
+>>
+>> On Thu, 8 Feb 2024 at 10:24, David Hugh-Jones <davidhughjones at gmail.com>
+>> wrote:
+>>
+>>> Hi all,
+>>>
+>>> I'm trying to upload a new version of my "huxtable" package. It is
+>>> currently failing reverse dependency checks for two packages (homnormal
+>>> and
+>>> RSStest). The relevant failures are below.
+>>>
+>>> I got this failure one time, and fixed the problem, which relates to
+>>> mistakenly relying on the Suggested: knitr package (see here for the
+>>> commit: https://github.com/hughjonesd/huxtable/commit/5a3edc). After the
+>>> commit, reverse dependency checks for homnormal and RSStest pass on my
+>>> machine, when testing either with revdepcheck::revdep_check or
+>>> tools::check_packages_in_dir, and even when knitr is not installed. But,
+>>> after I uploaded the new package to CRAN, the same failure recurred.
+>>>
+>>> My new release candidate had the same version number as the previous one
+>>> (which had failed the revdep check, and therefore not been published on
+>>> CRAN). Is it possible that CRAN just tested the old version again?
+>>>
+>>> If not, then can anyone suggest the best way to debug a revdep check on
+>>> as
+>>> close a setup to the CRAN machines as possible?
+>>>
+>>> Cheers,
+>>> David
+>>>
+>>> Git tag for the last CRAN submission:
+>>> https://github.com/hughjonesd/huxtable/releases/tag/v5.5.4-rc3
+>>>
+>>> Info from the CRAN email:
+>>> --
+>>> Debian: <
+>>>
+>>> https://win-builder.r-project.org/incoming_pretest/huxtable_5.5.4_20240205_164815/reverseDependencies/summary.txt
+>>> >
+>>> RSStest, homnormal
+>>>
+>>> Log dir: <
+>>>
+>>> https://win-builder.r-project.org/incoming_pretest/huxtable_5.5.4_20240205_164815/
+>>> >
+>>> The files will be removed after roughly 7 days.
+>>>
+>>> Pretests:
+>>> Windows: <
+>>>
+>>> https://win-builder.r-project.org/incoming_pretest/huxtable_5.5.4_20240205_164815/Windows/00check.log
+>>> >
+>>> Debian: <
+>>>
+>>> https://win-builder.r-project.org/incoming_pretest/huxtable_5.5.4_20240205_164815/Debian/00check.log
+>>> >
+>>> --
+>>> Changes to worse in reverse depends:
+>>>
+>>> Package: homnormal
+>>> Check: examples
+>>> New result: ERROR
+>>>   Running examples in ?homnormal-Ex.R? failed
+>>>   The error most likely occurred in:
+>>>
+>>>   > base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+>>>   > ### Name: Brown_Forsythe
+>>>   > ### Title: Brown-Forsythe Test for Homogeniety
+>>>   > ### Aliases: Brown_Forsythe
+>>>   >
+>>>   > ### ** Examples
+>>>   >
+>>>   >     data(FH_data)
+>>>   >    x1=FH_data$SurvivalTime
+>>>   >    x2=FH_data$HospitalNo
+>>>   >    Brown_Forsythe(x1,x2)
+>>>   Error in loadNamespace(x) : there is no package called ?knitr?
+>>>   Calls: Brown_Forsythe ... loadNamespace -> withRestarts ->
+>>> withOneRestart
+>>> -> doWithOneRestart
+>>>   Execution halted
+>>>
+>>> Package: RSStest
+>>> Check: examples
+>>> New result: ERROR
+>>>   Running examples in ?RSStest-Ex.R? failed
+>>>   The error most likely occurred in:
+>>>
+>>>   > base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+>>>   > ### Name: teststat_MRSS
+>>>   > ### Title: Median Ranked Set Sampling Test
+>>>   > ### Aliases: teststat_MRSS
+>>>   >
+>>>   > ### ** Examples
+>>>   >
+>>>   > x1=matrix(c(1,2.3, 3.4,4.5,5.6,4 ),nrow=3)
+>>>   > x2=matrix(c(2,3.2, 4.2,6.5,4.6,6 ),nrow=3)
+>>>   > teststat_MRSS(x1,x2,tn=1000)
+>>>   Error in loadNamespace(x) : there is no package called ?knitr?
+>>>   Calls: teststat_MRSS ... loadNamespace -> withRestarts ->
+>>> withOneRestart
+>>> -> doWithOneRestart
+>>>   Execution halted
+>>>
+>>>         [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>
+>>
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Thu Feb  8 20:57:34 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 8 Feb 2024 13:57:34 -0600
+Subject: [R-pkg-devel] 
+ failing CRAN checks due to problems with dependencies
+In-Reply-To: <CAKpFkB14RyjeXqup815=BT1pJ5hU_Hq4_c17ZhtWAy9nk=2uLw@mail.gmail.com>
+References: <CAKpFkB0ebZnhNbk2qaVOXW3Sny+V1NAs4fE6VA9hWDO==SrXBg@mail.gmail.com>
+ <20240208221728.5f2132fb@Tarkus>
+ <CAKpFkB14RyjeXqup815=BT1pJ5hU_Hq4_c17ZhtWAy9nk=2uLw@mail.gmail.com>
+Message-ID: <26053.12846.819130.786996@rob.eddelbuettel.com>
+
+
+On 8 February 2024 at 13:28, Marcin Jurek wrote:
+| Ok, this makes sense! I saw that Rcpp was failing the checks too but I
+| wasn't sure if I should resubmit or wait. Thanks!
+
+For completeness, it was not caused by Rcpp but rather by a mix on new clang
+and gcc versions which somehow got into each other's way on that machine; and
+this has by now been fixed.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
