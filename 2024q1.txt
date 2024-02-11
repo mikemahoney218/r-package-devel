@@ -18390,3 +18390,394 @@ Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From m@rc|njurek1988 @end|ng |rom gm@||@com  Fri Feb  9 15:59:45 2024
+From: m@rc|njurek1988 @end|ng |rom gm@||@com (Marcin Jurek)
+Date: Fri, 9 Feb 2024 08:59:45 -0600
+Subject: [R-pkg-devel] CRAN uses an old version of clang
+Message-ID: <CAKpFkB07uZUzQP+zB6+6V9kuQ2X-GGq_J_1VZ2YjoAKTqdznmA@mail.gmail.com>
+
+Dear community,
+
+I recently submitted an update to my package. It previous version relied on
+Boost for Bessel and gamma functions but a colleague pointed out to me that
+they are included in the standard library beginning with the C++17
+standard.
+
+I don't have access to a Mac so I tested my package on Rhub and on my local
+Linux and everything ran fine. However, it seems like CRAN is using an old
+version of Clang (14.03 vs 16 being the newest one) and it complained about
+these Bessel functions. I'm pasting the installation log below. I wonder if
+this is something I could hope to explain in cran-comments and have my
+package accepted as is?
+
+I could also revert to using Boost although I only need it for these
+special functions and things are much cleaner without it. In addition, one
+of the main reasons for this update was related to some warnings Boost
+started throwing.
+
+Really appreciate the help!
+
+* installing *source* package ?GPvecchia? ...
+** package ?GPvecchia? successfully unpacked and MD5 sums checked
+** using staged installation
+** libs
+using C++ compiler: ?Apple clang version 14.0.3 (clang-1403.0.22.14.1)?
+using C++17
+using SDK: ?MacOSX11.3.sdk?
+clang++ -arch x86_64 -std=gnu++17
+-I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG
+-I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/Rcpp/include'
+-I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/RcppArmadillo/include'
+-I/opt/R/x86_64/include     -fPIC  -falign-functions=64 -Wall -g -O2
+-c Esqe.cpp -o Esqe.o
+clang++ -arch x86_64 -std=gnu++17
+-I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG
+-I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/Rcpp/include'
+-I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/RcppArmadillo/include'
+-I/opt/R/x86_64/include     -fPIC  -falign-functions=64 -Wall -g -O2
+-c Matern.cpp -o Matern.o
+clang++ -arch x86_64 -std=gnu++17
+-I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG
+-I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/Rcpp/include'
+-I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/RcppArmadillo/include'
+-I/opt/R/x86_64/include     -fPIC  -falign-functions=64 -Wall -g -O2
+-c MaxMin.cpp -o MaxMin.o
+clang++ -arch x86_64 -std=gnu++17
+-I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG
+-I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/Rcpp/include'
+-I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/RcppArmadillo/include'
+-I/opt/R/x86_64/include     -fPIC  -falign-functions=64 -Wall -g -O2
+-c RcppExports.cpp -o RcppExports.o
+clang++ -arch x86_64 -std=gnu++17
+-I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG
+-I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/Rcpp/include'
+-I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/RcppArmadillo/include'
+-I/opt/R/x86_64/include     -fPIC  -falign-functions=64 -Wall -g -O2
+-c U_NZentries.cpp -o U_NZentries.o
+clang++ -arch x86_64 -std=gnu++17
+-I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG
+-I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/Rcpp/include'
+-I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/RcppArmadillo/include'
+-I/opt/R/x86_64/include     -fPIC  -falign-functions=64 -Wall -g -O2
+-c dist.cpp -o dist.o
+clang++ -arch x86_64 -std=gnu++17
+-I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG
+-I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/Rcpp/include'
+-I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/RcppArmadillo/include'
+-I/opt/R/x86_64/include     -fPIC  -falign-functions=64 -Wall -g -O2
+-c fastTree.cpp -o fastTree.o
+Matern.cpp:80:68: error: no member named 'cyl_bessel_k' in namespace 'std'
+        covmat(j1,j2) = normcon*pow( scaledist, covparms(2)
+)*std::cyl_bessel_k(covparms(2),scaledist);
+//Rf_bessel_k(scaledist,covparms(2),1.0);
+                                                              ~~~~~^
+1 error generated.
+make: *** [Matern.o] Error 1
+make: *** Waiting for unfinished jobs....
+ERROR: compilation failed for package ?GPvecchia?
+* removing ?/Volumes/Builds/packages/big-sur-x86_64/results/4.3/GPvecchia.Rcheck/GPvecchia?
+
+	[[alternative HTML version deleted]]
+
+
+From @ergue|@@oko| @end|ng |rom gm@||@com  Fri Feb  9 16:34:36 2024
+From: @ergue|@@oko| @end|ng |rom gm@||@com (Serguei Sokol)
+Date: Fri, 9 Feb 2024 16:34:36 +0100
+Subject: [R-pkg-devel] CRAN uses an old version of clang
+In-Reply-To: <CAKpFkB07uZUzQP+zB6+6V9kuQ2X-GGq_J_1VZ2YjoAKTqdznmA@mail.gmail.com>
+References: <CAKpFkB07uZUzQP+zB6+6V9kuQ2X-GGq_J_1VZ2YjoAKTqdznmA@mail.gmail.com>
+Message-ID: <b12f9bdc-5ff5-4c02-88b5-aadc988f3eb0@gmail.com>
+
+Not really responding the question, however another way could be to 
+consider if your code is in Rcpp and calls to bessel and gamma function 
+are not very frequent. These functions are available in base R and as 
+such are callable via Function():
+
+ > Rcpp::evalCpp('Function("besselK")(1., 0.2)')
+[1] 0.42722
+ > Rcpp::evalCpp('Function("gamma")(4)') # 3!
+[1] 6
+
+https://teuder.github.io/rcpp4everyone_en/230_R_function.html#function
+
+
+Best,
+Serguei.
+
+Le 09/02/2024 ? 15:59, Marcin Jurek a ?crit?:
+> Dear community,
+> 
+> I recently submitted an update to my package. It previous version relied on
+> Boost for Bessel and gamma functions but a colleague pointed out to me that
+> they are included in the standard library beginning with the C++17
+> standard.
+> 
+> I don't have access to a Mac so I tested my package on Rhub and on my local
+> Linux and everything ran fine. However, it seems like CRAN is using an old
+> version of Clang (14.03 vs 16 being the newest one) and it complained about
+> these Bessel functions. I'm pasting the installation log below. I wonder if
+> this is something I could hope to explain in cran-comments and have my
+> package accepted as is?
+> 
+> I could also revert to using Boost although I only need it for these
+> special functions and things are much cleaner without it. In addition, one
+> of the main reasons for this update was related to some warnings Boost
+> started throwing.
+> 
+> Really appreciate the help!
+> 
+> * installing *source* package ?GPvecchia? ...
+> ** package ?GPvecchia? successfully unpacked and MD5 sums checked
+> ** using staged installation
+> ** libs
+> using C++ compiler: ?Apple clang version 14.0.3 (clang-1403.0.22.14.1)?
+> using C++17
+> using SDK: ?MacOSX11.3.sdk?
+> clang++ -arch x86_64 -std=gnu++17
+> -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/Rcpp/include'
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/RcppArmadillo/include'
+> -I/opt/R/x86_64/include     -fPIC  -falign-functions=64 -Wall -g -O2
+> -c Esqe.cpp -o Esqe.o
+> clang++ -arch x86_64 -std=gnu++17
+> -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/Rcpp/include'
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/RcppArmadillo/include'
+> -I/opt/R/x86_64/include     -fPIC  -falign-functions=64 -Wall -g -O2
+> -c Matern.cpp -o Matern.o
+> clang++ -arch x86_64 -std=gnu++17
+> -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/Rcpp/include'
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/RcppArmadillo/include'
+> -I/opt/R/x86_64/include     -fPIC  -falign-functions=64 -Wall -g -O2
+> -c MaxMin.cpp -o MaxMin.o
+> clang++ -arch x86_64 -std=gnu++17
+> -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/Rcpp/include'
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/RcppArmadillo/include'
+> -I/opt/R/x86_64/include     -fPIC  -falign-functions=64 -Wall -g -O2
+> -c RcppExports.cpp -o RcppExports.o
+> clang++ -arch x86_64 -std=gnu++17
+> -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/Rcpp/include'
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/RcppArmadillo/include'
+> -I/opt/R/x86_64/include     -fPIC  -falign-functions=64 -Wall -g -O2
+> -c U_NZentries.cpp -o U_NZentries.o
+> clang++ -arch x86_64 -std=gnu++17
+> -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/Rcpp/include'
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/RcppArmadillo/include'
+> -I/opt/R/x86_64/include     -fPIC  -falign-functions=64 -Wall -g -O2
+> -c dist.cpp -o dist.o
+> clang++ -arch x86_64 -std=gnu++17
+> -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/Rcpp/include'
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/RcppArmadillo/include'
+> -I/opt/R/x86_64/include     -fPIC  -falign-functions=64 -Wall -g -O2
+> -c fastTree.cpp -o fastTree.o
+> Matern.cpp:80:68: error: no member named 'cyl_bessel_k' in namespace 'std'
+>          covmat(j1,j2) = normcon*pow( scaledist, covparms(2)
+> )*std::cyl_bessel_k(covparms(2),scaledist);
+> //Rf_bessel_k(scaledist,covparms(2),1.0);
+>                                                                ~~~~~^
+> 1 error generated.
+> make: *** [Matern.o] Error 1
+> make: *** Waiting for unfinished jobs....
+> ERROR: compilation failed for package ?GPvecchia?
+> * removing ?/Volumes/Builds/packages/big-sur-x86_64/results/4.3/GPvecchia.Rcheck/GPvecchia?
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Fri Feb  9 16:42:50 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Fri, 9 Feb 2024 16:42:50 +0100
+Subject: [R-pkg-devel] CRAN uses an old version of clang
+In-Reply-To: <CAKpFkB07uZUzQP+zB6+6V9kuQ2X-GGq_J_1VZ2YjoAKTqdznmA@mail.gmail.com>
+References: <CAKpFkB07uZUzQP+zB6+6V9kuQ2X-GGq_J_1VZ2YjoAKTqdznmA@mail.gmail.com>
+Message-ID: <2c0a427e-afd4-4e8d-85c8-2f277decebe7@statistik.tu-dortmund.de>
+
+Your users may also use old versions of clang. Hence please correct it.
+CRAN is also checking with the clang18 release candidate.
+
+Best,
+Uwe Ligges
+
+
+
+On 09.02.2024 15:59, Marcin Jurek wrote:
+> Dear community,
+> 
+> I recently submitted an update to my package. It previous version relied on
+> Boost for Bessel and gamma functions but a colleague pointed out to me that
+> they are included in the standard library beginning with the C++17
+> standard.
+> 
+> I don't have access to a Mac so I tested my package on Rhub and on my local
+> Linux and everything ran fine. However, it seems like CRAN is using an old
+> version of Clang (14.03 vs 16 being the newest one) and it complained about
+> these Bessel functions. I'm pasting the installation log below. I wonder if
+> this is something I could hope to explain in cran-comments and have my
+> package accepted as is?
+> 
+> I could also revert to using Boost although I only need it for these
+> special functions and things are much cleaner without it. In addition, one
+> of the main reasons for this update was related to some warnings Boost
+> started throwing.
+> 
+> Really appreciate the help!
+> 
+> * installing *source* package ?GPvecchia? ...
+> ** package ?GPvecchia? successfully unpacked and MD5 sums checked
+> ** using staged installation
+> ** libs
+> using C++ compiler: ?Apple clang version 14.0.3 (clang-1403.0.22.14.1)?
+> using C++17
+> using SDK: ?MacOSX11.3.sdk?
+> clang++ -arch x86_64 -std=gnu++17
+> -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/Rcpp/include'
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/RcppArmadillo/include'
+> -I/opt/R/x86_64/include     -fPIC  -falign-functions=64 -Wall -g -O2
+> -c Esqe.cpp -o Esqe.o
+> clang++ -arch x86_64 -std=gnu++17
+> -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/Rcpp/include'
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/RcppArmadillo/include'
+> -I/opt/R/x86_64/include     -fPIC  -falign-functions=64 -Wall -g -O2
+> -c Matern.cpp -o Matern.o
+> clang++ -arch x86_64 -std=gnu++17
+> -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/Rcpp/include'
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/RcppArmadillo/include'
+> -I/opt/R/x86_64/include     -fPIC  -falign-functions=64 -Wall -g -O2
+> -c MaxMin.cpp -o MaxMin.o
+> clang++ -arch x86_64 -std=gnu++17
+> -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/Rcpp/include'
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/RcppArmadillo/include'
+> -I/opt/R/x86_64/include     -fPIC  -falign-functions=64 -Wall -g -O2
+> -c RcppExports.cpp -o RcppExports.o
+> clang++ -arch x86_64 -std=gnu++17
+> -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/Rcpp/include'
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/RcppArmadillo/include'
+> -I/opt/R/x86_64/include     -fPIC  -falign-functions=64 -Wall -g -O2
+> -c U_NZentries.cpp -o U_NZentries.o
+> clang++ -arch x86_64 -std=gnu++17
+> -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/Rcpp/include'
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/RcppArmadillo/include'
+> -I/opt/R/x86_64/include     -fPIC  -falign-functions=64 -Wall -g -O2
+> -c dist.cpp -o dist.o
+> clang++ -arch x86_64 -std=gnu++17
+> -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/Rcpp/include'
+> -I'/Volumes/Builds/packages/big-sur-x86_64/Rlib/4.3/RcppArmadillo/include'
+> -I/opt/R/x86_64/include     -fPIC  -falign-functions=64 -Wall -g -O2
+> -c fastTree.cpp -o fastTree.o
+> Matern.cpp:80:68: error: no member named 'cyl_bessel_k' in namespace 'std'
+>          covmat(j1,j2) = normcon*pow( scaledist, covparms(2)
+> )*std::cyl_bessel_k(covparms(2),scaledist);
+> //Rf_bessel_k(scaledist,covparms(2),1.0);
+>                                                                ~~~~~^
+> 1 error generated.
+> make: *** [Matern.o] Error 1
+> make: *** Waiting for unfinished jobs....
+> ERROR: compilation failed for package ?GPvecchia?
+> * removing ?/Volumes/Builds/packages/big-sur-x86_64/results/4.3/GPvecchia.Rcheck/GPvecchia?
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+From edd @end|ng |rom deb|@n@org  Fri Feb  9 16:44:43 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 9 Feb 2024 09:44:43 -0600
+Subject: [R-pkg-devel] CRAN uses an old version of clang
+In-Reply-To: <CAKpFkB07uZUzQP+zB6+6V9kuQ2X-GGq_J_1VZ2YjoAKTqdznmA@mail.gmail.com>
+References: <CAKpFkB07uZUzQP+zB6+6V9kuQ2X-GGq_J_1VZ2YjoAKTqdznmA@mail.gmail.com>
+Message-ID: <26054.18539.260332.121921@rob.eddelbuettel.com>
+
+
+On 9 February 2024 at 08:59, Marcin Jurek wrote:
+| I recently submitted an update to my package. It previous version relied on
+| Boost for Bessel and gamma functions but a colleague pointed out to me that
+| they are included in the standard library beginning with the C++17
+| standard.
+
+There is an often overlooked bit of 'fine print': _compiler support_ for a
+C++ standard is not the same as the _compiler shipping a complete library_
+for that same standard. This can be frustrating. See the release notes for
+gcc/g++ and clang/clang++, IIRC they usually have a separate entry for C++
+library support.
+
+In this case, can probably rely on LinkingTo: BH which has been helping with
+Boost headers for over a decade.
+
+Writing R Extensions is also generally careful in reminding us that such
+language standard support is always dependent on the compiler at hand. So
+package authors ought to check, just like R does via its extensive configure
+script when it builds.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From m@rc|njurek1988 @end|ng |rom gm@||@com  Fri Feb  9 20:04:33 2024
+From: m@rc|njurek1988 @end|ng |rom gm@||@com (Marcin Jurek)
+Date: Fri, 9 Feb 2024 13:04:33 -0600
+Subject: [R-pkg-devel] CRAN uses an old version of clang
+In-Reply-To: <26054.18539.260332.121921@rob.eddelbuettel.com>
+References: <CAKpFkB07uZUzQP+zB6+6V9kuQ2X-GGq_J_1VZ2YjoAKTqdznmA@mail.gmail.com>
+ <26054.18539.260332.121921@rob.eddelbuettel.com>
+Message-ID: <CAKpFkB2rLOPvPLcDzoYd8WF5SCB43J=hfN4gYiPBMFEuPy7uXg@mail.gmail.com>
+
+All this makes sense, thanks for your tips, everyone!
+
+Marcin
+
+On Fri, Feb 9, 2024 at 9:44?AM Dirk Eddelbuettel <edd at debian.org> wrote:
+
+>
+> On 9 February 2024 at 08:59, Marcin Jurek wrote:
+> | I recently submitted an update to my package. It previous version relied
+> on
+> | Boost for Bessel and gamma functions but a colleague pointed out to me
+> that
+> | they are included in the standard library beginning with the C++17
+> | standard.
+>
+> There is an often overlooked bit of 'fine print': _compiler support_ for a
+> C++ standard is not the same as the _compiler shipping a complete library_
+> for that same standard. This can be frustrating. See the release notes for
+> gcc/g++ and clang/clang++, IIRC they usually have a separate entry for C++
+> library support.
+>
+> In this case, can probably rely on LinkingTo: BH which has been helping
+> with
+> Boost headers for over a decade.
+>
+> Writing R Extensions is also generally careful in reminding us that such
+> language standard support is always dependent on the compiler at hand. So
+> package authors ought to check, just like R does via its extensive
+> configure
+> script when it builds.
+>
+> Dirk
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+
+	[[alternative HTML version deleted]]
+
+
