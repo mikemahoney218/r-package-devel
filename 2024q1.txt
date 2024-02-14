@@ -18860,3 +18860,385 @@ Simon
 > 
 
 
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Mon Feb 12 16:02:14 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Mon, 12 Feb 2024 16:02:14 +0100
+Subject: [R-pkg-devel] CRAN uses an old version of clang
+In-Reply-To: <9481E58A-BD8E-4979-B4D8-830327D66E32@R-project.org>
+References: <CAKpFkB07uZUzQP+zB6+6V9kuQ2X-GGq_J_1VZ2YjoAKTqdznmA@mail.gmail.com>
+ <26054.18539.260332.121921@rob.eddelbuettel.com>
+ <CAKpFkB2rLOPvPLcDzoYd8WF5SCB43J=hfN4gYiPBMFEuPy7uXg@mail.gmail.com>
+ <9481E58A-BD8E-4979-B4D8-830327D66E32@R-project.org>
+Message-ID: <cdb5b1b0-fe2f-4520-b2b7-66ffe5f5343c@gmail.com>
+
+
+On 2/12/24 01:35, Simon Urbanek wrote:
+> Just to include the necessary details: macOS CRAN build uses Apple clang-14, so you cannot assume anything higher. Also the target is macOS 11 SDK.
+>
+> That said, LLVM does not support the special math functions at all according to the status report (see Mathematical Special Functions for C++17 at https://libcxx.llvm.org/Status/Cxx17.html) so Boost is your best bet.
+>
+> BTW: this is not a Mac thing - you can replicate it on any other system, eg. in Linux:
+>
+> $ clang++-17 -std=c++17 -stdlib=libc++  bes.cc
+> bes.cc:11:49: error: no member named 'cyl_bessel_k' in namespace 'std'
+>     11 |     std::cout << "K_.5(" << x << ") = " << std::cyl_bessel_k(.5, x) << '\n'
+>        |                                            ~~~~~^
+> bes.cc:13:35: error: no member named 'cyl_bessel_i' in namespace 'std'
+>     13 |               << (pi / 2) * (std::cyl_bessel_i(-.5, x)
+>        |                              ~~~~~^
+> bes.cc:14:25: error: no member named 'cyl_bessel_i' in namespace 'std'
+>     14 |                  - std::cyl_bessel_i(.5, x)) / std::sin(.5 * pi) << '\n';
+>        |                    ~~~~~^
+> 3 errors generated.
+
+And on Windows with LLVM 17, the experimental build of Rtools43 for 
+Windows/aarch64.
+
+Tomas
+
+>
+> Cheers,
+> Simon
+>
+>
+>> On 10/02/2024, at 8:04 AM, Marcin Jurek <marcinjurek1988 at gmail.com> wrote:
+>>
+>> All this makes sense, thanks for your tips, everyone!
+>>
+>> Marcin
+>>
+>> On Fri, Feb 9, 2024 at 9:44?AM Dirk Eddelbuettel <edd at debian.org> wrote:
+>>
+>>> On 9 February 2024 at 08:59, Marcin Jurek wrote:
+>>> | I recently submitted an update to my package. It previous version relied
+>>> on
+>>> | Boost for Bessel and gamma functions but a colleague pointed out to me
+>>> that
+>>> | they are included in the standard library beginning with the C++17
+>>> | standard.
+>>>
+>>> There is an often overlooked bit of 'fine print': _compiler support_ for a
+>>> C++ standard is not the same as the _compiler shipping a complete library_
+>>> for that same standard. This can be frustrating. See the release notes for
+>>> gcc/g++ and clang/clang++, IIRC they usually have a separate entry for C++
+>>> library support.
+>>>
+>>> In this case, can probably rely on LinkingTo: BH which has been helping
+>>> with
+>>> Boost headers for over a decade.
+>>>
+>>> Writing R Extensions is also generally careful in reminding us that such
+>>> language standard support is always dependent on the compiler at hand. So
+>>> package authors ought to check, just like R does via its extensive
+>>> configure
+>>> script when it builds.
+>>>
+>>> Dirk
+>>>
+>>> --
+>>> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>>>
+>> 	[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From ggene@|ogyp@ck@ge @end|ng |rom gm@||@com  Mon Feb 12 17:01:27 2024
+From: ggene@|ogyp@ck@ge @end|ng |rom gm@||@com (Package Maintainer)
+Date: Mon, 12 Feb 2024 16:01:27 +0000
+Subject: [R-pkg-devel] Conversion failure in 'mbcsToSbcs'
+In-Reply-To: <20231119182539.2483cbdb@Tarkus>
+References: <CAA8crwe=Ahry5kf_x6P1HXJ5coAZRfZJyv=arJUhVq0nm1khDA@mail.gmail.com>
+ <20231117185557.7ab22a8d@arachnoid>
+ <CAA8crwfV15isVC7jzbbiN46Vg3=ceeZnMGn0MvoG7VW32z282Q@mail.gmail.com>
+ <20231119182539.2483cbdb@Tarkus>
+Message-ID: <CAA8crwfZkcHqwDBhnF4aHrpL7ZkVmFJWNu0eV4PiV9ppfg1n+A@mail.gmail.com>
+
+Dear Ivan:
+
+Thank you again for all your support.
+
+I recently incorporated your suggestion to add the line:
+
+\SweaveOpts{pdf.encoding = ISOLatin2.enc}
+
+to line 32 of my vignette file, the latest copy of which is located
+here (https://github.com/lindsayrutter/ggenealogy/blob/master/vignettes/ggenealogy.Rnw).
+
+I don't *believe* I changed or created a plot device either, which you
+advised not to do.
+
+I then ran:
+
+1) R CMD build
+2) debian-gcc-devel
+(https://builder.r-hub.io/status/ggenealogy_1.0.3.tar.gz-fc9f3ff459314bc2bcfd2df00b5c38f3)
+3) debian-clang-devel
+(https://builder.r-hub.io/status/ggenealogy_1.0.3.tar.gz-fa86bcdc246042e194a7558c018ed19b)
+
+And my .tar file passed all three. So, I then uploaded my .tar file to
+the CRAN submission page.
+
+Unfortunately, I received a reply from the CRAN submission team
+stating that my vignette file is still obtaining the "mbcsToSbcs"
+ERROR as is shown here
+(https://win-builder.r-project.org/incoming_pretest/ggenealogy_1.0.3_20240212_152455/Debian/00check.log).
+
+The latest version of my package and its vignette code is on my
+GitHub: https://github.com/lindsayrutter/ggenealogy/blob/master/vignettes/ggenealogy.Rnw
+
+I'm still a bit at a loss on how to resolve this issue. I would be all
+ears if you (and/or others) might have any further advice.
+
+Thank you again for your patience and support.
+
+Kind regards,
+LAR
+
+PS: Thanks for the advice about plain text mode. Hopefully, I have
+correctly abide by that advice in this current email.
+
+
+On Sun, Nov 19, 2023 at 3:25?PM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+>
+> On Sun, 19 Nov 2023 13:53:52 +0000
+> Package Maintainer <ggenealogypackage at gmail.com> wrote:
+>
+> > I added the code you suggested to the package vignette:
+>
+> It won't work without setting my.Swd as the new plot device instead of
+> pdf():
+>
+> \SweaveOpts{grdevice=my.Swd,pdf=FALSE}
+>
+> You have this directive commented out a few lines later, inside a code
+> block. It should instead be present outside the code block, without a %
+> before it.
+>
+> (It's best to link to a copy of the code available for viewing
+> somewhere. While I was able to fish out a copy of your package from the
+> CRAN FTP server this time, it is not always possible to do so.)
+>
+> A less intrusive way to avoid the error is using the following Sweave
+> directive:
+>
+> \SweaveOpts{pdf.encoding = ISOLatin2.enc}
+>
+> (Without changing the plot device or creating a new plot device in a
+> hidden code block.)
+>
+> > In both those cases, I didn't see the ERROR of "Conversion failure in
+> > 'mbcsToSbcs'".
+>
+> In order to replicate the problem, you need (1) a fairly recent R-devel
+> (a pre-release version, e.g. [*]) and (2) the environment variable
+> _R_CHECK_MBCS_CONVERSION_FAILURE_ set. R-hub runs recent R-devel but
+> doesn't set the environment variable. I don't know for sure, but I
+> think that you are running a released version of R. I hope that R-core
+> will make this test part of R CMD check --as-cran, making it possible
+> to reproduce such failures with just a copy of R-devel, without extra
+> environment variables.
+>
+> --
+> Best regards,
+> Ivan
+>
+> [*] https://cran.r-project.org/bin/windows/base/rdevel.html
+>
+> P.S. Could you please switch your mailer to plain text instead of HTML
+> when sending messages to the list? When you compose your e-mail in
+> HTML, your mailer automatically prepares a plain text equivalent where
+> the code block is seriously mangled. This plain text equivalent is what
+> the list subscribers see:
+> https://stat.ethz.ch/pipermail/r-package-devel/2023q4/010102.html
+
+
+From j@g@nmn2 @end|ng |rom gm@||@com  Mon Feb 12 19:36:17 2024
+From: j@g@nmn2 @end|ng |rom gm@||@com (Mikael Jagan)
+Date: Mon, 12 Feb 2024 13:36:17 -0500
+Subject: [R-pkg-devel] Matrix 1.7-0 to be released in March with
+ ABI-breaking SuiteSparse update
+Message-ID: <85c8662e-4658-482e-93b6-07975c8b9e85@gmail.com>
+
+Dear users and binary repository maintainers,
+
+We are preparing Matrix version 1.7-0 for CRAN submission on March 11, ahead
+of the spring release of R version 4.4.0.  The only significant change from
+Matrix 1.6-5 is an update of the internal SuiteSparse libraries
+(5.10.1 -> 7.6.0).  Unfortunately, the old and new SuiteSparse versions are 
+binary incompatible, hence so too will be the old and new Matrix versions.
+
+A corollary is that users and binary repository maintainers switching between
+Matrix < 1.7-0 and Matrix >= 1.7-0 must rebuild _from sources_ packages that
+link Matrix:
+
+ > tools::package_dependencies("Matrix", which = "LinkingTo", reverse = TRUE)[[1L]]
+  [1] "ahMLE"               "bayesWatch"          "cplm"
+  [4] "GeneralizedWendland" "geostatsp"           "irlba"
+  [7] "lme4"                "mcmcsae"             "OpenMx"
+[10] "PRIMME"              "PUlasso"             "robustlmm"
+[13] "spGARCH"             "TMB"                 "bcSeq"
+
+For users, that means doing, e.g.,
+
+     install.packages("lme4", type = "source")
+
+but an alternative for Windows and macOS users without the required tools is
+
+     oo <- options(repos = "https://cran.r-project.org/")
+     install.packages("Matrix")
+     install.packages("lme4")
+     options(oo)
+
+where we trust CRAN to provide binaries compatible with the latest Matrix
+version (because we notify CRAN upon submission about required rebuilds).
+Once other repositories react with rebuilds, they can be used instead of
+CRAN.
+
+Our reverse dependency checks (and history, intuition, ...) show that most
+problems (caught segfaults in this case) can be traced to a binary incompatible
+lme4 and not to one of the other packages linking Matrix.  Still, we recommend
+rebuilds for all 15 packages.
+
+Maintainers of packages that link Matrix can implement an .onLoad test for
+possible binary incompatibility by comparing the value of
+
+     if (utils::packageVersion("Matrix") >= "1.6.2")
+         Matrix::Matrix.Version()[["abi"]]
+     else numeric_version("0")
+
+at install time and at load time, warning the user if the values differ.
+But please do look at the above and not at packageVersion("Matrix") directly,
+as the ABI version is incremented less often than the package version.
+
+Mikael {on behalf of citation("Matrix")$author}
+
+
+From ro||turner @end|ng |rom po@teo@net  Mon Feb 12 20:52:20 2024
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Mon, 12 Feb 2024 19:52:20 +0000
+Subject: [R-pkg-devel] Package version on CRAN not up-to-date.
+Message-ID: <20240213085220.47a489b4@rolf-Latitude-E7470>
+
+
+On 20 January I submitted a revised version of my eglhmm package, to
+CRAN. I very rapidly got an email, emanating from Uwe Ligges' address,
+saying:
+
+> Dear maintainer,
+>  
+> thanks, package eglhmm_0.1-2.tar.gz is on its way to CRAN.
+>  
+> Best regards,
+> CRAN teams' auto-check service
+
+However the version of eglhmm that is available from CRAN is still
+0.1-1.  I have twice sent emails to Uwe Ligges (on 8 Feb. and 11
+Feb.) asking why this was so.  I CC-ed these emails to
+CRAN-submissions at R-project.org .
+
+I have been met with complete radio silence. Can anyone suggest an
+explanation for this phenomenon?  (I *hate* being ignored! ?? )
+
+cheers,
+
+Rolf Turner
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Mon Feb 12 21:03:30 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Mon, 12 Feb 2024 21:03:30 +0100
+Subject: [R-pkg-devel] Package version on CRAN not up-to-date.
+In-Reply-To: <20240213085220.47a489b4@rolf-Latitude-E7470>
+References: <20240213085220.47a489b4@rolf-Latitude-E7470>
+Message-ID: <653bed26-6150-49ba-ac2b-195f588a02b4@statistik.tu-dortmund.de>
+
+There is one Uwe Ligges but > 20000 packages.
+
+
+
+On 12.02.2024 20:52, Rolf Turner wrote:
+> 
+> On 20 January I submitted a revised version of my eglhmm package, to
+> CRAN. I very rapidly got an email, emanating from Uwe Ligges' address,
+> saying:
+> 
+>> Dear maintainer,
+>>   
+>> thanks, package eglhmm_0.1-2.tar.gz is on its way to CRAN.
+>>   
+>> Best regards,
+>> CRAN teams' auto-check service
+> 
+> However the version of eglhmm that is available from CRAN is still
+> 0.1-1.  I have twice sent emails to Uwe Ligges (on 8 Feb. and 11
+> Feb.) asking why this was so.  I CC-ed these emails to
+> CRAN-submissions at R-project.org .
+> 
+> I have been met with complete radio silence. Can anyone suggest an
+> explanation for this phenomenon?  (I *hate* being ignored! ?? )
+> 
+> cheers,
+> 
+> Rolf Turner
+> 
+
+From j|r|@c@mor@vec @end|ng |rom gm@||@com  Mon Feb 12 21:37:50 2024
+From: j|r|@c@mor@vec @end|ng |rom gm@||@com (=?UTF-8?B?SmnFmcOtIE1vcmF2ZWM=?=)
+Date: Tue, 13 Feb 2024 09:37:50 +1300
+Subject: [R-pkg-devel] Package version on CRAN not up-to-date.
+In-Reply-To: <653bed26-6150-49ba-ac2b-195f588a02b4@statistik.tu-dortmund.de>
+References: <20240213085220.47a489b4@rolf-Latitude-E7470>
+ <653bed26-6150-49ba-ac2b-195f588a02b4@statistik.tu-dortmund.de>
+Message-ID: <0526f572-062d-4457-8bec-86075a347a97@gmail.com>
+
+git clone git://statistik.tu-dortmund.de/ligges.git UweLigges2
+
+On 13/02/24 09:03, Uwe Ligges wrote:
+> There is one Uwe Ligges but > 20000 packages.
+>
+>
+>
+> On 12.02.2024 20:52, Rolf Turner wrote:
+>>
+>> On 20 January I submitted a revised version of my eglhmm package, to
+>> CRAN. I very rapidly got an email, emanating from Uwe Ligges' address,
+>> saying:
+>>
+>>> Dear maintainer,
+>>> ? thanks, package eglhmm_0.1-2.tar.gz is on its way to CRAN.
+>>> ? Best regards,
+>>> CRAN teams' auto-check service
+>>
+>> However the version of eglhmm that is available from CRAN is still
+>> 0.1-1.? I have twice sent emails to Uwe Ligges (on 8 Feb. and 11
+>> Feb.) asking why this was so.? I CC-ed these emails to
+>> CRAN-submissions at R-project.org .
+>>
+>> I have been met with complete radio silence. Can anyone suggest an
+>> explanation for this phenomenon?? (I *hate* being ignored! ?? )
+>>
+>> cheers,
+>>
+>> Rolf Turner
+>>
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
