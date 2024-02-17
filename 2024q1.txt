@@ -19242,3 +19242,68 @@ On 13/02/24 09:03, Uwe Ligges wrote:
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Feb 15 16:17:24 2024
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 15 Feb 2024 18:17:24 +0300
+Subject: [R-pkg-devel] Conversion failure in 'mbcsToSbcs'
+In-Reply-To: <CAA8crwfZkcHqwDBhnF4aHrpL7ZkVmFJWNu0eV4PiV9ppfg1n+A@mail.gmail.com>
+References: <CAA8crwe=Ahry5kf_x6P1HXJ5coAZRfZJyv=arJUhVq0nm1khDA@mail.gmail.com>
+ <20231117185557.7ab22a8d@arachnoid>
+ <CAA8crwfV15isVC7jzbbiN46Vg3=ceeZnMGn0MvoG7VW32z282Q@mail.gmail.com>
+ <20231119182539.2483cbdb@Tarkus>
+ <CAA8crwfZkcHqwDBhnF4aHrpL7ZkVmFJWNu0eV4PiV9ppfg1n+A@mail.gmail.com>
+Message-ID: <20240215181724.7ccfbc83@arachnoid>
+
+? Mon, 12 Feb 2024 16:01:27 +0000
+Package Maintainer <ggenealogypackage at gmail.com> ?????:
+
+> Unfortunately, I received a reply from the CRAN submission team
+> stating that my vignette file is still obtaining the "mbcsToSbcs"
+> ERROR as is shown here
+> (https://win-builder.r-project.org/incoming_pretest/ggenealogy_1.0.3_20240212_152455/Debian/00check.log).
+
+I am sorry for leading you down the wrong way with my advice. It turns
+out that no 8-bit Type-1 encoding known to pdf() can represent both
+'Lubom?r Kub??ek' and 'Anders ?gren':
+
+lapply(
+ setNames(nm = c(
+  'latin1', 'cp1252', 'latin2', 'latin7',
+  'latin-9', 'CP1250', 'CP1257'
+ )), function(enc)
+  iconv(enc2utf8(c(
+   'Lubom?r Kub??ek', 'Anders ?gren'
+  )), 'UTF-8', enc, toRaw = TRUE)
+) |> sapply(lengths)
+# one of the two strings cannot be represented, returning a NULL:
+#      latin1 cp1252 latin2 latin7 latin-9 CP1250 CP1257
+# [1,]      0      0     15      0       0     15      0
+# [2,]     12     12      0     12      12      0     12
+
+While it may still be possible to give extra parameters to pdf() to use
+a font encoding that covers all the relevant characters, it seems
+easier to switch to cairo_pdf() for your multi-lingual plots. Place the
+following somewhere in the beginning of the vignette:
+
+<<results=hide,echo=FALSE>>=
+my.Swd <- function(name, width, height, ...)
+ grDevices::cairo_pdf(
+  filename = paste(name, "pdf", sep = "."),
+  width = width, height = height
+ )
+@
+\SweaveOpts{grdevice=my.Swd,pdf=FALSE}
+
+This should define a new plot device function for Sweave, one that
+handles more Unicode characters correctly.
+
+> PS: Thanks for the advice about plain text mode. Hopefully, I have
+> correctly abide by that advice in this current email.
+
+This e-mail arrived in plain text, thank you!
+
+-- 
+Best regards,
+Ivan
+
+
