@@ -19331,3 +19331,445 @@ There is no issue with utils::zip() (function `zipit()` in the test package). Is
 Best, Stefan
 
 
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Sat Feb 17 06:24:13 2024
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Fri, 16 Feb 2024 21:24:13 -0800
+Subject: [R-pkg-devel] 
+ Unusually long execution time for R.utils::gzip on r-devel-windows
+In-Reply-To: <CA730087-BFE7-47A5-A62C-F2C079142D33@uni-tuebingen.de>
+References: <CA730087-BFE7-47A5-A62C-F2C079142D33@uni-tuebingen.de>
+Message-ID: <CAFDcVCTPexNOOQizj3kbu6MjohnP+w5MG9K0teo22FgOd4k2Fw@mail.gmail.com>
+
+Author of R.utils here. I happen to investigate this too right now,
+because of extremely slow win-builder performance of R.rsp checks,
+which in turn depends on R.utils.
+
+It's not obvious to me why this happens on win-builder. I've noticed
+slower and slower win-builder/cran-incoming checks over the years,
+despite the code not changing. Right now, I'm investigating a piece of
+code that calls shell("dir") as a fallback to figure out if a file is
+a symbol link or not - it could be that that takes a very long time on
+win-builder.
+
+So, stay tuned ... I'll report back when I find something out.
+
+/Henrik
+
+On Fri, Feb 16, 2024 at 4:43?PM Stefan Mayer
+<stefan.mayer at uni-tuebingen.de> wrote:
+>
+> Dear list,
+>
+> I tried to submit an update to my R package imagefluency, but the update does not pass the incoming checks automatically. The problem is that one of the examples takes too long to execute ? but only under Windows with the development version of R (R Under development (unstable) (2024-02-15 r85925 ucrt)).
+>
+> I was able to pin down the problem to using R.utils::gzip(). I created a test package that illustrates the problem: https://github.com/stm/ziptest
+> The package has two functions that zip a file given a file path. When using R.utils::gzip() (function `gzipit()` in the test package), I get a NOTE when checking the package using devtools::check_win_devel()
+>
+> * checking examples ... [55s] NOTE
+> Examples with CPU (user + system) or elapsed time > 10s
+>        user system elapsed
+> gzipit 6.91  47.24   54.84
+>
+> There is no issue with utils::zip() (function `zipit()` in the test package). Is this somehow a bug in R.utils::gzip(), or is there an issue with the combination of Windows and r-devel?
+>
+> Best, Stefan
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Sat Feb 17 09:16:46 2024
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Sat, 17 Feb 2024 00:16:46 -0800
+Subject: [R-pkg-devel] 
+ Unusually long execution time for R.utils::gzip on r-devel-windows
+In-Reply-To: <CAFDcVCTPexNOOQizj3kbu6MjohnP+w5MG9K0teo22FgOd4k2Fw@mail.gmail.com>
+References: <CA730087-BFE7-47A5-A62C-F2C079142D33@uni-tuebingen.de>
+ <CAFDcVCTPexNOOQizj3kbu6MjohnP+w5MG9K0teo22FgOd4k2Fw@mail.gmail.com>
+Message-ID: <CAFDcVCQtReBuEuQ0OdXBXnUmNRUMBHP=JiP55RwYOKqOgszXEg@mail.gmail.com>
+
+I can confirm that this has to fixed in R.utils. This gist is that
+R.utils does lots of validation of read/write permissions, and deep
+down it rely on system("dir") as a fallback method. If this is down
+toward dirname(tempdir()), then it'll find a lot of files, e.g.
+
+    [1] " Datentr?ger in Laufwerk D: ist Daten"
+    [2] " Volumeseriennummer: 1826-A193"
+    [3] ""
+    [4] " Verzeichnis von D:\\temp"
+    [5] ""
+    [6] "17.02.2024  09:06    <DIR>          ."
+    [7] "14.02.2024  03:36                 0 cc6H4Sp5"
+    [8] "15.02.2024  03:46                 0 cc6PwKb4"
+    [9] "15.02.2024  16:25                 0 cc6RH27v"
+   [10] "16.02.2024  01:50                 0 ccafzzMl"
+   ...
+[99997] "09.02.2024  04:48    <DIR>          RtmpURWDbA"
+[99998] "14.02.2024  04:35    <DIR>          RtmpURWeVC"
+[99999] "15.02.2024  04:00    <DIR>          RtmpUrwhHU"
+ [ reached getOption("max.print") -- omitted 17165 entries ]
+Time difference of 18.67841 secs
+
+So, yeah, wow!  I'll look into fixing this, probably by removing this
+fallback approach, which is very rarely needed; it was added way back
+when Sys.readlink() didn't cover all cases.
+
+/Henrik
+
+On Fri, Feb 16, 2024 at 9:24?PM Henrik Bengtsson
+<henrik.bengtsson at gmail.com> wrote:
+>
+> Author of R.utils here. I happen to investigate this too right now,
+> because of extremely slow win-builder performance of R.rsp checks,
+> which in turn depends on R.utils.
+>
+> It's not obvious to me why this happens on win-builder. I've noticed
+> slower and slower win-builder/cran-incoming checks over the years,
+> despite the code not changing. Right now, I'm investigating a piece of
+> code that calls shell("dir") as a fallback to figure out if a file is
+> a symbol link or not - it could be that that takes a very long time on
+> win-builder.
+>
+> So, stay tuned ... I'll report back when I find something out.
+>
+> /Henrik
+>
+> On Fri, Feb 16, 2024 at 4:43?PM Stefan Mayer
+> <stefan.mayer at uni-tuebingen.de> wrote:
+> >
+> > Dear list,
+> >
+> > I tried to submit an update to my R package imagefluency, but the update does not pass the incoming checks automatically. The problem is that one of the examples takes too long to execute ? but only under Windows with the development version of R (R Under development (unstable) (2024-02-15 r85925 ucrt)).
+> >
+> > I was able to pin down the problem to using R.utils::gzip(). I created a test package that illustrates the problem: https://github.com/stm/ziptest
+> > The package has two functions that zip a file given a file path. When using R.utils::gzip() (function `gzipit()` in the test package), I get a NOTE when checking the package using devtools::check_win_devel()
+> >
+> > * checking examples ... [55s] NOTE
+> > Examples with CPU (user + system) or elapsed time > 10s
+> >        user system elapsed
+> > gzipit 6.91  47.24   54.84
+> >
+> > There is no issue with utils::zip() (function `zipit()` in the test package). Is this somehow a bug in R.utils::gzip(), or is there an issue with the combination of Windows and r-devel?
+> >
+> > Best, Stefan
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From @te|@n@m@yer @end|ng |rom un|-tueb|ngen@de  Sat Feb 17 12:20:56 2024
+From: @te|@n@m@yer @end|ng |rom un|-tueb|ngen@de (Stefan Mayer)
+Date: Sat, 17 Feb 2024 12:20:56 +0100
+Subject: [R-pkg-devel] 
+ Unusually long execution time for R.utils::gzip on r-devel-windows
+In-Reply-To: <CAFDcVCQtReBuEuQ0OdXBXnUmNRUMBHP=JiP55RwYOKqOgszXEg@mail.gmail.com>
+References: <CA730087-BFE7-47A5-A62C-F2C079142D33@uni-tuebingen.de>
+ <CAFDcVCTPexNOOQizj3kbu6MjohnP+w5MG9K0teo22FgOd4k2Fw@mail.gmail.com>
+ <CAFDcVCQtReBuEuQ0OdXBXnUmNRUMBHP=JiP55RwYOKqOgszXEg@mail.gmail.com>
+Message-ID: <01046CE9-0875-41B9-B289-A5535269F413@uni-tuebingen.de>
+
+
+> On 17. Feb 2024, at 09:16, Henrik Bengtsson <henrik.bengtsson at gmail.com> wrote:
+> 
+> I can confirm that this has to fixed in R.utils. This gist is that
+> R.utils does lots of validation of read/write permissions, and deep
+> down it rely on system("dir") as a fallback method. If this is down
+> toward dirname(tempdir()), then it'll find a lot of files, e.g.
+> 
+> [?]
+> 
+> So, yeah, wow!  I'll look into fixing this, probably by removing this
+> fallback approach, which is very rarely needed; it was added way back
+> when Sys.readlink() didn't cover all cases.
+
+Thanks for looking into this, Henrik! Feel free to let me know if I can help with anything.
+
+- Stefan
+
+From ggene@|ogyp@ck@ge @end|ng |rom gm@||@com  Sat Feb 17 13:51:31 2024
+From: ggene@|ogyp@ck@ge @end|ng |rom gm@||@com (Package Maintainer)
+Date: Sat, 17 Feb 2024 12:51:31 +0000
+Subject: [R-pkg-devel] Conversion failure in 'mbcsToSbcs'
+In-Reply-To: <20240215181724.7ccfbc83@arachnoid>
+References: <CAA8crwe=Ahry5kf_x6P1HXJ5coAZRfZJyv=arJUhVq0nm1khDA@mail.gmail.com>
+ <20231117185557.7ab22a8d@arachnoid>
+ <CAA8crwfV15isVC7jzbbiN46Vg3=ceeZnMGn0MvoG7VW32z282Q@mail.gmail.com>
+ <20231119182539.2483cbdb@Tarkus>
+ <CAA8crwfZkcHqwDBhnF4aHrpL7ZkVmFJWNu0eV4PiV9ppfg1n+A@mail.gmail.com>
+ <20240215181724.7ccfbc83@arachnoid>
+Message-ID: <CAA8crwevmYJkkxBTY7-MgTDYxt87TUf7maXmUj-hOvejc2wy1w@mail.gmail.com>
+
+Dear Ivan:
+
+Thank you for your help again.
+
+Thanks for your suggestion to use cairo_pdf() instead of pdf() to
+allow for the multi-lingual plots.
+
+I incorporated your advice and added the the code you suggested:
+
+<<results=hide,echo=FALSE>>=
+my.Swd <- function(name, width, height, ...)
+ grDevices::cairo_pdf(
+  filename = paste(name, "pdf", sep = "."),
+  width = width, height = height
+ )
+@
+\SweaveOpts{grdevice=my.Swd,pdf=FALSE}
+
+as shown in lines 49-56 in my new vignette file here
+(https://github.com/lindsayrutter/ggenealogy/blob/master/vignettes/ggenealogy.Rnw).
+
+Upon attempting to build (R CMD build ggenealogy), I received the ERROR:
+
+Error: processing vignette 'ggenealogy.Rnw' failed with diagnostics:
+object 'my.Swd' not found
+--- failed re-building ?ggenealogy.Rnw?
+
+I tried replacing the code you suggested to various locations and
+separating the \SweaveOpts line to be located at separate locations.
+However, I received the same ERROR each time.
+
+Do you have any suggestions or ideas on how to resolve this error?
+
+I again thank you for your help with this issue.
+
+Kind regards,
+LAR
+
+
+On Thu, Feb 15, 2024 at 3:17?PM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+>
+> ? Mon, 12 Feb 2024 16:01:27 +0000
+> Package Maintainer <ggenealogypackage at gmail.com> ?????:
+>
+> > Unfortunately, I received a reply from the CRAN submission team
+> > stating that my vignette file is still obtaining the "mbcsToSbcs"
+> > ERROR as is shown here
+> > (https://win-builder.r-project.org/incoming_pretest/ggenealogy_1.0.3_20240212_152455/Debian/00check.log).
+>
+> I am sorry for leading you down the wrong way with my advice. It turns
+> out that no 8-bit Type-1 encoding known to pdf() can represent both
+> 'Lubom?r Kub??ek' and 'Anders ?gren':
+>
+> lapply(
+>  setNames(nm = c(
+>   'latin1', 'cp1252', 'latin2', 'latin7',
+>   'latin-9', 'CP1250', 'CP1257'
+>  )), function(enc)
+>   iconv(enc2utf8(c(
+>    'Lubom?r Kub??ek', 'Anders ?gren'
+>   )), 'UTF-8', enc, toRaw = TRUE)
+> ) |> sapply(lengths)
+> # one of the two strings cannot be represented, returning a NULL:
+> #      latin1 cp1252 latin2 latin7 latin-9 CP1250 CP1257
+> # [1,]      0      0     15      0       0     15      0
+> # [2,]     12     12      0     12      12      0     12
+>
+> While it may still be possible to give extra parameters to pdf() to use
+> a font encoding that covers all the relevant characters, it seems
+> easier to switch to cairo_pdf() for your multi-lingual plots. Place the
+> following somewhere in the beginning of the vignette:
+>
+> <<results=hide,echo=FALSE>>=
+> my.Swd <- function(name, width, height, ...)
+>  grDevices::cairo_pdf(
+>   filename = paste(name, "pdf", sep = "."),
+>   width = width, height = height
+>  )
+> @
+> \SweaveOpts{grdevice=my.Swd,pdf=FALSE}
+>
+> This should define a new plot device function for Sweave, one that
+> handles more Unicode characters correctly.
+>
+> > PS: Thanks for the advice about plain text mode. Hopefully, I have
+> > correctly abide by that advice in this current email.
+>
+> This e-mail arrived in plain text, thank you!
+>
+> --
+> Best regards,
+> Ivan
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Feb 17 14:18:33 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 17 Feb 2024 08:18:33 -0500
+Subject: [R-pkg-devel] Conversion failure in 'mbcsToSbcs'
+In-Reply-To: <CAA8crwevmYJkkxBTY7-MgTDYxt87TUf7maXmUj-hOvejc2wy1w@mail.gmail.com>
+References: <CAA8crwe=Ahry5kf_x6P1HXJ5coAZRfZJyv=arJUhVq0nm1khDA@mail.gmail.com>
+ <20231117185557.7ab22a8d@arachnoid>
+ <CAA8crwfV15isVC7jzbbiN46Vg3=ceeZnMGn0MvoG7VW32z282Q@mail.gmail.com>
+ <20231119182539.2483cbdb@Tarkus>
+ <CAA8crwfZkcHqwDBhnF4aHrpL7ZkVmFJWNu0eV4PiV9ppfg1n+A@mail.gmail.com>
+ <20240215181724.7ccfbc83@arachnoid>
+ <CAA8crwevmYJkkxBTY7-MgTDYxt87TUf7maXmUj-hOvejc2wy1w@mail.gmail.com>
+Message-ID: <eeee3682-885a-488f-a58f-5b7f9f9f3461@gmail.com>
+
+At line 66 of your document, you have this chunk:
+
+<<echo=FALSE>>=
+rm(list=ls())
+@
+
+That removed the device.  You need to put its definition after that. 
+(It might also need to come earlier if you're doing plotting before 
+this, and again even later if you remove it again.)
+
+By the way, I'd recommend using knitr for Rnw documents instead of 
+Sweave.  It will require a few changes, but in general it's more 
+flexible and works a bit better.
+
+Duncan Murdoch
+
+
+
+On 17/02/2024 7:51 a.m., Package Maintainer wrote:
+> Dear Ivan:
+> 
+> Thank you for your help again.
+> 
+> Thanks for your suggestion to use cairo_pdf() instead of pdf() to
+> allow for the multi-lingual plots.
+> 
+> I incorporated your advice and added the the code you suggested:
+> 
+> <<results=hide,echo=FALSE>>=
+> my.Swd <- function(name, width, height, ...)
+>   grDevices::cairo_pdf(
+>    filename = paste(name, "pdf", sep = "."),
+>    width = width, height = height
+>   )
+> @
+> \SweaveOpts{grdevice=my.Swd,pdf=FALSE}
+> 
+> as shown in lines 49-56 in my new vignette file here
+> (https://github.com/lindsayrutter/ggenealogy/blob/master/vignettes/ggenealogy.Rnw).
+> 
+> Upon attempting to build (R CMD build ggenealogy), I received the ERROR:
+> 
+> Error: processing vignette 'ggenealogy.Rnw' failed with diagnostics:
+> object 'my.Swd' not found
+> --- failed re-building ?ggenealogy.Rnw?
+> 
+> I tried replacing the code you suggested to various locations and
+> separating the \SweaveOpts line to be located at separate locations.
+> However, I received the same ERROR each time.
+> 
+> Do you have any suggestions or ideas on how to resolve this error?
+> 
+> I again thank you for your help with this issue.
+> 
+> Kind regards,
+> LAR
+> 
+> 
+> On Thu, Feb 15, 2024 at 3:17?PM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+>>
+>> ? Mon, 12 Feb 2024 16:01:27 +0000
+>> Package Maintainer <ggenealogypackage at gmail.com> ?????:
+>>
+>>> Unfortunately, I received a reply from the CRAN submission team
+>>> stating that my vignette file is still obtaining the "mbcsToSbcs"
+>>> ERROR as is shown here
+>>> (https://win-builder.r-project.org/incoming_pretest/ggenealogy_1.0.3_20240212_152455/Debian/00check.log).
+>>
+>> I am sorry for leading you down the wrong way with my advice. It turns
+>> out that no 8-bit Type-1 encoding known to pdf() can represent both
+>> 'Lubom?r Kub??ek' and 'Anders ?gren':
+>>
+>> lapply(
+>>   setNames(nm = c(
+>>    'latin1', 'cp1252', 'latin2', 'latin7',
+>>    'latin-9', 'CP1250', 'CP1257'
+>>   )), function(enc)
+>>    iconv(enc2utf8(c(
+>>     'Lubom?r Kub??ek', 'Anders ?gren'
+>>    )), 'UTF-8', enc, toRaw = TRUE)
+>> ) |> sapply(lengths)
+>> # one of the two strings cannot be represented, returning a NULL:
+>> #      latin1 cp1252 latin2 latin7 latin-9 CP1250 CP1257
+>> # [1,]      0      0     15      0       0     15      0
+>> # [2,]     12     12      0     12      12      0     12
+>>
+>> While it may still be possible to give extra parameters to pdf() to use
+>> a font encoding that covers all the relevant characters, it seems
+>> easier to switch to cairo_pdf() for your multi-lingual plots. Place the
+>> following somewhere in the beginning of the vignette:
+>>
+>> <<results=hide,echo=FALSE>>=
+>> my.Swd <- function(name, width, height, ...)
+>>   grDevices::cairo_pdf(
+>>    filename = paste(name, "pdf", sep = "."),
+>>    width = width, height = height
+>>   )
+>> @
+>> \SweaveOpts{grdevice=my.Swd,pdf=FALSE}
+>>
+>> This should define a new plot device function for Sweave, one that
+>> handles more Unicode characters correctly.
+>>
+>>> PS: Thanks for the advice about plain text mode. Hopefully, I have
+>>> correctly abide by that advice in this current email.
+>>
+>> This e-mail arrived in plain text, thank you!
+>>
+>> --
+>> Best regards,
+>> Ivan
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From kev|nu@hey @end|ng |rom gm@||@com  Sat Feb 17 22:46:38 2024
+From: kev|nu@hey @end|ng |rom gm@||@com (Kevin Ushey)
+Date: Sat, 17 Feb 2024 13:46:38 -0800
+Subject: [R-pkg-devel] 
+ Unusually long execution time for R.utils::gzip on r-devel-windows
+In-Reply-To: <01046CE9-0875-41B9-B289-A5535269F413@uni-tuebingen.de>
+References: <CA730087-BFE7-47A5-A62C-F2C079142D33@uni-tuebingen.de>
+ <CAFDcVCTPexNOOQizj3kbu6MjohnP+w5MG9K0teo22FgOd4k2Fw@mail.gmail.com>
+ <CAFDcVCQtReBuEuQ0OdXBXnUmNRUMBHP=JiP55RwYOKqOgszXEg@mail.gmail.com>
+ <01046CE9-0875-41B9-B289-A5535269F413@uni-tuebingen.de>
+Message-ID: <CAJXgQP0Dr-k5Yc24nxR_+rVz9XHDJ16RLwic4zK-U+_0bvSwJQ@mail.gmail.com>
+
+FWIW, as far as I can tell, Sys.readlink() still doesn't handle
+symlinks (or junction points) on Windows. Were you thinking of
+normalizePath()? That does now resolve both symlinks and junction
+points on Windows (courtesy of a lot of work from Tomas), although I
+don't recall the exact versions in which support was introduced. But
+that would still give you a more efficient way of detecting such files
+on Windows.
+
+Kevin
+
+On Sat, Feb 17, 2024 at 3:21?AM Stefan Mayer
+<stefan.mayer at uni-tuebingen.de> wrote:
+>
+>
+> > On 17. Feb 2024, at 09:16, Henrik Bengtsson <henrik.bengtsson at gmail.com> wrote:
+> >
+> > I can confirm that this has to fixed in R.utils. This gist is that
+> > R.utils does lots of validation of read/write permissions, and deep
+> > down it rely on system("dir") as a fallback method. If this is down
+> > toward dirname(tempdir()), then it'll find a lot of files, e.g.
+> >
+> > [?]
+> >
+> > So, yeah, wow!  I'll look into fixing this, probably by removing this
+> > fallback approach, which is very rarely needed; it was added way back
+> > when Sys.readlink() didn't cover all cases.
+>
+> Thanks for looking into this, Henrik! Feel free to let me know if I can help with anything.
+>
+> - Stefan
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
