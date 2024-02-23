@@ -20282,3 +20282,310 @@ On Mon, Feb 19, 2024 at 2:20?PM Duncan Murdoch <murdoch.duncan at gmail.com> wro
 >
 
 
+From ggene@|ogyp@ck@ge @end|ng |rom gm@||@com  Wed Feb 21 13:29:02 2024
+From: ggene@|ogyp@ck@ge @end|ng |rom gm@||@com (Package Maintainer)
+Date: Wed, 21 Feb 2024 12:29:02 +0000
+Subject: [R-pkg-devel] Conversion failure in 'mbcsToSbcs'
+In-Reply-To: <CAA8crwdDqCnJOa8iWy6zDROMsXORamtioDB7RGG-20bB6OECLA@mail.gmail.com>
+References: <CAA8crwe=Ahry5kf_x6P1HXJ5coAZRfZJyv=arJUhVq0nm1khDA@mail.gmail.com>
+ <20231117185557.7ab22a8d@arachnoid>
+ <CAA8crwfV15isVC7jzbbiN46Vg3=ceeZnMGn0MvoG7VW32z282Q@mail.gmail.com>
+ <20231119182539.2483cbdb@Tarkus>
+ <CAA8crwfZkcHqwDBhnF4aHrpL7ZkVmFJWNu0eV4PiV9ppfg1n+A@mail.gmail.com>
+ <20240215181724.7ccfbc83@arachnoid>
+ <CAA8crwevmYJkkxBTY7-MgTDYxt87TUf7maXmUj-hOvejc2wy1w@mail.gmail.com>
+ <eeee3682-885a-488f-a58f-5b7f9f9f3461@gmail.com>
+ <CAA8crwdoGRvtQ=7zW_TaO9dWmbtQPF-oX9w+=Y0WE_d2bcQwyw@mail.gmail.com>
+ <39c3c921-c594-4c79-8dd9-adaee37322ec@gmail.com>
+ <CAA8crwdDqCnJOa8iWy6zDROMsXORamtioDB7RGG-20bB6OECLA@mail.gmail.com>
+Message-ID: <CAA8crwd9Y6PxoVL=H6KGK9ftYHSP2v0xC9XniivyDzpzWXMaJA@mail.gmail.com>
+
+Hello:
+
+Thank you again for your help.
+
+I resubmitted the package (after it passed R CMD check) and it seems
+there is still an ERROR on the windows builder as shown here:
+https://win-builder.r-project.org/incoming_pretest/ggenealogy_1.0.3_20240221_121754/Debian/00check.log
+
+Error: processing vignette 'ggenealogy.Rnw' failed with diagnostics:
+ chunk 58 (label = plotCBText)
+Error in graphics::strwidth(pMPDF$label, "inches") :
+  conversion failure on 'Lubom?r  Kub??ek' in 'mbcsToSbcs': for ? (U+010D)
+
+My latest vignette file can be found on the package github:
+
+https://github.com/lindsayrutter/ggenealogy/blob/master/vignettes/ggenealogy.Rnw
+
+The recommended cairo_pdf() syntax was used on lines 47-54:
+
+<<results=hide,echo=FALSE>>=
+my.Swd <- function(name, width, height, ...)
+ grDevices::cairo_pdf(
+  filename = paste(name, "pdf", sep = "."),
+  width = width, height = height
+ )
+@
+\SweaveOpts{grdevice=my.Swd,pdf=FALSE}
+
+I am a bit unsure how to remove this persisting ERROR; is there
+anything else you might recommend I look into?
+
+Thank you again.
+
+LAR
+
+On Mon, Feb 19, 2024 at 5:48?PM Package Maintainer
+<ggenealogypackage at gmail.com> wrote:
+>
+> Dear Duncan:
+>
+> Thank you for the feedback about that. I have removed the unrecognized
+> file and resubmitted the package. Thanks again.
+>
+> Kind regards,
+> LAR
+>
+>
+> On Mon, Feb 19, 2024 at 2:20?PM Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+> >
+> > Removing (or moving to inst) the unrecognized file should be sufficient.
+> >
+> > Duncan Murdoch
+> >
+> > On 19/02/2024 7:27 a.m., Package Maintainer wrote:
+> > > Hello all:
+> > >
+> > > Thank you both for your advice.
+> > >
+> > > I attempted to upload the latest version to CRAN, and again received
+> > > the notification that the package did not pass.
+> > >
+> > > It seems there are no warnings or errors (only 2 notes) on windows
+> > > (https://win-builder.r-project.org/incoming_pretest/ggenealogy_1.0.3_20240219_122904/Windows/00check.log)
+> > > and debian (https://win-builder.r-project.org/incoming_pretest/ggenealogy_1.0.3_20240219_122904/Debian/00check.log).
+> > >
+> > > One of the notes is simply stating that the package has been archived
+> > > (which occurred even when I contacted folks before the deadline). The
+> > > other note I can fix easily (an unrecognized file type in the main
+> > > directory).
+> > >
+> > > The only error delineated to me appears to be from a submission back
+> > > in November 2023
+> > > (https://cran-archive.r-project.org/web/checks/2023/2023-11-14_check_results_ggenealogy.html).
+> > >
+> > > Is there anything particular I should do? >
+> > > Thank you.
+> > >
+> > > Kind regards,
+> > > LAR
+> > >
+> > > On Sat, Feb 17, 2024 at 1:18?PM Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+> > >>
+> > >> At line 66 of your document, you have this chunk:
+> > >>
+> > >> <<echo=FALSE>>=
+> > >> rm(list=ls())
+> > >> @
+> > >>
+> > >> That removed the device.  You need to put its definition after that.
+> > >> (It might also need to come earlier if you're doing plotting before
+> > >> this, and again even later if you remove it again.)
+> > >>
+> > >> By the way, I'd recommend using knitr for Rnw documents instead of
+> > >> Sweave.  It will require a few changes, but in general it's more
+> > >> flexible and works a bit better.
+> > >>
+> > >> Duncan Murdoch
+> > >>
+> > >>
+> > >>
+> > >> On 17/02/2024 7:51 a.m., Package Maintainer wrote:
+> > >>> Dear Ivan:
+> > >>>
+> > >>> Thank you for your help again.
+> > >>>
+> > >>> Thanks for your suggestion to use cairo_pdf() instead of pdf() to
+> > >>> allow for the multi-lingual plots.
+> > >>>
+> > >>> I incorporated your advice and added the the code you suggested:
+> > >>>
+> > >>> <<results=hide,echo=FALSE>>=
+> > >>> my.Swd <- function(name, width, height, ...)
+> > >>>    grDevices::cairo_pdf(
+> > >>>     filename = paste(name, "pdf", sep = "."),
+> > >>>     width = width, height = height
+> > >>>    )
+> > >>> @
+> > >>> \SweaveOpts{grdevice=my.Swd,pdf=FALSE}
+> > >>>
+> > >>> as shown in lines 49-56 in my new vignette file here
+> > >>> (https://github.com/lindsayrutter/ggenealogy/blob/master/vignettes/ggenealogy.Rnw).
+> > >>>
+> > >>> Upon attempting to build (R CMD build ggenealogy), I received the ERROR:
+> > >>>
+> > >>> Error: processing vignette 'ggenealogy.Rnw' failed with diagnostics:
+> > >>> object 'my.Swd' not found
+> > >>> --- failed re-building ?ggenealogy.Rnw?
+> > >>>
+> > >>> I tried replacing the code you suggested to various locations and
+> > >>> separating the \SweaveOpts line to be located at separate locations.
+> > >>> However, I received the same ERROR each time.
+> > >>>
+> > >>> Do you have any suggestions or ideas on how to resolve this error?
+> > >>>
+> > >>> I again thank you for your help with this issue.
+> > >>>
+> > >>> Kind regards,
+> > >>> LAR
+> > >>>
+> > >>>
+> > >>> On Thu, Feb 15, 2024 at 3:17?PM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+> > >>>>
+> > >>>> ? Mon, 12 Feb 2024 16:01:27 +0000
+> > >>>> Package Maintainer <ggenealogypackage at gmail.com> ?????:
+> > >>>>
+> > >>>>> Unfortunately, I received a reply from the CRAN submission team
+> > >>>>> stating that my vignette file is still obtaining the "mbcsToSbcs"
+> > >>>>> ERROR as is shown here
+> > >>>>> (https://win-builder.r-project.org/incoming_pretest/ggenealogy_1.0.3_20240212_152455/Debian/00check.log).
+> > >>>>
+> > >>>> I am sorry for leading you down the wrong way with my advice. It turns
+> > >>>> out that no 8-bit Type-1 encoding known to pdf() can represent both
+> > >>>> 'Lubom?r Kub??ek' and 'Anders ?gren':
+> > >>>>
+> > >>>> lapply(
+> > >>>>    setNames(nm = c(
+> > >>>>     'latin1', 'cp1252', 'latin2', 'latin7',
+> > >>>>     'latin-9', 'CP1250', 'CP1257'
+> > >>>>    )), function(enc)
+> > >>>>     iconv(enc2utf8(c(
+> > >>>>      'Lubom?r Kub??ek', 'Anders ?gren'
+> > >>>>     )), 'UTF-8', enc, toRaw = TRUE)
+> > >>>> ) |> sapply(lengths)
+> > >>>> # one of the two strings cannot be represented, returning a NULL:
+> > >>>> #      latin1 cp1252 latin2 latin7 latin-9 CP1250 CP1257
+> > >>>> # [1,]      0      0     15      0       0     15      0
+> > >>>> # [2,]     12     12      0     12      12      0     12
+> > >>>>
+> > >>>> While it may still be possible to give extra parameters to pdf() to use
+> > >>>> a font encoding that covers all the relevant characters, it seems
+> > >>>> easier to switch to cairo_pdf() for your multi-lingual plots. Place the
+> > >>>> following somewhere in the beginning of the vignette:
+> > >>>>
+> > >>>> <<results=hide,echo=FALSE>>=
+> > >>>> my.Swd <- function(name, width, height, ...)
+> > >>>>    grDevices::cairo_pdf(
+> > >>>>     filename = paste(name, "pdf", sep = "."),
+> > >>>>     width = width, height = height
+> > >>>>    )
+> > >>>> @
+> > >>>> \SweaveOpts{grdevice=my.Swd,pdf=FALSE}
+> > >>>>
+> > >>>> This should define a new plot device function for Sweave, one that
+> > >>>> handles more Unicode characters correctly.
+> > >>>>
+> > >>>>> PS: Thanks for the advice about plain text mode. Hopefully, I have
+> > >>>>> correctly abide by that advice in this current email.
+> > >>>>
+> > >>>> This e-mail arrived in plain text, thank you!
+> > >>>>
+> > >>>> --
+> > >>>> Best regards,
+> > >>>> Ivan
+> > >>>
+> > >>> ______________________________________________
+> > >>> R-package-devel at r-project.org mailing list
+> > >>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> > >>
+> >
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Feb 21 13:44:58 2024
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 21 Feb 2024 15:44:58 +0300
+Subject: [R-pkg-devel] Conversion failure in 'mbcsToSbcs'
+In-Reply-To: <CAA8crwd9Y6PxoVL=H6KGK9ftYHSP2v0xC9XniivyDzpzWXMaJA@mail.gmail.com>
+References: <CAA8crwe=Ahry5kf_x6P1HXJ5coAZRfZJyv=arJUhVq0nm1khDA@mail.gmail.com>
+ <20231117185557.7ab22a8d@arachnoid>
+ <CAA8crwfV15isVC7jzbbiN46Vg3=ceeZnMGn0MvoG7VW32z282Q@mail.gmail.com>
+ <20231119182539.2483cbdb@Tarkus>
+ <CAA8crwfZkcHqwDBhnF4aHrpL7ZkVmFJWNu0eV4PiV9ppfg1n+A@mail.gmail.com>
+ <20240215181724.7ccfbc83@arachnoid>
+ <CAA8crwevmYJkkxBTY7-MgTDYxt87TUf7maXmUj-hOvejc2wy1w@mail.gmail.com>
+ <eeee3682-885a-488f-a58f-5b7f9f9f3461@gmail.com>
+ <CAA8crwdoGRvtQ=7zW_TaO9dWmbtQPF-oX9w+=Y0WE_d2bcQwyw@mail.gmail.com>
+ <39c3c921-c594-4c79-8dd9-adaee37322ec@gmail.com>
+ <CAA8crwdDqCnJOa8iWy6zDROMsXORamtioDB7RGG-20bB6OECLA@mail.gmail.com>
+ <CAA8crwd9Y6PxoVL=H6KGK9ftYHSP2v0xC9XniivyDzpzWXMaJA@mail.gmail.com>
+Message-ID: <20240221154458.5bea2858@arachnoid>
+
+? Wed, 21 Feb 2024 12:29:02 +0000
+Package Maintainer <ggenealogypackage at gmail.com> ?????:
+
+> Error: processing vignette 'ggenealogy.Rnw' failed with diagnostics:
+>  chunk 58 (label = plotCBText)
+
+In order to use the non-standard graphics device, the chunk must
+set the option fig=TRUE. Otherwise, when something calls
+graphics::strwidth('Lubom?r Kub??ek', "inches"), R notices that no
+graphics device is active and creates a default one, which happens to
+be pdf() and has all these problems. With fig=TRUE, Sweave will
+initialise the cairo_pdf() device first, and then graphics::strwidth()
+will use the existing device, avoiding the error.
+
+-- 
+Best regards,
+Ivan
+
+
+From ggene@|ogyp@ck@ge @end|ng |rom gm@||@com  Wed Feb 21 18:25:14 2024
+From: ggene@|ogyp@ck@ge @end|ng |rom gm@||@com (Package Maintainer)
+Date: Wed, 21 Feb 2024 17:25:14 +0000
+Subject: [R-pkg-devel] Conversion failure in 'mbcsToSbcs'
+In-Reply-To: <20240221154458.5bea2858@arachnoid>
+References: <CAA8crwe=Ahry5kf_x6P1HXJ5coAZRfZJyv=arJUhVq0nm1khDA@mail.gmail.com>
+ <20231117185557.7ab22a8d@arachnoid>
+ <CAA8crwfV15isVC7jzbbiN46Vg3=ceeZnMGn0MvoG7VW32z282Q@mail.gmail.com>
+ <20231119182539.2483cbdb@Tarkus>
+ <CAA8crwfZkcHqwDBhnF4aHrpL7ZkVmFJWNu0eV4PiV9ppfg1n+A@mail.gmail.com>
+ <20240215181724.7ccfbc83@arachnoid>
+ <CAA8crwevmYJkkxBTY7-MgTDYxt87TUf7maXmUj-hOvejc2wy1w@mail.gmail.com>
+ <eeee3682-885a-488f-a58f-5b7f9f9f3461@gmail.com>
+ <CAA8crwdoGRvtQ=7zW_TaO9dWmbtQPF-oX9w+=Y0WE_d2bcQwyw@mail.gmail.com>
+ <39c3c921-c594-4c79-8dd9-adaee37322ec@gmail.com>
+ <CAA8crwdDqCnJOa8iWy6zDROMsXORamtioDB7RGG-20bB6OECLA@mail.gmail.com>
+ <CAA8crwd9Y6PxoVL=H6KGK9ftYHSP2v0xC9XniivyDzpzWXMaJA@mail.gmail.com>
+ <20240221154458.5bea2858@arachnoid>
+Message-ID: <CAA8crwd03LV56nYJei8SHVDZf6jJym-zjNK7pQvKg2RVoZA6bQ@mail.gmail.com>
+
+Dear Ivan and all:
+
+Thank you for this helpful advice. I have received confirmation that
+the package is now on its way to CRAN.
+
+Many thanks again.
+
+LAR
+
+On Wed, Feb 21, 2024 at 12:45?PM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+>
+> ? Wed, 21 Feb 2024 12:29:02 +0000
+> Package Maintainer <ggenealogypackage at gmail.com> ?????:
+>
+> > Error: processing vignette 'ggenealogy.Rnw' failed with diagnostics:
+> >  chunk 58 (label = plotCBText)
+>
+> In order to use the non-standard graphics device, the chunk must
+> set the option fig=TRUE. Otherwise, when something calls
+> graphics::strwidth('Lubom?r Kub??ek', "inches"), R notices that no
+> graphics device is active and creates a default one, which happens to
+> be pdf() and has all these problems. With fig=TRUE, Sweave will
+> initialise the cairo_pdf() device first, and then graphics::strwidth()
+> will use the existing device, avoiding the error.
+>
+> --
+> Best regards,
+> Ivan
+
+
