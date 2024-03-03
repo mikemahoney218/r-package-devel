@@ -22129,3 +22129,147 @@ Thanks again,
 Jon
 
 
+From murr@y@e||ord @end|ng |rom ot@go@@c@nz  Fri Mar  1 08:42:01 2024
+From: murr@y@e||ord @end|ng |rom ot@go@@c@nz (Murray Efford)
+Date: Fri, 1 Mar 2024 07:42:01 +0000
+Subject: [R-pkg-devel] Additional issues: Intel segfault
+Message-ID: <SY4PR01MB565871424C33A2C928A02BA5AC5E2@SY4PR01MB5658.ausprd01.prod.outlook.com>
+
+I am puzzling over an 'Additional issues' error in the CRAN check results for package secrdesign version 1.8.2 (see https://CRAN.R-project.org/package=secrdesign, and for an updated version https://github.com/MurrayEfford/secrdesign) The issue rises with the Intel(R) oneAPI DPC++/C++ Compiler:?
+
+?*** caught segfault ***
+address (nil), cause 'unknown'
+
+The location of the error is obscure: R CMD check suggests it is most likely in the Examples for 'validate', but all code there is wrapped in \dontrun{}. The package makes limited use of RcppArmadillo and BH. It passes all other CRAN checks on several platforms (see GitHub link) and for all I know may now be 'clean'.
+
+valgrind on x86_64-pc-linux-gnu (64-bit) hits an error that I guess is unrelated and not actually a bug?
+(the location is a matrix multiplication in a function from package 'secr' that is executed by run.scenarios):
+
+> sims1 <- run.scenarios(nrepl = 2, trapset = traps1, scenarios =
++ ? ? ?scen1, seed = 345, fit = TRUE, extractfn = summary)
+vex amd64->IR: unhandled instruction bytes: 0x62 0xE1 0xFF 0x8 0x10 0xC 0xD1 0x62 0xF2 0xF5
+vex amd64->IR: ? REX=0 REX.W=0 REX.R=0 REX.X=0 REX.B=0
+vex amd64->IR: ? VEX=0 VEX.L=0 VEX.nVVVV=0x0 ESC=NONE
+vex amd64->IR: ? PFX.66=0 PFX.F2=0 PFX.F3=0
+==1990825== valgrind: Unrecognised instruction at address 0x57d51f0.
+==1990825== ? ?at 0x57D51F0: dgemv_n (in /opt/OpenBLAS/lib/libopenblas_skylakexp-r0.3.23.dev.so)
+==1990825== ? ?by 0x554BDF9: dgemv_ (in /opt/OpenBLAS/lib/libopenblas_skylakexp-r0.3.23.dev.so)
+==1990825== ? ?by 0x4EE2F2C: matprod (array.c:812)
+etc.
+
+I would much appreciate any tips on how to proceed. Specifically, how to reproduce and localise the arcane Intel error that prevents me submitting a new version to CRAN, or whether I should submit regardless.
+
+Murray Efford
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Mar  1 09:46:28 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 1 Mar 2024 11:46:28 +0300
+Subject: [R-pkg-devel] Additional issues: Intel segfault
+In-Reply-To: <SY4PR01MB565871424C33A2C928A02BA5AC5E2@SY4PR01MB5658.ausprd01.prod.outlook.com>
+References: <SY4PR01MB565871424C33A2C928A02BA5AC5E2@SY4PR01MB5658.ausprd01.prod.outlook.com>
+Message-ID: <20240301114628.09b38b0f@Tarkus>
+
+? Fri, 1 Mar 2024 07:42:01 +0000
+Murray Efford <murray.efford at otago.ac.nz> ?????:
+
+> R CMD check suggests it is most likely in the Examples for
+> 'validate', but all code there is wrapped in \dontrun{}.
+
+The crash happens after q('no'), suggesting a corruption in the heap or
+in the R memory manager. At least it's a null pointer being
+dereferenced and not a 0xRANDOM_LOOKING_NUMBER: this limits the impact
+of the problem.
+
+I don't know if anyone created an easily reproducible container with an
+Intel build of R (there's https://hub.docker.com/r/intel/oneapi, but
+aren't the compilers themselves supposed to be not redistributable?),
+so you will most likely have to follow
+https://www.stats.ox.ac.uk/pub/bdr/Intel/README.txt and
+https://cran.r-project.org/doc/manuals/r-devel/R-admin.html#Intel-compilers
+manually, compiling R using Intel compilers yourself in order to
+reproduce this.
+
+I think it would be great if CRAN checking machines used a just-in-time
+debugger to provide C-level backtraces at the place of the crash. For
+Windows, such a utility does exist [*], but I recently learned that the
+glibc `catchsegv` program (and most other similar programs) used to
+perform shared object preloading (before being thrown out of the
+codebase altogether), which is more intrusive than it could be. A proof
+of concept using GDB on Linux can be shown to work:
+
+R -d gdb \
+ --debugger-args='-batch -ex run -ex bt -ex c -ex q' \
+ -e '
+  Rcpp::sourceCpp(code =
+   "//[[Rcpp::export]]\nvoid rip() { *(double*)(42) = 42; }"
+  ); rip()
+ '
+
+-- 
+Best regards,
+Ivan
+
+[*] https://github.com/jrfonseca/drmingw
+
+
+From murr@y@e||ord @end|ng |rom ot@go@@c@nz  Sat Mar  2 03:07:47 2024
+From: murr@y@e||ord @end|ng |rom ot@go@@c@nz (Murray Efford)
+Date: Sat, 2 Mar 2024 02:07:47 +0000
+Subject: [R-pkg-devel] Additional issues: Intel segfault
+In-Reply-To: <20240301114628.09b38b0f@Tarkus>
+References: <SY4PR01MB565871424C33A2C928A02BA5AC5E2@SY4PR01MB5658.ausprd01.prod.outlook.com>
+ <20240301114628.09b38b0f@Tarkus>
+Message-ID: <SY4PR01MB5658703BAD0C1D9D63425022AC5D2@SY4PR01MB5658.ausprd01.prod.outlook.com>
+
+Thanks, Ivan, for looking into this and providing some reassurance. Gabor suggested https://github.com/r-hub/rhub2 and that worked like a charm. A check there on the Intel platform found no errors in my present version of secrdesign, so I'll resubmit with confidence. The original error remains a mystery, but not one I need to pursue.
+Murray
+
+From: Ivan Krylov <ikrylov at disroot.org>
+Sent: Friday, 1 March 2024 21:46
+To: Murray Efford <murray.efford at otago.ac.nz>
+Cc: R-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Additional issues: Intel segfault
+
+? Fri, 1 Mar 2024 07:42:01 +0000
+Murray Efford <murray.efford at otago.ac.nz> ?????:
+
+> R CMD check suggests it is most likely in the Examples for
+> 'validate', but all code there is wrapped in \dontrun{}.
+
+The crash happens after q('no'), suggesting a corruption in the heap or
+in the R memory manager. At least it's a null pointer being
+dereferenced and not a 0xRANDOM_LOOKING_NUMBER: this limits the impact
+of the problem.
+
+I don't know if anyone created an easily reproducible container with an
+Intel build of R (there's https://hub.docker.com/r/intel/oneapi, but
+aren't the compilers themselves supposed to be not redistributable?),
+so you will most likely have to follow
+https://www.stats.ox.ac.uk/pub/bdr/Intel/README.txt and
+https://cran.r-project.org/doc/manuals/r-devel/R-admin.html#Intel-compilers
+manually, compiling R using Intel compilers yourself in order to
+reproduce this.
+
+I think it would be great if CRAN checking machines used a just-in-time
+debugger to provide C-level backtraces at the place of the crash. For
+Windows, such a utility does exist [*], but I recently learned that the
+glibc `catchsegv` program (and most other similar programs) used to
+perform shared object preloading (before being thrown out of the
+codebase altogether), which is more intrusive than it could be. A proof
+of concept using GDB on Linux can be shown to work:
+
+R -d gdb \
+ --debugger-args='-batch -ex run -ex bt -ex c -ex q' \
+ -e '
+  Rcpp::sourceCpp(code =
+   "//[[Rcpp::export]]\nvoid rip() { *(double*)(42) = 42; }"
+  ); rip()
+ '
+
+--
+Best regards,
+Ivan
+
+[*] https://github.com/jrfonseca/drmingw
+
+
