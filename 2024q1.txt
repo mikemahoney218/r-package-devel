@@ -22297,3 +22297,109 @@ Best regards,
 Ivan
 
 
+From |kry|ov @end|ng |rom d|@root@org  Sun Mar  3 09:14:44 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sun, 3 Mar 2024 11:14:44 +0300
+Subject: [R-pkg-devel] RFC: C backtraces for R CMD check via just-in-time
+ debugging
+Message-ID: <20240303111444.6582a6c3@Tarkus>
+
+Hello,
+
+This may be of interest to people who run lots of R CMD checks and have
+to deal with resulting crashes in compiled code.
+
+Every now and then, the CRAN checks surface a particularly nasty crash.
+The R-level traceback stops in the compiled code. It's not obvious
+where exactly the crash happens. Naturally, this never happened on the
+maintainer's computer before and, in fact, is hard to reproduce.
+
+Containers would help, but they cannot solve the problem completely.
+Some problems only surface when there's more than 32 logical
+processors, or during certain times of day. It may help to at least see
+the location of the crash as it happens on the computer running the
+check.
+
+One way to provide that would be to run a special debugger that does
+nothing most of the time, attaches to child threads and processes, and
+produces backtraces when processes receive a crashing signal. There is
+such a debugger for Windows [1], and there is now a proof of concept
+for amd64 Linux [2]. 
+
+I've just tried [2] on a 250-package reverse dependency check and saw a
+lot of SIGSEGVs with rcx=00000000cafebabe or Java in the backtrace, but
+other than that, it seems to work fine. Do you think it's worth
+developing further?
+
+The major downside of using a debugger like this is a noticeable change
+in the environment: [v]fork(), clone() and exec() become slower,
+attaching another tracer becomes impossible, SIGSEGVs may become much
+slower (although I do hope that most software I rely upon doesn't care
+about SIGSEGVs per second). On the other hand, these wrappers are as
+transparent as they get and don't even need R -d to pass the arguments
+to the child process.
+
+The other way to provide C-level backtraces is a post-mortem debugger
+(registered via the AeDebug registry key on Windows or
+kernel.core_pattern sysctl on Linux). This avoids interference with the
+process environment during normal execution, but requires more
+integration work to collect the crash dumps, process them into usable
+backtraces and associate with the R CMD check runs. There are also
+injectable DLLs like libbacktrace, but these have to interfere with the
+process from the inside, which may be worse than ptrace() in terms of
+observable environment changes. On glibc systems (but not musl, macOS,
+Windows), R's SIGSEGV handler could be enhanced to call
+backtrace_symbols_fd(), which should be safe (no malloc()) as long as
+libgcc is preloaded.
+
+Is adding C-level backtraces to R CMD checks worth the effort? Could it
+be a good idea to add this on CRAN? If yes, how can I help?
+
+-- 
+Best regards,
+Ivan
+
+[1] <https://github.com/jrfonseca/drmingw>, see "catchsegv"
+
+[2] https://codeberg.org/aitap/tracecrash
+
+
+From ro||turner @end|ng |rom po@teo@net  Mon Mar  4 02:15:08 2024
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Mon,  4 Mar 2024 01:15:08 +0000
+Subject: [R-pkg-devel] 
+ RFC: C backtraces for R CMD check via just-in-time debugging
+In-Reply-To: <20240303111444.6582a6c3@Tarkus>
+References: <20240303111444.6582a6c3@Tarkus>
+Message-ID: <20240304141508.59f3fea9@rolf-Latitude-E7470>
+
+On Sun, 3 Mar 2024 11:14:44 +0300
+Ivan Krylov via R-package-devel <r-package-devel at r-project.org> wrote:
+
+> Hello,
+> 
+> This may be of interest to people who run lots of R CMD checks and
+> have to deal with resulting crashes in compiled code.
+
+<SNIP>
+
+> Is adding C-level backtraces to R CMD checks worth the effort? Could
+> it be a good idea to add this on CRAN? If yes, how can I help?
+> 
+
+Sounds like an excellent idea to me, but I am not really qualified to
+judge.  Most of this stuff is was over my head.
+
+cheers,
+
+Rolf Turner
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+
