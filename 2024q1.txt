@@ -23764,3 +23764,828 @@ On March 5, 2024 5:34:36 PM PST, "Richard M. Heiberger" <rmh at temple.edu> wrot
 Sent from my phone. Please excuse my brevity.
 
 
+From |kry|ov @end|ng |rom d|@root@org  Wed Mar  6 07:38:12 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Wed, 6 Mar 2024 09:38:12 +0300
+Subject: [R-pkg-devel] RcmdrPlugin.HH_1.1-48.tar.gz
+In-Reply-To: <D8090F24-6B4A-4E38-91FA-7D61E19EA87B@temple.edu>
+References: <D8090F24-6B4A-4E38-91FA-7D61E19EA87B@temple.edu>
+Message-ID: <20240306093812.14bc68d7@Tarkus>
+
+? Tue, 5 Mar 2024 22:41:32 +0000
+"Richard M. Heiberger" <rmh at temple.edu> ?????:
+
+>  Undocumented code objects:
+>    '.__global__'
+>  All user-level objects in a package should have documentation
+> entries. See chapter 'Writing R documentation files' in the 'Writing R
+>  Extensions' manual.
+
+This object is not here for the user of the package. If you don't
+export it, there will be no WARNING about it being undocumented. This
+variable is exported because of exportPattern(".") in the file
+NAMESPACE. The lone dot is a regular expression that matches any name
+of an R object.
+
+If you don't want to manually list your exports in the NAMESPACE file
+(which can get tedious) or generate it (which takes additional
+dependencies and build steps), you can use exportPattern('^[^\\.]') to
+export everything except objects with a name starting with a period:
+https://cran.r-project.org/doc/manuals/R-exts.html#Specifying-imports-and-exports
+
+-- 
+Best regards,
+Ivan
+
+
+From rmh @end|ng |rom temp|e@edu  Wed Mar  6 08:02:39 2024
+From: rmh @end|ng |rom temp|e@edu (Richard M. Heiberger)
+Date: Wed, 6 Mar 2024 07:02:39 +0000
+Subject: [R-pkg-devel] [External]  RcmdrPlugin.HH_1.1-48.tar.gz
+In-Reply-To: <20240306093812.14bc68d7@Tarkus>
+References: <D8090F24-6B4A-4E38-91FA-7D61E19EA87B@temple.edu>
+ <20240306093812.14bc68d7@Tarkus>
+Message-ID: <F68DC1C6-597C-4647-AC96-84373F392EC3@temple.edu>
+
+Thank you Duncan, Jeff, Ivan.
+
+I did all that Duncan and Jeff suggested, plus a bit more that appeared to be necessary.
+All of what I did is documented in the RcmdrPlugin.HH/NEWS file.
+
+Ivan's comments were received after I sent 1.1-50 to CRAN and it was accepted.
+
+I suggest that my notes in the NEWS file, perhaps augmented with Ivan's comments,
+might be added to utils/man/globalVariables.Rd and to the
+"
+section ?Package
+structure? in the ?Writing R Extensions? manual.
+"
+
+
+> On Mar 6, 2024, at 01:38, Ivan Krylov <ikrylov at disroot.org> wrote:
+>
+> ? Tue, 5 Mar 2024 22:41:32 +0000
+> "Richard M. Heiberger" <rmh at temple.edu> ?????:
+>
+>> Undocumented code objects:
+>>   '.__global__'
+>> All user-level objects in a package should have documentation
+>> entries. See chapter 'Writing R documentation files' in the 'Writing R
+>> Extensions' manual.
+>
+> This object is not here for the user of the package. If you don't
+> export it, there will be no WARNING about it being undocumented. This
+> variable is exported because of exportPattern(".") in the file
+> NAMESPACE. The lone dot is a regular expression that matches any name
+> of an R object.
+>
+> If you don't want to manually list your exports in the NAMESPACE file
+> (which can get tedious) or generate it (which takes additional
+> dependencies and build steps), you can use exportPattern('^[^\\.]') to
+> export everything except objects with a name starting with a period:
+> https://cran.r-project.org/doc/manuals/R-exts.html#Specifying-imports-and-exports
+>
+> --
+> Best regards,
+> Ivan
+
+
+From jo@h@m@u|r|ch @end|ng |rom gm@||@com  Wed Mar  6 17:57:28 2024
+From: jo@h@m@u|r|ch @end|ng |rom gm@||@com (Joshua Ulrich)
+Date: Wed, 6 Mar 2024 10:57:28 -0600
+Subject: [R-pkg-devel] [External] RcmdrPlugin.HH_1.1-48.tar.gz
+In-Reply-To: <F68DC1C6-597C-4647-AC96-84373F392EC3@temple.edu>
+References: <D8090F24-6B4A-4E38-91FA-7D61E19EA87B@temple.edu>
+ <20240306093812.14bc68d7@Tarkus>
+ <F68DC1C6-597C-4647-AC96-84373F392EC3@temple.edu>
+Message-ID: <CAPPM_gTCgr4BRRwk7qoseGSjX966O71hX2nWBDJ6mfy8RMKAAg@mail.gmail.com>
+
+On Wed, Mar 6, 2024 at 1:03?AM Richard M. Heiberger <rmh at temple.edu> wrote:
+>
+> Thank you Duncan, Jeff, Ivan.
+>
+> I did all that Duncan and Jeff suggested, plus a bit more that appeared to be necessary.
+> All of what I did is documented in the RcmdrPlugin.HH/NEWS file.
+>
+> Ivan's comments were received after I sent 1.1-50 to CRAN and it was accepted.
+>
+I recommend you revert all the changes you made that are documented in
+the package NEWS, and at minimum follow Ivan's advice to use
+exportPattern("^[^\\.]") instead of exportPattern("."). It would be
+even better to follow the advice in Writing R Extensions and list each
+exported object individually.
+
+> I suggest that my notes in the NEWS file, perhaps augmented with Ivan's comments,
+> might be added to utils/man/globalVariables.Rd and to the
+> "
+> section ?Package
+> structure? in the ?Writing R Extensions? manual.
+> "
+>
+That section of Writing R Extensions specifically says not to do what you did.
+
+    Beware of patterns which include names starting with a period: some
+    of these are internal-only variables and should never be exported,
+    e.g. ?.__S3MethodsTable__.? (and loading excludes known cases).
+
+Duncan pointed out that '.__global__' is an internal-only variable
+created by globalVariables(), which means it should never be exported
+by a package. Imagine the number of conflicts there would be if every
+package that used globalVariables() exported the '.__global__'
+object... there would probably be thousands, yikes!
+
+It's possible that future versions of 'R CMD check' will error if
+there are any incorrectly exported internal variables (like
+'.__global__'), which would cause your package to fail.
+
+Best,
+Josh
+
+
+>
+> > On Mar 6, 2024, at 01:38, Ivan Krylov <ikrylov at disroot.org> wrote:
+> >
+> > ? Tue, 5 Mar 2024 22:41:32 +0000
+> > "Richard M. Heiberger" <rmh at temple.edu> ?????:
+> >
+> >> Undocumented code objects:
+> >>   '.__global__'
+> >> All user-level objects in a package should have documentation
+> >> entries. See chapter 'Writing R documentation files' in the 'Writing R
+> >> Extensions' manual.
+> >
+> > This object is not here for the user of the package. If you don't
+> > export it, there will be no WARNING about it being undocumented. This
+> > variable is exported because of exportPattern(".") in the file
+> > NAMESPACE. The lone dot is a regular expression that matches any name
+> > of an R object.
+> >
+> > If you don't want to manually list your exports in the NAMESPACE file
+> > (which can get tedious) or generate it (which takes additional
+> > dependencies and build steps), you can use exportPattern('^[^\\.]') to
+> > export everything except objects with a name starting with a period:
+> > https://cran.r-project.org/doc/manuals/R-exts.html#Specifying-imports-and-exports
+> >
+> > --
+> > Best regards,
+> > Ivan
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+
+--
+Joshua Ulrich  |  about.me/joshuaulrich
+FOSS Trading  |  www.fosstrading.com
+
+
+From rmh @end|ng |rom temp|e@edu  Wed Mar  6 18:10:50 2024
+From: rmh @end|ng |rom temp|e@edu (Richard M. Heiberger)
+Date: Wed, 6 Mar 2024 17:10:50 +0000
+Subject: [R-pkg-devel] 
+ [External]  [External] RcmdrPlugin.HH_1.1-48.tar.gz
+In-Reply-To: <CAPPM_gTCgr4BRRwk7qoseGSjX966O71hX2nWBDJ6mfy8RMKAAg@mail.gmail.com>
+References: <D8090F24-6B4A-4E38-91FA-7D61E19EA87B@temple.edu>
+ <20240306093812.14bc68d7@Tarkus>
+ <F68DC1C6-597C-4647-AC96-84373F392EC3@temple.edu>
+ <CAPPM_gTCgr4BRRwk7qoseGSjX966O71hX2nWBDJ6mfy8RMKAAg@mail.gmail.com>
+Message-ID: <B48ACA95-8F2A-4508-A5CB-E3E0CB162CD8@temple.edu>
+
+Thank you, I will do that reversion in a few days.
+
+Before I do, I want to ask if the default export generated by R CMD build should be changed.
+the default is  exportPattern("."), which seems to be the cause of the problem.
+Might the default be changed to exportPattern("^[^\\.]") ?
+
+> On Mar 6, 2024, at 11:57, Joshua Ulrich <josh.m.ulrich at gmail.com> wrote:
+>
+> On Wed, Mar 6, 2024 at 1:03?AM Richard M. Heiberger <rmh at temple.edu> wrote:
+>>
+>> Thank you Duncan, Jeff, Ivan.
+>>
+>> I did all that Duncan and Jeff suggested, plus a bit more that appeared to be necessary.
+>> All of what I did is documented in the RcmdrPlugin.HH/NEWS file.
+>>
+>> Ivan's comments were received after I sent 1.1-50 to CRAN and it was accepted.
+>>
+> I recommend you revert all the changes you made that are documented in
+> the package NEWS, and at minimum follow Ivan's advice to use
+> exportPattern("^[^\\.]") instead of exportPattern("."). It would be
+> even better to follow the advice in Writing R Extensions and list each
+> exported object individually.
+>
+>> I suggest that my notes in the NEWS file, perhaps augmented with Ivan's comments,
+>> might be added to utils/man/globalVariables.Rd and to the
+>> "
+>> section ?Package
+>> structure? in the ?Writing R Extensions? manual.
+>> "
+>>
+> That section of Writing R Extensions specifically says not to do what you did.
+>
+>    Beware of patterns which include names starting with a period: some
+>    of these are internal-only variables and should never be exported,
+>    e.g. ?.__S3MethodsTable__.? (and loading excludes known cases).
+>
+> Duncan pointed out that '.__global__' is an internal-only variable
+> created by globalVariables(), which means it should never be exported
+> by a package. Imagine the number of conflicts there would be if every
+> package that used globalVariables() exported the '.__global__'
+> object... there would probably be thousands, yikes!
+>
+> It's possible that future versions of 'R CMD check' will error if
+> there are any incorrectly exported internal variables (like
+> '.__global__'), which would cause your package to fail.
+>
+> Best,
+> Josh
+>
+>
+>>
+>>> On Mar 6, 2024, at 01:38, Ivan Krylov <ikrylov at disroot.org> wrote:
+>>>
+>>> ? Tue, 5 Mar 2024 22:41:32 +0000
+>>> "Richard M. Heiberger" <rmh at temple.edu> ?????:
+>>>
+>>>> Undocumented code objects:
+>>>>  '.__global__'
+>>>> All user-level objects in a package should have documentation
+>>>> entries. See chapter 'Writing R documentation files' in the 'Writing R
+>>>> Extensions' manual.
+>>>
+>>> This object is not here for the user of the package. If you don't
+>>> export it, there will be no WARNING about it being undocumented. This
+>>> variable is exported because of exportPattern(".") in the file
+>>> NAMESPACE. The lone dot is a regular expression that matches any name
+>>> of an R object.
+>>>
+>>> If you don't want to manually list your exports in the NAMESPACE file
+>>> (which can get tedious) or generate it (which takes additional
+>>> dependencies and build steps), you can use exportPattern('^[^\\.]') to
+>>> export everything except objects with a name starting with a period:
+>>> https://cran.r-project.org/doc/manuals/R-exts.html#Specifying-imports-and-exports
+>>>
+>>> --
+>>> Best regards,
+>>> Ivan
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+>
+>
+> --
+> Joshua Ulrich  |  about.me/joshuaulrich
+> FOSS Trading  |  http://www.fosstrading.com/
+
+
+
+From yoh@nn@|oucher @end|ng |rom un|v-po|t|er@@|r  Wed Mar  6 18:27:35 2024
+From: yoh@nn@|oucher @end|ng |rom un|v-po|t|er@@|r (Yohann Foucher)
+Date: Wed, 6 Mar 2024 18:27:35 +0100
+Subject: [R-pkg-devel] Suggesting an archived package in the DESCRIPTION
+ file
+In-Reply-To: <26087.36274.990228.83788@rob.eddelbuettel.com>
+References: <345B8EC7-A291-4DDB-ADFB-83E203953403@univ-poitiers.fr>
+ <1e49962e-de18-4549-8d34-3526724d97e8@gmail.com>
+ <26087.6125.251731.974584@rob.eddelbuettel.com>
+ <ce8eb415-6715-45b1-90df-b131734a0882@gmail.com>
+ <26087.24229.361902.266275@rob.eddelbuettel.com>
+ <92260940-61c1-409f-9c31-dd1f5dccefcb@gmail.com>
+ <26087.29187.819952.445502@rob.eddelbuettel.com>
+ <0a068595-3418-415b-b64e-7b3163e98ffd@gmail.com>
+ <26087.36274.990228.83788@rob.eddelbuettel.com>
+Message-ID: <562BB3C8-694B-468F-B2B3-CB39CB3B8228@univ-poitiers.fr>
+
+Dear all,
+
+Thank you for your proposals and discussions. Accordingly, because it seems there is no relevant alternative, I decided to propose an update of the ? survivalmodels ? instead of the initial maintener for repositioning it in the main CRAN repository and avoid the archiving of my package.
+
+Thanks again.
+
+Yohann
+
+
+> Le 5 mars 2024 ? 22:25, Dirk Eddelbuettel <edd at debian.org> a ?crit :
+> 
+> 
+> On 5 March 2024 at 15:12, Duncan Murdoch wrote:
+> | On 05/03/2024 2:26 p.m., Dirk Eddelbuettel wrote:
+> | > The default behaviour is to build after every commit to the main branch.  But
+> | > there are options. On the repo I mentioned we use
+> | > 
+> | >      "branch": "*release",
+> | 
+> | Where do you put that?  I don't see r2u on R-universe, so I guess you're 
+> | talking about a different repo; which one?
+> 
+> In the (optional) control repo that can drive your 'r-universe', and the file
+> has to be named 'packages.json'. For you the repo would
+> 
+>    https://github.com/dmurdoch/dmurdoch.r-universe.dev
+> 
+> (and the naming rule was tightened by Jeroen recently -- we used to call
+> these just 'universe', now it has to match your runiverse)
+> 
+> The file packages.json would then have a block
+> 
+>  {
+>    "package": "rgl",
+>    "maintainer": "Duncan Murdoch <murdoch.duncan at gmail.com>"
+>    "url": "https://github.com/dmurdoch/rgl",
+>    "available": true,
+>    "branch": "*release"
+>  }
+> 
+> The reference I mentioned is our package 'tiledbsoma' (joint work of TileDB
+> and CZI, in https://github.com/single-cell-data/TileDB-SOMA) and described here:
+> 
+> https://github.com/TileDB-Inc/tiledb-inc.r-universe.dev/blob/master/packages.json 
+> 
+> (and you can ignore the '"subdir": "apis/r"' which is a facet local to that repo).
+> 
+> Note that 'my' packages.json in my eddelbuettel.r-universe.dev ie
+> 
+> https://github.com/eddelbuettel/eddelbuettel.r-universe.dev/blob/master/packages.json
+> 
+> also describe but without the '"branch": "*release"' and that builds with every merge to
+> the main branch by my choice; that build is mine and 'inofficial' giving us two.
+> 
+> | > It is under your control. You could document how to install via `remotes`
+> | > from that branch.  As so often, it's about trading one thing off for another.
+> | 
+> | I do that, but my documentation falls off the bottom of the screen, and 
+> | the automatic docs generated by R-universe are at the top.
+> 
+> I always get lost in the r-universe docs too. Some, as Jeroen kindly reminded
+> me the other day, are here:  https://github.com/r-universe-org
+> 
+> Dirk
+> 
+> -- 
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Wed Mar  6 18:34:41 2024
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Wed, 6 Mar 2024 18:34:41 +0100
+Subject: [R-pkg-devel] [External] RcmdrPlugin.HH_1.1-48.tar.gz
+In-Reply-To: <CAPPM_gTCgr4BRRwk7qoseGSjX966O71hX2nWBDJ6mfy8RMKAAg@mail.gmail.com>
+References: <D8090F24-6B4A-4E38-91FA-7D61E19EA87B@temple.edu>
+ <20240306093812.14bc68d7@Tarkus>
+ <F68DC1C6-597C-4647-AC96-84373F392EC3@temple.edu>
+ <CAPPM_gTCgr4BRRwk7qoseGSjX966O71hX2nWBDJ6mfy8RMKAAg@mail.gmail.com>
+Message-ID: <26088.43313.357757.63530@stat.math.ethz.ch>
+
+>>>>> Joshua Ulrich 
+>>>>>     on Wed, 6 Mar 2024 10:57:28 -0600 writes:
+
+    > On Wed, Mar 6, 2024 at 1:03?AM Richard M. Heiberger
+    > <rmh at temple.edu> wrote:
+    >> 
+    >> Thank you Duncan, Jeff, Ivan.
+    >> 
+    >> I did all that Duncan and Jeff suggested, plus a bit more
+    >> that appeared to be necessary.  All of what I did is
+    >> documented in the RcmdrPlugin.HH/NEWS file.
+    >> 
+    >> Ivan's comments were received after I sent 1.1-50 to CRAN
+    >> and it was accepted.
+    >> 
+    > I recommend you revert all the changes you made that are
+    > documented in the package NEWS, and at minimum follow
+    > Ivan's advice to use exportPattern("^[^\\.]") instead of
+    > exportPattern("."). It would be even better to follow the
+    > advice in Writing R Extensions and list each exported
+    > object individually.
+
+I agree: at least use   exportPattern("^[^\\.]")
+instead of the 'very un-recommended' (.)  which -- as Ivan
+mentioned -- does export *everything* --
+entirely destroying one important advantage of namespaces,
+namely to have "private" auxiliary functions/objects/data .
+
+Martin
+
+    >> I suggest that my notes in the NEWS file, perhaps
+    >> augmented with Ivan's comments, might be added to
+    >> utils/man/globalVariables.Rd and to the " section
+    >> ?Package structure? in the ?Writing R Extensions? manual.
+    >> "
+    >> 
+    > That section of Writing R Extensions specifically says not
+    > to do what you did.
+
+    >     Beware of patterns which include names starting with a
+    > period: some of these are internal-only variables and
+    > should never be exported, e.g. ?.__S3MethodsTable__.? (and
+    > loading excludes known cases).
+
+    > Duncan pointed out that '.__global__' is an internal-only
+    > variable created by globalVariables(), which means it
+    > should never be exported by a package. Imagine the number
+    > of conflicts there would be if every package that used
+    > globalVariables() exported the '.__global__'
+    > object... there would probably be thousands, yikes!
+
+    > It's possible that future versions of 'R CMD check' will
+    > error if there are any incorrectly exported internal
+    > variables (like '.__global__'), which would cause your
+    > package to fail.
+
+    > Best, Josh
+
+
+    >> 
+    >> > On Mar 6, 2024, at 01:38, Ivan Krylov
+    >> <ikrylov at disroot.org> wrote:
+    >> >
+    >> > ? Tue, 5 Mar 2024 22:41:32 +0000 > "Richard
+    >> M. Heiberger" <rmh at temple.edu> ?????:
+    >> >
+    >> >> Undocumented code objects: >> '.__global__' >> All
+    >> user-level objects in a package should have documentation
+    >> >> entries. See chapter 'Writing R documentation files'
+    >> in the 'Writing R >> Extensions' manual.
+    >> >
+    >> > This object is not here for the user of the package. If
+    >> you don't > export it, there will be no WARNING about it
+    >> being undocumented. This > variable is exported because
+    >> of exportPattern(".") in the file > NAMESPACE. The lone
+    >> dot is a regular expression that matches any name > of an
+    >> R object.
+    >> >
+    >> > If you don't want to manually list your exports in the
+    >> NAMESPACE file > (which can get tedious) or generate it
+    >> (which takes additional > dependencies and build steps),
+    >> you can use exportPattern('^[^\\.]') to > export
+    >> everything except objects with a name starting with a
+    >> period: >
+    >> https://cran.r-project.org/doc/manuals/R-exts.html#Specifying-imports-and-exports
+    >> >
+    >> > --
+    >> > Best regards, > Ivan
+    >> 
+    >> ______________________________________________
+    >> R-package-devel at r-project.org mailing list
+    >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+
+    > --
+    > Joshua Ulrich | about.me/joshuaulrich FOSS Trading |
+    > www.fosstrading.com
+
+    > ______________________________________________
+    > R-package-devel at r-project.org mailing list
+    > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Wed Mar  6 19:00:16 2024
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Wed, 6 Mar 2024 19:00:16 +0100
+Subject: [R-pkg-devel] 
+ [External]  [External] RcmdrPlugin.HH_1.1-48.tar.gz
+In-Reply-To: <B48ACA95-8F2A-4508-A5CB-E3E0CB162CD8@temple.edu>
+References: <D8090F24-6B4A-4E38-91FA-7D61E19EA87B@temple.edu>
+ <20240306093812.14bc68d7@Tarkus>
+ <F68DC1C6-597C-4647-AC96-84373F392EC3@temple.edu>
+ <CAPPM_gTCgr4BRRwk7qoseGSjX966O71hX2nWBDJ6mfy8RMKAAg@mail.gmail.com>
+ <B48ACA95-8F2A-4508-A5CB-E3E0CB162CD8@temple.edu>
+Message-ID: <26088.44848.383114.571551@stat.math.ethz.ch>
+
+>>>>> Richard M Heiberger 
+>>>>>     on Wed, 6 Mar 2024 17:10:50 +0000 writes:
+
+    > Thank you, I will do that reversion in a few days.
+
+(good; I'm sorry I did not see this, before I replied to Joshua's)
+
+    > Before I do, I want to ask if the default export generated by R CMD build should be changed.
+    > the default is  exportPattern("."), which seems to be the cause of the problem.
+    > Might the default be changed to exportPattern("^[^\\.]") ?
+
+That's a good suggestion in my view.
+That default *was* sensible when namespaces were
+introduced (~ 2004?): It did indeed ensure that the package worked
+entirely as before there were namespaces -- always everything
+was "exported", i.e. publicly visible and part of the implicit
+package API.
+
+And such 100%-backcompatibility was of course sensible to ease
+transition. But we are ca. 20 years later now, and I guess that
+most active R users (incl package developers) either don't know
+or then hardly remember that R had no namespaces originally.
+
+I see it only in the tools pkg hidden  writeDefaultNamespace()
+which is used only once in tools:::.build_packages()
+
+	## add NAMESPACE if the author didn't write one
+	if(!file.exists(namespace <- file.path(pkgname, "NAMESPACE")) ) {
+	    messageLog(Log, "creating default NAMESPACE file")
+	    writeDefaultNamespace(namespace)
+	}
+
+Note that the "Bible" on R packages has always been
+'Writing R Extensions' - in the R sources,  doc/manual/R-exts.texi
+
+It has -- *since* svn rev 23392,  003-02-27 19:02:45 +0100 
+          by Luke Tierney and commit message
+	  "Added name space support for packages that do not use methods."
+
+the text, e.g., at
+  https://cran.r-project.org/doc/manuals/R-exts.html#Specifying-imports-and-exports
+
+>    For packages with many variables to export it may be more convenient
+> to specify the names to export with a regular expression using
+> ?exportPattern?.  The directive
+
+>      exportPattern("^[^\\.]")
+
+> exports all variables that do not start with a period.  However, such
+> broad patterns are not recommended for production code: it is better to
+> list all exports or use narrowly-defined groups.  .....
+
+so I agree we should change the default.
+The R code above shows that the user does get a message about
+automatic NAMESPACE creation.
+
+If there are cases, where people need to export even .<some>,
+they should have to consciously choose so.
+
+Martin
+
+
+
+
+    >> On Mar 6, 2024, at 11:57, Joshua Ulrich <josh.m.ulrich at gmail.com> wrote:
+    >> 
+    >> On Wed, Mar 6, 2024 at 1:03?AM Richard M. Heiberger <rmh at temple.edu> wrote:
+    >>> 
+    >>> Thank you Duncan, Jeff, Ivan.
+    >>> 
+    >>> I did all that Duncan and Jeff suggested, plus a bit more that appeared to be necessary.
+    >>> All of what I did is documented in the RcmdrPlugin.HH/NEWS file.
+    >>> 
+    >>> Ivan's comments were received after I sent 1.1-50 to CRAN and it was accepted.
+    >>> 
+    >> I recommend you revert all the changes you made that are documented in
+    >> the package NEWS, and at minimum follow Ivan's advice to use
+    >> exportPattern("^[^\\.]") instead of exportPattern("."). It would be
+    >> even better to follow the advice in Writing R Extensions and list each
+    >> exported object individually.
+    >> 
+    >>> I suggest that my notes in the NEWS file, perhaps augmented with Ivan's comments,
+    >>> might be added to utils/man/globalVariables.Rd and to the
+    >>> "
+    >>> section ?Package
+    >>> structure? in the ?Writing R Extensions? manual.
+    >>> "
+    >>> 
+    >> That section of Writing R Extensions specifically says not to do what you did.
+    >> 
+    >> Beware of patterns which include names starting with a period: some
+    >> of these are internal-only variables and should never be exported,
+    >> e.g. ?.__S3MethodsTable__.? (and loading excludes known cases).
+    >> 
+    >> Duncan pointed out that '.__global__' is an internal-only variable
+    >> created by globalVariables(), which means it should never be exported
+    >> by a package. Imagine the number of conflicts there would be if every
+    >> package that used globalVariables() exported the '.__global__'
+    >> object... there would probably be thousands, yikes!
+    >> 
+    >> It's possible that future versions of 'R CMD check' will error if
+    >> there are any incorrectly exported internal variables (like
+    >> '.__global__'), which would cause your package to fail.
+    >> 
+    >> Best,
+    >> Josh
+    >> 
+    >> 
+    >>> 
+    >>>> On Mar 6, 2024, at 01:38, Ivan Krylov <ikrylov at disroot.org> wrote:
+    >>>> 
+    >>>> ? Tue, 5 Mar 2024 22:41:32 +0000
+    >>>> "Richard M. Heiberger" <rmh at temple.edu> ?????:
+    >>>> 
+    >>>>> Undocumented code objects:
+    >>>>> '.__global__'
+    >>>>> All user-level objects in a package should have documentation
+    >>>>> entries. See chapter 'Writing R documentation files' in the 'Writing R
+    >>>>> Extensions' manual.
+    >>>> 
+    >>>> This object is not here for the user of the package. If you don't
+    >>>> export it, there will be no WARNING about it being undocumented. This
+    >>>> variable is exported because of exportPattern(".") in the file
+    >>>> NAMESPACE. The lone dot is a regular expression that matches any name
+    >>>> of an R object.
+    >>>> 
+    >>>> If you don't want to manually list your exports in the NAMESPACE file
+    >>>> (which can get tedious) or generate it (which takes additional
+    >>>> dependencies and build steps), you can use exportPattern('^[^\\.]') to
+    >>>> export everything except objects with a name starting with a period:
+    >>>> https://cran.r-project.org/doc/manuals/R-exts.html#Specifying-imports-and-exports
+    >>>> 
+    >>>> --
+    >>>> Best regards,
+    >>>> Ivan
+    >>> 
+    >>> ______________________________________________
+    >>> R-package-devel at r-project.org mailing list
+    >>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+    >> 
+    >> 
+    >> 
+    >> --
+    >> Joshua Ulrich  |  about.me/joshuaulrich
+    >> FOSS Trading  |  http://www.fosstrading.com/
+
+
+    > ______________________________________________
+    > R-package-devel at r-project.org mailing list
+    > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Mar  6 19:46:55 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 6 Mar 2024 13:46:55 -0500
+Subject: [R-pkg-devel] 
+ [External] [External] RcmdrPlugin.HH_1.1-48.tar.gz
+In-Reply-To: <26088.44848.383114.571551@stat.math.ethz.ch>
+References: <D8090F24-6B4A-4E38-91FA-7D61E19EA87B@temple.edu>
+ <20240306093812.14bc68d7@Tarkus>
+ <F68DC1C6-597C-4647-AC96-84373F392EC3@temple.edu>
+ <CAPPM_gTCgr4BRRwk7qoseGSjX966O71hX2nWBDJ6mfy8RMKAAg@mail.gmail.com>
+ <B48ACA95-8F2A-4508-A5CB-E3E0CB162CD8@temple.edu>
+ <26088.44848.383114.571551@stat.math.ethz.ch>
+Message-ID: <d01e3364-07d5-4a12-855d-bc608402f29b@gmail.com>
+
+On 06/03/2024 1:00 p.m., Martin Maechler wrote:
+>>>>>> Richard M Heiberger
+>>>>>>      on Wed, 6 Mar 2024 17:10:50 +0000 writes:
+> 
+>      > Thank you, I will do that reversion in a few days.
+> 
+> (good; I'm sorry I did not see this, before I replied to Joshua's)
+> 
+>      > Before I do, I want to ask if the default export generated by R CMD build should be changed.
+>      > the default is  exportPattern("."), which seems to be the cause of the problem.
+>      > Might the default be changed to exportPattern("^[^\\.]") ?
+> 
+> That's a good suggestion in my view.
+
+One thing I don't understand about that suggestion (which is taken from 
+WRE, I'm not blaming Rich for it):  why include the backslash in the 
+negated character class? Does R ever create variables starting with a 
+backslash, or is this just a more or less harmless error, thinking that 
+the dot needs escaping?
+
+Duncan Murdoch
+
+> That default *was* sensible when namespaces were
+> introduced (~ 2004?): It did indeed ensure that the package worked
+> entirely as before there were namespaces -- always everything
+> was "exported", i.e. publicly visible and part of the implicit
+> package API.
+> 
+> And such 100%-backcompatibility was of course sensible to ease
+> transition. But we are ca. 20 years later now, and I guess that
+> most active R users (incl package developers) either don't know
+> or then hardly remember that R had no namespaces originally.
+> 
+> I see it only in the tools pkg hidden  writeDefaultNamespace()
+> which is used only once in tools:::.build_packages()
+> 
+> 	## add NAMESPACE if the author didn't write one
+> 	if(!file.exists(namespace <- file.path(pkgname, "NAMESPACE")) ) {
+> 	    messageLog(Log, "creating default NAMESPACE file")
+> 	    writeDefaultNamespace(namespace)
+> 	}
+> 
+> Note that the "Bible" on R packages has always been
+> 'Writing R Extensions' - in the R sources,  doc/manual/R-exts.texi
+> 
+> It has -- *since* svn rev 23392,  003-02-27 19:02:45 +0100
+>            by Luke Tierney and commit message
+> 	  "Added name space support for packages that do not use methods."
+> 
+> the text, e.g., at
+>    https://cran.r-project.org/doc/manuals/R-exts.html#Specifying-imports-and-exports
+> 
+>>     For packages with many variables to export it may be more convenient
+>> to specify the names to export with a regular expression using
+>> ?exportPattern?.  The directive
+> 
+>>       exportPattern("^[^\\.]")
+> 
+>> exports all variables that do not start with a period.  However, such
+>> broad patterns are not recommended for production code: it is better to
+>> list all exports or use narrowly-defined groups.  .....
+> 
+> so I agree we should change the default.
+> The R code above shows that the user does get a message about
+> automatic NAMESPACE creation.
+> 
+> If there are cases, where people need to export even .<some>,
+> they should have to consciously choose so.
+> 
+> Martin
+> 
+> 
+> 
+> 
+>      >> On Mar 6, 2024, at 11:57, Joshua Ulrich <josh.m.ulrich at gmail.com> wrote:
+>      >>
+>      >> On Wed, Mar 6, 2024 at 1:03?AM Richard M. Heiberger <rmh at temple.edu> wrote:
+>      >>>
+>      >>> Thank you Duncan, Jeff, Ivan.
+>      >>>
+>      >>> I did all that Duncan and Jeff suggested, plus a bit more that appeared to be necessary.
+>      >>> All of what I did is documented in the RcmdrPlugin.HH/NEWS file.
+>      >>>
+>      >>> Ivan's comments were received after I sent 1.1-50 to CRAN and it was accepted.
+>      >>>
+>      >> I recommend you revert all the changes you made that are documented in
+>      >> the package NEWS, and at minimum follow Ivan's advice to use
+>      >> exportPattern("^[^\\.]") instead of exportPattern("."). It would be
+>      >> even better to follow the advice in Writing R Extensions and list each
+>      >> exported object individually.
+>      >>
+>      >>> I suggest that my notes in the NEWS file, perhaps augmented with Ivan's comments,
+>      >>> might be added to utils/man/globalVariables.Rd and to the
+>      >>> "
+>      >>> section ?Package
+>      >>> structure? in the ?Writing R Extensions? manual.
+>      >>> "
+>      >>>
+>      >> That section of Writing R Extensions specifically says not to do what you did.
+>      >>
+>      >> Beware of patterns which include names starting with a period: some
+>      >> of these are internal-only variables and should never be exported,
+>      >> e.g. ?.__S3MethodsTable__.? (and loading excludes known cases).
+>      >>
+>      >> Duncan pointed out that '.__global__' is an internal-only variable
+>      >> created by globalVariables(), which means it should never be exported
+>      >> by a package. Imagine the number of conflicts there would be if every
+>      >> package that used globalVariables() exported the '.__global__'
+>      >> object... there would probably be thousands, yikes!
+>      >>
+>      >> It's possible that future versions of 'R CMD check' will error if
+>      >> there are any incorrectly exported internal variables (like
+>      >> '.__global__'), which would cause your package to fail.
+>      >>
+>      >> Best,
+>      >> Josh
+>      >>
+>      >>
+>      >>>
+>      >>>> On Mar 6, 2024, at 01:38, Ivan Krylov <ikrylov at disroot.org> wrote:
+>      >>>>
+>      >>>> ? Tue, 5 Mar 2024 22:41:32 +0000
+>      >>>> "Richard M. Heiberger" <rmh at temple.edu> ?????:
+>      >>>>
+>      >>>>> Undocumented code objects:
+>      >>>>> '.__global__'
+>      >>>>> All user-level objects in a package should have documentation
+>      >>>>> entries. See chapter 'Writing R documentation files' in the 'Writing R
+>      >>>>> Extensions' manual.
+>      >>>>
+>      >>>> This object is not here for the user of the package. If you don't
+>      >>>> export it, there will be no WARNING about it being undocumented. This
+>      >>>> variable is exported because of exportPattern(".") in the file
+>      >>>> NAMESPACE. The lone dot is a regular expression that matches any name
+>      >>>> of an R object.
+>      >>>>
+>      >>>> If you don't want to manually list your exports in the NAMESPACE file
+>      >>>> (which can get tedious) or generate it (which takes additional
+>      >>>> dependencies and build steps), you can use exportPattern('^[^\\.]') to
+>      >>>> export everything except objects with a name starting with a period:
+>      >>>> https://cran.r-project.org/doc/manuals/R-exts.html#Specifying-imports-and-exports
+>      >>>>
+>      >>>> --
+>      >>>> Best regards,
+>      >>>> Ivan
+>      >>>
+>      >>> ______________________________________________
+>      >>> R-package-devel at r-project.org mailing list
+>      >>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>      >>
+>      >>
+>      >>
+>      >> --
+>      >> Joshua Ulrich  |  about.me/joshuaulrich
+>      >> FOSS Trading  |  http://www.fosstrading.com/
+> 
+> 
+>      > ______________________________________________
+>      > R-package-devel at r-project.org mailing list
+>      > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
