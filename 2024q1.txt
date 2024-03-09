@@ -24589,3 +24589,782 @@ Duncan Murdoch
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From |kry|ov @end|ng |rom d|@root@org  Thu Mar  7 10:16:59 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 7 Mar 2024 12:16:59 +0300
+Subject: [R-pkg-devel] 
+ [External] [External] RcmdrPlugin.HH_1.1-48.tar.gz
+In-Reply-To: <d01e3364-07d5-4a12-855d-bc608402f29b@gmail.com>
+References: <D8090F24-6B4A-4E38-91FA-7D61E19EA87B@temple.edu>
+ <20240306093812.14bc68d7@Tarkus>
+ <F68DC1C6-597C-4647-AC96-84373F392EC3@temple.edu>
+ <CAPPM_gTCgr4BRRwk7qoseGSjX966O71hX2nWBDJ6mfy8RMKAAg@mail.gmail.com>
+ <B48ACA95-8F2A-4508-A5CB-E3E0CB162CD8@temple.edu>
+ <26088.44848.383114.571551@stat.math.ethz.ch>
+ <d01e3364-07d5-4a12-855d-bc608402f29b@gmail.com>
+Message-ID: <20240307121659.5969d579@arachnoid>
+
+On Wed, 6 Mar 2024 13:46:55 -0500
+Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+
+> is this just a more or less harmless error, thinking that 
+> the dot needs escaping
+
+I think it's this one. You are absolutely right that the dot doesn't
+need escaping in either TRE (which is what's used inside exportPattern)
+or PCRE. In PRCE, this regular expression would have worked as intended:
+
+# We do match backslashes by mistake.
+grepl('[\\.]', '\\')
+# [1] TRUE
+
+# In PCRE, this wouldn't have been a mistake.
+grepl('[\\.]', c('\\', '.'), perl = TRUE)
+# [1] FALSE TRUE
+
+-- 
+Best regards,
+Ivan
+
+
+From |kry|ov @end|ng |rom d|@root@org  Thu Mar  7 10:30:42 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 7 Mar 2024 12:30:42 +0300
+Subject: [R-pkg-devel] 
+ RFC: C backtraces for R CMD check via just-in-time debugging
+In-Reply-To: <alpine.DEB.2.22.394.2403051825150.3559@iridium>
+References: <20240303111444.6582a6c3@Tarkus>
+ <20240304141508.59f3fea9@rolf-Latitude-E7470>
+ <CAJXgQP2Q8mBaEvmXZh8tA5cO-8gfdn8=xCT0eXww=MJPXNPe9A@mail.gmail.com>
+ <20240304102742.34af66ac@Tarkus>
+ <alpine.DEB.2.22.394.2403051825150.3559@iridium>
+Message-ID: <20240307123042.338b426c@arachnoid>
+
+On Tue, 5 Mar 2024 18:26:28 -0500 (EST)
+Vladimir Dergachev <volodya at mindspring.com> wrote:
+
+> I use libunwind in my programs, works quite well, and simple to use.
+> 
+> Happy to share the code if there is interest..
+
+Do you mean that you use libunwind in signal handlers? An example on
+how to produce a backtrace without calling any async-signal-unsafe
+functions would indeed be greatly useful.
+
+Speaking of shared objects injected using LD_PRELOAD, I've experimented
+some more, and I think that none of them would work with R without
+additional adjustments. They install their signal handler very soon
+after the process starts up, and later, when R initialises, it
+installs its own signal handler, overwriting the previous one. For this
+scheme to work, either R would have to cooperate, remembering a pointer
+to the previous signal handler and calling it at some point (which
+sounds unsafe), or the injected shared object would have to override
+sigaction() and call R's signal handler from its own (which sounds
+extremely unsafe).
+
+Without that, if we want C-level backtraces, we either need to patch R
+to produce them (using backtrace() and limiting this to glibc systems
+or using libunwind and paying the dependency cost) or to use a debugger.
+
+-- 
+Best regards,
+Ivan
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Mar  7 11:08:40 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 7 Mar 2024 05:08:40 -0500
+Subject: [R-pkg-devel] 
+ [External] [External] RcmdrPlugin.HH_1.1-48.tar.gz
+In-Reply-To: <20240307121659.5969d579@arachnoid>
+References: <D8090F24-6B4A-4E38-91FA-7D61E19EA87B@temple.edu>
+ <20240306093812.14bc68d7@Tarkus>
+ <F68DC1C6-597C-4647-AC96-84373F392EC3@temple.edu>
+ <CAPPM_gTCgr4BRRwk7qoseGSjX966O71hX2nWBDJ6mfy8RMKAAg@mail.gmail.com>
+ <B48ACA95-8F2A-4508-A5CB-E3E0CB162CD8@temple.edu>
+ <26088.44848.383114.571551@stat.math.ethz.ch>
+ <d01e3364-07d5-4a12-855d-bc608402f29b@gmail.com>
+ <20240307121659.5969d579@arachnoid>
+Message-ID: <0cb6fb85-a69a-4e92-8e91-5886a1199223@gmail.com>
+
+On 07/03/2024 4:16 a.m., Ivan Krylov wrote:
+> On Wed, 6 Mar 2024 13:46:55 -0500
+> Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+> 
+>> is this just a more or less harmless error, thinking that
+>> the dot needs escaping
+> 
+> I think it's this one. You are absolutely right that the dot doesn't
+> need escaping in either TRE (which is what's used inside exportPattern)
+> or PCRE. In PRCE, this regular expression would have worked as intended:
+> 
+> # We do match backslashes by mistake.
+> grepl('[\\.]', '\\')
+> # [1] TRUE
+> 
+> # In PCRE, this wouldn't have been a mistake.
+> grepl('[\\.]', c('\\', '.'), perl = TRUE)
+> # [1] FALSE TRUE
+> 
+
+Thanks, I didn't realize that escaping in PCRE was optional.
+
+So the default exportPattern line could be
+
+   exportPattern("^[^.]")
+
+and it would work even if things were changed so that PCRE was used 
+instead of TRE.
+
+Duncan Murdoch
+
+
+From Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de  Thu Mar  7 11:37:51 2024
+From: Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de (Ruff, Sergej)
+Date: Thu, 7 Mar 2024 10:37:51 +0000
+Subject: [R-pkg-devel] @doctype is deprecated. need help for r package
+ documentation
+Message-ID: <1967f4ed50ab46de84fd614de15e4bc0@tiho-hannover.de>
+
+Hello,
+
+I need help with a package I am currently developing called bootGSEA.
+ I noticed that when I try ??bootGSEA? it goes to the help page in R itself but not to the html page (we had this issue last time as well but we solved it by adding a documentation to the package itself to the R file) like from the before version of the package.
+I tried ?_PACKAGE? in the documentation of the package section as @doctype is depreceated, but it still doesn?t seem to solve the issue. Do you have any idea on this?
+
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Thu Mar  7 13:53:07 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 7 Mar 2024 15:53:07 +0300
+Subject: [R-pkg-devel] @doctype is deprecated. need help for r package
+ documentation
+In-Reply-To: <1967f4ed50ab46de84fd614de15e4bc0@tiho-hannover.de>
+References: <1967f4ed50ab46de84fd614de15e4bc0@tiho-hannover.de>
+Message-ID: <20240307155307.53f3d629@arachnoid>
+
+? Thu, 7 Mar 2024 10:37:51 +0000
+"Ruff, Sergej" <Sergej.Ruff at tiho-hannover.de> ?????:
+
+> I noticed that when I try _?bootGSEA_ it goes to the help page in R
+> itself but not to the html page
+
+That's up to the user to choose. help(bootGSEA, help_type = 'html')
+should get you to the HTML documentation; help(bootGSEA, help_type =
+'text') should give you plain text. The default depends on
+options(help_type=...). On Windows, you get a choice during
+installation of R; this gets recorded in file.path(R.home('etc'),
+'Rprofile.site').
+
+-- 
+Best regards,
+Ivan
+
+
+From @ergue|@@oko| @end|ng |rom gm@||@com  Thu Mar  7 14:38:26 2024
+From: @ergue|@@oko| @end|ng |rom gm@||@com (Serguei Sokol)
+Date: Thu, 7 Mar 2024 14:38:26 +0100
+Subject: [R-pkg-devel] 
+ [External] [External] RcmdrPlugin.HH_1.1-48.tar.gz
+In-Reply-To: <0cb6fb85-a69a-4e92-8e91-5886a1199223@gmail.com>
+References: <D8090F24-6B4A-4E38-91FA-7D61E19EA87B@temple.edu>
+ <20240306093812.14bc68d7@Tarkus>
+ <F68DC1C6-597C-4647-AC96-84373F392EC3@temple.edu>
+ <CAPPM_gTCgr4BRRwk7qoseGSjX966O71hX2nWBDJ6mfy8RMKAAg@mail.gmail.com>
+ <B48ACA95-8F2A-4508-A5CB-E3E0CB162CD8@temple.edu>
+ <26088.44848.383114.571551@stat.math.ethz.ch>
+ <d01e3364-07d5-4a12-855d-bc608402f29b@gmail.com>
+ <20240307121659.5969d579@arachnoid>
+ <0cb6fb85-a69a-4e92-8e91-5886a1199223@gmail.com>
+Message-ID: <1f392072-43a1-49c2-aaa8-4fbb58fe300b@gmail.com>
+
+Le 07/03/2024 ? 11:08, Duncan Murdoch a ?crit?:
+> On 07/03/2024 4:16 a.m., Ivan Krylov wrote:
+>> On Wed, 6 Mar 2024 13:46:55 -0500
+>> Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>>
+>>> is this just a more or less harmless error, thinking that
+>>> the dot needs escaping
+>>
+>> I think it's this one. You are absolutely right that the dot doesn't
+>> need escaping in either TRE (which is what's used inside exportPattern)
+>> or PCRE. In PRCE, this regular expression would have worked as intended:
+>>
+>> # We do match backslashes by mistake.
+>> grepl('[\\.]', '\\')
+>> # [1] TRUE
+>>
+>> # In PCRE, this wouldn't have been a mistake.
+>> grepl('[\\.]', c('\\', '.'), perl = TRUE)
+>> # [1] FALSE TRUE
+>>
+> 
+> Thanks, I didn't realize that escaping in PCRE was optional.
+Escaping is optional only in brackets []. Without them it becomes 
+mandatory if we want to catch just "." not any character :
+
+grepl('.', c('\\', '.'), perl = TRUE)
+#[1] TRUE TRUE
+
+Best,
+Serguei.
+
+
+> 
+> So the default exportPattern line could be
+> 
+>  ? exportPattern("^[^.]")
+> 
+> and it would work even if things were changed so that PCRE was used 
+> instead of TRE.
+> 
+> Duncan Murdoch
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From vo|ody@ @end|ng |rom m|nd@pr|ng@com  Thu Mar  7 15:38:18 2024
+From: vo|ody@ @end|ng |rom m|nd@pr|ng@com (Vladimir Dergachev)
+Date: Thu, 7 Mar 2024 09:38:18 -0500 (EST)
+Subject: [R-pkg-devel] 
+ RFC: C backtraces for R CMD check via just-in-time debugging
+In-Reply-To: <20240307123042.338b426c@arachnoid>
+References: <20240303111444.6582a6c3@Tarkus>
+ <20240304141508.59f3fea9@rolf-Latitude-E7470>
+ <CAJXgQP2Q8mBaEvmXZh8tA5cO-8gfdn8=xCT0eXww=MJPXNPe9A@mail.gmail.com>
+ <20240304102742.34af66ac@Tarkus>
+ <alpine.DEB.2.22.394.2403051825150.3559@iridium>
+ <20240307123042.338b426c@arachnoid>
+Message-ID: <alpine.DEB.2.22.394.2403070925030.3559@iridium>
+
+
+Hi Ivan,
+
+Here is the piece of code I currently use:
+
+void backtrace_dump(void)
+{
+     unw_cursor_t    cursor;
+     unw_context_t   context;
+
+     unw_getcontext(&context);
+     unw_init_local(&cursor, &context);
+
+     while (unw_step(&cursor) > 0)
+     {
+         unw_word_t  offset, pc;
+         char        fname[64];
+
+         unw_get_reg(&cursor, UNW_REG_IP, &pc);
+
+         fname[0] = '\0';
+         (void) unw_get_proc_name(&cursor, fname, 64, &offset);
+
+         fprintf(stderr, "0x%016lx : (%s+0x%lx)\n", pc-(long)backtrace_dump, fname, offset);
+     }
+}
+
+To make it safe, one can simply replace fprintf() with a function that 
+stores information into a buffer.
+
+Several things to point out:
+
+   * printing pc-(long)backtrace_dump works around address randomization, 
+so that if you attach the debugger you can find the location again by 
+using backtrace_dump+0xxxx (it does not have to be backtrace_dump, any 
+symbol will do)
+
+   * this works even if the symbols are stripped, in which case it finds an 
+offset relative to the nearest available symbol - there are always some 
+from the loader. Of course, in this case you should use the offsets and 
+the debugger to find out whats wrong
+
+   * you can call backtrace_dump() from anywhere, does not have to be a 
+signal handler. I've taken to calling it when my programs detect some 
+abnormal situation, so I can see the call chain.
+
+   * this should work as a package, but I am not sure whether the offsets 
+between package symbols and R symbols would be static or not. For R it 
+might be a good idea to also print a table of offsets between some R 
+symbol and all the loaded C packages R_init_RMVL(), at least initially.
+
+   * R ought to know where packages are loaded, we might want to be clever 
+and print out information on which package contains which function, or 
+there might be identical R_init_RMVL() printouts.
+
+best
+
+Vladimir Dergachev
+
+On Thu, 7 Mar 2024, Ivan Krylov wrote:
+
+> On Tue, 5 Mar 2024 18:26:28 -0500 (EST)
+> Vladimir Dergachev <volodya at mindspring.com> wrote:
+>
+>> I use libunwind in my programs, works quite well, and simple to use.
+>>
+>> Happy to share the code if there is interest..
+>
+> Do you mean that you use libunwind in signal handlers? An example on
+> how to produce a backtrace without calling any async-signal-unsafe
+> functions would indeed be greatly useful.
+>
+> Speaking of shared objects injected using LD_PRELOAD, I've experimented
+> some more, and I think that none of them would work with R without
+> additional adjustments. They install their signal handler very soon
+> after the process starts up, and later, when R initialises, it
+> installs its own signal handler, overwriting the previous one. For this
+> scheme to work, either R would have to cooperate, remembering a pointer
+> to the previous signal handler and calling it at some point (which
+> sounds unsafe), or the injected shared object would have to override
+> sigaction() and call R's signal handler from its own (which sounds
+> extremely unsafe).
+>
+> Without that, if we want C-level backtraces, we either need to patch R
+> to produce them (using backtrace() and limiting this to glibc systems
+> or using libunwind and paying the dependency cost) or to use a debugger.
+>
+> -- 
+> Best regards,
+> Ivan
+>
+
+
+From h@w|ckh@m @end|ng |rom gm@||@com  Thu Mar  7 16:02:15 2024
+From: h@w|ckh@m @end|ng |rom gm@||@com (Hadley Wickham)
+Date: Thu, 7 Mar 2024 10:02:15 -0500
+Subject: [R-pkg-devel] @doctype is deprecated. need help for r package
+ documentation
+In-Reply-To: <1967f4ed50ab46de84fd614de15e4bc0@tiho-hannover.de>
+References: <1967f4ed50ab46de84fd614de15e4bc0@tiho-hannover.de>
+Message-ID: <CABdHhvHZrSNMv9Me5owag45BRTberboOQzLzhYWc+vELhnRFzw@mail.gmail.com>
+
+Do you have a pointer to the roxygen2 comments that you're using?
+Hadley
+
+On Thu, Mar 7, 2024 at 5:38?AM Ruff, Sergej <Sergej.Ruff at tiho-hannover.de>
+wrote:
+
+> Hello,
+>
+> I need help with a package I am currently developing called bootGSEA.
+>  I noticed that when I try ??bootGSEA? it goes to the help page in R
+> itself but not to the html page (we had this issue last time as well but we
+> solved it by adding a documentation to the package itself to the R file)
+> like from the before version of the package.
+> I tried ?_PACKAGE? in the documentation of the package section as @doctype
+> is depreceated, but it still doesn?t seem to solve the issue. Do you have
+> any idea on this?
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+-- 
+http://hadley.nz
+
+	[[alternative HTML version deleted]]
+
+
+From Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de  Thu Mar  7 17:56:20 2024
+From: Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de (Ruff, Sergej)
+Date: Thu, 7 Mar 2024 16:56:20 +0000
+Subject: [R-pkg-devel] 
+ [EXTERN] Re: @doctype is deprecated. need help for r
+ package documentation
+In-Reply-To: <CABdHhvHZrSNMv9Me5owag45BRTberboOQzLzhYWc+vELhnRFzw@mail.gmail.com>
+References: <1967f4ed50ab46de84fd614de15e4bc0@tiho-hannover.de>,
+ <CABdHhvHZrSNMv9Me5owag45BRTberboOQzLzhYWc+vELhnRFzw@mail.gmail.com>
+Message-ID: <f40ffe2a3cbd40e8a14268c55d306ebc@tiho-hannover.de>
+
+the package is currently available under: https://github.com/klausjung-hannover/bootGSEA/blob/main/R/bootGSEA.r
+
+
+line 1-31 contains the package information.
+
+
+#' Package contains functions that repeates GSEA using bootstrap samples of gene sets. Bootstrap results are
+#' aggregated to a new ranking score. The score can be compared to the gene set
+#' ranking resulting from the standard GSEA.
+#'
+#' So far the functions included in the package are:
+#' \itemize{
+#'   \item \code{\link{aggr.boot.GO}} Aggregate boostrap GO analysis
+#'   \item \code{\link{aggr.boot.Pathway}} Write a \code{genind} Aggregate boostrap pathway analysis
+#'   \item \code{\link{aggr.multiomics}} Multiomics Integration analysis
+#'   \item \code{\link{boot.GO}} Bootstrap GO analysis
+#'   \item \code{\link{boot.pathway}} Bootstrap Pathway analysis
+#'   \item \code{\link{compareRank}} Visualisation of bootstrap GO analyses
+#'   \item \code{\link{histDiff}} Visualization of difference in ranks
+#'   \item \code{\link{plotRank}} Visualisation of bootstrap pathway analyses
+#' }
+#'
+#' \tabular{ll}{
+#' Package: \tab bootGSEA\cr
+#' Type: \tab Package\cr
+#' Version: \tab 1.0\cr
+#' Date: \tab 2024-03-05\cr
+#' License: \tab GPL (>= 3)\cr
+#' }
+#'
+#' @author Shamini Hemandhar Kumar, Klaus Jung (\email{shamini.hemandhar.kumar@@tiho-hannover.de})(\email{klaus.jung@@tiho-hannover.de})
+#'
+#' Maintainer: Shamini Hemandhar Kumar (\email{shamini.hemandhar.kumar@@tiho-hannover.de})
+#' @aliases bootGSEA
+#' @title Robustness evaluation of gene set enrichment analysis (GSEA)
+#' @keywords Robustness GSEA
+"_PACKAGE"
+
+
+________________________________
+Von: Hadley Wickham <h.wickham at gmail.com>
+Gesendet: Donnerstag, 7. M?rz 2024 16:02:15
+An: Ruff, Sergej
+Cc: r-package-devel at r-project.org
+Betreff: [EXTERN] Re: [R-pkg-devel] @doctype is deprecated. need help for r package documentation
+
+Do you have a pointer to the roxygen2 comments that you're using?
+Hadley
+
+On Thu, Mar 7, 2024 at 5:38?AM Ruff, Sergej <Sergej.Ruff at tiho-hannover.de<mailto:Sergej.Ruff at tiho-hannover.de>> wrote:
+Hello,
+
+I need help with a package I am currently developing called bootGSEA.
+ I noticed that when I try ??bootGSEA? it goes to the help page in R itself but not to the html page (we had this issue last time as well but we solved it by adding a documentation to the package itself to the R file) like from the before version of the package.
+I tried ?_PACKAGE? in the documentation of the package section as @doctype is depreceated, but it still doesn?t seem to solve the issue. Do you have any idea on this?
+
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-package-devel at r-project.org<mailto:R-package-devel at r-project.org> mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+--
+http://hadley.nz
+
+	[[alternative HTML version deleted]]
+
+
+From Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de  Thu Mar  7 20:21:06 2024
+From: Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de (Ruff, Sergej)
+Date: Thu, 7 Mar 2024 19:21:06 +0000
+Subject: [R-pkg-devel] 
+ [EXTERN] Re: @doctype is deprecated. need help for r
+ package documentation
+In-Reply-To: <f40ffe2a3cbd40e8a14268c55d306ebc@tiho-hannover.de>
+References: <1967f4ed50ab46de84fd614de15e4bc0@tiho-hannover.de>,
+ <CABdHhvHZrSNMv9Me5owag45BRTberboOQzLzhYWc+vELhnRFzw@mail.gmail.com>,
+ <f40ffe2a3cbd40e8a14268c55d306ebc@tiho-hannover.de>
+Message-ID: <3fdf55261a96402f896e1733cf99a628@tiho-hannover.de>
+
+So, in  the previous version of the package when we type ?bootGSEA, it opens the documentation in webpage (google, firefox?) and when we type ?pkg-function opens to the right side window, but now it just opens in the right side window. I was wondering why does it not open in webpage now.
+
+________________________________
+Von: Ruff, Sergej
+Gesendet: Donnerstag, 7. M?rz 2024 17:56:20
+An: Hadley Wickham
+Cc: r-package-devel at r-project.org
+Betreff: AW: [EXTERN] Re: [R-pkg-devel] @doctype is deprecated. need help for r package documentation
+
+
+the package is currently available under: https://github.com/klausjung-hannover/bootGSEA/blob/main/R/bootGSEA.r
+
+
+line 1-31 contains the package information.
+
+
+#' Package contains functions that repeates GSEA using bootstrap samples of gene sets. Bootstrap results are
+#' aggregated to a new ranking score. The score can be compared to the gene set
+#' ranking resulting from the standard GSEA.
+#'
+#' So far the functions included in the package are:
+#' \itemize{
+#'   \item \code{\link{aggr.boot.GO}} Aggregate boostrap GO analysis
+#'   \item \code{\link{aggr.boot.Pathway}} Write a \code{genind} Aggregate boostrap pathway analysis
+#'   \item \code{\link{aggr.multiomics}} Multiomics Integration analysis
+#'   \item \code{\link{boot.GO}} Bootstrap GO analysis
+#'   \item \code{\link{boot.pathway}} Bootstrap Pathway analysis
+#'   \item \code{\link{compareRank}} Visualisation of bootstrap GO analyses
+#'   \item \code{\link{histDiff}} Visualization of difference in ranks
+#'   \item \code{\link{plotRank}} Visualisation of bootstrap pathway analyses
+#' }
+#'
+#' \tabular{ll}{
+#' Package: \tab bootGSEA\cr
+#' Type: \tab Package\cr
+#' Version: \tab 1.0\cr
+#' Date: \tab 2024-03-05\cr
+#' License: \tab GPL (>= 3)\cr
+#' }
+#'
+#' @author Shamini Hemandhar Kumar, Klaus Jung (\email{shamini.hemandhar.kumar@@tiho-hannover.de})(\email{klaus.jung@@tiho-hannover.de})
+#'
+#' Maintainer: Shamini Hemandhar Kumar (\email{shamini.hemandhar.kumar@@tiho-hannover.de})
+#' @aliases bootGSEA
+#' @title Robustness evaluation of gene set enrichment analysis (GSEA)
+#' @keywords Robustness GSEA
+"_PACKAGE"
+
+
+________________________________
+Von: Hadley Wickham <h.wickham at gmail.com>
+Gesendet: Donnerstag, 7. M?rz 2024 16:02:15
+An: Ruff, Sergej
+Cc: r-package-devel at r-project.org
+Betreff: [EXTERN] Re: [R-pkg-devel] @doctype is deprecated. need help for r package documentation
+
+Do you have a pointer to the roxygen2 comments that you're using?
+Hadley
+
+On Thu, Mar 7, 2024 at 5:38?AM Ruff, Sergej <Sergej.Ruff at tiho-hannover.de<mailto:Sergej.Ruff at tiho-hannover.de>> wrote:
+Hello,
+
+I need help with a package I am currently developing called bootGSEA.
+ I noticed that when I try ??bootGSEA? it goes to the help page in R itself but not to the html page (we had this issue last time as well but we solved it by adding a documentation to the package itself to the R file) like from the before version of the package.
+I tried ?_PACKAGE? in the documentation of the package section as @doctype is depreceated, but it still doesn?t seem to solve the issue. Do you have any idea on this?
+
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-package-devel at r-project.org<mailto:R-package-devel at r-project.org> mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+--
+http://hadley.nz
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Thu Mar  7 20:57:58 2024
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Thu, 07 Mar 2024 11:57:58 -0800
+Subject: [R-pkg-devel] 
+ [EXTERN] Re: @doctype is deprecated. need help for r
+ package documentation
+In-Reply-To: <3fdf55261a96402f896e1733cf99a628@tiho-hannover.de>
+References: <1967f4ed50ab46de84fd614de15e4bc0@tiho-hannover.de>,
+ <CABdHhvHZrSNMv9Me5owag45BRTberboOQzLzhYWc+vELhnRFzw@mail.gmail.com>,
+ <f40ffe2a3cbd40e8a14268c55d306ebc@tiho-hannover.de>
+ <3fdf55261a96402f896e1733cf99a628@tiho-hannover.de>
+Message-ID: <8D1F6A23-439A-4078-BE45-AB9BF7345C21@dcn.davis.ca.us>
+
+What is a "right side window"? Are you mixing up what R does and what RStudio does? I think I agree with Ivan that this is a question about the environment in which you are loading the package rather than anything in the package itself.
+
+On March 7, 2024 11:21:06 AM PST, "Ruff, Sergej" <Sergej.Ruff at tiho-hannover.de> wrote:
+>So, in  the previous version of the package when we type ?bootGSEA, it opens the documentation in webpage (google, firefox?) and when we type ?pkg-function opens to the right side window, but now it just opens in the right side window. I was wondering why does it not open in webpage now.
+>
+>________________________________
+>Von: Ruff, Sergej
+>Gesendet: Donnerstag, 7. M?rz 2024 17:56:20
+>An: Hadley Wickham
+>Cc: r-package-devel at r-project.org
+>Betreff: AW: [EXTERN] Re: [R-pkg-devel] @doctype is deprecated. need help for r package documentation
+>
+>
+>the package is currently available under: https://github.com/klausjung-hannover/bootGSEA/blob/main/R/bootGSEA.r
+>
+>
+>line 1-31 contains the package information.
+>
+>
+>#' Package contains functions that repeates GSEA using bootstrap samples of gene sets. Bootstrap results are
+>#' aggregated to a new ranking score. The score can be compared to the gene set
+>#' ranking resulting from the standard GSEA.
+>#'
+>#' So far the functions included in the package are:
+>#' \itemize{
+>#'   \item \code{\link{aggr.boot.GO}} Aggregate boostrap GO analysis
+>#'   \item \code{\link{aggr.boot.Pathway}} Write a \code{genind} Aggregate boostrap pathway analysis
+>#'   \item \code{\link{aggr.multiomics}} Multiomics Integration analysis
+>#'   \item \code{\link{boot.GO}} Bootstrap GO analysis
+>#'   \item \code{\link{boot.pathway}} Bootstrap Pathway analysis
+>#'   \item \code{\link{compareRank}} Visualisation of bootstrap GO analyses
+>#'   \item \code{\link{histDiff}} Visualization of difference in ranks
+>#'   \item \code{\link{plotRank}} Visualisation of bootstrap pathway analyses
+>#' }
+>#'
+>#' \tabular{ll}{
+>#' Package: \tab bootGSEA\cr
+>#' Type: \tab Package\cr
+>#' Version: \tab 1.0\cr
+>#' Date: \tab 2024-03-05\cr
+>#' License: \tab GPL (>= 3)\cr
+>#' }
+>#'
+>#' @author Shamini Hemandhar Kumar, Klaus Jung (\email{shamini.hemandhar.kumar@@tiho-hannover.de})(\email{klaus.jung@@tiho-hannover.de})
+>#'
+>#' Maintainer: Shamini Hemandhar Kumar (\email{shamini.hemandhar.kumar@@tiho-hannover.de})
+>#' @aliases bootGSEA
+>#' @title Robustness evaluation of gene set enrichment analysis (GSEA)
+>#' @keywords Robustness GSEA
+>"_PACKAGE"
+>
+>
+>________________________________
+>Von: Hadley Wickham <h.wickham at gmail.com>
+>Gesendet: Donnerstag, 7. M?rz 2024 16:02:15
+>An: Ruff, Sergej
+>Cc: r-package-devel at r-project.org
+>Betreff: [EXTERN] Re: [R-pkg-devel] @doctype is deprecated. need help for r package documentation
+>
+>Do you have a pointer to the roxygen2 comments that you're using?
+>Hadley
+>
+>On Thu, Mar 7, 2024 at 5:38?AM Ruff, Sergej <Sergej.Ruff at tiho-hannover.de<mailto:Sergej.Ruff at tiho-hannover.de>> wrote:
+>Hello,
+>
+>I need help with a package I am currently developing called bootGSEA.
+> I noticed that when I try ??bootGSEA? it goes to the help page in R itself but not to the html page (we had this issue last time as well but we solved it by adding a documentation to the package itself to the R file) like from the before version of the package.
+>I tried ?_PACKAGE? in the documentation of the package section as @doctype is depreceated, but it still doesn?t seem to solve the issue. Do you have any idea on this?
+>
+>
+>        [[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-package-devel at r-project.org<mailto:R-package-devel at r-project.org> mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+>
+>--
+>http://hadley.nz
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-package-devel at r-project.org mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de  Thu Mar  7 21:27:29 2024
+From: Sergej@Ru|| @end|ng |rom t|ho-h@nnover@de (Ruff, Sergej)
+Date: Thu, 7 Mar 2024 20:27:29 +0000
+Subject: [R-pkg-devel] [EXTERN] Re: [EXTERN] Re: @doctype is deprecated.
+ need help for r package documentation
+In-Reply-To: <8D1F6A23-439A-4078-BE45-AB9BF7345C21@dcn.davis.ca.us>
+References: <1967f4ed50ab46de84fd614de15e4bc0@tiho-hannover.de>,
+ <CABdHhvHZrSNMv9Me5owag45BRTberboOQzLzhYWc+vELhnRFzw@mail.gmail.com>,
+ <f40ffe2a3cbd40e8a14268c55d306ebc@tiho-hannover.de>
+ <3fdf55261a96402f896e1733cf99a628@tiho-hannover.de>,
+ <8D1F6A23-439A-4078-BE45-AB9BF7345C21@dcn.davis.ca.us>
+Message-ID: <124b36813f614b9f86594e6960f006b3@tiho-hannover.de>
+
+yes,
+
+
+I am refering to Rstudio. I checked the settings and type is set to "htlm", not text. And I was wondering why the package documentation opened in a browser when I used @doctype. Maybe it has nothing to do with that but I can?t find the reason why it opened in the browser in the first place.
+
+________________________________
+Von: Jeff Newmiller <jdnewmil at dcn.davis.ca.us>
+Gesendet: Donnerstag, 7. M?rz 2024 20:57:58
+An: r-package-devel at r-project.org; Ruff, Sergej; Hadley Wickham
+Cc: r-package-devel at r-project.org
+Betreff: [EXTERN] Re: [R-pkg-devel] [EXTERN] Re: @doctype is deprecated. need help for r package documentation
+
+What is a "right side window"? Are you mixing up what R does and what RStudio does? I think I agree with Ivan that this is a question about the environment in which you are loading the package rather than anything in the package itself.
+
+On March 7, 2024 11:21:06 AM PST, "Ruff, Sergej" <Sergej.Ruff at tiho-hannover.de> wrote:
+>So, in  the previous version of the package when we type ?bootGSEA, it opens the documentation in webpage (google, firefox?) and when we type ?pkg-function opens to the right side window, but now it just opens in the right side window. I was wondering why does it not open in webpage now.
+>
+>________________________________
+>Von: Ruff, Sergej
+>Gesendet: Donnerstag, 7. M?rz 2024 17:56:20
+>An: Hadley Wickham
+>Cc: r-package-devel at r-project.org
+>Betreff: AW: [EXTERN] Re: [R-pkg-devel] @doctype is deprecated. need help for r package documentation
+>
+>
+>the package is currently available under: https://github.com/klausjung-hannover/bootGSEA/blob/main/R/bootGSEA.r
+>
+>
+>line 1-31 contains the package information.
+>
+>
+>#' Package contains functions that repeates GSEA using bootstrap samples of gene sets. Bootstrap results are
+>#' aggregated to a new ranking score. The score can be compared to the gene set
+>#' ranking resulting from the standard GSEA.
+>#'
+>#' So far the functions included in the package are:
+>#' \itemize{
+>#'   \item \code{\link{aggr.boot.GO}} Aggregate boostrap GO analysis
+>#'   \item \code{\link{aggr.boot.Pathway}} Write a \code{genind} Aggregate boostrap pathway analysis
+>#'   \item \code{\link{aggr.multiomics}} Multiomics Integration analysis
+>#'   \item \code{\link{boot.GO}} Bootstrap GO analysis
+>#'   \item \code{\link{boot.pathway}} Bootstrap Pathway analysis
+>#'   \item \code{\link{compareRank}} Visualisation of bootstrap GO analyses
+>#'   \item \code{\link{histDiff}} Visualization of difference in ranks
+>#'   \item \code{\link{plotRank}} Visualisation of bootstrap pathway analyses
+>#' }
+>#'
+>#' \tabular{ll}{
+>#' Package: \tab bootGSEA\cr
+>#' Type: \tab Package\cr
+>#' Version: \tab 1.0\cr
+>#' Date: \tab 2024-03-05\cr
+>#' License: \tab GPL (>= 3)\cr
+>#' }
+>#'
+>#' @author Shamini Hemandhar Kumar, Klaus Jung (\email{shamini.hemandhar.kumar@@tiho-hannover.de})(\email{klaus.jung@@tiho-hannover.de})
+>#'
+>#' Maintainer: Shamini Hemandhar Kumar (\email{shamini.hemandhar.kumar@@tiho-hannover.de})
+>#' @aliases bootGSEA
+>#' @title Robustness evaluation of gene set enrichment analysis (GSEA)
+>#' @keywords Robustness GSEA
+>"_PACKAGE"
+>
+>
+>________________________________
+>Von: Hadley Wickham <h.wickham at gmail.com>
+>Gesendet: Donnerstag, 7. M?rz 2024 16:02:15
+>An: Ruff, Sergej
+>Cc: r-package-devel at r-project.org
+>Betreff: [EXTERN] Re: [R-pkg-devel] @doctype is deprecated. need help for r package documentation
+>
+>Do you have a pointer to the roxygen2 comments that you're using?
+>Hadley
+>
+>On Thu, Mar 7, 2024 at 5:38?AM Ruff, Sergej <Sergej.Ruff at tiho-hannover.de<mailto:Sergej.Ruff at tiho-hannover.de>> wrote:
+>Hello,
+>
+>I need help with a package I am currently developing called bootGSEA.
+> I noticed that when I try ??bootGSEA? it goes to the help page in R itself but not to the html page (we had this issue last time as well but we solved it by adding a documentation to the package itself to the R file) like from the before version of the package.
+>I tried ?_PACKAGE? in the documentation of the package section as @doctype is depreceated, but it still doesn?t seem to solve the issue. Do you have any idea on this?
+>
+>
+>        [[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-package-devel at r-project.org<mailto:R-package-devel at r-project.org> mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+>
+>--
+>http://hadley.nz
+>
+>       [[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-package-devel at r-project.org mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+--
+Sent from my phone. Please excuse my brevity.
+
+	[[alternative HTML version deleted]]
+
+
