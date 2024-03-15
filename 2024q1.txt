@@ -26385,3 +26385,125 @@ Best regards,
 Ivan
 
 
+From |kry|ov @end|ng |rom d|@root@org  Wed Mar 13 07:51:09 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Wed, 13 Mar 2024 09:51:09 +0300
+Subject: [R-pkg-devel] Submission after archived version
+In-Reply-To: <E42C76A0-66EE-4448-B0F4-9D5810A4104D@gmail.com>
+References: <E42C76A0-66EE-4448-B0F4-9D5810A4104D@gmail.com>
+Message-ID: <20240313095109.353d3f91@Tarkus>
+
+? Mon, 11 Mar 2024 23:45:13 +0100
+Nils Mechtel <nils.mech at gmail.com> ?????:
+
+> Despite R CMD check not giving any errors or warnings, the package
+> doesn?t pass the pre-tests:
+
+If your question was more about the reasons for the difference between
+your R CMD check and the pre-tests, most of it is due to --as-cran:
+
+(Using commit ffe216d from https://github.com/nilsmechtel/MetAlyzer as
+the basis for the example, which seems to be different from the
+incoming pretest from the link you've shared.)
+
+$ R-devel CMD check MetAlyzer_1.0.0.tar.gz
+<...>
+Status: OK	
+$ R-devel CMD check --as-cran MetAlyzer_1.0.0.tar.gz
+<...>
+* checking for non-standard things in the check directory ... NOTE
+Found the following files/directories: ?metabolomics_data.csv?
+<...>
+
+It's less wasteful to run checks without --as-cran in CI (as you
+currently do), but you need to perform additional testing before making
+a release. The incoming pre-tests use a custom set of environment
+variables that go a but further than just --as-cran:
+https://svn.r-project.org/R-dev-web/trunk/CRAN/QA/Kurt/lib/R/Scripts/check_CRAN_incoming.R
+
+In particular, _R_CHECK_CRAN_INCOMING_USE_ASPELL_=true enables the
+check for words that are possibly misspelled:
+
+(Using an extra environment variable because your package has been
+already published and R filters out "misspellings" found in the CRAN
+version of the package. Congratulations!)
+
+$ env \
+ _R_CHECK_CRAN_INCOMING_ASPELL_RECHECK_MAYBE_=FALSE \
+ _R_CHECK_CRAN_INCOMING_USE_ASPELL_=true \
+ R-devel CMD check --as-cran MetAlyzer_1.0.0.tar.gz
+<...>
+Possibly misspelled words in DESCRIPTION:
+  metabolomics (15:78)
+<...>
+
+Yet another way to avoid false misspellings is to create a custom
+dictionary:
+http://dirk.eddelbuettel.com/blog/2017/08/10/#008_aspell_cran_incoming
+
+$ mkdir -p .aspell
+$ echo '
+ Rd_files <- vignettes <- R_files <- description <- list(
+  encoding = "UTF-8",
+  language = "en",
+  dictionaries = c("en_stats", "dictionary")
+ )
+' > .aspell/defaults.R
+$ R -q -s -e '
+ saveRDS(c(
+  "metabolomics" # , extra words go here
+ ), file.path(".aspell", "dictionary.rds"))
+'
+$ R CMD build .
+$ env \
+ _R_CHECK_CRAN_INCOMING_ASPELL_RECHECK_MAYBE_=FALSE \
+ _R_CHECK_CRAN_INCOMING_USE_ASPELL_=true \
+ R-devel CMD check --as-cran MetAlyzer_1.0.0.tar.gz
+# No more "Possibly misspelled words in DESCRIPTION"!
+
+Some day, this will be documented in Writing R Extensions, or maybe in
+R Internals (where the other _R_CHECK_* variables are documented), or
+perhaps in the CRAN policy. See also:
+https://stat.ethz.ch/pipermail/r-package-devel/2024q1/010558.html
+
+-- 
+Best regards,
+Ivan
+
+
+From |kry|ov @end|ng |rom d|@root@org  Wed Mar 13 07:57:16 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Wed, 13 Mar 2024 09:57:16 +0300
+Subject: [R-pkg-devel] confusion over spellchecking
+In-Reply-To: <094f7c79-0f74-4abc-a476-fe597f937802@gmail.com>
+References: <094f7c79-0f74-4abc-a476-fe597f937802@gmail.com>
+Message-ID: <20240313095716.4d46d6d0@Tarkus>
+
+? Sun, 10 Mar 2024 13:55:43 -0400
+Ben Bolker <bbolker at gmail.com> ?????:
+
+> I am working on a package and can't seem to get rid of a NOTE about
+> 
+> Possibly misspelled words in DESCRIPTION:
+>    glmmTMB (10:88)
+>    lme (10:82)
+> 
+> on win-builder.
+
+Do you have these words anywhere else in the package (e.g. in the Rd
+files)? It turns out that R has a special environment variable that
+makes it ignore custom dictionaries specifically for DESCRIPTION:
+
+>>    ## Allow providing package defaults but make this controllable via
+>>    ##   _R_ASPELL_USE_DEFAULTS_FOR_PACKAGE_DESCRIPTION_
+>>    ## to safeguard against possible mis-use for CRAN incoming checks.
+
+I cannot see it used anywhere under the trunk/CRAN subdirectory in the
+developer.r-project.org Subversion repo, but it could be set somewhere
+else on Win-Builder.
+
+-- 
+Best regards,
+Ivan
+
+
