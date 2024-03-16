@@ -26507,3 +26507,141 @@ Best regards,
 Ivan
 
 
+From m|ch@e|ch|r|co4 @end|ng |rom gm@||@com  Thu Mar 14 19:34:13 2024
+From: m|ch@e|ch|r|co4 @end|ng |rom gm@||@com (Michael Chirico)
+Date: Thu, 14 Mar 2024 11:34:13 -0700
+Subject: [R-pkg-devel] Removing import(methods) stops exporting S4 "meta
+ name"
+Message-ID: <CAPRVBczY1hx_UeqYhYm_xrTZx+3mUwuAjh=SCQt8focuDxbq7g@mail.gmail.com>
+
+In an effort to streamline our NAMESPACE, we moved from blanket
+'import(methods)' to specific importFrom(methods, ....) for the
+objects we specifically needed.
+
+Doing so broke a downstream package, however, which has this directive:
+
+importFrom(data.table,`.__T__[:base`)
+
+That package stopped installing after the above change. I can get it
+to install again by adding:
+
+importClassesFrom(methods, "[")
+
+to our package, but I'm not sure why this would be necessary. I'm
+still left with two questions:
+
+ 1. How did we end up with ".__T__[:base" in our exports when we don't
+do any S4 around '[' in the package (we do export S3 methods on it)?
+ 2. Is there any legitimate reason for a package to try and import
+such an object? In other words, is breaking this downstream package by
+not adding the 'importClassesFrom' workaround the right thing to do? I
+don't see any other CRAN packages with a similar directive in its
+NAMESPACE.
+
+Michael Chirico
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Mar 14 21:06:50 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 14 Mar 2024 16:06:50 -0400
+Subject: [R-pkg-devel] Removing import(methods) stops exporting S4 "meta
+ name"
+In-Reply-To: <CAPRVBczY1hx_UeqYhYm_xrTZx+3mUwuAjh=SCQt8focuDxbq7g@mail.gmail.com>
+References: <CAPRVBczY1hx_UeqYhYm_xrTZx+3mUwuAjh=SCQt8focuDxbq7g@mail.gmail.com>
+Message-ID: <93e549b9-169a-4b77-bb71-21914bea7980@gmail.com>
+
+To save others a bit of time, the package in question is "do", and 
+Michael has already posted an issue on their Github page asking why they 
+made this import:  https://github.com/yikeshu0611/do/issues/1 .
+
+And if you remove that import and run R CMD check on "do", it fails with 
+this error:
+
+* checking examples ... ERROR
+Running examples in ?do-Ex.R? failed
+The error most likely occurred in:
+
+ > ### Name: join
+ > ### Title: Join two dataframes together
+ > ### Aliases: join join_inner join_full join_left join_right join_out
+ >
+ > ### ** Examples
+ >
+ > df1=data.frame(x=rep(c('b','a','c'),each=3),
++               y=c(1,3,6),
++               v=1:9)
+ >
+ > df2=data.frame(x=c('c','b','e'),
++                v=8:6,
++                foo=c(4,2,1))
+ > join_inner(df1,df2,'x')
+Error in xj[i] : invalid subscript type 'list'
+Calls: join_inner -> data.frame -> [ -> [.data.table -> [.data.frame
+Execution halted
+
+I'm pretty sure that import should not be made, but I don't know the 
+intention of this example, or what the correct fix would be.
+
+Duncan Murdoch
+
+On 14/03/2024 2:34 p.m., Michael Chirico wrote:
+> In an effort to streamline our NAMESPACE, we moved from blanket
+> 'import(methods)' to specific importFrom(methods, ....) for the
+> objects we specifically needed.
+> 
+> Doing so broke a downstream package, however, which has this directive:
+> 
+> importFrom(data.table,`.__T__[:base`)
+> 
+> That package stopped installing after the above change. I can get it
+> to install again by adding:
+> 
+> importClassesFrom(methods, "[")
+> 
+> to our package, but I'm not sure why this would be necessary. I'm
+> still left with two questions:
+> 
+>   1. How did we end up with ".__T__[:base" in our exports when we don't
+> do any S4 around '[' in the package (we do export S3 methods on it)?
+>   2. Is there any legitimate reason for a package to try and import
+> such an object? In other words, is breaking this downstream package by
+> not adding the 'importClassesFrom' workaround the right thing to do? I
+> don't see any other CRAN packages with a similar directive in its
+> NAMESPACE.
+> 
+> Michael Chirico
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From rmh @end|ng |rom temp|e@edu  Thu Mar 14 21:32:06 2024
+From: rmh @end|ng |rom temp|e@edu (Richard M. Heiberger)
+Date: Thu, 14 Mar 2024 20:32:06 +0000
+Subject: [R-pkg-devel] 
+ [External] Removing import(methods) stops exporting S4 "meta name"
+In-Reply-To: <CAPRVBczY1hx_UeqYhYm_xrTZx+3mUwuAjh=SCQt8focuDxbq7g@mail.gmail.com>
+References: <CAPRVBczY1hx_UeqYhYm_xrTZx+3mUwuAjh=SCQt8focuDxbq7g@mail.gmail.com>
+Message-ID: <60EA9D37-5C1A-46D9-80B4-E02759BF5B3A@temple.edu>
+
+this looks like a relative of the issue I tripped on that is discussed in the email threads
+
+https://stat.ethz.ch/pipermail/r-package-devel/2024q1/010531.html
+
+https://stat.ethz.ch/pipermail/r-devel/2024-March/083259.html
+
+At issue is the default export of
+exportPattern(".") 
+
+System generated names, which is what ".__xxx__" looks like, seem to be the issue.
+I can't make any specific recommendations behind connecting this current issue to my recent experience.
+
+Rich
+
+
+> On Mar 14, 2024, at 14:34, Michael Chirico <michaelchirico4 at gmail.com> wrote:
+> 
+> importFrom(data.table,`.__T__[:base`)
+
+
