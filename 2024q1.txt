@@ -26645,3 +26645,200 @@ Rich
 > importFrom(data.table,`.__T__[:base`)
 
 
+From |kry|ov @end|ng |rom d|@root@org  Fri Mar 15 13:01:18 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 15 Mar 2024 15:01:18 +0300
+Subject: [R-pkg-devel] Removing import(methods) stops exporting S4 "meta
+ name"
+In-Reply-To: <93e549b9-169a-4b77-bb71-21914bea7980@gmail.com>
+References: <CAPRVBczY1hx_UeqYhYm_xrTZx+3mUwuAjh=SCQt8focuDxbq7g@mail.gmail.com>
+ <93e549b9-169a-4b77-bb71-21914bea7980@gmail.com>
+Message-ID: <20240315150118.4234d3f4@arachnoid>
+
+On Thu, 14 Mar 2024 16:06:50 -0400
+Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+
+> Error in xj[i] : invalid subscript type 'list'
+> Calls: join_inner -> data.frame -> [ -> [.data.table -> [.data.frame
+> Execution halted
+
+And here's how it happens:
+
+join_inner calls xi[yi,on=by,nomatch=0] on data.tables xi and yi.
+
+`[.data.table` calls cedta() to determine whether the calling
+environment is data.table-aware. If the import of `.__T__[:base` is
+removed, cedta() returns FALSE.
+
+`[.data.table` then forwards the call to `[.data.frame`, which cannot
+handle data.table-style subsetting.
+
+This is warned about in
+<https://cran.r-project.org/package=data.table/vignettes/datatable-importing.html#data-table-in-imports-but-nothing-imported>;
+the 'do' package should have set the .datatable.aware = TRUE marker in
+its environment. In fact, example(join_inner) doesn't raise an error
+with the following changes when running with data.table commit f92aee69
+(i.e. pre-#6001):
+
+diff -rU2 do/NAMESPACE do_2.0.0.0.2/NAMESPACE
+--- do/NAMESPACE	2021-08-03 12:37:00.000000000 +0300
++++ do_2.0.0.0.2/NAMESPACE	2024-03-15 14:01:10.588561222 +0300
+@@ -130,5 +130,4 @@
+ export(upper.dir)
+ export(write_xlsx)
+-importFrom(data.table,`.__T__[:base`)
+ importFrom(methods,as)
+ importFrom(reshape2,melt)
+diff -rU2 do/R/join.R do_2.0.0.0.2/R/join.R
+--- do/R/join.R	2020-06-30 06:47:22.000000000 +0300
++++ do_2.0.0.0.2/R/join.R	2024-03-15 13:54:02.289440613 +0300
+@@ -1,2 +1,4 @@
++.datatable.aware = TRUE
++
+ #' @title Join two dataframes together
+ #' @description Join two dataframes by the same id column.
+
+-- 
+Best regards,
+Ivan
+
+
+From ro||turner @end|ng |rom po@teo@net  Sat Mar 16 01:03:30 2024
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Sat, 16 Mar 2024 00:03:30 +0000
+Subject: [R-pkg-devel] Export everything whose name does not start with ".".
+Message-ID: <20240316130330.0bea79a7@rolf-Latitude-E7470>
+
+
+There was fairly recently a discussion on this list of a problem whose
+solution involved having code in NAMESPACE which exported everything
+whose name did not start with ".".
+
+In the course of this discussion it was remarked that the code given in
+"Writing R Extensions", explicitly
+
+   exportPattern("^[^\\.]")
+
+wasn't quite right and could/should have a simpler form.
+
+I don't really understand what's going on --- regular expressions
+completely blow me away.
+
+Can someone please inform me as to what the simpler form should be?
+
+[What really frustrates me is that I was *sure* I had saved the emails
+pertaining to this discussion, but now I cannot find any <expletive
+deleted> trace of what I thought I'd saved!]
+
+cheers,
+
+Rolf Turner
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+
+From hugh@p@r@on@ge @end|ng |rom gm@||@com  Sat Mar 16 01:39:28 2024
+From: hugh@p@r@on@ge @end|ng |rom gm@||@com (Hugh Parsonage)
+Date: Sat, 16 Mar 2024 11:39:28 +1100
+Subject: [R-pkg-devel] 
+ Export everything whose name does not start with ".".
+In-Reply-To: <20240316130330.0bea79a7@rolf-Latitude-E7470>
+References: <20240316130330.0bea79a7@rolf-Latitude-E7470>
+Message-ID: <CAJmOi+O=Hjzun0myq2087HEvoRpzOwvmrYZKOz9-OcCBjm7T4g@mail.gmail.com>
+
+It would have been helpful for that person to specify their candidate
+regex, rather than just saying it could be simpler.
+
+That out of the way, I believe
+
+   exportPattern("^[^.]")
+
+would be sufficient since the square brackets remove any special
+meaning the dot has. For an alternative, given the limitations on
+syntactic identifiers in R (namely, that they must start with either a
+dot or letters), one might also consider
+
+   exportPattern("^[A-Za-z]")
+
+
+On Sat, 16 Mar 2024 at 11:03, Rolf Turner <rolfturner at posteo.net> wrote:
+>
+>
+> There was fairly recently a discussion on this list of a problem whose
+> solution involved having code in NAMESPACE which exported everything
+> whose name did not start with ".".
+>
+> In the course of this discussion it was remarked that the code given in
+> "Writing R Extensions", explicitly
+>
+>    exportPattern("^[^\\.]")
+>
+> wasn't quite right and could/should have a simpler form.
+>
+> I don't really understand what's going on --- regular expressions
+> completely blow me away.
+>
+> Can someone please inform me as to what the simpler form should be?
+>
+> [What really frustrates me is that I was *sure* I had saved the emails
+> pertaining to this discussion, but now I cannot find any <expletive
+> deleted> trace of what I thought I'd saved!]
+>
+> cheers,
+>
+> Rolf Turner
+>
+> --
+> Honorary Research Fellow
+> Department of Statistics
+> University of Auckland
+> Stats. Dep't. (secretaries) phone:
+>          +64-9-373-7599 ext. 89622
+> Home phone: +64-9-480-4619
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From ro||turner @end|ng |rom po@teo@net  Sat Mar 16 02:29:30 2024
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Sat, 16 Mar 2024 01:29:30 +0000
+Subject: [R-pkg-devel] 
+ Export everything whose name does not start with ".".
+In-Reply-To: <CAJmOi+O=Hjzun0myq2087HEvoRpzOwvmrYZKOz9-OcCBjm7T4g@mail.gmail.com>
+References: <20240316130330.0bea79a7@rolf-Latitude-E7470>
+ <CAJmOi+O=Hjzun0myq2087HEvoRpzOwvmrYZKOz9-OcCBjm7T4g@mail.gmail.com>
+Message-ID: <20240316142931.4e1bd7cd@rolf-Latitude-E7470>
+
+
+On Sat, 16 Mar 2024 11:39:28 +1100
+Hugh Parsonage <hugh.parsonage at gmail.com> wrote:
+
+> It would have been helpful for that person to specify their candidate
+> regex, rather than just saying it could be simpler.
+
+Actually they *did* specify; the problem was that my ageing senile
+memory could not recall the specification.
+
+<SNIP>
+
+cheers,
+
+Rolf
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+
