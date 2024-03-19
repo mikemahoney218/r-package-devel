@@ -26842,3 +26842,157 @@ Stats. Dep't. (secretaries) phone:
 Home phone: +64-9-480-4619
 
 
+From bbo|ker @end|ng |rom gm@||@com  Sun Mar 17 19:01:33 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Sun, 17 Mar 2024 14:01:33 -0400
+Subject: [R-pkg-devel] help diagnosing win-builder failures
+Message-ID: <916286b7-4d08-48b3-b830-2d3a4846c0a8@gmail.com>
+
+   Hi folks,
+
+   We're in the final stages of preparing a revised version of the 
+glmmTMB package for CRAN and are stuck troubleshooting checks on 
+win-builder/r-devel.
+
+   Testing is working everywhere *except* win-builder/r-devel. 
+Win-builder is OK with r-oldrel and r-devel; the same package is OK on 
+GitHub actions with macOS/release, ubuntu/{release, devel} and 
+windows/{oldrel, release, devel}: 
+https://github.com/glmmTMB/glmmTMB/actions/runs/8316540364
+
+   win-builder/r-devel output is cryptic. It reports:
+
+1. an ERROR in running examples:
+
+Running examples in 'glmmTMB-Ex.R' failed
+The error most likely occurred in:
+
+ > base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+ > ### Name: VarCorr.glmmTMB
+ > ### Title: Extract variance and correlation components
+ > ### Aliases: VarCorr.glmmTMB VarCorr
+ > ### Keywords: internal
+ >
+ > ### ** Examples
+ >
+ > ## Comparing variance-covariance matrix with manual computation
+ > data("sleepstudy",package="lme4")
+ > fm4 <- glmmTMB(Reaction ~ Days + (Days|Subject), sleepstudy)
+
+(this is the end of this output section.)
+
+2. an ERROR running tests, where the output ends with a cryptic
+
+   Anova: ..
+
+(please try to refrain from snarky comments about not using testthat ...)
+
+3. an ERROR building the vignettes:
+
+--- re-building 'priors.rmd' using rmarkdown
+(this is a new vignette, but it builds without a problem everywhere 
+else, takes 10 seconds to build locally ...)
+
+Full log is here, at least for a little while: 
+https://win-builder.r-project.org/9I5WG5R8WJg3/00check.log
+
+   We could admit defeat and throw ourselves on the CRAN-maintainers' 
+mercy, but we would like to resolve these if we can.
+
+   cheers
+    Ben Bolker
+
+
+From |kry|ov @end|ng |rom d|@root@org  Sun Mar 17 21:42:56 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sun, 17 Mar 2024 23:42:56 +0300
+Subject: [R-pkg-devel] help diagnosing win-builder failures
+In-Reply-To: <916286b7-4d08-48b3-b830-2d3a4846c0a8@gmail.com>
+References: <916286b7-4d08-48b3-b830-2d3a4846c0a8@gmail.com>
+Message-ID: <20240317234256.0b7310b2@Tarkus>
+
+Hi,
+
+This may need the help of Uwe Ligges to diagnose. I suspect this may be
+related to the Windows machine having too much memory committed (as Uwe
+has been able to pinpoint recently [*] about a package that failed to
+compile some heavily templated C++), but there is not enough information
+to give a conclusive diagnosis.
+
+On Sun, 17 Mar 2024 14:01:33 -0400
+Ben Bolker <bbolker at gmail.com> wrote:
+
+> 2. an ERROR running tests, where the output ends with a cryptic
+> 
+>    Anova: ..
+> 
+> (please try to refrain from snarky comments about not using testthat
+> ...)
+
+Pardon my ignorance, but is it an option to upload a version of the
+package that uses test_check(pkg, reporter=LocationReporter()) instead
+of the summary reporter?
+
+-- 
+Best regards,
+Ivan
+
+[*] https://stat.ethz.ch/pipermail/r-package-devel/2024q1/010304.html
+
+
+From bbo|ker @end|ng |rom gm@||@com  Mon Mar 18 02:07:33 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Sun, 17 Mar 2024 21:07:33 -0400
+Subject: [R-pkg-devel] help diagnosing win-builder failures
+In-Reply-To: <20240317234256.0b7310b2@Tarkus>
+References: <916286b7-4d08-48b3-b830-2d3a4846c0a8@gmail.com>
+ <20240317234256.0b7310b2@Tarkus>
+Message-ID: <518aaa62-da5d-4aa6-8fa0-01b9f26aa501@gmail.com>
+
+   I think I may actually have figured this out.
+
+   The Matrix package is being updated to version 1.7.0 soon, with 
+expected ABI breakage.  This version is **already installed on 
+win-builder/r-devel**, so the Matrix/TMB/glmmTMB binary stack fails 
+(digging into the logs a bit deeper showed that the *first* instance of 
+a call to glmmTMB in any example/test/prior was failing ...)
+
+   I think the only way to solve this is to bump/re-install the version 
+of TMB that lives on win-builder.
+
+   For the record, this will probably bite any package that depends on 
+Matrix ABI ...
+
+On 2024-03-17 4:42 p.m., Ivan Krylov wrote:
+> Hi,
+> 
+> This may need the help of Uwe Ligges to diagnose. I suspect this may be
+> related to the Windows machine having too much memory committed (as Uwe
+> has been able to pinpoint recently [*] about a package that failed to
+> compile some heavily templated C++), but there is not enough information
+> to give a conclusive diagnosis.
+> 
+> On Sun, 17 Mar 2024 14:01:33 -0400
+> Ben Bolker <bbolker at gmail.com> wrote:
+> 
+>> 2. an ERROR running tests, where the output ends with a cryptic
+>>
+>>     Anova: ..
+>>
+>> (please try to refrain from snarky comments about not using testthat
+>> ...)
+> 
+> Pardon my ignorance, but is it an option to upload a version of the
+> package that uses test_check(pkg, reporter=LocationReporter()) instead
+> of the summary reporter?
+
+   I don't know, could be worth a try.
+
+
+> 
+
+
+   cheers
+    Ben Bolker
+
+
