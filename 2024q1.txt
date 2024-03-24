@@ -27576,3 +27576,71 @@ dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 	[[alternative HTML version deleted]]
 
 
+From |kry|ov @end|ng |rom d|@root@org  Fri Mar 22 11:04:15 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 22 Mar 2024 13:04:15 +0300
+Subject: [R-pkg-devel] 
+ Request for assistance: error in installing on Debian
+ (undefined symbol: omp_get_num_procs) and note in checking the HTML
+ versions (no command 'tidy' found, package 'V8' unavailable)
+In-Reply-To: <002ff2bcb3274de0a0a9add2c0857f88@inrae.fr>
+References: <acb79840d8cd4a59aa26ca7e302bc7d7@inrae.fr>
+ <26108.26565.254934.364131@rob.eddelbuettel.com>
+ <002ff2bcb3274de0a0a9add2c0857f88@inrae.fr>
+Message-ID: <20240322130415.76fc2bcb@arachnoid>
+
+? Thu, 21 Mar 2024 18:32:59 +0000
+Annaig De-Walsche <annaig.de-walsche at inrae.fr> ?????:
+
+> If ever I condition the use of OpenMD directives, users will indeed
+> be capable of installing the package, but they wont access to a
+> performant version of the code, as it necessitates the use of OpenMD.
+> Is there a method to explicitly express that the use of OpenMD is
+> highly encouraged?
+
+I think the most practical method would be to produce a
+packageStartupMessage() from the .onAttach function of your package if
+you detect that the package has been compiled without OpenMP support:
+https://cran.r-project.org/doc/manuals/R-exts.html#Load-hooks
+
+> In practical, how to know from R code if OpenMP is present or not?
+
+Your C code will have to detect it and provide this information to the
+R code. WRE 1.6.4 says:
+
+>> [C]heck carefully that you have followed the advice in the
+>> subsection on OpenMP support [WRE 1.2.1.1]. In particular, any use
+>> of OpenMP in C/C++ code will need to use
+>> 
+>>  #ifdef _OPENMP
+>>  # include <omp.h>
+>>  #endif
+
+<https://cran.r-project.org/doc/manuals/R-exts.html#Portable-C-and-C_002b_002b-code>
+
+Similarly, any time you use #pragma omp ... or call
+omp_set_num_threads(), it needs to be wrapped in #ifdef _OPENMP ...
+#endif.
+
+Additionally, it is important to make sure that during tests and
+examples, your OpenMP code doesn't use more than two threads:
+https://cran.r-project.org/web/packages/policies.html
+This is in place because CRAN checks are run in parallel, and a package
+that tries to helpfully use all of the processor cores would interfere
+with other packages being checked at the same time.
+
+> 	[[alternative HTML version deleted]]
+
+This mailing list removes HTML e-mails. If you compose your messages in
+HTML, we only get the plain text version automatically prepared by your
+mailer:
+https://stat.ethz.ch/pipermail/r-package-devel/2024q1/010595.html
+
+In order to preserve the content and the presentation of your messages,
+it's best to compose them in plain text.
+
+-- 
+Tr?s cordialement,
+Ivan
+
+
