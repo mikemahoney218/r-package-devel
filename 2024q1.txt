@@ -27743,3 +27743,377 @@ Avi
 [5] https://cran.r-project.org/web/checks/check_results_Pade.html
 
 
+From je@@e@koop@ @end|ng |rom gm@||@com  Tue Mar 26 10:53:37 2024
+From: je@@e@koop@ @end|ng |rom gm@||@com (jesse koops)
+Date: Tue, 26 Mar 2024 10:53:37 +0100
+Subject: [R-pkg-devel] using portable simd instructions
+Message-ID: <CAJpVobWCvs0wn5aqzHY0jQWK3y-21TSSZ5FLs=Tn5W0vQFeoLQ@mail.gmail.com>
+
+Hello R-package-devel,
+
+I recently got inspired by the rcppsimdjson package to try out simd
+registers. It works fantastic on my computer but I struggle to find
+information on how to make it portable. It doesn't help in this case
+that R and Rcpp make including Cpp code so easy that I have never had
+to learn about cmake and compiler flags. I would appreciate any help,
+including of the type: "go read instructions at ...".
+
+I use RcppArmadillo and Rcpp. I currenlty include the following header:
+
+#include <immintrin.h>
+
+The functions in immintrin that I use are:
+
+_mm256_loadu_pd
+_mm256_set1_pd
+_mm256_mul_pd
+_mm256_fmadd_pd
+_mm256_storeu_pd
+
+and I define up to four __m256d registers. From information found
+online (not sure where anymore) I constructed the following makevars
+file:
+
+CXX_STD = CXX14
+
+PKG_CPPFLAGS = -I../inst/include -mfma -msse4.2 -mavx
+
+PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS)
+PKG_LIBS = $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
+
+(I also use openmp, that has always worked fine, I just included all
+lines for completeness) Rcheck gives me two notes:
+
+?  using R version 4.3.2 (2023-10-31 ucrt)
+?  using platform: x86_64-w64-mingw32 (64-bit)
+?  R was compiled by
+       gcc.exe (GCC) 12.3.0
+       GNU Fortran (GCC) 12.3.0
+
+? checking compilation flags used ... NOTE
+  Compilation used the following non-portable flag(s):
+    '-mavx' '-mfma' '-msse4.2'
+
+? checking C++ specification ... NOTE
+    Specified C++14: please drop specification unless essential
+
+But as far as I understand, the flags are necessary, at least in GCC.
+How can I make this portable and CRAN-acceptable?
+
+kind regards,
+Jesse
+
+
+From edd @end|ng |rom deb|@n@org  Tue Mar 26 15:35:13 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 26 Mar 2024 09:35:13 -0500
+Subject: [R-pkg-devel] 
+ How to store large data to be used in an R package?
+In-Reply-To: <CAJyC-m59sb_uGZD1EETEFEpujBQm899LCVYUrVU99QByb48u+Q@mail.gmail.com>
+References: <CAJyC-m59sb_uGZD1EETEFEpujBQm899LCVYUrVU99QByb48u+Q@mail.gmail.com>
+Message-ID: <26114.56609.810622.52027@rob.eddelbuettel.com>
+
+
+On 25 March 2024 at 11:12, Jairo Hidalgo Migueles wrote:
+| I'm reaching out to seek some guidance regarding the storage of relatively
+| large data, ranging from 10-40 MB, intended for use within an R package.
+| Specifically, this data consists of regression and random forest models
+| crucial for making predictions within our R package.
+| 
+| Initially, I attempted to save these models as internal data within the
+| package. While this approach maintains functionality, it has led to a
+| package size exceeding 20 MB. I'm concerned that this would complicate
+| submitting the package to CRAN in the future.
+| 
+| I would greatly appreciate any suggestions or insights you may have on
+| alternative methods or best practices for efficiently storing and accessing
+| this data within our R package.
+
+Brooke and I wrote a paper on one way of addressing it via a 'data' package
+accessibly via an Additional_repositories: entry supported by a drat repo.
+
+See https://journal.r-project.org/archive/2017/RJ-2017-026/index.html for the
+paper which contains a nice slow walkthrough of all the details.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From edd @end|ng |rom deb|@n@org  Tue Mar 26 15:37:31 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 26 Mar 2024 09:37:31 -0500
+Subject: [R-pkg-devel] 
+ Check results on r-devel-windows claiming error but
+ tests seem to pass?
+In-Reply-To: <CAL6gwn+Kxj1k8x_L5CpkdOBm=61ShpqsHkR06-1+4L6DqCDJng@mail.gmail.com>
+References: <CAL6gwn+Kxj1k8x_L5CpkdOBm=61ShpqsHkR06-1+4L6DqCDJng@mail.gmail.com>
+Message-ID: <26114.56747.313071.339188@rob.eddelbuettel.com>
+
+
+Avi,
+
+That was a hickup and is now taken care of. When discussing this (off-line)
+with Jeroen we (rightly) suggested that keeping an eye on
+
+   https://contributor.r-project.org/svn-dashboard/
+
+is one possibility to keep track while we have no status alert system from
+CRAN.  I too was quite confused because a new upload showed errors, and
+win-builder for r-devel just swallowed any uploads.
+
+Cheers, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From edd @end|ng |rom deb|@n@org  Tue Mar 26 15:41:03 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 26 Mar 2024 09:41:03 -0500
+Subject: [R-pkg-devel] using portable simd instructions
+In-Reply-To: <CAJpVobWCvs0wn5aqzHY0jQWK3y-21TSSZ5FLs=Tn5W0vQFeoLQ@mail.gmail.com>
+References: <CAJpVobWCvs0wn5aqzHY0jQWK3y-21TSSZ5FLs=Tn5W0vQFeoLQ@mail.gmail.com>
+Message-ID: <26114.56959.590681.104806@rob.eddelbuettel.com>
+
+
+On 26 March 2024 at 10:53, jesse koops wrote:
+| How can I make this portable and CRAN-acceptable?
+
+But writing (or borrowing ?) some hardware detection via either configure /
+autoconf or cmake. This is no different than other tasks decided at install-time.
+
+Start with 'Writing R Extensions', as always, and work your way up from
+there. And if memory serves there are already a few other packages with SIMD
+at CRAN so you can also try to take advantage of the search for a 'token'
+(here: 'SIMD') at the (unofficial) CRAN mirror at GitHub:
+
+   https://github.com/search?q=org%3Acran%20SIMD&type=code
+
+Hth, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Tue Mar 26 15:51:45 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Tue, 26 Mar 2024 15:51:45 +0100
+Subject: [R-pkg-devel] using portable simd instructions
+In-Reply-To: <CAJpVobWCvs0wn5aqzHY0jQWK3y-21TSSZ5FLs=Tn5W0vQFeoLQ@mail.gmail.com>
+References: <CAJpVobWCvs0wn5aqzHY0jQWK3y-21TSSZ5FLs=Tn5W0vQFeoLQ@mail.gmail.com>
+Message-ID: <0b2acc59-af40-4829-9cbf-0f8dcde53e61@gmail.com>
+
+
+On 3/26/24 10:53, jesse koops wrote:
+> Hello R-package-devel,
+>
+> I recently got inspired by the rcppsimdjson package to try out simd
+> registers. It works fantastic on my computer but I struggle to find
+> information on how to make it portable. It doesn't help in this case
+> that R and Rcpp make including Cpp code so easy that I have never had
+> to learn about cmake and compiler flags. I would appreciate any help,
+> including of the type: "go read instructions at ...".
+>
+> I use RcppArmadillo and Rcpp. I currenlty include the following header:
+>
+> #include <immintrin.h>
+>
+> The functions in immintrin that I use are:
+>
+> _mm256_loadu_pd
+> _mm256_set1_pd
+> _mm256_mul_pd
+> _mm256_fmadd_pd
+> _mm256_storeu_pd
+>
+> and I define up to four __m256d registers. From information found
+> online (not sure where anymore) I constructed the following makevars
+> file:
+>
+> CXX_STD = CXX14
+>
+> PKG_CPPFLAGS = -I../inst/include -mfma -msse4.2 -mavx
+>
+> PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS)
+> PKG_LIBS = $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
+>
+> (I also use openmp, that has always worked fine, I just included all
+> lines for completeness) Rcheck gives me two notes:
+>
+> ?  using R version 4.3.2 (2023-10-31 ucrt)
+> ?  using platform: x86_64-w64-mingw32 (64-bit)
+> ?  R was compiled by
+>         gcc.exe (GCC) 12.3.0
+>         GNU Fortran (GCC) 12.3.0
+>
+> ? checking compilation flags used ... NOTE
+>    Compilation used the following non-portable flag(s):
+>      '-mavx' '-mfma' '-msse4.2'
+>
+> ? checking C++ specification ... NOTE
+>      Specified C++14: please drop specification unless essential
+>
+> But as far as I understand, the flags are necessary, at least in GCC.
+> How can I make this portable and CRAN-acceptable?
+
+I think it the best way for portability is to use a higher-level library 
+that already has done the low-level business of maintaining multiple 
+versions of the code (with multiple instruction sets) and choosing one 
+appropriate for the current CPU. It could be say LAPACK, BLAS, openmp, 
+depending of the problem at hand. In some cases, code can be rewritten 
+so that the compiler can vectorize it better, using the level of 
+vectorized instructions that have been enabled.
+
+Unconditionally using GCC-specific or architecture-specific options in 
+packages would certainly not be portable. Even on Windows, R is now used 
+also with clang and on aarch64, so one should not assume a concrete 
+compiler and architecture.
+
+Please note also that GCC on Windows has a bug due to which AVX2 
+instructions cannot be used reliably - the compiler doesn't always 
+properly align local variables on the stack when emitting these. See 
+[1,2] for more information.
+
+Best
+Tomas
+
+[1] https://stat.ethz.ch/pipermail/r-sig-windows/2024q1/000113.html
+[2] https://gcc.gnu.org/bugzilla/show_bug.cgi?id=54412
+
+>
+> kind regards,
+> Jesse
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From vdor|e @end|ng |rom gm@||@com  Tue Mar 26 16:04:20 2024
+From: vdor|e @end|ng |rom gm@||@com (Vincent Dorie)
+Date: Tue, 26 Mar 2024 11:04:20 -0400
+Subject: [R-pkg-devel] using portable simd instructions
+In-Reply-To: <26114.56959.590681.104806@rob.eddelbuettel.com>
+References: <CAJpVobWCvs0wn5aqzHY0jQWK3y-21TSSZ5FLs=Tn5W0vQFeoLQ@mail.gmail.com>
+ <26114.56959.590681.104806@rob.eddelbuettel.com>
+Message-ID: <CA+++UwTeP1t3+_vmWXMhFC=VP7grUzXPKuJJSmwo2rG84mF2aw@mail.gmail.com>
+
+Hi Jesse,
+
+What I've done is to use a mix of compile-time detection of compiler SIMD
+support and run-time detection of SIMD hardware support. At package load,
+SIMD-specific versions of functions are installed in a symbol table. It's
+not perfect and it can be hard to support evolving platforms, especially
+now that ARM is more prevalent. However, it does allow for distribution on
+CRAN as it uses only autoconf, POSIX make, and no specific compiler.
+
+At compile time:
+1. Use a configure script to detect the platform and any SIMD instructions
+supported by the compiler. This is also the time to identify the compiler
+flags necessary to enable instruction sets. Unlike what the existing
+autoconf macros do, you can ignore whether or not the host system supports
+the instruction sets (with the exception when compiling with Solaris Studio
+- it won't let you load a binary with instructions not supported by the
+host, even if they cannot be executed).
+2. Use makefiles to conditionally compile different versions of the
+functions you want, one for each level of instruction set supported by the
+compiler, using the flags detected above. They all should be in different
+files with different symbols. For example: partition_sse2.c defines
+partition_sse2(), partition_avx.c defines partition_avx(), etc., while
+partition.c defines partition_c() - a fall-back compiled without any SIMD
+instructions. Note that echoing compilations with SIMD flags will trigger a
+check warning, as those units are not inherently portable. That is
+addressed below.
+
+At run time:
+1. On package load, detect what instruction sets are supported by the host.
+On x86 machines, this usually involves a call to cpuid.
+2. For the maximum level of instruction set supported by the host, install
+the relevant symbol for each function into a symbol table. Using the
+example above, a header defines an external function pointer partition(),
+which gets set to one of the SIMD-specific implementations.
+
+In setting that up, I found Agner Fog's notes on CPU dispatching to be
+extremely helpful. They can be found here: https://www.agner.org/optimize.
+I use this strategy in the dbarts package, the code for which is here:
+https://github.com/vdorie/dbarts.
+
+Best,
+Vince
+
+On Tue, Mar 26, 2024 at 10:45?AM Dirk Eddelbuettel <edd at debian.org> wrote:
+
+>
+> On 26 March 2024 at 10:53, jesse koops wrote:
+> | How can I make this portable and CRAN-acceptable?
+>
+> But writing (or borrowing ?) some hardware detection via either configure /
+> autoconf or cmake. This is no different than other tasks decided at
+> install-time.
+>
+> Start with 'Writing R Extensions', as always, and work your way up from
+> there. And if memory serves there are already a few other packages with
+> SIMD
+> at CRAN so you can also try to take advantage of the search for a 'token'
+> (here: 'SIMD') at the (unofficial) CRAN mirror at GitHub:
+>
+>    https://github.com/search?q=org%3Acran%20SIMD&type=code
+>
+> Hth, Dirk
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Tue Mar 26 17:05:44 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 26 Mar 2024 11:05:44 -0500
+Subject: [R-pkg-devel] 
+ Check results on r-devel-windows claiming error but
+ tests seem to pass?
+In-Reply-To: <26114.56747.313071.339188@rob.eddelbuettel.com>
+References: <CAL6gwn+Kxj1k8x_L5CpkdOBm=61ShpqsHkR06-1+4L6DqCDJng@mail.gmail.com>
+ <26114.56747.313071.339188@rob.eddelbuettel.com>
+Message-ID: <26114.62040.256154.504380@rob.eddelbuettel.com>
+
+
+On 26 March 2024 at 09:37, Dirk Eddelbuettel wrote:
+| 
+| Avi,
+| 
+| That was a hickup and is now taken care of. When discussing this (off-line)
+| with Jeroen we (rightly) suggested that keeping an eye on
+
+Typo, as usual, "he (rightly) suggested".  My bad.
+
+D.
+
+| 
+|    https://contributor.r-project.org/svn-dashboard/
+| 
+| is one possibility to keep track while we have no status alert system from
+| CRAN.  I too was quite confused because a new upload showed errors, and
+| win-builder for r-devel just swallowed any uploads.
+| 
+| Cheers, Dirk
+| 
+| -- 
+| dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+| 
+| ______________________________________________
+| R-package-devel at r-project.org mailing list
+| https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
