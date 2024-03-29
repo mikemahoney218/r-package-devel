@@ -28117,3 +28117,1104 @@ D.
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From je@@e@koop@ @end|ng |rom gm@||@com  Wed Mar 27 08:35:17 2024
+From: je@@e@koop@ @end|ng |rom gm@||@com (jesse koops)
+Date: Wed, 27 Mar 2024 08:35:17 +0100
+Subject: [R-pkg-devel] using portable simd instructions
+In-Reply-To: <CA+++UwTeP1t3+_vmWXMhFC=VP7grUzXPKuJJSmwo2rG84mF2aw@mail.gmail.com>
+References: <CAJpVobWCvs0wn5aqzHY0jQWK3y-21TSSZ5FLs=Tn5W0vQFeoLQ@mail.gmail.com>
+ <26114.56959.590681.104806@rob.eddelbuettel.com>
+ <CA+++UwTeP1t3+_vmWXMhFC=VP7grUzXPKuJJSmwo2rG84mF2aw@mail.gmail.com>
+Message-ID: <CAJpVobWCvwbD+Mc9K_FOndEKmpKnZwo6VfPNLwKus3zLVG-UWw@mail.gmail.com>
+
+Thank you very much, that looks promising. Though if I look at your
+congigure.ac script, also extremely daunting and far above my current
+level of understanding. I guess I'll start with the autoconf manual
+then.
+
+Op di 26 mrt 2024 om 16:04 schreef Vincent Dorie <vdorie at gmail.com>:
+>
+> Hi Jesse,
+>
+> What I've done is to use a mix of compile-time detection of compiler SIMD support and run-time detection of SIMD hardware support. At package load, SIMD-specific versions of functions are installed in a symbol table. It's not perfect and it can be hard to support evolving platforms, especially now that ARM is more prevalent. However, it does allow for distribution on CRAN as it uses only autoconf, POSIX make, and no specific compiler.
+>
+> At compile time:
+> 1. Use a configure script to detect the platform and any SIMD instructions supported by the compiler. This is also the time to identify the compiler flags necessary to enable instruction sets. Unlike what the existing autoconf macros do, you can ignore whether or not the host system supports the instruction sets (with the exception when compiling with Solaris Studio - it won't let you load a binary with instructions not supported by the host, even if they cannot be executed).
+> 2. Use makefiles to conditionally compile different versions of the functions you want, one for each level of instruction set supported by the compiler, using the flags detected above. They all should be in different files with different symbols. For example: partition_sse2.c defines partition_sse2(), partition_avx.c defines partition_avx(), etc., while partition.c defines partition_c() - a fall-back compiled without any SIMD instructions. Note that echoing compilations with SIMD flags will trigger a check warning, as those units are not inherently portable. That is addressed below.
+>
+> At run time:
+> 1. On package load, detect what instruction sets are supported by the host. On x86 machines, this usually involves a call to cpuid.
+> 2. For the maximum level of instruction set supported by the host, install the relevant symbol for each function into a symbol table. Using the example above, a header defines an external function pointer partition(), which gets set to one of the SIMD-specific implementations.
+>
+> In setting that up, I found Agner Fog's notes on CPU dispatching to be extremely helpful. They can be found here: https://www.agner.org/optimize. I use this strategy in the dbarts package, the code for which is here: https://github.com/vdorie/dbarts.
+>
+> Best,
+> Vince
+>
+> On Tue, Mar 26, 2024 at 10:45?AM Dirk Eddelbuettel <edd at debian.org> wrote:
+>>
+>>
+>> On 26 March 2024 at 10:53, jesse koops wrote:
+>> | How can I make this portable and CRAN-acceptable?
+>>
+>> But writing (or borrowing ?) some hardware detection via either configure /
+>> autoconf or cmake. This is no different than other tasks decided at install-time.
+>>
+>> Start with 'Writing R Extensions', as always, and work your way up from
+>> there. And if memory serves there are already a few other packages with SIMD
+>> at CRAN so you can also try to take advantage of the search for a 'token'
+>> (here: 'SIMD') at the (unofficial) CRAN mirror at GitHub:
+>>
+>>    https://github.com/search?q=org%3Acran%20SIMD&type=code
+>>
+>> Hth, Dirk
+>>
+>> --
+>> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From je@@e@koop@ @end|ng |rom gm@||@com  Wed Mar 27 08:39:08 2024
+From: je@@e@koop@ @end|ng |rom gm@||@com (jesse koops)
+Date: Wed, 27 Mar 2024 08:39:08 +0100
+Subject: [R-pkg-devel] Fwd:  using portable simd instructions
+In-Reply-To: <CAJpVobXy5BGx9X-Er91mUULi+NgBjBBFU_hNOJgeK67=+=9iRg@mail.gmail.com>
+References: <CAJpVobWCvs0wn5aqzHY0jQWK3y-21TSSZ5FLs=Tn5W0vQFeoLQ@mail.gmail.com>
+ <0b2acc59-af40-4829-9cbf-0f8dcde53e61@gmail.com>
+ <CAJpVobXy5BGx9X-Er91mUULi+NgBjBBFU_hNOJgeK67=+=9iRg@mail.gmail.com>
+Message-ID: <CAJpVobWG_th6y77g+KBRzteKjphcPhcgpXNUz8nHzr12rkAqGw@mail.gmail.com>
+
+Of course you are correct about the portability. But since at ;least
+one other CRAN package by a renowned author does it succesfully, I
+figured I'd experiment first on my machine and learn about portability
+later. Thank you for the links and the warning about the bug. I was
+aware of that, however I am careful to only use the "loadu" and
+"storeu" variants, so I thought this would not bite me. Do you know if
+my assumption is in error?
+
+Op di 26 mrt 2024 om 15:51 schreef Tomas Kalibera <tomas.kalibera at gmail.com>:
+>
+>
+> On 3/26/24 10:53, jesse koops wrote:
+> > Hello R-package-devel,
+> >
+> > I recently got inspired by the rcppsimdjson package to try out simd
+> > registers. It works fantastic on my computer but I struggle to find
+> > information on how to make it portable. It doesn't help in this case
+> > that R and Rcpp make including Cpp code so easy that I have never had
+> > to learn about cmake and compiler flags. I would appreciate any help,
+> > including of the type: "go read instructions at ...".
+> >
+> > I use RcppArmadillo and Rcpp. I currenlty include the following header:
+> >
+> > #include <immintrin.h>
+> >
+> > The functions in immintrin that I use are:
+> >
+> > _mm256_loadu_pd
+> > _mm256_set1_pd
+> > _mm256_mul_pd
+> > _mm256_fmadd_pd
+> > _mm256_storeu_pd
+> >
+> > and I define up to four __m256d registers. From information found
+> > online (not sure where anymore) I constructed the following makevars
+> > file:
+> >
+> > CXX_STD = CXX14
+> >
+> > PKG_CPPFLAGS = -I../inst/include -mfma -msse4.2 -mavx
+> >
+> > PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS)
+> > PKG_LIBS = $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
+> >
+> > (I also use openmp, that has always worked fine, I just included all
+> > lines for completeness) Rcheck gives me two notes:
+> >
+> > ?  using R version 4.3.2 (2023-10-31 ucrt)
+> > ?  using platform: x86_64-w64-mingw32 (64-bit)
+> > ?  R was compiled by
+> >         gcc.exe (GCC) 12.3.0
+> >         GNU Fortran (GCC) 12.3.0
+> >
+> > ? checking compilation flags used ... NOTE
+> >    Compilation used the following non-portable flag(s):
+> >      '-mavx' '-mfma' '-msse4.2'
+> >
+> > ? checking C++ specification ... NOTE
+> >      Specified C++14: please drop specification unless essential
+> >
+> > But as far as I understand, the flags are necessary, at least in GCC.
+> > How can I make this portable and CRAN-acceptable?
+>
+> I think it the best way for portability is to use a higher-level library
+> that already has done the low-level business of maintaining multiple
+> versions of the code (with multiple instruction sets) and choosing one
+> appropriate for the current CPU. It could be say LAPACK, BLAS, openmp,
+> depending of the problem at hand. In some cases, code can be rewritten
+> so that the compiler can vectorize it better, using the level of
+> vectorized instructions that have been enabled.
+>
+> Unconditionally using GCC-specific or architecture-specific options in
+> packages would certainly not be portable. Even on Windows, R is now used
+> also with clang and on aarch64, so one should not assume a concrete
+> compiler and architecture.
+>
+> Please note also that GCC on Windows has a bug due to which AVX2
+> instructions cannot be used reliably - the compiler doesn't always
+> properly align local variables on the stack when emitting these. See
+> [1,2] for more information.
+>
+> Best
+> Tomas
+>
+> [1] https://stat.ethz.ch/pipermail/r-sig-windows/2024q1/000113.html
+> [2] https://gcc.gnu.org/bugzilla/show_bug.cgi?id=54412
+>
+> >
+> > kind regards,
+> > Jesse
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From je@@e@koop@ @end|ng |rom gm@||@com  Wed Mar 27 08:48:56 2024
+From: je@@e@koop@ @end|ng |rom gm@||@com (jesse koops)
+Date: Wed, 27 Mar 2024 08:48:56 +0100
+Subject: [R-pkg-devel] using portable simd instructions
+In-Reply-To: <26114.56959.590681.104806@rob.eddelbuettel.com>
+References: <CAJpVobWCvs0wn5aqzHY0jQWK3y-21TSSZ5FLs=Tn5W0vQFeoLQ@mail.gmail.com>
+ <26114.56959.590681.104806@rob.eddelbuettel.com>
+Message-ID: <CAJpVobUg9my-+YNjNnweV=zFko1G-RRK722FDCG5r=dWsgi17w@mail.gmail.com>
+
+Thank you, I was not aware of the easy way to search CRAN. I looked at
+rcppsimdjson of course, but couldn't figure it out since it is done in
+the simdjson library if interpret it correclty, not within the R
+ecosystem and I didn't know how that would change things. Writing R
+extensions assumes a lot of  prior knowledge so I will have to work my
+way up to there first.
+
+Op di 26 mrt 2024 om 15:41 schreef Dirk Eddelbuettel <edd at debian.org>:
+>
+>
+> On 26 March 2024 at 10:53, jesse koops wrote:
+> | How can I make this portable and CRAN-acceptable?
+>
+> But writing (or borrowing ?) some hardware detection via either configure /
+> autoconf or cmake. This is no different than other tasks decided at install-time.
+>
+> Start with 'Writing R Extensions', as always, and work your way up from
+> there. And if memory serves there are already a few other packages with SIMD
+> at CRAN so you can also try to take advantage of the search for a 'token'
+> (here: 'SIMD') at the (unofficial) CRAN mirror at GitHub:
+>
+>    https://github.com/search?q=org%3Acran%20SIMD&type=code
+>
+> Hth, Dirk
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Wed Mar 27 08:54:05 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Wed, 27 Mar 2024 08:54:05 +0100
+Subject: [R-pkg-devel] Fwd:  using portable simd instructions
+In-Reply-To: <CAJpVobWG_th6y77g+KBRzteKjphcPhcgpXNUz8nHzr12rkAqGw@mail.gmail.com>
+References: <CAJpVobWCvs0wn5aqzHY0jQWK3y-21TSSZ5FLs=Tn5W0vQFeoLQ@mail.gmail.com>
+ <0b2acc59-af40-4829-9cbf-0f8dcde53e61@gmail.com>
+ <CAJpVobXy5BGx9X-Er91mUULi+NgBjBBFU_hNOJgeK67=+=9iRg@mail.gmail.com>
+ <CAJpVobWG_th6y77g+KBRzteKjphcPhcgpXNUz8nHzr12rkAqGw@mail.gmail.com>
+Message-ID: <c14a57f8-fcf9-4502-9607-40b0257b55c2@gmail.com>
+
+On 3/27/24 08:39, jesse koops wrote:
+> Of course you are correct about the portability. But since at ;least
+> one other CRAN package by a renowned author does it succesfully, I
+> figured I'd experiment first on my machine and learn about portability
+> later. Thank you for the links and the warning about the bug. I was
+> aware of that, however I am careful to only use the "loadu" and
+> "storeu" variants, so I thought this would not bite me. Do you know if
+> my assumption is in error?
+
+My advice is please do not publish any packages doing this low level 
+stuff unless you fully understand the details yourself. If you don't, 
+please work at a higher level abstraction and use existing code for the 
+low-level things, to avoid adding to the maintenance costs. These things 
+can take very long to debug.
+
+The GCC bug on Windows I've ran into only affects instructions that 
+require aligned operands (on the stack), aligned at 32-byte boundary.
+
+Tomas
+
+>
+> Op di 26 mrt 2024 om 15:51 schreef Tomas Kalibera <tomas.kalibera at gmail.com>:
+>>
+>> On 3/26/24 10:53, jesse koops wrote:
+>>> Hello R-package-devel,
+>>>
+>>> I recently got inspired by the rcppsimdjson package to try out simd
+>>> registers. It works fantastic on my computer but I struggle to find
+>>> information on how to make it portable. It doesn't help in this case
+>>> that R and Rcpp make including Cpp code so easy that I have never had
+>>> to learn about cmake and compiler flags. I would appreciate any help,
+>>> including of the type: "go read instructions at ...".
+>>>
+>>> I use RcppArmadillo and Rcpp. I currenlty include the following header:
+>>>
+>>> #include <immintrin.h>
+>>>
+>>> The functions in immintrin that I use are:
+>>>
+>>> _mm256_loadu_pd
+>>> _mm256_set1_pd
+>>> _mm256_mul_pd
+>>> _mm256_fmadd_pd
+>>> _mm256_storeu_pd
+>>>
+>>> and I define up to four __m256d registers. From information found
+>>> online (not sure where anymore) I constructed the following makevars
+>>> file:
+>>>
+>>> CXX_STD = CXX14
+>>>
+>>> PKG_CPPFLAGS = -I../inst/include -mfma -msse4.2 -mavx
+>>>
+>>> PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS)
+>>> PKG_LIBS = $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
+>>>
+>>> (I also use openmp, that has always worked fine, I just included all
+>>> lines for completeness) Rcheck gives me two notes:
+>>>
+>>> ?  using R version 4.3.2 (2023-10-31 ucrt)
+>>> ?  using platform: x86_64-w64-mingw32 (64-bit)
+>>> ?  R was compiled by
+>>>          gcc.exe (GCC) 12.3.0
+>>>          GNU Fortran (GCC) 12.3.0
+>>>
+>>> ? checking compilation flags used ... NOTE
+>>>     Compilation used the following non-portable flag(s):
+>>>       '-mavx' '-mfma' '-msse4.2'
+>>>
+>>> ? checking C++ specification ... NOTE
+>>>       Specified C++14: please drop specification unless essential
+>>>
+>>> But as far as I understand, the flags are necessary, at least in GCC.
+>>> How can I make this portable and CRAN-acceptable?
+>> I think it the best way for portability is to use a higher-level library
+>> that already has done the low-level business of maintaining multiple
+>> versions of the code (with multiple instruction sets) and choosing one
+>> appropriate for the current CPU. It could be say LAPACK, BLAS, openmp,
+>> depending of the problem at hand. In some cases, code can be rewritten
+>> so that the compiler can vectorize it better, using the level of
+>> vectorized instructions that have been enabled.
+>>
+>> Unconditionally using GCC-specific or architecture-specific options in
+>> packages would certainly not be portable. Even on Windows, R is now used
+>> also with clang and on aarch64, so one should not assume a concrete
+>> compiler and architecture.
+>>
+>> Please note also that GCC on Windows has a bug due to which AVX2
+>> instructions cannot be used reliably - the compiler doesn't always
+>> properly align local variables on the stack when emitting these. See
+>> [1,2] for more information.
+>>
+>> Best
+>> Tomas
+>>
+>> [1] https://stat.ethz.ch/pipermail/r-sig-windows/2024q1/000113.html
+>> [2] https://gcc.gnu.org/bugzilla/show_bug.cgi?id=54412
+>>
+>>> kind regards,
+>>> Jesse
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From edd @end|ng |rom deb|@n@org  Wed Mar 27 12:27:08 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 27 Mar 2024 06:27:08 -0500
+Subject: [R-pkg-devel] using portable simd instructions
+In-Reply-To: <CAJpVobUg9my-+YNjNnweV=zFko1G-RRK722FDCG5r=dWsgi17w@mail.gmail.com>
+References: <CAJpVobWCvs0wn5aqzHY0jQWK3y-21TSSZ5FLs=Tn5W0vQFeoLQ@mail.gmail.com>
+ <26114.56959.590681.104806@rob.eddelbuettel.com>
+ <CAJpVobUg9my-+YNjNnweV=zFko1G-RRK722FDCG5r=dWsgi17w@mail.gmail.com>
+Message-ID: <26116.652.596595.863708@rob.eddelbuettel.com>
+
+
+On 27 March 2024 at 08:48, jesse koops wrote:
+| Thank you, I was not aware of the easy way to search CRAN. I looked at
+| rcppsimdjson of course, but couldn't figure it out since it is done in
+| the simdjson library if interpret it correclty, not within the R
+| ecosystem and I didn't know how that would change things. Writing R
+| extensions assumes a lot of  prior knowledge so I will have to work my
+| way up to there first.
+
+I think I have (at least) one other package doing something like this _in the
+library layer too_ as suggested by Tomas, namely crc32c as used by digest.
+You could study how crc32c [0] does this for x86_64 and arm64 to get hardware
+optimization. (This may be more specific cpu hardware optimization but at
+least the library and cmake files are small.)
+
+I decided as a teenager that assembler wasn't for me and haven't looked back,
+but I happily take advantage of it when bundled well. So strong second for
+the recommendation by Tomas to rely on this being done in an external and
+tested library.
+
+(Another interesting one there is highway [1]. Just packaging that would
+likely be an excellent contribution.)
+
+Dirk
+
+[0] repo: https://github.com/google/crc32c
+[1] repo: https://github.com/google/highway
+    docs: https://google.github.io/highway/en/master/
+
+
+| 
+| Op di 26 mrt 2024 om 15:41 schreef Dirk Eddelbuettel <edd at debian.org>:
+| >
+| >
+| > On 26 March 2024 at 10:53, jesse koops wrote:
+| > | How can I make this portable and CRAN-acceptable?
+| >
+| > But writing (or borrowing ?) some hardware detection via either configure /
+| > autoconf or cmake. This is no different than other tasks decided at install-time.
+| >
+| > Start with 'Writing R Extensions', as always, and work your way up from
+| > there. And if memory serves there are already a few other packages with SIMD
+| > at CRAN so you can also try to take advantage of the search for a 'token'
+| > (here: 'SIMD') at the (unofficial) CRAN mirror at GitHub:
+| >
+| >    https://github.com/search?q=org%3Acran%20SIMD&type=code
+| >
+| > Hth, Dirk
+| >
+| > --
+| > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From je@@e@koop@ @end|ng |rom gm@||@com  Wed Mar 27 13:31:13 2024
+From: je@@e@koop@ @end|ng |rom gm@||@com (jesse koops)
+Date: Wed, 27 Mar 2024 13:31:13 +0100
+Subject: [R-pkg-devel] using portable simd instructions
+In-Reply-To: <26116.652.596595.863708@rob.eddelbuettel.com>
+References: <CAJpVobWCvs0wn5aqzHY0jQWK3y-21TSSZ5FLs=Tn5W0vQFeoLQ@mail.gmail.com>
+ <26114.56959.590681.104806@rob.eddelbuettel.com>
+ <CAJpVobUg9my-+YNjNnweV=zFko1G-RRK722FDCG5r=dWsgi17w@mail.gmail.com>
+ <26116.652.596595.863708@rob.eddelbuettel.com>
+Message-ID: <CAJpVobUkya=SHVKbkHpXEdVa6VEmRyfjQ6g9fBx=aZVtdOcsnQ@mail.gmail.com>
+
+Thanks, the source of digest seems especially helpful. Ironically, I
+actually used only 10 or so lines with simd code in the package in a
+single function that is a bottleneck. It gives a very noticable
+performance boost, even with unaligned vectors, and something about
+directly using processor registers seems elegant to me. The article by
+Langdale and Lemire that you pointed to on your blog was also
+inspirational.
+
+Unfortunately getting those 10 lines to reliably work on other
+machines looks like a long term project and the advice from Thomas
+that GCC on windows might decide to faultily optimize other code is a
+bit scary.  I'll take the advice to heart and will not try to include
+simd code in any of my cran packages in the near future. I learned C
+and Cpp via R, like many people probably,  and makefiles and
+portability have never come up until now so there's quite some
+learning ahead. At least I now have some good places to start. Thank
+you all for the help!
+
+Op wo 27 mrt 2024 om 12:27 schreef Dirk Eddelbuettel <edd at debian.org>:
+>
+>
+> On 27 March 2024 at 08:48, jesse koops wrote:
+> | Thank you, I was not aware of the easy way to search CRAN. I looked at
+> | rcppsimdjson of course, but couldn't figure it out since it is done in
+> | the simdjson library if interpret it correclty, not within the R
+> | ecosystem and I didn't know how that would change things. Writing R
+> | extensions assumes a lot of  prior knowledge so I will have to work my
+> | way up to there first.
+>
+> I think I have (at least) one other package doing something like this _in the
+> library layer too_ as suggested by Tomas, namely crc32c as used by digest.
+> You could study how crc32c [0] does this for x86_64 and arm64 to get hardware
+> optimization. (This may be more specific cpu hardware optimization but at
+> least the library and cmake files are small.)
+>
+> I decided as a teenager that assembler wasn't for me and haven't looked back,
+> but I happily take advantage of it when bundled well. So strong second for
+> the recommendation by Tomas to rely on this being done in an external and
+> tested library.
+>
+> (Another interesting one there is highway [1]. Just packaging that would
+> likely be an excellent contribution.)
+>
+> Dirk
+>
+> [0] repo: https://github.com/google/crc32c
+> [1] repo: https://github.com/google/highway
+>     docs: https://google.github.io/highway/en/master/
+>
+>
+> |
+> | Op di 26 mrt 2024 om 15:41 schreef Dirk Eddelbuettel <edd at debian.org>:
+> | >
+> | >
+> | > On 26 March 2024 at 10:53, jesse koops wrote:
+> | > | How can I make this portable and CRAN-acceptable?
+> | >
+> | > But writing (or borrowing ?) some hardware detection via either configure /
+> | > autoconf or cmake. This is no different than other tasks decided at install-time.
+> | >
+> | > Start with 'Writing R Extensions', as always, and work your way up from
+> | > there. And if memory serves there are already a few other packages with SIMD
+> | > at CRAN so you can also try to take advantage of the search for a 'token'
+> | > (here: 'SIMD') at the (unofficial) CRAN mirror at GitHub:
+> | >
+> | >    https://github.com/search?q=org%3Acran%20SIMD&type=code
+> | >
+> | > Hth, Dirk
+> | >
+> | > --
+> | > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From @ergue|@@oko| @end|ng |rom gm@||@com  Wed Mar 27 14:44:07 2024
+From: @ergue|@@oko| @end|ng |rom gm@||@com (Serguei Sokol)
+Date: Wed, 27 Mar 2024 14:44:07 +0100
+Subject: [R-pkg-devel] using portable simd instructions
+In-Reply-To: <0b2acc59-af40-4829-9cbf-0f8dcde53e61@gmail.com>
+References: <CAJpVobWCvs0wn5aqzHY0jQWK3y-21TSSZ5FLs=Tn5W0vQFeoLQ@mail.gmail.com>
+ <0b2acc59-af40-4829-9cbf-0f8dcde53e61@gmail.com>
+Message-ID: <457c9268-8ad8-48d7-b672-771254010c3b@gmail.com>
+
+Le 26/03/2024 ? 15:51, Tomas Kalibera a ?crit?:
+> 
+> On 3/26/24 10:53, jesse koops wrote:
+>> Hello R-package-devel,
+>>
+>> I recently got inspired by the rcppsimdjson package to try out simd
+>> registers. It works fantastic on my computer but I struggle to find
+>> information on how to make it portable. It doesn't help in this case
+>> that R and Rcpp make including Cpp code so easy that I have never had
+>> to learn about cmake and compiler flags. I would appreciate any help,
+>> including of the type: "go read instructions at ...".
+>>
+>> I use RcppArmadillo and Rcpp. I currenlty include the following header:
+>>
+>> #include <immintrin.h>
+>>
+>> The functions in immintrin that I use are:
+>>
+>> _mm256_loadu_pd
+>> _mm256_set1_pd
+>> _mm256_mul_pd
+>> _mm256_fmadd_pd
+>> _mm256_storeu_pd
+>>
+>> and I define up to four __m256d registers. From information found
+>> online (not sure where anymore) I constructed the following makevars
+>> file:
+>>
+>> CXX_STD = CXX14
+>>
+>> PKG_CPPFLAGS = -I../inst/include -mfma -msse4.2 -mavx
+>>
+>> PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS)
+>> PKG_LIBS = $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
+>>
+>> (I also use openmp, that has always worked fine, I just included all
+>> lines for completeness) Rcheck gives me two notes:
+>>
+>> ?? using R version 4.3.2 (2023-10-31 ucrt)
+>> ?? using platform: x86_64-w64-mingw32 (64-bit)
+>> ?? R was compiled by
+>> ??????? gcc.exe (GCC) 12.3.0
+>> ??????? GNU Fortran (GCC) 12.3.0
+>>
+>> ? checking compilation flags used ... NOTE
+>> ?? Compilation used the following non-portable flag(s):
+>> ???? '-mavx' '-mfma' '-msse4.2'
+>>
+>> ? checking C++ specification ... NOTE
+>> ???? Specified C++14: please drop specification unless essential
+>>
+>> But as far as I understand, the flags are necessary, at least in GCC.
+>> How can I make this portable and CRAN-acceptable?
+> 
+> I think it the best way for portability is to use a higher-level library 
+> that already has done the low-level business of maintaining multiple 
+> versions of the code (with multiple instruction sets) and choosing one 
+> appropriate for the current CPU. It could be say LAPACK, BLAS, openmp, 
+> depending of the problem at hand.
+Talking about libraries, may be the 
+https://en.cppreference.com/w/cpp/experimental/simd will do the job?
+
+Best,
+Serguei.
+
+  In some cases, code can be rewritten
+> so that the compiler can vectorize it better, using the level of 
+> vectorized instructions that have been enabled.
+> 
+> Unconditionally using GCC-specific or architecture-specific options in 
+> packages would certainly not be portable. Even on Windows, R is now used 
+> also with clang and on aarch64, so one should not assume a concrete 
+> compiler and architecture.
+> 
+> Please note also that GCC on Windows has a bug due to which AVX2 
+> instructions cannot be used reliably - the compiler doesn't always 
+> properly align local variables on the stack when emitting these. See 
+> [1,2] for more information.
+> 
+> Best
+> Tomas
+> 
+> [1] https://stat.ethz.ch/pipermail/r-sig-windows/2024q1/000113.html
+> [2] https://gcc.gnu.org/bugzilla/show_bug.cgi?id=54412
+> 
+>>
+>> kind regards,
+>> Jesse
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Wed Mar 27 14:50:41 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Wed, 27 Mar 2024 09:50:41 -0400
+Subject: [R-pkg-devel] using portable simd instructions
+In-Reply-To: <457c9268-8ad8-48d7-b672-771254010c3b@gmail.com>
+References: <CAJpVobWCvs0wn5aqzHY0jQWK3y-21TSSZ5FLs=Tn5W0vQFeoLQ@mail.gmail.com>
+ <0b2acc59-af40-4829-9cbf-0f8dcde53e61@gmail.com>
+ <457c9268-8ad8-48d7-b672-771254010c3b@gmail.com>
+Message-ID: <CAL3ufU+QJkuZKJq_KQLLu7SbyuccbfYo-pezn5uViBQe_OCR5w@mail.gmail.com>
+
+For the Rust curious, there is a portable SIMD module that is part of the
+nightly build of Rust. The docs can be found at
+https://rust-lang.github.io/portable-simd/core_simd/simd/index.html. I've
+use it before with extendr to create R bindings to  a SIMD dot product
+function using the examples
+https://github.com/rust-lang/portable-simd/blob/master/crates/core_simd/examples/dot_product.rs
+
+It works out of the box quite nicely. It could be a fun way to explore Rust
+and SIMD :)
+
+On Wed, Mar 27, 2024 at 9:44?AM Serguei Sokol <serguei.sokol at gmail.com>
+wrote:
+
+> Le 26/03/2024 ? 15:51, Tomas Kalibera a ?crit :
+> >
+> > On 3/26/24 10:53, jesse koops wrote:
+> >> Hello R-package-devel,
+> >>
+> >> I recently got inspired by the rcppsimdjson package to try out simd
+> >> registers. It works fantastic on my computer but I struggle to find
+> >> information on how to make it portable. It doesn't help in this case
+> >> that R and Rcpp make including Cpp code so easy that I have never had
+> >> to learn about cmake and compiler flags. I would appreciate any help,
+> >> including of the type: "go read instructions at ...".
+> >>
+> >> I use RcppArmadillo and Rcpp. I currenlty include the following header:
+> >>
+> >> #include <immintrin.h>
+> >>
+> >> The functions in immintrin that I use are:
+> >>
+> >> _mm256_loadu_pd
+> >> _mm256_set1_pd
+> >> _mm256_mul_pd
+> >> _mm256_fmadd_pd
+> >> _mm256_storeu_pd
+> >>
+> >> and I define up to four __m256d registers. From information found
+> >> online (not sure where anymore) I constructed the following makevars
+> >> file:
+> >>
+> >> CXX_STD = CXX14
+> >>
+> >> PKG_CPPFLAGS = -I../inst/include -mfma -msse4.2 -mavx
+> >>
+> >> PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS)
+> >> PKG_LIBS = $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
+> >>
+> >> (I also use openmp, that has always worked fine, I just included all
+> >> lines for completeness) Rcheck gives me two notes:
+> >>
+> >> ?  using R version 4.3.2 (2023-10-31 ucrt)
+> >> ?  using platform: x86_64-w64-mingw32 (64-bit)
+> >> ?  R was compiled by
+> >>         gcc.exe (GCC) 12.3.0
+> >>         GNU Fortran (GCC) 12.3.0
+> >>
+> >> ? checking compilation flags used ... NOTE
+> >>    Compilation used the following non-portable flag(s):
+> >>      '-mavx' '-mfma' '-msse4.2'
+> >>
+> >> ? checking C++ specification ... NOTE
+> >>      Specified C++14: please drop specification unless essential
+> >>
+> >> But as far as I understand, the flags are necessary, at least in GCC.
+> >> How can I make this portable and CRAN-acceptable?
+> >
+> > I think it the best way for portability is to use a higher-level library
+> > that already has done the low-level business of maintaining multiple
+> > versions of the code (with multiple instruction sets) and choosing one
+> > appropriate for the current CPU. It could be say LAPACK, BLAS, openmp,
+> > depending of the problem at hand.
+> Talking about libraries, may be the
+> https://en.cppreference.com/w/cpp/experimental/simd will do the job?
+>
+> Best,
+> Serguei.
+>
+>   In some cases, code can be rewritten
+> > so that the compiler can vectorize it better, using the level of
+> > vectorized instructions that have been enabled.
+> >
+> > Unconditionally using GCC-specific or architecture-specific options in
+> > packages would certainly not be portable. Even on Windows, R is now used
+> > also with clang and on aarch64, so one should not assume a concrete
+> > compiler and architecture.
+> >
+> > Please note also that GCC on Windows has a bug due to which AVX2
+> > instructions cannot be used reliably - the compiler doesn't always
+> > properly align local variables on the stack when emitting these. See
+> > [1,2] for more information.
+> >
+> > Best
+> > Tomas
+> >
+> > [1] https://stat.ethz.ch/pipermail/r-sig-windows/2024q1/000113.html
+> > [2] https://gcc.gnu.org/bugzilla/show_bug.cgi?id=54412
+> >
+> >>
+> >> kind regards,
+> >> Jesse
+> >>
+> >> ______________________________________________
+> >> R-package-devel at r-project.org mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From je@@e@koop@ @end|ng |rom gm@||@com  Wed Mar 27 14:54:55 2024
+From: je@@e@koop@ @end|ng |rom gm@||@com (jesse koops)
+Date: Wed, 27 Mar 2024 14:54:55 +0100
+Subject: [R-pkg-devel] using portable simd instructions
+In-Reply-To: <457c9268-8ad8-48d7-b672-771254010c3b@gmail.com>
+References: <CAJpVobWCvs0wn5aqzHY0jQWK3y-21TSSZ5FLs=Tn5W0vQFeoLQ@mail.gmail.com>
+ <0b2acc59-af40-4829-9cbf-0f8dcde53e61@gmail.com>
+ <457c9268-8ad8-48d7-b672-771254010c3b@gmail.com>
+Message-ID: <CAJpVobVAZ=oLkOp2UsgVzmvYSv6esOuCDZkQAvKCxpj7aO0U6Q@mail.gmail.com>
+
+I tried that but I found the interface awkward and there was really no
+performance bonus. It was in the early phase of experimentation and I
+didn't save it, so it could very well be that I got the compiler
+settings wrong and simd was not used. But if that was the case, there
+would still be the problem of using the correct compiler settings
+cross platform.
+
+Op wo 27 mrt 2024 om 14:44 schreef Serguei Sokol <serguei.sokol at gmail.com>:
+>
+> Le 26/03/2024 ? 15:51, Tomas Kalibera a ?crit :
+> >
+> > On 3/26/24 10:53, jesse koops wrote:
+> >> Hello R-package-devel,
+> >>
+> >> I recently got inspired by the rcppsimdjson package to try out simd
+> >> registers. It works fantastic on my computer but I struggle to find
+> >> information on how to make it portable. It doesn't help in this case
+> >> that R and Rcpp make including Cpp code so easy that I have never had
+> >> to learn about cmake and compiler flags. I would appreciate any help,
+> >> including of the type: "go read instructions at ...".
+> >>
+> >> I use RcppArmadillo and Rcpp. I currenlty include the following header:
+> >>
+> >> #include <immintrin.h>
+> >>
+> >> The functions in immintrin that I use are:
+> >>
+> >> _mm256_loadu_pd
+> >> _mm256_set1_pd
+> >> _mm256_mul_pd
+> >> _mm256_fmadd_pd
+> >> _mm256_storeu_pd
+> >>
+> >> and I define up to four __m256d registers. From information found
+> >> online (not sure where anymore) I constructed the following makevars
+> >> file:
+> >>
+> >> CXX_STD = CXX14
+> >>
+> >> PKG_CPPFLAGS = -I../inst/include -mfma -msse4.2 -mavx
+> >>
+> >> PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS)
+> >> PKG_LIBS = $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
+> >>
+> >> (I also use openmp, that has always worked fine, I just included all
+> >> lines for completeness) Rcheck gives me two notes:
+> >>
+> >> ?  using R version 4.3.2 (2023-10-31 ucrt)
+> >> ?  using platform: x86_64-w64-mingw32 (64-bit)
+> >> ?  R was compiled by
+> >>         gcc.exe (GCC) 12.3.0
+> >>         GNU Fortran (GCC) 12.3.0
+> >>
+> >> ? checking compilation flags used ... NOTE
+> >>    Compilation used the following non-portable flag(s):
+> >>      '-mavx' '-mfma' '-msse4.2'
+> >>
+> >> ? checking C++ specification ... NOTE
+> >>      Specified C++14: please drop specification unless essential
+> >>
+> >> But as far as I understand, the flags are necessary, at least in GCC.
+> >> How can I make this portable and CRAN-acceptable?
+> >
+> > I think it the best way for portability is to use a higher-level library
+> > that already has done the low-level business of maintaining multiple
+> > versions of the code (with multiple instruction sets) and choosing one
+> > appropriate for the current CPU. It could be say LAPACK, BLAS, openmp,
+> > depending of the problem at hand.
+> Talking about libraries, may be the
+> https://en.cppreference.com/w/cpp/experimental/simd will do the job?
+>
+> Best,
+> Serguei.
+>
+>   In some cases, code can be rewritten
+> > so that the compiler can vectorize it better, using the level of
+> > vectorized instructions that have been enabled.
+> >
+> > Unconditionally using GCC-specific or architecture-specific options in
+> > packages would certainly not be portable. Even on Windows, R is now used
+> > also with clang and on aarch64, so one should not assume a concrete
+> > compiler and architecture.
+> >
+> > Please note also that GCC on Windows has a bug due to which AVX2
+> > instructions cannot be used reliably - the compiler doesn't always
+> > properly align local variables on the stack when emitting these. See
+> > [1,2] for more information.
+> >
+> > Best
+> > Tomas
+> >
+> > [1] https://stat.ethz.ch/pipermail/r-sig-windows/2024q1/000113.html
+> > [2] https://gcc.gnu.org/bugzilla/show_bug.cgi?id=54412
+> >
+> >>
+> >> kind regards,
+> >> Jesse
+> >>
+> >> ______________________________________________
+> >> R-package-devel at r-project.org mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+From vo|ody@ @end|ng |rom m|nd@pr|ng@com  Wed Mar 27 15:02:23 2024
+From: vo|ody@ @end|ng |rom m|nd@pr|ng@com (Vladimir Dergachev)
+Date: Wed, 27 Mar 2024 10:02:23 -0400 (EDT)
+Subject: [R-pkg-devel] using portable simd instructions
+In-Reply-To: <26116.652.596595.863708@rob.eddelbuettel.com>
+References: <CAJpVobWCvs0wn5aqzHY0jQWK3y-21TSSZ5FLs=Tn5W0vQFeoLQ@mail.gmail.com>
+ <26114.56959.590681.104806@rob.eddelbuettel.com>
+ <CAJpVobUg9my-+YNjNnweV=zFko1G-RRK722FDCG5r=dWsgi17w@mail.gmail.com>
+ <26116.652.596595.863708@rob.eddelbuettel.com>
+Message-ID: <alpine.DEB.2.22.394.2403270928180.3559@iridium>
+
+
+I like assembler, and I do use SIMD intrinsincs in some of my code (not 
+R), but sparingly.
+
+The issue is more than portability between platforms, but also portability 
+between processors - if you write your optimized code using AVX, it might 
+not take advantage of newer AVX512 cpus.
+
+In many cases your compiler will do the right thing and optimize your 
+code.
+
+I suggest:
+
+    * write your code in plain C, test it with some long computation and 
+use "perf top" on Linux to observe the code hotspots and which assembler 
+instructions are being used.
+
+    * if you see instructions like "addps" these are vectorized. If you see 
+instructions like "addss" these are *not* vectorized.
+
+    * if you see a few instructions as hotspots with arguments in 
+parenthesis "vmovaps %xmm1,(%r8)" then you are likely limited by memory 
+access.
+
+    * If you are not limited by memory access and the compiler produces a 
+lot of "addss" or similar that are hotspots, then you need to look at your 
+code and make it more parallelizable.
+
+    * How to make your C code more parallelizable:
+
+    You want to make easy to interpret loops like
+
+          for(i=start;i<stop;i++) {
+                  a[i]=b[i]+c[i];
+ 		}
+
+    You can help the compiler by using "restrict" keyword to indicate that 
+arrays do not overlap, or (as a sledgehammer) "#pragma ivdep". But before 
+using keywords check with "perf top" which code is actually a hotspot, as 
+the compiler can generate good code without restrict keywords, by using 
+multiple code paths.
+
+    * You can create small temporary arrays to make your algorithm look 
+more like loops above. The small arrays should be at least 16 wide, 
+because AVX512 has instructions that operate on 16 floats at a time.
+
+     * To allow use of small arrays you can unroll your loops. Note that 
+compilers do unrolling themselves, so doing it manually is only helpful if 
+this makes the inner body of the loop more parallelizable.
+
+     * You can debug why the compiler does not parallelize your code by 
+turning on diagnostics. For gcc the flag is "-fopt-info-vec-missed=vec_info.txt"
+
+     * In very rare cases you use intrinsics. For me this is typically a 
+situation when I need to find a value and the index of a maximum or 
+minimum in an array - compilers do not optimize this well, at least for 
+many different ways of coding this in C that I have tried many years ago.
+
+     * If after all your work you got a factor of 2 speedup you are doing 
+fine. If you want larger speedup change your algorithm.
+
+best
+
+Vladimir Dergachev
+
+On Wed, 27 Mar 2024, Dirk Eddelbuettel wrote:
+
+>
+> On 27 March 2024 at 08:48, jesse koops wrote:
+> | Thank you, I was not aware of the easy way to search CRAN. I looked at
+> | rcppsimdjson of course, but couldn't figure it out since it is done in
+> | the simdjson library if interpret it correclty, not within the R
+> | ecosystem and I didn't know how that would change things. Writing R
+> | extensions assumes a lot of  prior knowledge so I will have to work my
+> | way up to there first.
+>
+> I think I have (at least) one other package doing something like this _in the
+> library layer too_ as suggested by Tomas, namely crc32c as used by digest.
+> You could study how crc32c [0] does this for x86_64 and arm64 to get hardware
+> optimization. (This may be more specific cpu hardware optimization but at
+> least the library and cmake files are small.)
+>
+> I decided as a teenager that assembler wasn't for me and haven't looked back,
+> but I happily take advantage of it when bundled well. So strong second for
+> the recommendation by Tomas to rely on this being done in an external and
+> tested library.
+>
+> (Another interesting one there is highway [1]. Just packaging that would
+> likely be an excellent contribution.)
+>
+> Dirk
+>
+> [0] repo: https://github.com/google/crc32c
+> [1] repo: https://github.com/google/highway
+>    docs: https://google.github.io/highway/en/master/
+>
+>
+> |
+> | Op di 26 mrt 2024 om 15:41 schreef Dirk Eddelbuettel <edd at debian.org>:
+> | >
+> | >
+> | > On 26 March 2024 at 10:53, jesse koops wrote:
+> | > | How can I make this portable and CRAN-acceptable?
+> | >
+> | > But writing (or borrowing ?) some hardware detection via either configure /
+> | > autoconf or cmake. This is no different than other tasks decided at install-time.
+> | >
+> | > Start with 'Writing R Extensions', as always, and work your way up from
+> | > there. And if memory serves there are already a few other packages with SIMD
+> | > at CRAN so you can also try to take advantage of the search for a 'token'
+> | > (here: 'SIMD') at the (unofficial) CRAN mirror at GitHub:
+> | >
+> | >    https://github.com/search?q=org%3Acran%20SIMD&type=code
+> | >
+> | > Hth, Dirk
+> | >
+> | > --
+> | > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+> -- 
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+From @ergue|@@oko| @end|ng |rom gm@||@com  Wed Mar 27 15:04:37 2024
+From: @ergue|@@oko| @end|ng |rom gm@||@com (Serguei Sokol)
+Date: Wed, 27 Mar 2024 15:04:37 +0100
+Subject: [R-pkg-devel] using portable simd instructions
+In-Reply-To: <CAJpVobVAZ=oLkOp2UsgVzmvYSv6esOuCDZkQAvKCxpj7aO0U6Q@mail.gmail.com>
+References: <CAJpVobWCvs0wn5aqzHY0jQWK3y-21TSSZ5FLs=Tn5W0vQFeoLQ@mail.gmail.com>
+ <0b2acc59-af40-4829-9cbf-0f8dcde53e61@gmail.com>
+ <457c9268-8ad8-48d7-b672-771254010c3b@gmail.com>
+ <CAJpVobVAZ=oLkOp2UsgVzmvYSv6esOuCDZkQAvKCxpj7aO0U6Q@mail.gmail.com>
+Message-ID: <17f7dc1a-f3cf-4e7c-bb7b-a783d768b7e4@gmail.com>
+
+Le 27/03/2024 ? 14:54, jesse koops a ?crit?:
+> I tried that but I found the interface awkward and there was really no
+> performance bonus. It was in the early phase of experimentation and I
+> didn't save it, so it could very well be that I got the compiler
+> settings wrong and simd was not used. But if that was the case, there
+> would still be the problem of using the correct compiler settings
+> cross platform.
+When I compile the example of the cited page with "authorized" flag "-std":
+
+    g++ -std=c++20 stdx_simd.cpp -o tmp.exe
+
+then I do:
+
+    objdump -d tmp.exe > tmp.asm
+
+I do find simd instructions in assembler code, e.g.:
+
+    grep paddd tmp.asm
+
+     14a8:	66 0f fe c1          	paddd  %xmm1,%xmm0
+     8f7b:	66 0f fe c1          	paddd  %xmm1,%xmm0
+
+> 
+> Op wo 27 mrt 2024 om 14:44 schreef Serguei Sokol <serguei.sokol at gmail.com>:
+>>
+>> Le 26/03/2024 ? 15:51, Tomas Kalibera a ?crit :
+>>>
+>>> On 3/26/24 10:53, jesse koops wrote:
+>>>> Hello R-package-devel,
+>>>>
+>>>> I recently got inspired by the rcppsimdjson package to try out simd
+>>>> registers. It works fantastic on my computer but I struggle to find
+>>>> information on how to make it portable. It doesn't help in this case
+>>>> that R and Rcpp make including Cpp code so easy that I have never had
+>>>> to learn about cmake and compiler flags. I would appreciate any help,
+>>>> including of the type: "go read instructions at ...".
+>>>>
+>>>> I use RcppArmadillo and Rcpp. I currenlty include the following header:
+>>>>
+>>>> #include <immintrin.h>
+>>>>
+>>>> The functions in immintrin that I use are:
+>>>>
+>>>> _mm256_loadu_pd
+>>>> _mm256_set1_pd
+>>>> _mm256_mul_pd
+>>>> _mm256_fmadd_pd
+>>>> _mm256_storeu_pd
+>>>>
+>>>> and I define up to four __m256d registers. From information found
+>>>> online (not sure where anymore) I constructed the following makevars
+>>>> file:
+>>>>
+>>>> CXX_STD = CXX14
+>>>>
+>>>> PKG_CPPFLAGS = -I../inst/include -mfma -msse4.2 -mavx
+>>>>
+>>>> PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS)
+>>>> PKG_LIBS = $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
+>>>>
+>>>> (I also use openmp, that has always worked fine, I just included all
+>>>> lines for completeness) Rcheck gives me two notes:
+>>>>
+>>>> ?  using R version 4.3.2 (2023-10-31 ucrt)
+>>>> ?  using platform: x86_64-w64-mingw32 (64-bit)
+>>>> ?  R was compiled by
+>>>>          gcc.exe (GCC) 12.3.0
+>>>>          GNU Fortran (GCC) 12.3.0
+>>>>
+>>>> ? checking compilation flags used ... NOTE
+>>>>     Compilation used the following non-portable flag(s):
+>>>>       '-mavx' '-mfma' '-msse4.2'
+>>>>
+>>>> ? checking C++ specification ... NOTE
+>>>>       Specified C++14: please drop specification unless essential
+>>>>
+>>>> But as far as I understand, the flags are necessary, at least in GCC.
+>>>> How can I make this portable and CRAN-acceptable?
+>>>
+>>> I think it the best way for portability is to use a higher-level library
+>>> that already has done the low-level business of maintaining multiple
+>>> versions of the code (with multiple instruction sets) and choosing one
+>>> appropriate for the current CPU. It could be say LAPACK, BLAS, openmp,
+>>> depending of the problem at hand.
+>> Talking about libraries, may be the
+>> https://en.cppreference.com/w/cpp/experimental/simd will do the job?
+>>
+>> Best,
+>> Serguei.
+>>
+>>    In some cases, code can be rewritten
+>>> so that the compiler can vectorize it better, using the level of
+>>> vectorized instructions that have been enabled.
+>>>
+>>> Unconditionally using GCC-specific or architecture-specific options in
+>>> packages would certainly not be portable. Even on Windows, R is now used
+>>> also with clang and on aarch64, so one should not assume a concrete
+>>> compiler and architecture.
+>>>
+>>> Please note also that GCC on Windows has a bug due to which AVX2
+>>> instructions cannot be used reliably - the compiler doesn't always
+>>> properly align local variables on the stack when emitting these. See
+>>> [1,2] for more information.
+>>>
+>>> Best
+>>> Tomas
+>>>
+>>> [1] https://stat.ethz.ch/pipermail/r-sig-windows/2024q1/000113.html
+>>> [2] https://gcc.gnu.org/bugzilla/show_bug.cgi?id=54412
+>>>
+>>>>
+>>>> kind regards,
+>>>> Jesse
+>>>>
+>>>> ______________________________________________
+>>>> R-package-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+
+
