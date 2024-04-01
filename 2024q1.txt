@@ -29218,3 +29218,450 @@ I do find simd instructions in assembler code, e.g.:
 >>
 
 
+From greg @end|ng |rom ||rm@n@y@h@com  Sun Mar 31 12:55:16 2024
+From: greg @end|ng |rom ||rm@n@y@h@com (Greg Hunt)
+Date: Sun, 31 Mar 2024 21:55:16 +1100
+Subject: [R-pkg-devel] Order of repo access from options("repos")
+Message-ID: <CAAS8PAJPuwDoWWJ1at5py49o0OA6GvuMxd7DW3Xy8Ze17X73Gg@mail.gmail.com>
+
+When I set multiple repositories in options(repos=...) the order of access
+is providing me with some surprises as I work through some CICD issues:
+
+Given:
+
+options(
+   repos = c(
+     CRAN = "http://localhost:3001/proxy",
+     C = "http://172.17.0.1:3002",
+     B = "http://172.17.0.1:3001/proxy",
+     A = "http://localhost:3002"
+   )
+)
+
+
+the order in the build log after this is :
+
+#12 178.7 Warning: unable to access index for repository
+http://localhost:3001/proxy/src/contrib:
+#12 178.7   cannot open URL '
+http://localhost:3001/proxy/src/contrib/PACKAGES'
+#12 178.7 Warning: unable to access index for repository
+http://172.17.0.1:3002/src/contrib:
+#12 178.7   cannot open URL 'http://172.17.0.1:3002/src/contrib/PACKAGES'
+#12 178.9 Warning: unable to access index for repository
+http://localhost:3002/src/contrib:
+#12 178.9   cannot open URL 'http://localhost:3002/src/contrib/PACKAGES'
+#12 179.0 trying URL '
+http://172.17.0.1:3001/proxy/src/contrib/png_0.1-8.tar.gz'
+#12 179.1 Content type 'application/x-gzip' length 24880 bytes (24 KB)
+
+
+Which indicates that the order is:
+
+CRAN, C, A, B...
+
+note that A comes before B in the URL accesses when I was expecting either
+CRAN, C, B, A if its is physical order, or alphabetically would be A, B, C,
+CRAN.
+
+As an alternative, given:
+
+options(
+repos = c(
+C = "http://172.17.0.1:3002",
+B = "http://172.17.0.1:3001/proxy",
+A = "http://localhost:3002",
+CRAN = "http://localhost:3001/proxy"
+)
+)
+
+
+The order is:
+
+#12 0.485 Warning: unable to access index for repository
+http://172.17.0.1:3002/src/contrib:
+#12 0.485   cannot open URL 'http://172.17.0.1:3002/src/contrib/PACKAGES'
+#12 1.153 Warning: unable to access index for repository
+http://localhost:3002/src/contrib:
+#12 1.153   cannot open URL 'http://localhost:3002/src/contrib/PACKAGES'
+#12 1.153 Warning: unable to access index for repository
+http://localhost:3001/proxy/src/contrib:
+#12 1.153   cannot open URL '
+http://localhost:3001/proxy/src/contrib/PACKAGES'
+#12 1.250 trying URL '
+http://172.17.0.1:3001/proxy/src/contrib/rlang_1.1.3.tar.gz'
+
+
+Which seems to be C, A, CRAN, B.
+
+What is it about B?
+
+The help doesn't talk about this.  It says:
+
+repos:
+character vector of repository URLs for use by available.packages and
+related functions. Initially set from entries marked as default in the
+?repositories? file, whose path is configurable via environment variable
+R_REPOSITORIES (set this to NULL to skip initialization at startup). The
+?factory-fresh? setting from the file in R.home("etc") is c(CRAN="@CRAN@"),
+a value that causes some utilities to prompt for a CRAN mirror. To avoid
+this do set the CRAN mirror, by something like
+
+
+local({
+    r <- getOption("repos")
+    r["CRAN"] <- "https://my.local.cran"
+    options(repos = r)
+})
+in your ?.Rprofile?, or use a personal ?repositories? file.
+
+
+Note that you can add more repositories (Bioconductor, R-Forge, RForge.net,
+...) for the current session using setRepositories.
+
+
+Now I am not setting the values in exactly the way that the manual says, so
+I experimented in case something was wrong there:
+
+ options('repos')$repos
+                         CRAN
+"https://cloud.r-project.org"
+> local({+     r <- getOption("repos")+     r["CRAN"] <- "https://my.local.cran"+     options(repos = r)+ })> options('repos')$repos
+                   CRAN
+"https://my.local.cran"
+> str(options('repos'))List of 1
+ $ repos: Named chr "https://my.local.cran"
+  ..- attr(*, "names")= chr "CRAN"> local({+     r <-
+getOption("repos")+     r["CRAN"] <- "https://my.local.cran"+
+options(repos = r)+ })> options(+     repos = c(+         C =
+"http://172.17.0.1:3002",+         B =
+"http://172.17.0.1:3001/proxy",+         A = "http://localhost:3002",+
+        CRAN = "http://localhost:3001/proxy"+     )+ )>
+options('repos')$repos
+                             C                              B
+                    A                           CRAN
+      "http://172.17.0.1:3002" "http://172.17.0.1:3001/proxy"
+"http://localhost:3002"  "http://localhost:3001/proxy"
+> str(options('repos'))List of 1
+ $ repos: Named chr [1:4] "http://172.17.0.1:3002"
+"http://172.17.0.1:3001/proxy" "http://localhost:3002"
+"http://localhost:3001/proxy"
+  ..- attr(*, "names")= chr [1:4] "C" "B" "A" "CRAN"> local({+     r
+<- getOption("repos")+     r["CRAN"] <- "https://my.local.cran"+
+r["C"] = "http://172.17.0.1:3002"+     r["B"] =
+"http://172.17.0.1:3001/proxy"+     r["A"] = "http://localhost:3002"+
+   r["CRAN"] = "http://localhost:3001/proxy"+     options(repos = r)+
+})> > str(options('repos'))List of 1
+ $ repos: Named chr [1:4] "http://172.17.0.1:3002"
+"http://172.17.0.1:3001/proxy" "http://localhost:3002"
+"http://localhost:3001/proxy"
+  ..- attr(*, "names")= chr [1:4] "C" "B" "A" "CRAN"> options('repos')$repos
+                             C                              B
+                    A                           CRAN
+      "http://172.17.0.1:3002" "http://172.17.0.1:3001/proxy"
+"http://localhost:3002"  "http://localhost:3001/proxy"
+
+
+So I don't think I am doing anything obviously accidentally weird there.
+The RStudio documentation talks about this issue directly, but I'm
+scripting R not RStudio and the behaviour appears to be different anyway.
+
+What is the expected behaviour when there are multiple repositories?  Is
+there a deterministic ordering?  Do the names have an effect?
+
+
+Greg
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Sun Mar 31 13:15:39 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Sun, 31 Mar 2024 06:15:39 -0500
+Subject: [R-pkg-devel] Order of repo access from options("repos")
+In-Reply-To: <CAAS8PAJPuwDoWWJ1at5py49o0OA6GvuMxd7DW3Xy8Ze17X73Gg@mail.gmail.com>
+References: <CAAS8PAJPuwDoWWJ1at5py49o0OA6GvuMxd7DW3Xy8Ze17X73Gg@mail.gmail.com>
+Message-ID: <26121.17883.118636.415791@rob.eddelbuettel.com>
+
+
+Greg,
+
+There are AFAICT two issues here: how R unrolls the named vector that is the
+'repos' element in the list 'options', and how your computer resolves DNS for
+localhost vs 172.17.0.1.  I would try something like
+
+   options(repos = c(CRAN = "http://localhost:3001/proxy",
+                     C = "http://localhost:3002",
+                     B = "http://localhost:3003/proxy",
+                     A = "http://localhost:3004"))
+
+or the equivalent with 172.17.0.1. When I do that here I get errors from
+first to last as we expect:
+
+   > options(repos = c(CRAN = "http://localhost:3001/proxy",
+                     C = "http://localhost:3002",
+                     B = "http://localhost:3003/proxy",
+                     A = "http://localhost:3004"))
+   > available.packages()
+   Warning: unable to access index for repository http://localhost:3001/proxy/src/contrib:
+     cannot open URL 'http://localhost:3001/proxy/src/contrib/PACKAGES'
+   Warning: unable to access index for repository http://localhost:3002/src/contrib:
+     cannot open URL 'http://localhost:3002/src/contrib/PACKAGES'
+   Warning: unable to access index for repository http://localhost:3003/proxy/src/contrib:
+     cannot open URL 'http://localhost:3003/proxy/src/contrib/PACKAGES'
+   Warning: unable to access index for repository http://localhost:3004/src/contrib:
+     cannot open URL 'http://localhost:3004/src/contrib/PACKAGES'
+        Package Version Priority Depends Imports LinkingTo Suggests Enhances License License_is_FOSS License_restricts_use OS_type Archs MD5sum NeedsCompilation File Repository
+   > 
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From greg @end|ng |rom ||rm@n@y@h@com  Sun Mar 31 13:34:51 2024
+From: greg @end|ng |rom ||rm@n@y@h@com (Greg Hunt)
+Date: Sun, 31 Mar 2024 22:34:51 +1100
+Subject: [R-pkg-devel] Order of repo access from options("repos")
+In-Reply-To: <26121.17883.118636.415791@rob.eddelbuettel.com>
+References: <CAAS8PAJPuwDoWWJ1at5py49o0OA6GvuMxd7DW3Xy8Ze17X73Gg@mail.gmail.com>
+ <26121.17883.118636.415791@rob.eddelbuettel.com>
+Message-ID: <CAAS8PAJP60tT2sZou4gcHFV2rynCiF1eDFDWu6Ba_trPb8hQuQ@mail.gmail.com>
+
+Dirk,
+Sadly I can't use localhost for all of those.  172.17.0.1 is an internal
+Docker IP, not the localhost address (127.0.0.1), they are there to handle
+two different scenarios and different ones will fail to resolve in
+different scenarios.  Are you saying that the DNS lookup adds a timing
+issue to the search order?  Isn't the list deterministically ordered?
+
+
+Greg
+
+On Sun, 31 Mar 2024 at 22:15, Dirk Eddelbuettel <edd at debian.org> wrote:
+
+>
+> Greg,
+>
+> There are AFAICT two issues here: how R unrolls the named vector that is
+> the
+> 'repos' element in the list 'options', and how your computer resolves DNS
+> for
+> localhost vs 172.17.0.1.  I would try something like
+>
+>    options(repos = c(CRAN = "http://localhost:3001/proxy",
+>                      C = "http://localhost:3002",
+>                      B = "http://localhost:3003/proxy",
+>                      A = "http://localhost:3004"))
+>
+> or the equivalent with 172.17.0.1. When I do that here I get errors from
+> first to last as we expect:
+>
+>    > options(repos = c(CRAN = "http://localhost:3001/proxy",
+>                      C = "http://localhost:3002",
+>                      B = "http://localhost:3003/proxy",
+>                      A = "http://localhost:3004"))
+>    > available.packages()
+>    Warning: unable to access index for repository
+> http://localhost:3001/proxy/src/contrib:
+>      cannot open URL 'http://localhost:3001/proxy/src/contrib/PACKAGES'
+>    Warning: unable to access index for repository
+> http://localhost:3002/src/contrib:
+>      cannot open URL 'http://localhost:3002/src/contrib/PACKAGES'
+>    Warning: unable to access index for repository
+> http://localhost:3003/proxy/src/contrib:
+>      cannot open URL 'http://localhost:3003/proxy/src/contrib/PACKAGES'
+>    Warning: unable to access index for repository
+> http://localhost:3004/src/contrib:
+>      cannot open URL 'http://localhost:3004/src/contrib/PACKAGES'
+>         Package Version Priority Depends Imports LinkingTo Suggests
+> Enhances License License_is_FOSS License_restricts_use OS_type Archs MD5sum
+> NeedsCompilation File Repository
+>    >
+>
+> Dirk
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+
+	[[alternative HTML version deleted]]
+
+
+From mtmorg@n@xyz @end|ng |rom gm@||@com  Sun Mar 31 13:43:03 2024
+From: mtmorg@n@xyz @end|ng |rom gm@||@com (Martin Morgan)
+Date: Sun, 31 Mar 2024 11:43:03 +0000
+Subject: [R-pkg-devel] Order of repo access from options("repos")
+In-Reply-To: <CAAS8PAJP60tT2sZou4gcHFV2rynCiF1eDFDWu6Ba_trPb8hQuQ@mail.gmail.com>
+References: <CAAS8PAJPuwDoWWJ1at5py49o0OA6GvuMxd7DW3Xy8Ze17X73Gg@mail.gmail.com>
+ <26121.17883.118636.415791@rob.eddelbuettel.com>
+ <CAAS8PAJP60tT2sZou4gcHFV2rynCiF1eDFDWu6Ba_trPb8hQuQ@mail.gmail.com>
+Message-ID: <DS7PR10MB72772B725366224EBC69FD08FA382@DS7PR10MB7277.namprd10.prod.outlook.com>
+
+available.packages indicates that
+
+     By default, the return value includes only packages whose version
+     and OS requirements are met by the running version of R, and only
+     gives information on the latest versions of packages.
+
+So all repositories are consulted and then the result filtered to contain just the most recent version of each. Does it matter then what order the repositories are visited?
+
+Martin Morgan
+
+From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Greg Hunt <greg at firmansyah.com>
+Date: Sunday, March 31, 2024 at 7:35?AM
+To: Dirk Eddelbuettel <edd at debian.org>
+Cc: List r-package-devel <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Order of repo access from options("repos")
+Dirk,
+Sadly I can't use localhost for all of those.  172.17.0.1 is an internal
+Docker IP, not the localhost address (127.0.0.1), they are there to handle
+two different scenarios and different ones will fail to resolve in
+different scenarios.  Are you saying that the DNS lookup adds a timing
+issue to the search order?  Isn't the list deterministically ordered?
+
+
+Greg
+
+On Sun, 31 Mar 2024 at 22:15, Dirk Eddelbuettel <edd at debian.org> wrote:
+
+>
+> Greg,
+>
+> There are AFAICT two issues here: how R unrolls the named vector that is
+> the
+> 'repos' element in the list 'options', and how your computer resolves DNS
+> for
+> localhost vs 172.17.0.1.  I would try something like
+>
+>    options(repos = c(CRAN = "http://localhost:3001/proxy",
+>                      C = "http://localhost:3002",
+>                      B = "http://localhost:3003/proxy",
+>                      A = "http://localhost:3004"))
+>
+> or the equivalent with 172.17.0.1. When I do that here I get errors from
+> first to last as we expect:
+>
+>    > options(repos = c(CRAN = "http://localhost:3001/proxy",
+>                      C = "http://localhost:3002",
+>                      B = "http://localhost:3003/proxy",
+>                      A = "http://localhost:3004"))
+>    > available.packages()
+>    Warning: unable to access index for repository
+> http://localhost:3001/proxy/src/contrib:
+>      cannot open URL 'http://localhost:3001/proxy/src/contrib/PACKAGES'
+>    Warning: unable to access index for repository
+> http://localhost:3002/src/contrib:
+>      cannot open URL 'http://localhost:3002/src/contrib/PACKAGES'
+>    Warning: unable to access index for repository
+> http://localhost:3003/proxy/src/contrib:
+>      cannot open URL 'http://localhost:3003/proxy/src/contrib/PACKAGES'
+>    Warning: unable to access index for repository
+> http://localhost:3004/src/contrib:
+>      cannot open URL 'http://localhost:3004/src/contrib/PACKAGES'
+>         Package Version Priority Depends Imports LinkingTo Suggests
+> Enhances License License_is_FOSS License_restricts_use OS_type Archs MD5sum
+> NeedsCompilation File Repository
+>    >
+>
+> Dirk
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Sun Mar 31 13:52:06 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Sun, 31 Mar 2024 06:52:06 -0500
+Subject: [R-pkg-devel] Order of repo access from options("repos")
+In-Reply-To: <DS7PR10MB72772B725366224EBC69FD08FA382@DS7PR10MB7277.namprd10.prod.outlook.com>
+References: <CAAS8PAJPuwDoWWJ1at5py49o0OA6GvuMxd7DW3Xy8Ze17X73Gg@mail.gmail.com>
+ <26121.17883.118636.415791@rob.eddelbuettel.com>
+ <CAAS8PAJP60tT2sZou4gcHFV2rynCiF1eDFDWu6Ba_trPb8hQuQ@mail.gmail.com>
+ <DS7PR10MB72772B725366224EBC69FD08FA382@DS7PR10MB7277.namprd10.prod.outlook.com>
+Message-ID: <26121.20070.634999.168137@rob.eddelbuettel.com>
+
+
+On 31 March 2024 at 11:43, Martin Morgan wrote:
+| So all repositories are consulted and then the result filtered to contain just
+| the most recent version of each. Does it matter then what order the
+| repositories are visited?
+
+Right. I fall for that too often, as I did here.  The order matters for
+.libPaths() where the first match is use, for package install the highest
+number (from any entry in getOption(repos)) wins.
+
+Thanks for catching my thinko.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From kev|nu@hey @end|ng |rom gm@||@com  Sun Mar 31 20:40:07 2024
+From: kev|nu@hey @end|ng |rom gm@||@com (Kevin Ushey)
+Date: Sun, 31 Mar 2024 11:40:07 -0700
+Subject: [R-pkg-devel] Order of repo access from options("repos")
+In-Reply-To: <26121.20070.634999.168137@rob.eddelbuettel.com>
+References: <CAAS8PAJPuwDoWWJ1at5py49o0OA6GvuMxd7DW3Xy8Ze17X73Gg@mail.gmail.com>
+ <26121.17883.118636.415791@rob.eddelbuettel.com>
+ <CAAS8PAJP60tT2sZou4gcHFV2rynCiF1eDFDWu6Ba_trPb8hQuQ@mail.gmail.com>
+ <DS7PR10MB72772B725366224EBC69FD08FA382@DS7PR10MB7277.namprd10.prod.outlook.com>
+ <26121.20070.634999.168137@rob.eddelbuettel.com>
+Message-ID: <CAJXgQP3yvqNa69DxPYaiV3gdMKDdRtim9XhRD4mB8qK7+UeY7g@mail.gmail.com>
+
+It may also be useful to use:
+
+    options(internet.info = 1)
+
+to get more information on the web requests R is making. (See the
+documentation in ?options for more details.)
+
+Looking at the source code in available.packages, R does iterate
+through the repositories in the same order they're provided, so I'd
+suspect some kind of other issue. (Output somehow getting misordered
+in your build logs? Repository options being unexpectedly reordered in
+your CI build somewhere?)
+
+FWIW, I think the order that repositories are visited could matter if
+the same package is offered by multiple repositories -- the selected
+repository could depend on the order of declaration.
+
+Best,
+Kevin
+
+On Sun, Mar 31, 2024 at 4:55?AM Dirk Eddelbuettel <edd at debian.org> wrote:
+>
+>
+> On 31 March 2024 at 11:43, Martin Morgan wrote:
+> | So all repositories are consulted and then the result filtered to contain just
+> | the most recent version of each. Does it matter then what order the
+> | repositories are visited?
+>
+> Right. I fall for that too often, as I did here.  The order matters for
+> .libPaths() where the first match is use, for package install the highest
+> number (from any entry in getOption(repos)) wins.
+>
+> Thanks for catching my thinko.
+>
+> Dirk
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
