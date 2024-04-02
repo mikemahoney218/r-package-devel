@@ -1,0 +1,388 @@
+From greg @end|ng |rom ||rm@n@y@h@com  Mon Apr  1 02:07:50 2024
+From: greg @end|ng |rom ||rm@n@y@h@com (Greg Hunt)
+Date: Mon, 1 Apr 2024 11:07:50 +1100
+Subject: [R-pkg-devel] Order of repo access from options("repos")
+In-Reply-To: <DS7PR10MB72772B725366224EBC69FD08FA382@DS7PR10MB7277.namprd10.prod.outlook.com>
+References: <CAAS8PAJPuwDoWWJ1at5py49o0OA6GvuMxd7DW3Xy8Ze17X73Gg@mail.gmail.com>
+ <26121.17883.118636.415791@rob.eddelbuettel.com>
+ <CAAS8PAJP60tT2sZou4gcHFV2rynCiF1eDFDWu6Ba_trPb8hQuQ@mail.gmail.com>
+ <DS7PR10MB72772B725366224EBC69FD08FA382@DS7PR10MB7277.namprd10.prod.outlook.com>
+Message-ID: <CAAS8PALv8D6bq3U7J=Re0v0HX=26GzxaZM7ENAmzXW6VavZFng@mail.gmail.com>
+
+Martin, Dirk, Kevin,
+Thanks for your help.  To summarise: the order of access is undefined, and
+every repo URL is accessed.   I'm working in an environment
+where "known-good" is more important than "latest", so what follows is an
+explanation of the problem space from my perspective.
+
+What I am experimenting with is pinning down the versions of the packages
+that a moderately complex solution is built against using a combination of
+an internal repository of cached packages (internally written packages, our
+own hopefully transient copies of packages archived from CRAN,
+packages live on CRAN, and packages present in both Github and CRAN which
+we build and cache locally) and a proxy that separately populates that
+cache in specific build processes by intercepting requests to CRAN.  I'd
+like to use the base R function if possible and I want to let the version
+numbers in the dependencies float because a) we do need to maintain
+approximate currency in what versions of packages we use and b) I have no
+business monkeying around with third party's dependencies.  Renv looks
+helpful but has some assumptions about disk access to its cache that I'd
+rather avoid by running an internal repo.  The team is spread around the
+world, so shared cache volumes are not a great idea.
+
+The business with the multiple repo addresses is one approach to working
+around Docker's inability to understand that people need to access the
+Docker host's ports from inside a container or a build, and that the
+current Docker treatment of the host's internal IP is far from transparent
+(I have scripts that run both inside and outside of Docker containers and
+they used to be able to work out for themselves what environment they run
+in, thats got harder lately).  That led down a path in which one set of
+addresses did not reject connection attempts, making each package
+installation (and there are hundreds) take some number of minutes for the
+connections to time out.  Thankfully I don't actually have to deal with
+that.
+
+We have had a few cases where our dependencies have been archived from CRAN
+and we have maintained our own copy for a period of days to months, a
+period in which we do not know what the next package version number is.  It
+would be convenient to not have to think about that - a deterministic,
+terminating search of a sequence of repos looked like a nice idea for that,
+but I may have to do something different.
+
+There was a recent case where a package made a breaking change in its
+interface in a release (not version) update that broke another package we
+depend on.  It would be nice to be able to temporarily pin that package at
+its previous version (without updating the source of the third party
+package that depends on it) to preserve our own build-ability while those
+packages sort themselves out.
+
+There is one case where a pull request for a CRAN-hosted package was
+verbally accepted but never actioned so we have our own forked version of a
+CRAN-hosted package which I need to decide what to do with one day soon.
+Another case where the package version number is different in CRAN from the
+one we want.
+
+We have a dependency on a package that we build from a Git repo but which
+is also present in CRAN.  I don't want to be dependent on the maintainers
+keeping the package version in the Git copy of the DESCRIPTION file higher
+than the version in CRAN.  Ideally I'd like to build and push to the
+internal repo and not have to think about it after that. Same issue as
+before arises, as it stands today I have to either worry about, and
+probably edit, the version number in the build or manage the cache
+population process so the internal package instance is added after any
+CRAN-sourced dependencies and make sure that the public CRAN instances are
+not accessed in the build.
+
+All of these problems are soluble by special-casing the affected installs,
+specifically managing the cache population (with a requirement that the
+cache and CRAN not be searched at the same time), or editing version
+numbers whose next values I do not control, but I would like to try for the
+simplest approach first. I know I'm not going to get a clean solution here,
+the relative weights of "known-good" and "latest" are different
+depending on where you stand.
+
+
+Greg
+
+On Sun, 31 Mar 2024 at 22:43, Martin Morgan <mtmorgan.xyz at gmail.com> wrote:
+
+> available.packages indicates that
+>
+>
+>
+>      By default, the return value includes only packages whose version
+>
+>      and OS requirements are met by the running version of R, and only
+>
+>      gives information on the latest versions of packages.
+>
+>
+>
+> So all repositories are consulted and then the result filtered to contain
+> just the most recent version of each. Does it matter then what order the
+> repositories are visited?
+>
+>
+>
+> Martin Morgan
+>
+>
+>
+> *From: *R-package-devel <r-package-devel-bounces at r-project.org> on behalf
+> of Greg Hunt <greg at firmansyah.com>
+> *Date: *Sunday, March 31, 2024 at 7:35?AM
+> *To: *Dirk Eddelbuettel <edd at debian.org>
+> *Cc: *List r-package-devel <r-package-devel at r-project.org>
+> *Subject: *Re: [R-pkg-devel] Order of repo access from options("repos")
+>
+> Dirk,
+> Sadly I can't use localhost for all of those.  172.17.0.1 is an internal
+> Docker IP, not the localhost address (127.0.0.1), they are there to handle
+> two different scenarios and different ones will fail to resolve in
+> different scenarios.  Are you saying that the DNS lookup adds a timing
+> issue to the search order?  Isn't the list deterministically ordered?
+>
+>
+> Greg
+>
+> On Sun, 31 Mar 2024 at 22:15, Dirk Eddelbuettel <edd at debian.org> wrote:
+>
+> >
+> > Greg,
+> >
+> > There are AFAICT two issues here: how R unrolls the named vector that is
+> > the
+> > 'repos' element in the list 'options', and how your computer resolves DNS
+> > for
+> > localhost vs 172.17.0.1.  I would try something like
+> >
+> >    options(repos = c(CRAN = "http://localhost:3001/proxy",
+> >                      C = "http://localhost:3002",
+> >                      B = "http://localhost:3003/proxy",
+> >                      A = "http://localhost:3004"))
+> >
+> > or the equivalent with 172.17.0.1. When I do that here I get errors from
+> > first to last as we expect:
+> >
+> >    > options(repos = c(CRAN = "http://localhost:3001/proxy",
+> >                      C = "http://localhost:3002",
+> >                      B = "http://localhost:3003/proxy",
+> >                      A = "http://localhost:3004"))
+> >    > available.packages()
+> >    Warning: unable to access index for repository
+> > http://localhost:3001/proxy/src/contrib:
+> >      cannot open URL 'http://localhost:3001/proxy/src/contrib/PACKAGES'
+> >    Warning: unable to access index for repository
+> > http://localhost:3002/src/contrib:
+> >      cannot open URL 'http://localhost:3002/src/contrib/PACKAGES'
+> >    Warning: unable to access index for repository
+> > http://localhost:3003/proxy/src/contrib:
+> >      cannot open URL 'http://localhost:3003/proxy/src/contrib/PACKAGES'
+> >    Warning: unable to access index for repository
+> > http://localhost:3004/src/contrib:
+> >      cannot open URL 'http://localhost:3004/src/contrib/PACKAGES'
+> >         Package Version Priority Depends Imports LinkingTo Suggests
+> > Enhances License License_is_FOSS License_restricts_use OS_type Archs
+> MD5sum
+> > NeedsCompilation File Repository
+> >    >
+> >
+> > Dirk
+> >
+> > --
+> > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> >
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Mon Apr  1 17:44:43 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Mon, 1 Apr 2024 17:44:43 +0200
+Subject: [R-pkg-devel] Order of repo access from options("repos")
+In-Reply-To: <CAAS8PALv8D6bq3U7J=Re0v0HX=26GzxaZM7ENAmzXW6VavZFng@mail.gmail.com>
+References: <CAAS8PAJPuwDoWWJ1at5py49o0OA6GvuMxd7DW3Xy8Ze17X73Gg@mail.gmail.com>
+ <26121.17883.118636.415791@rob.eddelbuettel.com>
+ <CAAS8PAJP60tT2sZou4gcHFV2rynCiF1eDFDWu6Ba_trPb8hQuQ@mail.gmail.com>
+ <DS7PR10MB72772B725366224EBC69FD08FA382@DS7PR10MB7277.namprd10.prod.outlook.com>
+ <CAAS8PALv8D6bq3U7J=Re0v0HX=26GzxaZM7ENAmzXW6VavZFng@mail.gmail.com>
+Message-ID: <f3047920-6cc0-4b21-aabe-70f9a811c4ed@statistik.tu-dortmund.de>
+
+Untested:
+
+install.packages() calls available.packages() to find out which packages 
+are available - and passes a "filters" argument if supplied.
+That can be a user defined filter. It should be possible to write a user 
+defined filter which prefers the packages in your local repo.
+
+Best,
+Uwe Ligges
+
+
+
+
+On 01.04.2024 02:07, Greg Hunt wrote:
+> Martin, Dirk, Kevin,
+> Thanks for your help.  To summarise: the order of access is undefined, and
+> every repo URL is accessed.   I'm working in an environment
+> where "known-good" is more important than "latest", so what follows is an
+> explanation of the problem space from my perspective.
+> 
+> What I am experimenting with is pinning down the versions of the packages
+> that a moderately complex solution is built against using a combination of
+> an internal repository of cached packages (internally written packages, our
+> own hopefully transient copies of packages archived from CRAN,
+> packages live on CRAN, and packages present in both Github and CRAN which
+> we build and cache locally) and a proxy that separately populates that
+> cache in specific build processes by intercepting requests to CRAN.  I'd
+> like to use the base R function if possible and I want to let the version
+> numbers in the dependencies float because a) we do need to maintain
+> approximate currency in what versions of packages we use and b) I have no
+> business monkeying around with third party's dependencies.  Renv looks
+> helpful but has some assumptions about disk access to its cache that I'd
+> rather avoid by running an internal repo.  The team is spread around the
+> world, so shared cache volumes are not a great idea.
+> 
+> The business with the multiple repo addresses is one approach to working
+> around Docker's inability to understand that people need to access the
+> Docker host's ports from inside a container or a build, and that the
+> current Docker treatment of the host's internal IP is far from transparent
+> (I have scripts that run both inside and outside of Docker containers and
+> they used to be able to work out for themselves what environment they run
+> in, thats got harder lately).  That led down a path in which one set of
+> addresses did not reject connection attempts, making each package
+> installation (and there are hundreds) take some number of minutes for the
+> connections to time out.  Thankfully I don't actually have to deal with
+> that.
+> 
+> We have had a few cases where our dependencies have been archived from CRAN
+> and we have maintained our own copy for a period of days to months, a
+> period in which we do not know what the next package version number is.  It
+> would be convenient to not have to think about that - a deterministic,
+> terminating search of a sequence of repos looked like a nice idea for that,
+> but I may have to do something different.
+> 
+> There was a recent case where a package made a breaking change in its
+> interface in a release (not version) update that broke another package we
+> depend on.  It would be nice to be able to temporarily pin that package at
+> its previous version (without updating the source of the third party
+> package that depends on it) to preserve our own build-ability while those
+> packages sort themselves out.
+> 
+> There is one case where a pull request for a CRAN-hosted package was
+> verbally accepted but never actioned so we have our own forked version of a
+> CRAN-hosted package which I need to decide what to do with one day soon.
+> Another case where the package version number is different in CRAN from the
+> one we want.
+> 
+> We have a dependency on a package that we build from a Git repo but which
+> is also present in CRAN.  I don't want to be dependent on the maintainers
+> keeping the package version in the Git copy of the DESCRIPTION file higher
+> than the version in CRAN.  Ideally I'd like to build and push to the
+> internal repo and not have to think about it after that. Same issue as
+> before arises, as it stands today I have to either worry about, and
+> probably edit, the version number in the build or manage the cache
+> population process so the internal package instance is added after any
+> CRAN-sourced dependencies and make sure that the public CRAN instances are
+> not accessed in the build.
+> 
+> All of these problems are soluble by special-casing the affected installs,
+> specifically managing the cache population (with a requirement that the
+> cache and CRAN not be searched at the same time), or editing version
+> numbers whose next values I do not control, but I would like to try for the
+> simplest approach first. I know I'm not going to get a clean solution here,
+> the relative weights of "known-good" and "latest" are different
+> depending on where you stand.
+> 
+> 
+> Greg
+> 
+> On Sun, 31 Mar 2024 at 22:43, Martin Morgan <mtmorgan.xyz at gmail.com> wrote:
+> 
+>> available.packages indicates that
+>>
+>>
+>>
+>>       By default, the return value includes only packages whose version
+>>
+>>       and OS requirements are met by the running version of R, and only
+>>
+>>       gives information on the latest versions of packages.
+>>
+>>
+>>
+>> So all repositories are consulted and then the result filtered to contain
+>> just the most recent version of each. Does it matter then what order the
+>> repositories are visited?
+>>
+>>
+>>
+>> Martin Morgan
+>>
+>>
+>>
+>> *From: *R-package-devel <r-package-devel-bounces at r-project.org> on behalf
+>> of Greg Hunt <greg at firmansyah.com>
+>> *Date: *Sunday, March 31, 2024 at 7:35?AM
+>> *To: *Dirk Eddelbuettel <edd at debian.org>
+>> *Cc: *List r-package-devel <r-package-devel at r-project.org>
+>> *Subject: *Re: [R-pkg-devel] Order of repo access from options("repos")
+>>
+>> Dirk,
+>> Sadly I can't use localhost for all of those.  172.17.0.1 is an internal
+>> Docker IP, not the localhost address (127.0.0.1), they are there to handle
+>> two different scenarios and different ones will fail to resolve in
+>> different scenarios.  Are you saying that the DNS lookup adds a timing
+>> issue to the search order?  Isn't the list deterministically ordered?
+>>
+>>
+>> Greg
+>>
+>> On Sun, 31 Mar 2024 at 22:15, Dirk Eddelbuettel <edd at debian.org> wrote:
+>>
+>>>
+>>> Greg,
+>>>
+>>> There are AFAICT two issues here: how R unrolls the named vector that is
+>>> the
+>>> 'repos' element in the list 'options', and how your computer resolves DNS
+>>> for
+>>> localhost vs 172.17.0.1.  I would try something like
+>>>
+>>>     options(repos = c(CRAN = "http://localhost:3001/proxy",
+>>>                       C = "http://localhost:3002",
+>>>                       B = "http://localhost:3003/proxy",
+>>>                       A = "http://localhost:3004"))
+>>>
+>>> or the equivalent with 172.17.0.1. When I do that here I get errors from
+>>> first to last as we expect:
+>>>
+>>>     > options(repos = c(CRAN = "http://localhost:3001/proxy",
+>>>                       C = "http://localhost:3002",
+>>>                       B = "http://localhost:3003/proxy",
+>>>                       A = "http://localhost:3004"))
+>>>     > available.packages()
+>>>     Warning: unable to access index for repository
+>>> http://localhost:3001/proxy/src/contrib:
+>>>       cannot open URL 'http://localhost:3001/proxy/src/contrib/PACKAGES'
+>>>     Warning: unable to access index for repository
+>>> http://localhost:3002/src/contrib:
+>>>       cannot open URL 'http://localhost:3002/src/contrib/PACKAGES'
+>>>     Warning: unable to access index for repository
+>>> http://localhost:3003/proxy/src/contrib:
+>>>       cannot open URL 'http://localhost:3003/proxy/src/contrib/PACKAGES'
+>>>     Warning: unable to access index for repository
+>>> http://localhost:3004/src/contrib:
+>>>       cannot open URL 'http://localhost:3004/src/contrib/PACKAGES'
+>>>          Package Version Priority Depends Imports LinkingTo Suggests
+>>> Enhances License License_is_FOSS License_restricts_use OS_type Archs
+>> MD5sum
+>>> NeedsCompilation File Repository
+>>>     >
+>>>
+>>> Dirk
+>>>
+>>> --
+>>> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>>>
+>>
+>>          [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
