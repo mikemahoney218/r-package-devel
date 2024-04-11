@@ -1624,3 +1624,341 @@ Duncan Murdoch
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From t|m@t@y|or @end|ng |rom h|ddene|eph@nt@@co@uk  Wed Apr 10 11:37:00 2024
+From: t|m@t@y|or @end|ng |rom h|ddene|eph@nt@@co@uk (Tim Taylor)
+Date: Wed, 10 Apr 2024 10:37:00 +0100
+Subject: [R-pkg-devel] Matrix 1.7-0 to be released in March with
+ ABI-breaking SuiteSparse update
+In-Reply-To: <85c8662e-4658-482e-93b6-07975c8b9e85@gmail.com>
+References: <85c8662e-4658-482e-93b6-07975c8b9e85@gmail.com>
+Message-ID: <db516b50-eebe-497d-a581-a12e9d515720@app.fastmail.com>
+
+Hi Mikael
+
+Revisiting this. Have the plans changed for 1.7-0 release?
+
+Tim
+
+On Mon, 12 Feb 2024, at 6:36 PM, Mikael Jagan wrote:
+> Dear users and binary repository maintainers,
+> 
+> We are preparing Matrix version 1.7-0 for CRAN submission on March 11, ahead
+> of the spring release of R version 4.4.0.  The only significant change from
+> Matrix 1.6-5 is an update of the internal SuiteSparse libraries
+> (5.10.1 -> 7.6.0).  Unfortunately, the old and new SuiteSparse versions are 
+> binary incompatible, hence so too will be the old and new Matrix versions.
+> 
+> A corollary is that users and binary repository maintainers switching between
+> Matrix < 1.7-0 and Matrix >= 1.7-0 must rebuild _from sources_ packages that
+> link Matrix:
+> 
+> > tools::package_dependencies("Matrix", which = "LinkingTo", reverse = TRUE)[[1L]]
+>   [1] "ahMLE"               "bayesWatch"          "cplm"
+>   [4] "GeneralizedWendland" "geostatsp"           "irlba"
+>   [7] "lme4"                "mcmcsae"             "OpenMx"
+> [10] "PRIMME"              "PUlasso"             "robustlmm"
+> [13] "spGARCH"             "TMB"                 "bcSeq"
+> 
+> For users, that means doing, e.g.,
+> 
+>      install.packages("lme4", type = "source")
+> 
+> but an alternative for Windows and macOS users without the required tools is
+> 
+>      oo <- options(repos = "https://cran.r-project.org/")
+>      install.packages("Matrix")
+>      install.packages("lme4")
+>      options(oo)
+> 
+> where we trust CRAN to provide binaries compatible with the latest Matrix
+> version (because we notify CRAN upon submission about required rebuilds).
+> Once other repositories react with rebuilds, they can be used instead of
+> CRAN.
+> 
+> Our reverse dependency checks (and history, intuition, ...) show that most
+> problems (caught segfaults in this case) can be traced to a binary incompatible
+> lme4 and not to one of the other packages linking Matrix.  Still, we recommend
+> rebuilds for all 15 packages.
+> 
+> Maintainers of packages that link Matrix can implement an .onLoad test for
+> possible binary incompatibility by comparing the value of
+> 
+>      if (utils::packageVersion("Matrix") >= "1.6.2")
+>          Matrix::Matrix.Version()[["abi"]]
+>      else numeric_version("0")
+> 
+> at install time and at load time, warning the user if the values differ.
+> But please do look at the above and not at packageVersion("Matrix") directly,
+> as the ABI version is incremented less often than the package version.
+> 
+> Mikael {on behalf of citation("Matrix")$author}
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+	[[alternative HTML version deleted]]
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Wed Apr 10 12:52:25 2024
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Wed, 10 Apr 2024 12:52:25 +0200
+Subject: [R-pkg-devel] Matrix 1.7-0 to be released in March with
+ ABI-breaking SuiteSparse update
+In-Reply-To: <db516b50-eebe-497d-a581-a12e9d515720@app.fastmail.com>
+References: <85c8662e-4658-482e-93b6-07975c8b9e85@gmail.com>
+ <db516b50-eebe-497d-a581-a12e9d515720@app.fastmail.com>
+Message-ID: <26134.28521.469748.126031@stat.math.ethz.ch>
+
+>>>>> Tim Taylor 
+>>>>>     on Wed, 10 Apr 2024 10:37:00 +0100 writes:
+
+    > Hi Mikael Revisiting this. Have the plans changed for
+    > 1.7-0 release?
+
+    > Tim
+
+Yes.  Matrix 1.7-0 *has* been on CRAN now for while
+(i.e. 'March' has remained as announced), *but*
+-- because of the ABI change and the problem it can cause for
+   *some* users --
+
+we have made it  'Depends: R (>= 4.4.0)'
+i.e., you *see* the new Matrix only once you use R 4.4.0
+which has been available as "alpha" already and is now in
+"beta" already, e.g.,
+
+  R version 4.4.0 beta (2024-04-10 r86393) -- "Puppy Cup"
+
+
+Best regards,
+Martin
+
+--
+Martin Maechler
+ETH Zurich  and  R Core Team
+
+
+    > On Mon, 12 Feb 2024, at 6:36 PM, Mikael Jagan wrote:
+    >> Dear users and binary repository maintainers,
+    >> 
+    >> We are preparing Matrix version 1.7-0 for CRAN submission
+    >> on March 11, ahead of the spring release of R version
+    >> 4.4.0.  The only significant change from Matrix 1.6-5 is
+    >> an update of the internal SuiteSparse libraries (5.10.1
+    >> -> 7.6.0).  Unfortunately, the old and new SuiteSparse
+    >> versions are binary incompatible, hence so too will be
+    >> the old and new Matrix versions.
+    >> 
+    >> A corollary is that users and binary repository
+    >> maintainers switching between Matrix < 1.7-0 and Matrix
+    >> >= 1.7-0 must rebuild _from sources_ packages that link
+    >> Matrix:
+    >> 
+    >> > tools::package_dependencies("Matrix", which =
+    >> "LinkingTo", reverse = TRUE)[[1L]] [1] "ahMLE"
+    >> "bayesWatch" "cplm" [4] "GeneralizedWendland" "geostatsp"
+    >> "irlba" [7] "lme4" "mcmcsae" "OpenMx" [10] "PRIMME"
+    >> "PUlasso" "robustlmm" [13] "spGARCH" "TMB" "bcSeq"
+    >> 
+    >> For users, that means doing, e.g.,
+    >> 
+    >> install.packages("lme4", type = "source")
+    >> 
+    >> but an alternative for Windows and macOS users without
+    >> the required tools is
+    >> 
+    >> oo <- options(repos = "https://cran.r-project.org/")
+    >> install.packages("Matrix") install.packages("lme4")
+    >> options(oo)
+    >> 
+    >> where we trust CRAN to provide binaries compatible with
+    >> the latest Matrix version (because we notify CRAN upon
+    >> submission about required rebuilds).  Once other
+    >> repositories react with rebuilds, they can be used
+    >> instead of CRAN.
+    >> 
+    >> Our reverse dependency checks (and history, intuition,
+    >> ...) show that most problems (caught segfaults in this
+    >> case) can be traced to a binary incompatible lme4 and not
+    >> to one of the other packages linking Matrix.  Still, we
+    >> recommend rebuilds for all 15 packages.
+    >> 
+    >> Maintainers of packages that link Matrix can implement an
+    >> .onLoad test for possible binary incompatibility by
+    >> comparing the value of
+    >> 
+    >> if (utils::packageVersion("Matrix") >= "1.6.2")
+    >> Matrix::Matrix.Version()[["abi"]] else
+    >> numeric_version("0")
+    >> 
+    >> at install time and at load time, warning the user if the
+    >> values differ.  But please do look at the above and not
+    >> at packageVersion("Matrix") directly, as the ABI version
+    >> is incremented less often than the package version.
+    >> 
+    >> Mikael {on behalf of citation("Matrix")$author}
+    >> 
+    >> ______________________________________________
+    >> R-package-devel at r-project.org mailing list
+    >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+    >> 
+
+    > 	[[alternative HTML version deleted]]
+
+    > ______________________________________________
+    > R-package-devel at r-project.org mailing list
+    > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From t|m@t@y|or @end|ng |rom h|ddene|eph@nt@@co@uk  Wed Apr 10 13:00:55 2024
+From: t|m@t@y|or @end|ng |rom h|ddene|eph@nt@@co@uk (Tim Taylor)
+Date: Wed, 10 Apr 2024 12:00:55 +0100
+Subject: [R-pkg-devel] Matrix 1.7-0 to be released in March with
+ ABI-breaking SuiteSparse update
+In-Reply-To: <26134.28521.469748.126031@stat.math.ethz.ch>
+References: <85c8662e-4658-482e-93b6-07975c8b9e85@gmail.com>
+ <db516b50-eebe-497d-a581-a12e9d515720@app.fastmail.com>
+ <26134.28521.469748.126031@stat.math.ethz.ch>
+Message-ID: <3ae4118b-1338-4d83-870d-2981ca6c626e@app.fastmail.com>
+
+On Wed, 10 Apr 2024, at 11:52 AM, Martin Maechler wrote:
+>>>>>> Tim Taylor 
+>>>>>>     on Wed, 10 Apr 2024 10:37:00 +0100 writes:
+>
+>     > Hi Mikael Revisiting this. Have the plans changed for
+>     > 1.7-0 release?
+>
+>     > Tim
+>
+> Yes.  Matrix 1.7-0 *has* been on CRAN now for while
+> (i.e. 'March' has remained as announced), *but*
+> -- because of the ABI change and the problem it can cause for
+>    *some* users --
+>
+> we have made it  'Depends: R (>= 4.4.0)'
+> i.e., you *see* the new Matrix only once you use R 4.4.0
+> which has been available as "alpha" already and is now in
+> "beta" already, e.g.,
+>
+>   R version 4.4.0 beta (2024-04-10 r86393) -- "Puppy Cup"
+>
+>
+> Best regards,
+> Martin
+>
+> --
+> Martin Maechler
+> ETH Zurich  and  R Core Team
+
+Thank you Martin.
+
+Indeed, I should have dug further.
+
+Rdevel> packageVersion("Matrix")
+[1] '1.7.0'
+
+Cheers
+
+Tim
+
+
+From ckno|| @end|ng |rom ohd@|@org  Wed Apr 10 16:11:53 2024
+From: ckno|| @end|ng |rom ohd@|@org (Chris Knoll)
+Date: Wed, 10 Apr 2024 14:11:53 +0000
+Subject: [R-pkg-devel] Question about CRAN submission resulting in 1 note
+Message-ID: <DM6PR13MB29530C143E809E031845541EDE062@DM6PR13MB2953.namprd13.prod.outlook.com>
+
+Hello,
+
+I'm tryign to resolve a note that is preventing my cran submission. This is from the detail log:
+
+
+Flavor: r-devel-linux-x86_64-debian-gcc, r-devel-windows-x86_64
+Check: CRAN incoming feasibility, Result: NOTE
+  Maintainer: 'Chris Knoll <cknoll at ohdsi.org>'
+
+  New submission
+
+  Package has a VignetteBuilder field but no prebuilt vignette index.
+
+  Package has FOSS license, installs .class/.jar but has no 'java' directory.
+
+  Found the following (possibly) invalid URLs:
+    URL: http://ohdsi.github.io/CirceR/ (moved to https://ohdsi.github.io/CirceR/)
+      From: README.md
+      Status: 301
+      Message: Moved Permanently
+    URL: https://codecov.io/github/OHDSI/CirceR?branch=main (moved to https://app.codecov.io/github/OHDSI/CirceR?branch=main)
+      From: README.md
+      Status: 301
+      Message: Moved Permanently
+    URL: https://www.github.com/OHDSI/circe-be (moved to https://github.com/OHDSI/circe-be)
+      From: README.md
+      Status: 301
+      Message: Moved Permanently
+    For content that is 'Moved Permanently', please change http to https,
+    add trailing slashes, or replace the old by the new URL.
+
+
+The URL changes are easy enough, but I'm curious about the first 2 notes:
+
+For "Package has VignetteBuilder field but no prebuilt vignette index", how would this be resolved?
+
+For "Package ahs FOSS license, installs .class/.jar but has no 'java directory'':  This is custom code that I've written in Java plus has a few maven dependencies and I'm not sure if they are asking me to bundle the source code of all Java dependencies (that have classes in the jar file).   That could be hard to do, and was hoping if anyone had experience in this, is it enough to put into the Readme where such source code could be found?
+
+Thank you for your guidance.
+
+-Chris
+
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Wed Apr 10 21:05:41 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Wed, 10 Apr 2024 22:05:41 +0300
+Subject: [R-pkg-devel] 
+ Question about CRAN submission resulting in 1 note
+In-Reply-To: <DM6PR13MB29530C143E809E031845541EDE062@DM6PR13MB2953.namprd13.prod.outlook.com>
+References: <DM6PR13MB29530C143E809E031845541EDE062@DM6PR13MB2953.namprd13.prod.outlook.com>
+Message-ID: <20240410220541.1dea3101@Tarkus>
+
+? Wed, 10 Apr 2024 14:11:53 +0000
+Chris Knoll <cknoll at ohdsi.org> ?????:
+
+> For "Package has VignetteBuilder field but no prebuilt vignette
+> index", how would this be resolved?
+
+The package at https://github.com/OHDSI/CirceR/ doesn't seem to have any
+vignettes. Without vignettes, there's no need for VignetteBuilder:
+knitr.
+
+> For "Package ahs FOSS license, installs .class/.jar but has no 'java
+> directory'':  This is custom code that I've written in Java plus has
+> a few maven dependencies and I'm not sure if they are asking me to
+> bundle the source code of all Java dependencies (that have classes in
+> the jar file).   That could be hard to do, and was hoping if anyone
+> had experience in this, is it enough to put into the Readme where
+> such source code could be found?
+
+Here's what the policy has to say:
+
+>> For Java .class and .jar files, the sources should be in a top-level
+>> java directory in the source package (or that directory should
+>> explain how they can be obtained).
+
+<https://cran.r-project.org/web/packages/policies.html>
+
+At the very least, XLconnect seems to be fine supplying just the
+README. If it's not too much trouble, shipping your custom source code
+(definitely not all of the maven dependencies) would be the kind thing
+to do, I think. (Feel free to disregard this part if a more experienced
+Java package developer says otherwise.)
+
+-- 
+Best regards,
+Ivan
+
+
