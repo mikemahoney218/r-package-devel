@@ -3879,3 +3879,495 @@ Isaac
 	[[alternative HTML version deleted]]
 
 
+From k@@perd@n|e|h@n@en @end|ng |rom gm@||@com  Tue Apr 23 04:09:04 2024
+From: k@@perd@n|e|h@n@en @end|ng |rom gm@||@com (Kasper Daniel Hansen)
+Date: Mon, 22 Apr 2024 22:09:04 -0400
+Subject: [R-pkg-devel] Package submission to CRAN not passing incoming
+ checks
+In-Reply-To: <DM8PR04MB7960BD13680B61AC4567E1FEC6122@DM8PR04MB7960.namprd04.prod.outlook.com>
+References: <DM8PR04MB7960BD13680B61AC4567E1FEC6122@DM8PR04MB7960.namprd04.prod.outlook.com>
+Message-ID: <CAC2h7utv9a0kuVqWmK_WxjM7yg4Fb9TJUT+LrbC1hNNe-yMP-A@mail.gmail.com>
+
+1. The version number complaint is the use of 0.1.2-9033. It is complaining
+about 9033. Personally, I would not use the -XXXX style, but that is a
+personal choice I guess. R-exts says
+  "The mandatory ?Version? field gives the version of the package. This is
+a sequence of at least *two* (and usually three) non-negative integers
+separated by single ?.? or ?-? characters. The canonical form is as shown
+in the example, and a version such as ?0.01? or ?0.01.0? will be handled as
+if it were ?0.1-0?. It is *not* a decimal number, so for example 0.9 < 0.75
+since 9 < 75."
+2. Those are not URLs, they are DOIs. The Rd format has a \doi{} command
+you should use
+3. If your examples generate files, I would use the tempfile() command from
+base R.
+
+On Mon, Apr 22, 2024 at 8:25?PM Petersen, Isaac T <
+isaac-t-petersen at uiowa.edu> wrote:
+
+> Dear R-package-devel,
+>
+> This my first post--I read the posting guidelines, but my apologies in
+> advance if I make a mistake.
+>
+> I am trying to post my R package to CRAN. I just submitted it to CRAN but
+> received a note that the package "does not pass the incoming checks
+> automatically".
+>
+> Here are the results from win-builder:
+> https://win-builder.r-project.org/incoming_pretest/petersenlab_0.1.2-9033_20240415_212322/
+>
+> As far as I can tell, there are 3 notes to address. However, I'm not sure
+> how to address them.
+>
+> 1) The first note appears to be "Version contains large components", which
+> includes the contents of the LICENSE file (CC BY 4.0). I'm not sure if this
+> is a problem that needs to be addressed (or how to address it).
+>
+> 2) The second note says:
+>
+> "Found the following (possibly) invalid file URIs:
+>   URI: 10.1177/0146621613475471
+>     From: man/itemInformation.Rd
+>   URI: 10.1177/0146621613475471
+>     From: man/standardErrorIRT.Rd"
+>
+> However, I verified that those DOIs resolve correctly, so I'm not sure how
+> to address this note.
+>
+> 3) The third note (in the Debian but not Windows version) says:
+>
+> "* checking for non-standard things in the check directory ... NOTE
+> Found the following files/directories:
+>   ?encryptionKey.RData? ?encrypytedCredentials.txt?"
+>
+> These files are generated in the examples for one of the functions to
+> demonstrate how to read data using an encryption key:
+> https://github.com/DevPsyLab/petersenlab/blob/9ece9d7dc32727c1315a03bc2810cc9c957971d1/R/readEncryptedData.R#L24.
+> I'm not sure if this is a problem that needs to be addressed (or how to
+> address it).
+>
+> The source code for my R package (petersenlab) is here:
+> https://github.com/DevPsyLab/petersenlab
+>
+> Thanks very much in advance,
+> Isaac
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+-- 
+Best,
+Kasper
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Tue Apr 23 08:46:04 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 23 Apr 2024 09:46:04 +0300
+Subject: [R-pkg-devel] Package submission to CRAN not passing incoming
+ checks
+In-Reply-To: <DM8PR04MB7960BD13680B61AC4567E1FEC6122@DM8PR04MB7960.namprd04.prod.outlook.com>
+References: <DM8PR04MB7960BD13680B61AC4567E1FEC6122@DM8PR04MB7960.namprd04.prod.outlook.com>
+Message-ID: <20240423094604.1da0617e@Tarkus>
+
+Dear Isaac,
+
+? Mon, 22 Apr 2024 17:00:27 +0000
+"Petersen, Isaac T" <isaac-t-petersen at uiowa.edu> ?????:
+
+> This my first post--I read the posting guidelines, but my apologies
+> in advance if I make a mistake.
+
+Welcome to R-package-devel! You're doing just fine.
+
+> 1) The first note <...> includes the contents of the LICENSE file
+
+It's multiple NOTEs in a trench coat. Kasper has addressed the "large
+version components" and the DOIs interpreted as file URIs, but there's
+one more.
+
+The '<standard license code> + file LICENSE' syntax has two uses: (1)
+for when the terms of the license is a template, requiring the author
+of the software to substitute some information (e.g. the year and the
+copyright holder for MIT) and (2) for when a package puts additional
+restrictions on the base license.
+
+(Hmm. Only case (2) is currently described at
+<https://cran.r-project.org/doc/manuals/R-exts.html#Licensing>; case
+(1) is only described inside the license files.)
+
+The CRAN team has expressed a preference for the package authors not to
+put 20000 twisty little copies of standard licenses, all slightly
+different, inside their packages. Since you're not restricting CC BY
+4.0, it's enough to say 'License: CC BY 4.0'. If you'd like a full copy
+of the license text in your source code repository, that's fine, but
+you'll need to list the file in .Rbuildignore:
+https://cran.r-project.org/doc/manuals/R-exts.html#Building-package-tarballs
+
+Speaking of the Creative Commons license: the choice of a license for
+your code is obviously yours, but Creative Commons themselves recommend
+against using their licenses for software:
+<https://creativecommons.org/faq/#can-i-apply-a-creative-commons-license-to-software>.
+I can't recommend you a license - that would be politically motivated
+meddling in foreign affairs - but the lists linked by the CC FAQ and
+Writing R Extensions section 1.1.2 should provide a good starting point.
+
+> Here are the results from win-builder:
+> https://win-builder.r-project.org/incoming_pretest/petersenlab_0.1.2-9033_20240415_212322/
+
+There is one more NOTE:
+
+>> * checking examples ... [437s/438s] NOTE
+>> Examples with CPU (user + system) or elapsed time > 5s
+>>                    user system elapsed
+>> load_or_install 349.410 37.410 387.233
+>> vwReg            35.199  0.379  35.606
+ 
+The examples are not only for the user to read in the help page; they
+are also for the user to run example(vwReg) and see your code in action
+(and for R CMD check to see whether they crash, including regularly on
+CRAN).
+
+For vwReg, try reducing the number of regressions you are running
+(since your dataset is mtcars, which is already very compact).
+
+For load_or_install, we have the additional issue that running
+example(load_or_install) modifies the contents of the R library and the
+search path, which belong to the user. The CRAN policy forbids such
+modifications: <https://cran.r-project.org/web/packages/policies.html>
+
+Examples in general should change as little of the global state of the
+R session and the underlying computer as possible. I suggest wrapping
+the example in \dontrun{} (since everything about load_or_install() is
+about altering global state) and creating a test for the function in
+tests/*.R.
+
+The test should set up a new library under tempdir(), run
+load_or_install(), check the outcomes (that the desired package is
+attached, etc.) and clean up after itself. There's also the matter of
+the package not failing without a connection to the Internet, which is
+another CRAN policy requirement. You might have to bring a very small
+test package in inst/extdata just for load_or_install() to install and
+load it, so that R CMD check won't fail when running offline.
+
+-- 
+Best regards,
+Ivan
+
+
+From |@@@c-t-peter@en @end|ng |rom u|ow@@edu  Wed Apr 24 02:17:28 2024
+From: |@@@c-t-peter@en @end|ng |rom u|ow@@edu (Petersen, Isaac T)
+Date: Wed, 24 Apr 2024 00:17:28 +0000
+Subject: [R-pkg-devel] 
+ [External] Re: Package submission to CRAN not passing
+ incoming checks
+In-Reply-To: <20240423094604.1da0617e@Tarkus>
+References: <DM8PR04MB7960BD13680B61AC4567E1FEC6122@DM8PR04MB7960.namprd04.prod.outlook.com>
+ <20240423094604.1da0617e@Tarkus>
+Message-ID: <DM8PR04MB7960B8B42AD56D8735973BAFC6102@DM8PR04MB7960.namprd04.prod.outlook.com>
+
+Dear Ivan and Kasper,
+
+
+
+Thanks very much for the helpful guidance. I made the changes you described, including changing the version number (to 1.0.0), changing the URL codes to DOI codes, using the tempfile() command when generating files, changing the license to MIT (and excluding the license file in the .Rbuildignore file), and enclosing some examples with \dontrun{}.
+
+
+
+Following Ivan?s suggestion, I created a test file to verify that the load_or_install() function works as expected, and included two small test packages to verify that the function can install and load them without needing access to the internet. However, I receive an error when running the test locally (the error is enclosed below this email). The error suggests to me that the test cannot load the packages with library() after installing them.
+
+
+
+My test file is here:
+
+https://github.com/DevPsyLab/petersenlab/blob/main/tests/testthat/test_load_or_install.R
+
+
+
+I included the packages (including the raw package folders and their .tar.gz files) in the /inst/extdata folder.
+
+
+
+Any help would be greatly appreciated.
+
+
+
+Many thanks,
+
+Isaac
+
+
+
+?? Test failures ??????????????????????????????????????????????????????? testthat ????
+
+
+
+> # This file is part of the standard setup for testthat.
+
+> # It is recommended that you do not modify it.
+
+> #
+
+> # Where should you do additional test configuration?
+
+> # Learn more about the roles of various files in:
+
+> # * https://r-pkgs.org/testing-design.html#sec-tests-files-overview
+
+> # * https://testthat.r-lib.org/articles/special-files.html
+
+>
+
+> library(testthat)
+
+Warning message:
+
+package 'testthat' was built under R version 4.3.3
+
+> library(petersenlab)
+
+>
+
+> test_check("petersenlab")
+
+Installing package into 'C:/Users/itpetersen/AppData/Local/Temp/RtmpCEqqMl/working_dir/Rtmp0uuccD'
+
+(as 'lib' is unspecified)
+
+Warning: invalid package 'testpackage1'
+
+Error: ERROR: no packages specified
+
+[ FAIL 2 | WARN 1 | SKIP 0 | PASS 0 ]
+
+
+
+?? Warnings ????????????????????????????????????????????????????????????????????
+
+?? Warning ('test_load_or_install.R:19:3'): load_or_install installs and loads packages correctly ??
+
+installation of package 'testpackage1' had non-zero exit status
+
+Backtrace:
+
+    ?
+
+ 1. ??petersenlab::load_or_install(...) at test_load_or_install.R:19:3
+
+ 2.   ??utils::install.packages(package_name, ...)
+
+
+
+?? Failed tests ????????????????????????????????????????????????????????????????
+
+?? Error ('test_load_or_install.R:19:3'): load_or_install installs and loads packages correctly ??
+
+<packageNotFoundError/error/condition>
+
+Error in `library(package_name, character.only = TRUE, quietly = TRUE,
+
+    verbose = FALSE)`: there is no package called 'testpackage1'
+
+Backtrace:
+
+    ?
+
+ 1. ??petersenlab::load_or_install(...) at test_load_or_install.R:19:3
+
+ 2.   ??base::library(...)
+
+?? Error ('test_load_or_install.R:4:1'): (code run outside of `test_that()`) ???
+
+<packageNotFoundError/error/condition>
+
+Error in `loadNamespace(x)`: there is no package called 'waldo'
+
+Backtrace:
+
+     ?
+
+  1. ??testthat::test_check("petersenlab")
+
+  2. ? ??testthat::test_dir(...)
+
+  3. ?   ??testthat:::test_files(...)
+
+  4. ?     ??testthat:::test_files_serial(...)
+
+  5. ?       ??testthat::with_reporter(...)
+
+  6. ?       ? ??base::tryCatch(...)
+
+  7. ?       ?   ??base (local) tryCatchList(expr, classes, parentenv, handlers)
+
+  8. ?       ?     ??base (local) tryCatchOne(expr, names, parentenv, handlers[[1L]])
+
+  9. ?       ?       ??base (local) doTryCatch(return(expr), name, parentenv, handler)
+
+ 10. ?       ??base::lapply(...)
+
+ 11. ?         ??testthat (local) FUN(X[[i]], ...)
+
+ 12. ?           ??testthat::source_file(path, env = env(env), desc = desc, error_call = error_call)
+
+ 13. ?             ??testthat:::test_code(test = NULL, code = exprs, env = env, default_reporter = StopReporter$new())
+
+ 14. ?               ??base::tryCatch(...)
+
+ 15. ?               ? ??base (local) tryCatchList(expr, classes, parentenv, handlers)
+
+ 16. ?               ?   ??base (local) tryCatchOne(...)
+
+ 17. ?               ?   ? ??base (local) doTryCatch(return(expr), name, parentenv, handler)
+
+ 18. ?               ?   ??base (local) tryCatchList(expr, names[-nh], parentenv, handlers[-nh])
+
+ 19. ?               ?     ??base (local) tryCatchOne(expr, names, parentenv, handlers[[1L]])
+
+ 20. ?               ?       ??base (local) doTryCatch(return(expr), name, parentenv, handler)
+
+ 21. ?               ??base::withCallingHandlers(...)
+
+ 22. ?               ??base::eval(code, test_env)
+
+ 23. ?                 ??base::eval(code, test_env)
+
+ 24. ?                   ??testthat::test_that(...) at test_load_or_install.R:4:1
+
+ 25. ?                     ??testthat:::test_code(desc, code, env = parent.frame(), default_reporter = local_interactive_reporter())
+
+ 26. ?                       ??testthat:::testthat_state_condition(before, after, call = sys.call(-1))
+
+ 27. ?                         ??testthat:::waldo_compare(before, after, x_arg = "before", y_arg = "after")
+
+ 28. ??base::loadNamespace(x)
+
+ 29.   ??base::withRestarts(stop(cond), retry_loadNamespace = function() NULL)
+
+ 30.     ??base (local) withOneRestart(expr, restarts[[1L]])
+
+ 31.       ??base (local) doWithOneRestart(return(expr), restart)
+
+
+
+[ FAIL 2 | WARN 1 | SKIP 0 | PASS 0 ]
+
+Error: Test failures
+
+Execution halted
+
+
+
+1 error ? | 0 warnings ? | 1 note ?
+
+Error: R CMD check found ERRORs
+
+Execution halted
+
+
+
+Exited with status 1.
+
+________________________________
+From: Ivan Krylov <ikrylov at disroot.org>
+Sent: Tuesday, April 23, 2024 1:46 AM
+To: Petersen, Isaac T <isaac-t-petersen at uiowa.edu>
+Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: [External] Re: [R-pkg-devel] Package submission to CRAN not passing incoming checks
+
+[You don't often get email from ikrylov at disroot.org. Learn why this is important at https://aka.ms/LearnAboutSenderIdentification ]
+
+Dear Isaac,
+
+? Mon, 22 Apr 2024 17:00:27 +0000
+"Petersen, Isaac T" <isaac-t-petersen at uiowa.edu> ?????:
+
+> This my first post--I read the posting guidelines, but my apologies
+> in advance if I make a mistake.
+
+Welcome to R-package-devel! You're doing just fine.
+
+> 1) The first note <...> includes the contents of the LICENSE file
+
+It's multiple NOTEs in a trench coat. Kasper has addressed the "large
+version components" and the DOIs interpreted as file URIs, but there's
+one more.
+
+The '<standard license code> + file LICENSE' syntax has two uses: (1)
+for when the terms of the license is a template, requiring the author
+of the software to substitute some information (e.g. the year and the
+copyright holder for MIT) and (2) for when a package puts additional
+restrictions on the base license.
+
+(Hmm. Only case (2) is currently described at
+<https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fcran.r-project.org%2Fdoc%2Fmanuals%2FR-exts.html%23Licensing&data=05%7C02%7Cisaac-t-petersen%40uiowa.edu%7C3a0f2254132f4cd6205608dc63610e82%7C1bc445959aba4fc3b8ec7b94a5586fdc%7C1%7C1%7C638494515735410190%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C40000%7C%7C%7C&sdata=rm%2Fp2SXR6CN%2FysfsiP1i2acQcrYlxPfUgxMF6NQdvlA%3D&reserved=0<https://cran.r-project.org/doc/manuals/R-exts.html#Licensing>>; case
+(1) is only described inside the license files.)
+
+The CRAN team has expressed a preference for the package authors not to
+put 20000 twisty little copies of standard licenses, all slightly
+different, inside their packages. Since you're not restricting CC BY
+4.0, it's enough to say 'License: CC BY 4.0'. If you'd like a full copy
+of the license text in your source code repository, that's fine, but
+you'll need to list the file in .Rbuildignore:
+https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fcran.r-project.org%2Fdoc%2Fmanuals%2FR-exts.html%23Building-package-tarballs&data=05%7C02%7Cisaac-t-petersen%40uiowa.edu%7C3a0f2254132f4cd6205608dc63610e82%7C1bc445959aba4fc3b8ec7b94a5586fdc%7C1%7C1%7C638494515735420011%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C40000%7C%7C%7C&sdata=kslE9klwZD%2BvBHX3I%2FkBewpNLnr14cgnxOc%2FQIZBLR0%3D&reserved=0<https://cran.r-project.org/doc/manuals/R-exts.html#Building-package-tarballs>
+
+Speaking of the Creative Commons license: the choice of a license for
+your code is obviously yours, but Creative Commons themselves recommend
+against using their licenses for software:
+<https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fcreativecommons.org%2Ffaq%2F%23can-i-apply-a-creative-commons-license-to-software&data=05%7C02%7Cisaac-t-petersen%40uiowa.edu%7C3a0f2254132f4cd6205608dc63610e82%7C1bc445959aba4fc3b8ec7b94a5586fdc%7C1%7C1%7C638494515735426275%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C40000%7C%7C%7C&sdata=lwWu6xa1gXzXUU%2BqwxU5CLM1cMkO9jqefYr1T5L%2FyGo%3D&reserved=0<https://creativecommons.org/faq/#can-i-apply-a-creative-commons-license-to-software>>.
+I can't recommend you a license - that would be politically motivated
+meddling in foreign affairs - but the lists linked by the CC FAQ and
+Writing R Extensions section 1.1.2 should provide a good starting point.
+
+> Here are the results from win-builder:
+> https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fwin-builder.r-project.org%2Fincoming_pretest%2Fpetersenlab_0.1.2-9033_20240415_212322%2F&data=05%7C02%7Cisaac-t-petersen%40uiowa.edu%7C3a0f2254132f4cd6205608dc63610e82%7C1bc445959aba4fc3b8ec7b94a5586fdc%7C1%7C1%7C638494515735430793%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C40000%7C%7C%7C&sdata=S%2F18W%2Bh15GDI5dQRlBlvqhPVoEeP67MAwSIAsnIw4yw%3D&reserved=0<https://win-builder.r-project.org/incoming_pretest/petersenlab_0.1.2-9033_20240415_212322/>
+
+There is one more NOTE:
+
+>> * checking examples ... [437s/438s] NOTE
+>> Examples with CPU (user + system) or elapsed time > 5s
+>>                    user system elapsed
+>> load_or_install 349.410 37.410 387.233
+>> vwReg            35.199  0.379  35.606
+
+The examples are not only for the user to read in the help page; they
+are also for the user to run example(vwReg) and see your code in action
+(and for R CMD check to see whether they crash, including regularly on
+CRAN).
+
+For vwReg, try reducing the number of regressions you are running
+(since your dataset is mtcars, which is already very compact).
+
+For load_or_install, we have the additional issue that running
+example(load_or_install) modifies the contents of the R library and the
+search path, which belong to the user. The CRAN policy forbids such
+modifications: <https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fcran.r-project.org%2Fweb%2Fpackages%2Fpolicies.html&data=05%7C02%7Cisaac-t-petersen%40uiowa.edu%7C3a0f2254132f4cd6205608dc63610e82%7C1bc445959aba4fc3b8ec7b94a5586fdc%7C1%7C1%7C638494515735435075%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C40000%7C%7C%7C&sdata=QsZYMJlK4%2FaYz0H%2FZxc%2B2mItfRxHOSj8hLnIzmiCUT4%3D&reserved=0<https://cran.r-project.org/web/packages/policies.html>>
+
+Examples in general should change as little of the global state of the
+R session and the underlying computer as possible. I suggest wrapping
+the example in \dontrun{} (since everything about load_or_install() is
+about altering global state) and creating a test for the function in
+tests/*.R.
+
+The test should set up a new library under tempdir(), run
+load_or_install(), check the outcomes (that the desired package is
+attached, etc.) and clean up after itself. There's also the matter of
+the package not failing without a connection to the Internet, which is
+another CRAN policy requirement. You might have to bring a very small
+test package in inst/extdata just for load_or_install() to install and
+load it, so that R CMD check won't fail when running offline.
+
+--
+Best regards,
+Ivan
+
+	[[alternative HTML version deleted]]
+
+
