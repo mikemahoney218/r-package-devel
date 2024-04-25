@@ -4371,3 +4371,64 @@ Ivan
 	[[alternative HTML version deleted]]
 
 
+From |kry|ov @end|ng |rom d|@root@org  Wed Apr 24 10:29:57 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Wed, 24 Apr 2024 11:29:57 +0300
+Subject: [R-pkg-devel] 
+ [External] Re: Package submission to CRAN not passing
+ incoming checks
+In-Reply-To: <DM8PR04MB7960B8B42AD56D8735973BAFC6102@DM8PR04MB7960.namprd04.prod.outlook.com>
+References: <DM8PR04MB7960BD13680B61AC4567E1FEC6122@DM8PR04MB7960.namprd04.prod.outlook.com>
+ <20240423094604.1da0617e@Tarkus>
+ <DM8PR04MB7960B8B42AD56D8735973BAFC6102@DM8PR04MB7960.namprd04.prod.outlook.com>
+Message-ID: <20240424112957.1669adb2@Tarkus>
+
+? Wed, 24 Apr 2024 00:17:28 +0000
+"Petersen, Isaac T" <isaac-t-petersen at uiowa.edu> ?????:
+
+> I included the packages (including the raw package folders and their
+> .tar.gz files) in the /inst/extdata folder.
+
+Would you prefer your test to install them from the source directories
+(as you currently do, in which case the *.tar.gz files can be omitted)
+or the *.tar.gz files (in which case you can set the `repos` argument
+to a file:/// URI and omit the package directories and the setwd()
+calls)?
+
+I think (but haven't tested) that the two problems that are currently
+breaking your test are with .libPaths() and setwd().
+
+.libPaths(temp_lib) overwrites the library paths with `temp_lib` and
+the system libraries, the ones in %PROGRAMFILES%\R\R-*\library. In
+particular, this removes %LOCALAPPDATA%\R\win-library\* from the list
+of library paths, so the packages installed by the user (including
+'waldo', which is needed by 'testthat') stop being available.
+
+In order to add temp_lib to the list of the paths, use
+.libPaths(c(temp_lib, .libPaths())).
+
+Since setwd() returns the previous directory, one that was current
+before setwd() was called, the code newpath <- setwd(filepath);
+setwd(newpath) will keep the current directory, not set it to
+`filepath`. Use oldpath <- setwd(filepath) instead.
+
+Since you're already using 'testthat' and it already depends on
+'withr', you may find it easier to use withr::local_dir(...) and
+withr::local_temp_libpaths(...).
+
+In order to test for a package being attached by load_or_install() (and
+not just installed and loadable), check for 'package:testpackage1'
+being present in the return value of search(). (This check is good
+enough and much easier to write than comparing environments on the
+search path with the package exports or comparing searchpaths() with
+the paths under the temporary library.)
+
+Finally, I think that there is no need for the test_load_or_install()
+call because I don't see the function being defined anywhere. Doesn't
+test_that(...) run the tests by itself?
+
+-- 
+Best regards,
+Ivan
+
+
