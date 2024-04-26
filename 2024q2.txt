@@ -4432,3 +4432,395 @@ Best regards,
 Ivan
 
 
+From h@n@on @end|ng |rom dep@uw@edu  Thu Apr 25 17:54:41 2024
+From: h@n@on @end|ng |rom dep@uw@edu (Bryan Hanson)
+Date: Thu, 25 Apr 2024 08:54:41 -0700
+Subject: [R-pkg-devel] Some, but not all vignettes compressed
+Message-ID: <C616093F-CCCC-40A6-99E1-C91754261ACF@depauw.edu>
+
+I have a peculiar problem regarding vignette compaction. Package LearnPCA has 8 vignettes.  I am working on the devel branch with code at https://github.com/bryanhanson/LearnPCA/tree/devel.
+
+The problem is that at CRAN and on win-builder they detect that 5/8 vignettes need to be compacted.  Locally however, 2/8 vignettes, not overlapping with the 5/8 identified at CRAN, are compacted during build.  When I try to compact manually, compactPDF() reports it is not necesssary.
+
+I have looked at a related question by Ben Bolker (https://stat.ethz.ch/pipermail/r-package-devel/2020q4/006086.html) but that doesn't seem resolved.  I am already taking the steps listed in this question: https://stat.ethz.ch/pipermail/r-package-devel/2023q4/009831.html as well as several others.
+
+Regarding versions, I get
+
+gs --version
+10.03.0
+
+qpdf --version
+qpdf version 11.9.0
+
+Which seem to be the latest.  Note these were installed with HomeBrew but I think R ships with at its own version of qpdf:
+
+Sys.which(Sys.getenv("R_QPDF", "qpdf"))
+  /Library/Frameworks/R.framework/Resources/bin/qpdf 
+"/Library/Frameworks/R.framework/Resources/bin/qpdf" 
+
+I did not try the HomeBrew versions until I ran into trouble.
+
+Here are the steps I am taking.  I am on MacOS 14.4.1, an M1 chip.
+
+1. Build via a makefile, with this command:
+
+R --no-init-file CMD build --resave-data --compact-vignettes=both $(PKG_NAME)
+
+The build process reports:
+
+* creating vignettes ... OK
+* compacting vignettes and other PDF files
+    compacted ?Vig_01_Start_Here.pdf? from 244Kb to 44Kb
+    compacted ?Vig_08_Notes.pdf? from 239Kb to 38Kb     
+
+Fine so far.
+
+I also tried to force the path to gs:
+
+export R_GSCMD="/opt/homebrew/bin/gs"; \
+export GS_QUALITY="ebook"; \
+R --no-init-file CMD build --resave-data --compact-vignettes=both $(PKG_NAME)
+
+With the same result.  I did this because it seems R doesn't see my installation of GhostScript.
+
+And I tried to force a path to both compacting services:
+
+export R_GSCMD="/opt/homebrew/bin/gs"; \
+export GS_QUALITY="ebook"; \
+export R_QPDF="/opt/homebrew/bin/qpdf"; \
+R --no-init-file CMD build --resave-data --compact-vignettes=both $(PKG_NAME)
+
+With the same results.
+
+2. Submit to win-builder (same result seen on actual CRAN submission).  The (partial) report is:
+
+* checking sizes of PDF files under 'inst/doc' ... WARNING
+  'gs+qpdf' made some significant size reductions:
+     compacted 'Vig_02_Conceptual_Intro_PCA.pdf' from 432Kb to 143Kb
+     compacted 'Vig_03_Step_By_Step_PCA.pdf' from 414Kb to 101Kb
+     compacted 'Vig_04_Scores_Loadings.pdf' from 334Kb to 78Kb
+     compacted 'Vig_06_Math_Behind_PCA.pdf' from 558Kb to 147Kb
+     compacted 'Vig_07_Functions_PCA.pdf' from 381Kb to 90Kb
+  consider running tools::compactPDF(gs_quality = "ebook") on these files,
+  or build the source package with --compact-vignettes=both
+
+Note that these are *different* vignettes than those compacted during build, so build seems to have missed some (?).
+
+3. If I expand the tarball locally, point to the inst directory, and run
+
+tools::compactPDF("doc", gs_quality = "ebook", gs_cmd = "/opt/homebrew/bin/gs", verbose = TRUE)
+
+I get this:
+
+qs_quality="ebook" : use_gs=TRUE, use_qpdf=TRUE
+#{pdf}s = length(paths) = 8
+- doc/Vig_01_Start_Here.pdf:    gs: res=0;  + qpdf: res=0; 
+    ==> (new=49942)/(old=45101) = 1.10734 .. not worth using
+- doc/Vig_02_Conceptual_Intro_PCA.pdf:    gs: res=0;  + qpdf: res=0; 
+    ==> (new=1.00061e+07)/(old=442210) = 22.6275 .. not worth using
+- doc/Vig_03_Step_By_Step_PCA.pdf:    gs: res=0;  + qpdf: res=0; 
+    ==> (new=5.763e+06)/(old=423484) = 13.6085 .. not worth using
+- doc/Vig_04_Scores_Loadings.pdf:    gs: res=0;  + qpdf: res=0; 
+    ==> (new=5.41409e+06)/(old=341680) = 15.8455 .. not worth using
+- doc/Vig_05_Visualizing_PCA_3D.pdf:    gs: res=0;  + qpdf: res=0; 
+    ==> (new=1.23622e+07)/(old=692901) = 17.8412 .. not worth using
+- doc/Vig_06_Math_Behind_PCA.pdf:    gs: res=0;  + qpdf: res=0; 
+    ==> (new=816690)/(old=571493) = 1.42905 .. not worth using
+- doc/Vig_07_Functions_PCA.pdf:    gs: res=0;  + qpdf: res=0; 
+    ==> (new=1.36419e+06)/(old=389478) = 3.50262 .. not worth using
+- doc/Vig_08_Notes.pdf:    gs: res=0;  + qpdf: res=0; 
+    ==> (new=40919)/(old=38953) = 1.05047 .. not worth using
+
+Any suggestions as to what is going on here and how to fix it?
+
+sessionInfo():
+
+R version 4.4.0 RC (2024-04-16 r86468)
+Platform: aarch64-apple-darwin20
+Running under: macOS Sonoma 14.4.1
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRblas.0.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/Phoenix
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+loaded via a namespace (and not attached):
+ [1] foghorn_1.5.2    utf8_1.2.4       R6_2.5.1         rvest_1.0.4      magrittr_2.0.3  
+ [6] rappdirs_0.3.3   glue_1.7.0       stringr_1.5.1    tibble_3.2.1     clisymbols_1.2.0
+[11] pkgconfig_2.0.3  lifecycle_1.0.4  xml2_1.3.6       cli_3.6.2        fansi_1.0.6     
+[16] vctrs_0.6.5      compiler_4.4.0   httr_1.4.7       tools_4.4.0      curl_5.2.1      
+[21] pillar_1.9.0     httr2_1.0.1      rlang_1.1.3      crayon_1.5.2     stringi_1.8.3   
+[26] selectr_0.4-2   
+
+
+=============
+Bryan A. Hanson
+Prof. Emeritus, DePauw University
+Chemistry & Biochemistry
+hanson at depauw.edu
+profbryanhanson at gmail.com
+Nerdy blog: ChemoSpec.org
+I?m at GMT -7 year round
+
+
+
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Thu Apr 25 20:26:40 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 25 Apr 2024 21:26:40 +0300
+Subject: [R-pkg-devel] Some, but not all vignettes compressed
+In-Reply-To: <C616093F-CCCC-40A6-99E1-C91754261ACF@depauw.edu>
+References: <C616093F-CCCC-40A6-99E1-C91754261ACF@depauw.edu>
+Message-ID: <20240425212640.39a2f275@Tarkus>
+
+? Thu, 25 Apr 2024 08:54:41 -0700
+Bryan Hanson <hanson at depauw.edu> ?????:
+
+>   'gs+qpdf' made some significant size reductions:
+>      compacted 'Vig_02_Conceptual_Intro_PCA.pdf' from 432Kb to 143Kb
+>      compacted 'Vig_03_Step_By_Step_PCA.pdf' from 414Kb to 101Kb
+>      compacted 'Vig_04_Scores_Loadings.pdf' from 334Kb to 78Kb
+>      compacted 'Vig_06_Math_Behind_PCA.pdf' from 558Kb to 147Kb
+>      compacted 'Vig_07_Functions_PCA.pdf' from 381Kb to 90Kb
+
+I'm getting similar (but not same) results on Debian Stable, gs 10.00.0
+& qpdf 11.3.0:
+
+# R CMD build --no-resave-data --compact-vignettes=both
+    compacted ?Vig_01_Start_Here.pdf? from 244Kb to 45Kb           
+    compacted ?Vig_02_Conceptual_Intro_PCA.pdf? from 432Kb to 143Kb
+    compacted ?Vig_03_Step_By_Step_PCA.pdf? from 411Kb to 100Kb    
+    compacted ?Vig_04_Scores_Loadings.pdf? from 335Kb to 78Kb      
+    compacted ?Vig_05_Visualizing_PCA_3D.pdf? from 679Kb to 478Kb  
+    compacted ?Vig_06_Math_Behind_PCA.pdf? from 556Kb to 145Kb     
+    compacted ?Vig_07_Functions_PCA.pdf? from 378Kb to 89Kb        
+    compacted ?Vig_08_Notes.pdf? from 239Kb to 39Kb                
+
+ 
+> - doc/Vig_01_Start_Here.pdf:    gs: res=0;  + qpdf: res=0; 
+>     ==> (new=49942)/(old=45101) = 1.10734 .. not worth using  
+> - doc/Vig_02_Conceptual_Intro_PCA.pdf:    gs: res=0;  + qpdf: res=0; 
+>     ==> (new=1.00061e+07)/(old=442210) = 22.6275 .. not worth using  
+> - doc/Vig_03_Step_By_Step_PCA.pdf:    gs: res=0;  + qpdf: res=0; 
+>     ==> (new=5.763e+06)/(old=423484) = 13.6085 .. not worth using  
+> - doc/Vig_04_Scores_Loadings.pdf:    gs: res=0;  + qpdf: res=0; 
+>     ==> (new=5.41409e+06)/(old=341680) = 15.8455 .. not worth using  
+> - doc/Vig_05_Visualizing_PCA_3D.pdf:    gs: res=0;  + qpdf: res=0; 
+>     ==> (new=1.23622e+07)/(old=692901) = 17.8412 .. not worth using  
+> - doc/Vig_06_Math_Behind_PCA.pdf:    gs: res=0;  + qpdf: res=0; 
+>     ==> (new=816690)/(old=571493) = 1.42905 .. not worth using  
+> - doc/Vig_07_Functions_PCA.pdf:    gs: res=0;  + qpdf: res=0; 
+>     ==> (new=1.36419e+06)/(old=389478) = 3.50262 .. not worth using  
+> - doc/Vig_08_Notes.pdf:    gs: res=0;  + qpdf: res=0; 
+>     ==> (new=40919)/(old=38953) = 1.05047 .. not worth using  
+
+Thank you for providing this data! Somehow, instead of compacting the
+PDFs, one of the tools manages to blow them up in size, as much as ~23
+times.
+
+Can you try tools::compactPDF() separately with gs_quality = 'none'
+(isolating qpdf) and with qpdf = '' (isolating GhostScript)?
+
+If the culprit turns out to be GhostScript, it may be due to their
+rewritten PDF rendering engine (now in C instead of PostScript with
+special extensions) not being up to par when the PDF file needs to be
+compressed. If it turns out to be qpdf, we might have to extract the
+exact command lines and compare results further.
+
+-- 
+Best regards,
+Ivan
+
+
+From h@n@on @end|ng |rom dep@uw@edu  Thu Apr 25 20:54:49 2024
+From: h@n@on @end|ng |rom dep@uw@edu (Bryan Hanson)
+Date: Thu, 25 Apr 2024 11:54:49 -0700
+Subject: [R-pkg-devel] Some, but not all vignettes compressed
+In-Reply-To: <20240425212640.39a2f275@Tarkus>
+References: <C616093F-CCCC-40A6-99E1-C91754261ACF@depauw.edu>
+ <20240425212640.39a2f275@Tarkus>
+Message-ID: <57FFC3BD-7767-4A8D-BD17-5C4B29421057@depauw.edu>
+
+Thank you so much Ivan for investigating.  I didn?t even notice the *increase*!  The results of the tests you requested are very interesting:
+
+R > tools::compactPDF("doc", gs_quality = "none", verbose = TRUE)
+qs_quality="none" : use_gs=FALSE, use_qpdf=TRUE
+#{pdf}s = length(paths) = 8
+- doc/Vig_01_Start_Here.pdf:  only qpdf: res=0; 
+    ==> (new=45281)/(old=45281) = 1 .. not worth using
+- doc/Vig_02_Conceptual_Intro_PCA.pdf:  only qpdf: res=0; 
+    ==> (new=441808)/(old=442464) = 0.998517 .. not worth using
+- doc/Vig_03_Step_By_Step_PCA.pdf:  only qpdf: res=0; 
+    ==> (new=422940)/(old=423750) = 0.998088 .. not worth using
+- doc/Vig_04_Scores_Loadings.pdf:  only qpdf: res=0; 
+    ==> (new=342335)/(old=341955) = 1.00111 .. not worth using
+- doc/Vig_05_Visualizing_PCA_3D.pdf:  only qpdf: res=0; 
+    ==> (new=692950)/(old=693206) = 0.999631 .. not worth using
+- doc/Vig_06_Math_Behind_PCA.pdf:  only qpdf: res=0; 
+    ==> (new=571600)/(old=571761) = 0.999718 .. not worth using
+- doc/Vig_07_Functions_PCA.pdf:  only qpdf: res=0; 
+    ==> (new=389451)/(old=389747) = 0.999241 .. not worth using
+- doc/Vig_08_Notes.pdf:  only qpdf: res=0; 
+    ==> (new=39131)/(old=39131) = 1 .. not worth using
+
+Looks like my version of qpdf (which I think shipped with R) can?t reduce the sizes.
+
+R > tools::compactPDF("doc", gs_quality = "ebook", gs_cmd = "/opt/homebrew/bin/gs", verbose = TRUE, qpdf = "")
+qs_quality="ebook" : use_gs=TRUE, use_qpdf=FALSE
+#{pdf}s = length(paths) = 8
+- doc/Vig_01_Start_Here.pdf:    gs: res=0; 
+    ==> (new=50865)/(old=45281) = 1.12332 .. not worth using
+- doc/Vig_02_Conceptual_Intro_PCA.pdf:    gs: res=0; 
+    ==> (new=1.00061e+07)/(old=442464) = 22.6146 .. not worth using
+- doc/Vig_03_Step_By_Step_PCA.pdf:    gs: res=0; 
+    ==> (new=5.76371e+06)/(old=423750) = 13.6017 .. not worth using
+- doc/Vig_04_Scores_Loadings.pdf:    gs: res=0; 
+    ==> (new=5.41358e+06)/(old=341955) = 15.8312 .. not worth using
+- doc/Vig_05_Visualizing_PCA_3D.pdf:    gs: res=0; 
+    ==> (new=1.23619e+07)/(old=693206) = 17.833 .. not worth using
+- doc/Vig_06_Math_Behind_PCA.pdf:    gs: res=0; 
+    ==> (new=818313)/(old=571761) = 1.43122 .. not worth using
+- doc/Vig_07_Functions_PCA.pdf:    gs: res=0; 
+    ==> (new=1.36534e+06)/(old=389747) = 3.50315 .. not worth using
+- doc/Vig_08_Notes.pdf:    gs: res=0; 
+    ==> (new=41780)/(old=39131) = 1.0677 .. not worth using
+
+So my version of gs blows things up!
+
+Also modified the above using gs_quality = ?printer? or ?screen? and the results are very similar.
+
+Bryan
+
+
+> On Apr 25, 2024, at 11:26?AM, Ivan Krylov <ikrylov at disroot.org> wrote:
+> 
+> ? Thu, 25 Apr 2024 08:54:41 -0700
+> Bryan Hanson <hanson at depauw.edu> ?????:
+> 
+>>  'gs+qpdf' made some significant size reductions:
+>>     compacted 'Vig_02_Conceptual_Intro_PCA.pdf' from 432Kb to 143Kb
+>>     compacted 'Vig_03_Step_By_Step_PCA.pdf' from 414Kb to 101Kb
+>>     compacted 'Vig_04_Scores_Loadings.pdf' from 334Kb to 78Kb
+>>     compacted 'Vig_06_Math_Behind_PCA.pdf' from 558Kb to 147Kb
+>>     compacted 'Vig_07_Functions_PCA.pdf' from 381Kb to 90Kb
+> 
+> I'm getting similar (but not same) results on Debian Stable, gs 10.00.0
+> & qpdf 11.3.0:
+> 
+> # R CMD build --no-resave-data --compact-vignettes=both
+>    compacted ?Vig_01_Start_Here.pdf? from 244Kb to 45Kb           
+>    compacted ?Vig_02_Conceptual_Intro_PCA.pdf? from 432Kb to 143Kb
+>    compacted ?Vig_03_Step_By_Step_PCA.pdf? from 411Kb to 100Kb    
+>    compacted ?Vig_04_Scores_Loadings.pdf? from 335Kb to 78Kb      
+>    compacted ?Vig_05_Visualizing_PCA_3D.pdf? from 679Kb to 478Kb  
+>    compacted ?Vig_06_Math_Behind_PCA.pdf? from 556Kb to 145Kb     
+>    compacted ?Vig_07_Functions_PCA.pdf? from 378Kb to 89Kb        
+>    compacted ?Vig_08_Notes.pdf? from 239Kb to 39Kb                
+> 
+> 
+>> - doc/Vig_01_Start_Here.pdf:    gs: res=0;  + qpdf: res=0; 
+>>    ==> (new=49942)/(old=45101) = 1.10734 .. not worth using  
+>> - doc/Vig_02_Conceptual_Intro_PCA.pdf:    gs: res=0;  + qpdf: res=0; 
+>>    ==> (new=1.00061e+07)/(old=442210) = 22.6275 .. not worth using  
+>> - doc/Vig_03_Step_By_Step_PCA.pdf:    gs: res=0;  + qpdf: res=0; 
+>>    ==> (new=5.763e+06)/(old=423484) = 13.6085 .. not worth using  
+>> - doc/Vig_04_Scores_Loadings.pdf:    gs: res=0;  + qpdf: res=0; 
+>>    ==> (new=5.41409e+06)/(old=341680) = 15.8455 .. not worth using  
+>> - doc/Vig_05_Visualizing_PCA_3D.pdf:    gs: res=0;  + qpdf: res=0; 
+>>    ==> (new=1.23622e+07)/(old=692901) = 17.8412 .. not worth using  
+>> - doc/Vig_06_Math_Behind_PCA.pdf:    gs: res=0;  + qpdf: res=0; 
+>>    ==> (new=816690)/(old=571493) = 1.42905 .. not worth using  
+>> - doc/Vig_07_Functions_PCA.pdf:    gs: res=0;  + qpdf: res=0; 
+>>    ==> (new=1.36419e+06)/(old=389478) = 3.50262 .. not worth using  
+>> - doc/Vig_08_Notes.pdf:    gs: res=0;  + qpdf: res=0; 
+>>    ==> (new=40919)/(old=38953) = 1.05047 .. not worth using  
+> 
+> Thank you for providing this data! Somehow, instead of compacting the
+> PDFs, one of the tools manages to blow them up in size, as much as ~23
+> times.
+> 
+> Can you try tools::compactPDF() separately with gs_quality = 'none'
+> (isolating qpdf) and with qpdf = '' (isolating GhostScript)?
+> 
+> If the culprit turns out to be GhostScript, it may be due to their
+> rewritten PDF rendering engine (now in C instead of PostScript with
+> special extensions) not being up to par when the PDF file needs to be
+> compressed. If it turns out to be qpdf, we might have to extract the
+> exact command lines and compare results further.
+> 
+> -- 
+> Best regards,
+> Ivan
+
+=============
+Bryan A. Hanson
+Prof. Emeritus, DePauw University
+Chemistry & Biochemistry
+hanson at depauw.edu
+profbryanhanson at gmail.com
+Nerdy blog: ChemoSpec.org
+I?m at GMT -7 year round
+
+
+
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Thu Apr 25 21:36:51 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 25 Apr 2024 22:36:51 +0300
+Subject: [R-pkg-devel] Some, but not all vignettes compressed
+In-Reply-To: <57FFC3BD-7767-4A8D-BD17-5C4B29421057@depauw.edu>
+References: <C616093F-CCCC-40A6-99E1-C91754261ACF@depauw.edu>
+ <20240425212640.39a2f275@Tarkus>
+ <57FFC3BD-7767-4A8D-BD17-5C4B29421057@depauw.edu>
+Message-ID: <20240425223651.79574bb7@Tarkus>
+
+? Thu, 25 Apr 2024 11:54:49 -0700
+Bryan Hanson <hanson at depauw.edu> ?????:
+
+> So my version of gs blows things up!
+
+The relatively good news is that GhostScript is not solely to blame. A
+fresh build of "GPL Ghostscript 10.03.0 (2024-03-06)" was able to
+reduce the files to 16..70% of their original size on my computer. But
+I just typed ./configure && make and relied on the dependencies already
+present on my system.
+
+We can try to compare the build settings (which will involve compiling
+things by hand) or ask the Homebrew people [*] (and they will probably
+ask for a PDF file and a specific command line that works on some
+builds of gs-10.03.0 but not with Homebrew).
+
+What would you rather do?
+
+qpdf, on the other hand, results in no size reduction (99.7% or worse),
+just like on your system.
+
+-- 
+Best regards,
+Ivan
+
+[*]
+https://docs.brew.sh/Troubleshooting
+https://github.com/Homebrew/homebrew-core/issues?q=ghostscript
+
+
