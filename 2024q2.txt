@@ -4934,3 +4934,169 @@ Best regards,
 Ivan
 
 
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Sun Apr 28 17:15:06 2024
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leo Mada)
+Date: Sun, 28 Apr 2024 15:15:06 +0000
+Subject: [R-pkg-devel] Extending proj with proj.line3d methods and
+ overloading the methods
+In-Reply-To: <31316745-EAB3-4083-B4B9-757142718797@disroot.org>
+References: <DBAP192MB09568DD96FD61DDD801196DB84162@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+ <31316745-EAB3-4083-B4B9-757142718797@disroot.org>
+Message-ID: <DBAP192MB09565433A654533CDC6650F484142@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+
+Dear Ivan,
+
+Thank you very much for the response.
+
+Indeed, I was skeptical how R interprets class names and I have supposed it a little bit different.
+
+S3 methods are more like overloaded functions; while S4 methods are more like true methods implemented for a class. But this is very approximate (with many exceptions and anomalies); and many programmers are not used to think like this.
+
+The "proj" class could have both overloaded functions (e.g. for aov class, ...), and also new methods like projection of a point on a line, or projection of a point on a plane (which are still projections).
+
+This is why I intended to define a new method "proj.line3d" and overload this method. But it seems that R interprets "line3d.numeric" as a class - which originates probably from the "data,frame" class.
+
+How can I define a real method "proj.line3d"?
+There might be some limitations from Roxygen as well (as I use it for the package); but it might be easier to proceed, once I understand how to do it in R.
+
+I thought that this solves the problem:
+proj.line3d <- function(p, x, y, z, ...)
+  UseMethod("proj.line3d")
+
+And maybe it did what I intended. But I need to "register" the overloaded functions somehow differently?
+
+The other solution, as you pointed out, is more cumbersome; and it needs 2 separate classes, so I would need to define "proj" as an S4 class (as S3 does not handle 2 classes at once).
+
+
+Thank you very much,
+
+Leonard
+
+
+
+________________________________
+From: Ivan Krylov <ikrylov at disroot.org>
+Sent: Saturday, April 27, 2024 10:08 AM
+To: Leo Mada <leo.mada at syonic.eu>; r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Extending proj with proj.line3d methods and overloading the methods
+
+27 ?????? 2024 ?. 00:49:47 GMT+03:00, Leo Mada via R-package-devel <r-package-devel at r-project.org> ?????:
+>Dear List-Members,
+>
+>I try to implement a proj.line3d method and to overload this method as follows:
+>
+>proj.line3d <- function(p, x, y, z, ...)
+>  UseMethod("proj.line3d")
+>
+>proj.line3d.numeric = function(p, x, y, z, ...) {
+>  # ...
+>}
+>
+>proj.line3d.matrix = function(p, x, y, z, ...) {
+>  # ...
+>}
+
+>p = c(1,2,3)
+>line = matrix(c(0,5,2,3,1,4), 2)
+>proj.line3d(p, line)
+>#  Error in UseMethod("proj.line3d") :
+>#   no applicable method for 'proj.line3d' applied to an object of class "c('double', 'numeric')"
+
+>methods(proj)
+># [1] proj.aov*           proj.aovlist*       proj.default*       proj.line3d
+># [5] proj.line3d.matrix  proj.line3d.numeric proj.lm
+
+In your NAMESPACE, you've registered methods for the generic function 'proj', classes 'line3d.matrix' and 'line3d.numeric', but above you are calling a different generic, 'proj.line3d', for which no methods are registered.
+
+For proj.line3d(<numeric>, <matrix>) to work, you'll have to register the methods for the proj.line3d generic. If you need a visible connection to the proj() generic, you can try registering a method on the 'proj' generic, class 'line3d' *and* creating a class 'line3d' that would wrap your vectors and matrices:
+
+proj(line3d(p), line) -> call lands in proj.line3d -> maybe additional dispatch on the remaining classes of 'p'?
+
+This seems to work, but I haven't tested it extensively:
+
+> proj.line3d <- \(x, ...) UseMethod('proj.line3d')
+> proj.line3d.numeric <- \(x, ...) { message('proj.line3d.numeric'); x }
+> line3d <- \(x) structure(x, class = c('line3d', class(x)))
+> proj(line3d(pi))
+proj.line3d.numeric
+[1] 3.141593
+attr(,"class")
+[1] "line3d"  "numeric"
+
+--
+Best regards,
+Ivan
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Sun Apr 28 20:15:42 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sun, 28 Apr 2024 21:15:42 +0300
+Subject: [R-pkg-devel] Extending proj with proj.line3d methods and
+ overloading the methods
+In-Reply-To: <DBAP192MB09565433A654533CDC6650F484142@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+References: <DBAP192MB09568DD96FD61DDD801196DB84162@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+ <31316745-EAB3-4083-B4B9-757142718797@disroot.org>
+ <DBAP192MB09565433A654533CDC6650F484142@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+Message-ID: <20240428211542.29f82804@trisector>
+
+? Sun, 28 Apr 2024 15:15:06 +0000
+Leo Mada <leo.mada at syonic.eu> ?????:
+
+> This is why I intended to define a new method "proj.line3d" and
+> overload this method. But it seems that R interprets "line3d.numeric"
+> as a class - which originates probably from the "data,frame" class.
+
+It may help to call the original 'proj' function and your new
+'proj.line3d' function "generics", because that's what most S3
+literature calls these functions that you overload. This separates them
+from the "methods" 'proj.line3d.numeric' and 'proj.line3d.matrix' that
+can be said to "implement" or "overload" the generic.
+
+A concise but very readable guide to S3 and other built-in OOP systems
+in R can be found in Advanced R by Hadley Wickham:
+http://adv-r.had.co.nz/OO-essentials.html#s3
+
+> How can I define a real method "proj.line3d"?
+
+In order to export an S3 generic and register methods for it from a
+package, you need the following directives in your NAMESPACE:
+
+export(proj.line3d)
+S3method(proj.line3d, numeric) # will use function proj.line3d.numeric
+S3method(proj.line3d, matrix) # similar
+
+<https://cran.r-project.org/doc/manuals/R-exts.html#Registering-S3-methods>
+
+> There might be some limitations from Roxygen as well (as I use it for
+> the package); but it might be easier to proceed, once I understand
+> how to do it in R.
+
+The roxygen2 documentation says that if there are multiple dots in the
+name of a function, you need to use the two-argument form of the
+@method keyword: @method proj.line3d numeric (untested).
+<https://roxygen2.r-lib.org/articles/rd-other.html#s3>
+
+> I thought that this solves the problem:
+> proj.line3d <- function(p, x, y, z, ...)
+>   UseMethod("proj.line3d")
+
+Right. This is the definition of an S3 generic generic in R. As long as
+all the methods will also accept arguments (p, x, y, z, <maybe extra
+arguments here>, <dots>), all will be fine.
+
+> The other solution, as you pointed out, is more cumbersome; and it
+> needs 2 separate classes, so I would need to define "proj" as an S4
+> class (as S3 does not handle 2 classes at once).
+
+Moreover, you still need an exported generic proj.line3d and registered
+methods for it to work. Inheritance does work in S3 (see NextMethod()),
+but it alone won't help you call proj.line3d.numeric() from proj() and
+'numeric' x.
+
+-- 
+Best regards,
+Ivan
+
+
