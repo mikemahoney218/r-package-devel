@@ -5100,3 +5100,318 @@ Best regards,
 Ivan
 
 
+From ro||turner @end|ng |rom po@teo@net  Mon Apr 29 03:19:50 2024
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Mon, 29 Apr 2024 01:19:50 +0000
+Subject: [R-pkg-devel] Problem with loading package "devtools" from CRAN.
+Message-ID: <20240429131950.43264267@rolf-Latitude-E7470>
+
+
+Executive summary:
+
+> The devtools package on CRAN appears to be broken.
+> Installing devtools from github (using remotes::install_github())
+> seems to give satisfactory results.
+
+This morning my software up-dater (Ubuntu 22.04.4) prompted me to
+install updated versions of some software, including r-base.  I thereby
+obtained what I believe is the latest version of R (4.4.0 (2024-04-24)).
+
+Then I could not load the "devtools" package, which is fairly crucial to
+my work.
+
+A bit of web-searching got me to a post on github by Henrik Bengtsson,
+which referred to the devtools problem.  I therefore decided to try
+installing devtools from github:
+
+    remotes::install_github("r-lib/devtools",lib="/home/rolf/Rlib")
+
+Some 50-odd packages seemed to require up-dating.  I went for it, and
+after a fairly long wait, while messages about the updating flowed by,
+devtools seemed to get installed.  Now "library(devtools)" runs without
+error, so I am happy with my own situation.  However there seems to be
+a problem with the devtools package on CRAN, which ought to be fixed.
+
+cheers,
+
+Rolf Turner
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+
+From berw|n@tur|@ch @end|ng |rom gm@||@com  Mon Apr 29 08:27:42 2024
+From: berw|n@tur|@ch @end|ng |rom gm@||@com (Berwin A Turlach)
+Date: Mon, 29 Apr 2024 14:27:42 +0800
+Subject: [R-pkg-devel] 
+ Problem with loading package "devtools" from CRAN.
+In-Reply-To: <20240429131950.43264267@rolf-Latitude-E7470>
+References: <20240429131950.43264267@rolf-Latitude-E7470>
+Message-ID: <20240429142742.7e355d89@dep59159.uniwa.uwa.edu.au>
+
+G'day Rolf,
+
+hope all is well.
+
+On Mon, 29 Apr 2024 01:19:50 +0000
+Rolf Turner <rolfturner at posteo.net> wrote:
+
+> Executive summary:
+> 
+> > The devtools package on CRAN appears to be broken.
+> > Installing devtools from github (using remotes::install_github())
+> > seems to give satisfactory results.  
+
+I somehow have not shared this experience.  But then I compile on my
+machines (Ubuntu 22.04.4) R and packages from source.
+
+For me the devtools package from CRAN seems to work fine with R 4.4.0
+
+> [...] I thereby obtained what I believe is the latest version of R
+> (4.4.0 (2024-04-24)).
+
+Well, what happens if you start R and enter "R.version"?  That should
+confirm whether you run R 4.4.0. :)
+
+If you run R 4.4.0 but previously ran R 4.3.x then you are running now
+a version with a new minor version number.  AFAIK, there is no
+guarantee that at the interface level to compiled code R versions
+remain compatible when the minor version number changes.
+
+So on machines where I do not compile from source, I usually run
+"update.packages(checkBuilt=TRUE)" whenever I upgrade R on those
+machines, definitely if the upgrade involves a change in the major or
+minor version number. 
+
+Did you try updating your packages?
+
+Well, you probably first want to find out where exactly the Debian R
+distribution installs additional packages (Dirk might help there), and
+it might be that you have to run either (or all) of:
+
+update.packages(lib="/usr/local/lib/R/site-library", checkBuilt=TRUE)
+update.packages(lib="/usr/lib/R/site-library", checkBuilt=TRUE)
+update.packages(lib="/usr/lib/R/library", checkBuilt=TRUE)
+
+though, by a short look at my Ubuntu machine, it may be that the last
+two locations are not writeable for you as user, and the first one only
+if you belong to the group "staff" as normal user on your machine.
+
+> A bit of web-searching got me to a post on github by Henrik Bengtsson,
+> which referred to the devtools problem. 
+
+Could you provide a link?  I could not find anything relevant. :)
+
+> However there seems to be a problem with the devtools package on
+> CRAN, which ought to be fixed.
+
+Or, perhaps, just that the interface to compiled code changed from R
+3.6.x to R 4.4.0 and, hence, all packages that rely on compiled code
+must be reinstalled.
+
+Stay safe.
+
+Cheers,
+
+	Berwin
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Mon Apr 29 08:33:55 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Mon, 29 Apr 2024 18:33:55 +1200
+Subject: [R-pkg-devel] 
+ Problem with loading package "devtools" from CRAN.
+In-Reply-To: <20240429131950.43264267@rolf-Latitude-E7470>
+References: <20240429131950.43264267@rolf-Latitude-E7470>
+Message-ID: <3CB83F57-1943-4FF3-AF77-61F3DC111991@R-project.org>
+
+Rolf,
+
+what do you mean by "broken"? Since you failed to include any proof nor details it's unlikely that anyone can help you, but chances are pretty high that it was a problem on your end. I just checked with R 4.4.0 on Ubuntu 22.04 and devtools install and load just fine, so it is certainly broken on CRAN.
+
+Make sure you don't have packages for old R version in your local libraries - that is a most common mistake - always remove them when upgrading R and re-install if still need them. You can check the locations of your libraries with .libPaths() in R. Sometimes, update.packages(checkBuilt=TRUE) can do the trick as well, but I prefer clean re-installs for safety as it also helps you clean up old cruft that is not longer needed.
+
+Cheers,
+Simon
+
+
+
+> On Apr 29, 2024, at 1:19 PM, Rolf Turner <rolfturner at posteo.net> wrote:
+> 
+> 
+> Executive summary:
+> 
+>> The devtools package on CRAN appears to be broken.
+>> Installing devtools from github (using remotes::install_github())
+>> seems to give satisfactory results.
+> 
+> This morning my software up-dater (Ubuntu 22.04.4) prompted me to
+> install updated versions of some software, including r-base.  I thereby
+> obtained what I believe is the latest version of R (4.4.0 (2024-04-24)).
+> 
+> Then I could not load the "devtools" package, which is fairly crucial to
+> my work.
+> 
+> A bit of web-searching got me to a post on github by Henrik Bengtsson,
+> which referred to the devtools problem.  I therefore decided to try
+> installing devtools from github:
+> 
+>    remotes::install_github("r-lib/devtools",lib="/home/rolf/Rlib")
+> 
+> Some 50-odd packages seemed to require up-dating.  I went for it, and
+> after a fairly long wait, while messages about the updating flowed by,
+> devtools seemed to get installed.  Now "library(devtools)" runs without
+> error, so I am happy with my own situation.  However there seems to be
+> a problem with the devtools package on CRAN, which ought to be fixed.
+> 
+> cheers,
+> 
+> Rolf Turner
+> 
+> -- 
+> Honorary Research Fellow
+> Department of Statistics
+> University of Auckland
+> Stats. Dep't. (secretaries) phone:
+>         +64-9-373-7599 ext. 89622
+> Home phone: +64-9-480-4619
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From georg|@bo@hn@kov @end|ng |rom m@nche@ter@@c@uk  Mon Apr 29 08:54:16 2024
+From: georg|@bo@hn@kov @end|ng |rom m@nche@ter@@c@uk (Georgi Boshnakov)
+Date: Mon, 29 Apr 2024 06:54:16 +0000
+Subject: [R-pkg-devel] 
+ Problem with loading package "devtools" from CRAN.
+In-Reply-To: <3CB83F57-1943-4FF3-AF77-61F3DC111991@R-project.org>
+References: <20240429131950.43264267@rolf-Latitude-E7470>
+ <3CB83F57-1943-4FF3-AF77-61F3DC111991@R-project.org>
+Message-ID: <LO0P265MB63254270048C9422B9094A9BAE1B2@LO0P265MB6325.GBRP265.PROD.OUTLOOK.COM>
+
+I also had the problem that devtools didn't install.
+
+I used update.packages(ask =FALSE) and that solved the problem.
+
+Before that I tried to locate the culprit but it was not one of the direct dependencies of devtools.
+
+Georgi Boshnakov
+
+Sent from Outlook for Android<https://aka.ms/AAb9ysg>
+________________________________
+From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Simon Urbanek <simon.urbanek at R-project.org>
+Sent: Monday, April 29, 2024 7:33:55 AM
+To: Rolf Turner <rolfturner at posteo.net>
+Cc: jenny at posit.co <jenny at posit.co>; r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Problem with loading package "devtools" from CRAN.
+
+Rolf,
+
+what do you mean by "broken"? Since you failed to include any proof nor details it's unlikely that anyone can help you, but chances are pretty high that it was a problem on your end. I just checked with R 4.4.0 on Ubuntu 22.04 and devtools install and load just fine, so it is certainly broken on CRAN.
+
+Make sure you don't have packages for old R version in your local libraries - that is a most common mistake - always remove them when upgrading R and re-install if still need them. You can check the locations of your libraries with .libPaths() in R. Sometimes, update.packages(checkBuilt=TRUE) can do the trick as well, but I prefer clean re-installs for safety as it also helps you clean up old cruft that is not longer needed.
+
+Cheers,
+Simon
+
+
+
+> On Apr 29, 2024, at 1:19 PM, Rolf Turner <rolfturner at posteo.net> wrote:
+>
+>
+> Executive summary:
+>
+>> The devtools package on CRAN appears to be broken.
+>> Installing devtools from github (using remotes::install_github())
+>> seems to give satisfactory results.
+>
+> This morning my software up-dater (Ubuntu 22.04.4) prompted me to
+> install updated versions of some software, including r-base.  I thereby
+> obtained what I believe is the latest version of R (4.4.0 (2024-04-24)).
+>
+> Then I could not load the "devtools" package, which is fairly crucial to
+> my work.
+>
+> A bit of web-searching got me to a post on github by Henrik Bengtsson,
+> which referred to the devtools problem.  I therefore decided to try
+> installing devtools from github:
+>
+>    remotes::install_github("r-lib/devtools",lib="/home/rolf/Rlib")
+>
+> Some 50-odd packages seemed to require up-dating.  I went for it, and
+> after a fairly long wait, while messages about the updating flowed by,
+> devtools seemed to get installed.  Now "library(devtools)" runs without
+> error, so I am happy with my own situation.  However there seems to be
+> a problem with the devtools package on CRAN, which ought to be fixed.
+>
+> cheers,
+>
+> Rolf Turner
+>
+> --
+> Honorary Research Fellow
+> Department of Statistics
+> University of Auckland
+> Stats. Dep't. (secretaries) phone:
+>         +64-9-373-7599 ext. 89622
+> Home phone: +64-9-480-4619
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!PDiH4ENfjr2_Jw!D1bv6hCvIc_G_5ay6dqpVMj1roESgfSV8NT0AaMD8kJ92-7-YAkFg6c4TaVx-GXHEj7yieujSDu7LATDgtP-aSPQ7C2b745lri9DbFpH$ [stat[.]ethz[.]ch]
+>
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!PDiH4ENfjr2_Jw!D1bv6hCvIc_G_5ay6dqpVMj1roESgfSV8NT0AaMD8kJ92-7-YAkFg6c4TaVx-GXHEj7yieujSDu7LATDgtP-aSPQ7C2b745lri9DbFpH$ [stat[.]ethz[.]ch]
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Mon Apr 29 13:30:20 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Mon, 29 Apr 2024 06:30:20 -0500
+Subject: [R-pkg-devel] 
+ Problem with loading package "devtools" from CRAN.
+In-Reply-To: <LO0P265MB63254270048C9422B9094A9BAE1B2@LO0P265MB6325.GBRP265.PROD.OUTLOOK.COM>
+References: <20240429131950.43264267@rolf-Latitude-E7470>
+ <3CB83F57-1943-4FF3-AF77-61F3DC111991@R-project.org>
+ <LO0P265MB63254270048C9422B9094A9BAE1B2@LO0P265MB6325.GBRP265.PROD.OUTLOOK.COM>
+Message-ID: <26159.33996.203015.970788@rob.eddelbuettel.com>
+
+
+Rolf,
+
+This question might have been more appropriate for r-sig-debian than here.
+But as Simon noted, the lack of detail makes is difficult to say anything to
+aid. It likely was an issue local to your setup and use.
+
+These days, I strongly recommend r2u [1].  As you already use R via CRAN
+through apt, r2u adds one more repository after which _all_ R packages are
+handled via the same apt operations that you already trust to get you R from
+CRAN (as well as anything else on your machine).  This covers all 20+
+thousand CRAN packages along with 400 key BioC packages. Handling your
+packages with your system package managed guarantees all dependencies are
+resolved reliably and quickly. It makes installing, upgrading, managing CRAN
+package easier, faster and more reliable.
+
+To double-check, I just spot-checked 'devtools' on an r2u container (on top
+of Ubuntu 22.04) and of course devtools install and runs fine (as a binary).
+So maybe give r2u a go. "Sixteen million packages served" in two years ...
+
+Cheers, Dirk
+
+[1] https://eddelbuettel.github.io/r2u
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
