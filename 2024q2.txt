@@ -5415,3 +5415,272 @@ Cheers, Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From ro||turner @end|ng |rom po@teo@net  Tue Apr 30 03:21:15 2024
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Tue, 30 Apr 2024 01:21:15 +0000
+Subject: [R-pkg-devel] 
+ Problem with loading package "devtools" from CRAN.
+In-Reply-To: <26159.33996.203015.970788@rob.eddelbuettel.com>
+References: <20240429131950.43264267@rolf-Latitude-E7470>
+ <3CB83F57-1943-4FF3-AF77-61F3DC111991@R-project.org>
+ <LO0P265MB63254270048C9422B9094A9BAE1B2@LO0P265MB6325.GBRP265.PROD.OUTLOOK.COM>
+ <26159.33996.203015.970788@rob.eddelbuettel.com>
+Message-ID: <20240430132115.7b9fab83@rolf-Latitude-E7470>
+
+
+Well, I just uninstalled the devtools that I had installed from github
+and ran
+
+   install.packages("devtools",lib="/home/rolf/Rlib")  
+ 
+No error message this time; the install went just fine.
+The explanation may lie in the plethora of packages that I re-installed
+when I invoked
+
+   remotes::install_github("r-lib/devtools",lib="/home/rolf/Rlib")
+
+This probably relates to Simon Urbanek's advice to re-install all
+packages in my local library.  Which I will make sure to do in future.
+
+Previously I got an error message from
+
+    install.packages("devtools",lib="/home/rolf/Rlib")  
+ 
+but now of course I cannot reproduce it.
+
+On Mon, 29 Apr 2024 06:30:20 -0500
+Dirk Eddelbuettel <edd at debian.org> wrote:
+
+<SNIP>
+
+> These days, I strongly recommend r2u [1].  As you already use R via
+> CRAN through apt, r2u adds one more repository after which _all_ R
+> packages are handled via the same apt operations that you already
+> trust to get you R from CRAN (as well as anything else on your
+> machine).  This covers all 20+ thousand CRAN packages along with 400
+> key BioC packages. Handling your packages with your system package
+> managed guarantees all dependencies are resolved reliably and
+> quickly. It makes installing, upgrading, managing CRAN package
+> easier, faster and more reliable.
+
+<SNIP>
+
+> [1] https://eddelbuettel.github.io/r2u
+
+<SNIP>
+
+Sounds promising, but I cannot follow what "r2u" is actually
+all about.  What *is* r2u?  And how do I go about using it?  Do I
+invoke it (or invoke something) from within R?  Or do I invoke
+something from the OS?  E.g. something like
+
+sudo apt-get install <what???>
+
+???
+
+I have downloaded the file add_cranapt_jammy.sh and executed
+
+   sudo sh add_cranapt_jammy.sh
+
+which seemed to run OK.  What now?
+
+cheers,
+
+Rolf
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+
+From edd @end|ng |rom deb|@n@org  Tue Apr 30 03:39:33 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Mon, 29 Apr 2024 20:39:33 -0500
+Subject: [R-pkg-devel] 
+ Problem with loading package "devtools" from CRAN.
+In-Reply-To: <20240430132115.7b9fab83@rolf-Latitude-E7470>
+References: <20240429131950.43264267@rolf-Latitude-E7470>
+ <3CB83F57-1943-4FF3-AF77-61F3DC111991@R-project.org>
+ <LO0P265MB63254270048C9422B9094A9BAE1B2@LO0P265MB6325.GBRP265.PROD.OUTLOOK.COM>
+ <26159.33996.203015.970788@rob.eddelbuettel.com>
+ <20240430132115.7b9fab83@rolf-Latitude-E7470>
+Message-ID: <26160.19413.125681.947133@rob.eddelbuettel.com>
+
+
+On 30 April 2024 at 01:21, Rolf Turner wrote:
+| On Mon, 29 Apr 2024 06:30:20 -0500
+| Dirk Eddelbuettel <edd at debian.org> wrote:
+| 
+| <SNIP>
+| 
+| > These days, I strongly recommend r2u [1].  As you already use R via
+| > CRAN through apt, r2u adds one more repository after which _all_ R
+| > packages are handled via the same apt operations that you already
+| > trust to get you R from CRAN (as well as anything else on your
+| > machine).  This covers all 20+ thousand CRAN packages along with 400
+| > key BioC packages. Handling your packages with your system package
+| > managed guarantees all dependencies are resolved reliably and
+| > quickly. It makes installing, upgrading, managing CRAN package
+| > easier, faster and more reliable.
+| 
+| <SNIP>
+| 
+| > [1] https://eddelbuettel.github.io/r2u
+| 
+| <SNIP>
+| 
+| Sounds promising, but I cannot follow what "r2u" is actually
+| all about.  What *is* r2u?  And how do I go about using it?  Do I
+| invoke it (or invoke something) from within R?  Or do I invoke
+| something from the OS?  E.g. something like
+| 
+| sudo apt-get install <what???>
+| 
+| ???
+
+You could peruse the documentation at
+
+  https://eddelbuettel.github.io/r2u
+
+and / or the blogposts I have especially below
+
+  https://dirk.eddelbuettel.com/blog/code/r4/
+
+(and you may have to read 'in reverse order').
+
+| I have downloaded the file add_cranapt_jammy.sh and executed
+| 
+|    sudo sh add_cranapt_jammy.sh
+| 
+| which seemed to run OK.  What now?
+
+Briefly, when you setup r2u you set up new a new apt repo AND a new way to
+access them from R (using the lovely `bspm` package).  So in R saying
+`install.packages("devtools")` will seamlessly fetch r-cran-devtools and
+about 100 other files it depends upon (if you start from an 'empty' system as
+I did in a container last eve before replying to you). That works in mere
+seconds. You can then say `library(devtools)` as if you compiled locally.
+
+Naturally, using binaries both way faster and easier when it works (as this
+generally does). See the blog posts, see the demos, see the r2u site, try in
+(risklessly !!) in a container or at gitpod or in continuous integration or
+in codespaces or ...
+ 
+The docs try to get to that. Maybe start small and aim `install.packages()`
+at a package you know you do not have see what what happens?
+
+Follow-ups may be more appropriate for r-sig-debian, and/or an issue ticket
+at the r2u github repo depending on nature of the follow-up.
+
+Good luck,  Dirk
+
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From berw|n@tur|@ch @end|ng |rom gm@||@com  Tue Apr 30 03:43:31 2024
+From: berw|n@tur|@ch @end|ng |rom gm@||@com (Berwin A Turlach)
+Date: Tue, 30 Apr 2024 09:43:31 +0800
+Subject: [R-pkg-devel] 
+ Problem with loading package "devtools" from CRAN.
+In-Reply-To: <20240430132115.7b9fab83@rolf-Latitude-E7470>
+References: <20240429131950.43264267@rolf-Latitude-E7470>
+ <3CB83F57-1943-4FF3-AF77-61F3DC111991@R-project.org>
+ <LO0P265MB63254270048C9422B9094A9BAE1B2@LO0P265MB6325.GBRP265.PROD.OUTLOOK.COM>
+ <26159.33996.203015.970788@rob.eddelbuettel.com>
+ <20240430132115.7b9fab83@rolf-Latitude-E7470>
+Message-ID: <20240430094331.6fb0cf60@absentia>
+
+G'day Rolf,
+
+On Tue, 30 Apr 2024 01:21:15 +0000
+Rolf Turner <rolfturner at posteo.net> wrote:
+
+> Previously I got an error message from
+> 
+>     install.packages("devtools",lib="/home/rolf/Rlib")  
+>  
+> but now of course I cannot reproduce it.
+
+Presumably the install.packages() invocation did not produce an error
+message but a subsequent "library(devtools)" did?
+
+I am not sure how remotes::install_github() behaves.  Are you using R
+directly or via RStudio?  RStudio redefines the behaviour of
+install.packages() so I am not sure what would happen if you type that
+command into an R session running in RStudio.
+
+As far as I remember, R's install.packages(), as you would invoke it if
+you used R directly, installs the requested packages and any of its
+(Depends/Imports) dependencies if these dependencies do not exist in
+your libraries.  As devtool's dependencies must have existed on your
+system, your command only re-installed devtools but none of the
+dependencies.  
+
+And it must be one of the dependencies that uses compiled code and
+created the problem, as a "packageDescription("devtools")" actually
+shows "NeedsCompilation: no".
+
+You should really execute an
+	update.packages(lib="/home/rolf/Rlib", checkBuilt=TRUE)
+whenever you upgrade your R version, definitely when the upgrade
+involves changing the major/minor version. 
+
+Cheers,
+
+	Berwin
+
+
+From kev|n@r@coombe@ @end|ng |rom gm@||@com  Tue Apr 30 20:03:31 2024
+From: kev|n@r@coombe@ @end|ng |rom gm@||@com (Kevin R. Coombes)
+Date: Tue, 30 Apr 2024 14:03:31 -0400
+Subject: [R-pkg-devel] re-exporting plot method?
+Message-ID: <422b1f93-c779-40fd-a492-c6656960b354@gmail.com>
+
+Hi,
+
+I am working on a new package that primarily makes use of "igraph" 
+representations of certain mathematical graphs, in order to apply lots 
+of the comp sci algorithms already implemented in that package. For 
+display purposes, my "igraph" objects already include information that 
+defines node shapes and colors and edge styles and colors. But, I 
+believe that the "graph" - "Rgraphviz" - "graphNEL" set of tools will 
+produce better plots of the graphs.
+
+So, I wrote my own "as.graphNEL" function that converts the "igraph" 
+objects I want to use into graphNEL (or maybe into "Ragraph") format in 
+order to be able to use their graph layout and rendering routines. This 
+function is smart enough to translate the node and edge attributes from 
+igraph into something that works correctly when plotted using the tools 
+in Rgraphviz. (My DESCRIPTION and NAMESPACE files already import the set 
+of functions from Rgraphviz necessary to make this happen.)
+
+In principle, I'd like the eventual user to simply do something like
+
+library("KevinsNewPackage")
+IG <- makeIgraphFromFile(sourcefile)
+GN <- as.graphNEL(IG)
+plot(GN)
+
+The first three lines work fine, but the "plot" function only works if 
+the user also explicitly includes the line
+
+library("Rgraphviz")
+
+I suspect that there is a way with imports and exports in the NAMESPACE 
+to make this work without having to remind the user to load the other 
+package. But (in part because the plot function in Rgraphviz is actually 
+an S4 method, which I don't need to alter in any way), I'm not sure 
+exactly what needs to be imported or exported.
+
+Helpful suggestion would be greatly appreciated.
+
+Best,
+ ? Kevin
+
+
