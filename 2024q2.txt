@@ -5684,3 +5684,374 @@ Best,
  ? Kevin
 
 
+From @|mon@urb@nek @end|ng |rom R-project@org  Wed May  1 05:46:32 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Wed, 1 May 2024 15:46:32 +1200
+Subject: [R-pkg-devel] re-exporting plot method?
+In-Reply-To: <422b1f93-c779-40fd-a492-c6656960b354@gmail.com>
+References: <422b1f93-c779-40fd-a492-c6656960b354@gmail.com>
+Message-ID: <D333808A-E2F7-4A37-A203-5C4BD8AE168C@R-project.org>
+
+Kevin,
+
+welcome to the S4 world! ;) There is really no good solution since S4 only works at all if you attach the package since it relies on replacing the base S3 generic with its own - so the question remains what are your options to do it.
+
+The most obvious is to simply add Depends: Rgraphviz which makes sure that any generics required are attached so your package doesn't need to worry. This is the most reliable in a way as you are not limiting the functionality to methods you know about. The side-effect, though, (beside exposing functions the user may not care about) is that such package cannot be on CRAN since Rgraphics is not on CRAN (that said, you mentioned you are already importing then you seem not to worry about that).
+
+The next option is to simply ignore Rgraphviz and instead add setGeneric("plot") to your package and add methods to Depends and importFrom(methods, setGeneric) + exportMethods(plot) to the namespace. This allows you to forget about any dependencies - you are just creating the S4 generic from base::plot to make the dispatch work. This is the most light-weight solution as you only cherry-pick methods you need and there are no dependencies other than "methods". However, it is limited to just the functions you care about.
+
+Finally, you could re-export the S4 plot generic from Rgraphviz, but I'd say that is the least sensible option, since it doesn't have any benefit over doing it yourself and only adds a hard dependency for no good reason. Also copying functions from another package opens up a can of worms with versions etc. - even if the risk is likely minimal.
+
+Just for completeness - a really sneaky way would be to export an S3 plot method from your package - it would be only called in the case where the plot generic has not been replaced yet, so you could "fix" things on the fly by calling the generic from Rgraphviz, but that sounds a little hacky even for my taste ;).
+
+Cheers,
+Simon
+
+
+
+> On 1/05/2024, at 6:03 AM, Kevin R. Coombes <kevin.r.coombes at gmail.com> wrote:
+> 
+> Hi,
+> 
+> I am working on a new package that primarily makes use of "igraph" representations of certain mathematical graphs, in order to apply lots of the comp sci algorithms already implemented in that package. For display purposes, my "igraph" objects already include information that defines node shapes and colors and edge styles and colors. But, I believe that the "graph" - "Rgraphviz" - "graphNEL" set of tools will produce better plots of the graphs.
+> 
+> So, I wrote my own "as.graphNEL" function that converts the "igraph" objects I want to use into graphNEL (or maybe into "Ragraph") format in order to be able to use their graph layout and rendering routines. This function is smart enough to translate the node and edge attributes from igraph into something that works correctly when plotted using the tools in Rgraphviz. (My DESCRIPTION and NAMESPACE files already import the set of functions from Rgraphviz necessary to make this happen.)
+> 
+> In principle, I'd like the eventual user to simply do something like
+> 
+> library("KevinsNewPackage")
+> IG <- makeIgraphFromFile(sourcefile)
+> GN <- as.graphNEL(IG)
+> plot(GN)
+> 
+> The first three lines work fine, but the "plot" function only works if the user also explicitly includes the line
+> 
+> library("Rgraphviz")
+> 
+> I suspect that there is a way with imports and exports in the NAMESPACE to make this work without having to remind the user to load the other package. But (in part because the plot function in Rgraphviz is actually an S4 method, which I don't need to alter in any way), I'm not sure exactly what needs to be imported or exported.
+> 
+> Helpful suggestion would be greatly appreciated.
+> 
+> Best,
+>   Kevin
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From konr@d@rudo|ph @end|ng |rom gm@||@com  Wed May  1 13:02:45 2024
+From: konr@d@rudo|ph @end|ng |rom gm@||@com (Konrad Rudolph)
+Date: Wed, 1 May 2024 13:02:45 +0200
+Subject: [R-pkg-devel] May .External2() be used in packages?
+Message-ID: <CAM2gKPbHwVi4PiDOYK=r5NCVozN-4sJonp5FqeL0Jy5Xpm6N8g@mail.gmail.com>
+
+Hello,
+
+Is the `.External2()` function part of the public API, and can it be used
+in R packages submitted to CRAN? I would like to start using it in a
+package, and there *are* packages on CRAN which use it. But its man page
+[1] calls it ?internal?, R-exts doesn?t mention it at all (unlike `.C()`,
+`.Call()` and `.External()`), and it doesn?t have any actual documentation.
+In the context of the recent tightening of the C API CRAN rules, this makes
+me concerned that `.External2()` might be next on the chopping block.
+
+[1]
+https://stat.ethz.ch/R-manual/R-devel/library/base/html/Foreign-internal.html
+
+Cheers,
+
+-- 
+Konrad Rudolph // @klmr
+
+	[[alternative HTML version deleted]]
+
+
+From iuke-tier@ey m@iii@g oii uiow@@edu  Wed May  1 20:35:48 2024
+From: iuke-tier@ey m@iii@g oii uiow@@edu (iuke-tier@ey m@iii@g oii uiow@@edu)
+Date: Wed, 1 May 2024 13:35:48 -0500 (CDT)
+Subject: [R-pkg-devel] [External]  May .External2() be used in packages?
+In-Reply-To: <CAM2gKPbHwVi4PiDOYK=r5NCVozN-4sJonp5FqeL0Jy5Xpm6N8g@mail.gmail.com>
+References: <CAM2gKPbHwVi4PiDOYK=r5NCVozN-4sJonp5FqeL0Jy5Xpm6N8g@mail.gmail.com>
+Message-ID: <421bdf2-aa7c-983d-2687-1e83dc20bfcd@uiowa.edu>
+
+.External2() is not in the API and is not intended to be used in
+packages.  Packages that for whatever reason have chosen to use it
+could instead use .External(), and that is what yo should use. I don't
+expect that to be enforced by the check code soon, but it might be.
+
+[.External2() exists for historical reason to ease moving things that
+used to be primitives in base out into packages where they fit more
+naturally. It could be removed now, but I don't think that is high on
+anyone's priority list.]
+
+Best,
+
+luke
+
+On Wed, 1 May 2024, Konrad Rudolph wrote:
+
+> Hello,
+>
+> Is the `.External2()` function part of the public API, and can it be used
+> in R packages submitted to CRAN? I would like to start using it in a
+> package, and there *are* packages on CRAN which use it. But its man page
+> [1] calls it ?internal?, R-exts doesn?t mention it at all (unlike `.C()`,
+> `.Call()` and `.External()`), and it doesn?t have any actual documentation.
+> In the context of the recent tightening of the C API CRAN rules, this makes
+> me concerned that `.External2()` might be next on the chopping block.
+>
+> [1]
+> https://stat.ethz.ch/R-manual/R-devel/library/base/html/Foreign-internal.html
+>
+> Cheers,
+>
+>
+
+-- 
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa                  Phone:             319-335-3386
+Department of Statistics and        Fax:               319-335-3017
+    Actuarial Science
+241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu/
+
+From konr@d@rudo|ph @end|ng |rom gm@||@com  Wed May  1 21:06:23 2024
+From: konr@d@rudo|ph @end|ng |rom gm@||@com (Konrad Rudolph)
+Date: Wed, 1 May 2024 21:06:23 +0200
+Subject: [R-pkg-devel] [External]  May .External2() be used in packages?
+In-Reply-To: <421bdf2-aa7c-983d-2687-1e83dc20bfcd@uiowa.edu>
+References: <CAM2gKPbHwVi4PiDOYK=r5NCVozN-4sJonp5FqeL0Jy5Xpm6N8g@mail.gmail.com>
+ <421bdf2-aa7c-983d-2687-1e83dc20bfcd@uiowa.edu>
+Message-ID: <CAM2gKPaYYcaqLGyL7RQueB-YsL4VVbAZKtXf0Z-9aiDeJrF8LA@mail.gmail.com>
+
+Thanks,
+
+That?s a shame but good to know.
+
+Packages that for whatever reason have chosen to use it
+> could instead use .External(), and that is what yo should use.
+
+
+Unfortunately .External() is not a replacement (in general, or for my
+purpose) since it?s missing the `call` and `rho` arguments, and computing
+the same information without these arguments in C code is far from trivial.
+
+-- 
+Konrad Rudolph // @klmr
+
+	[[alternative HTML version deleted]]
+
+
+From iuke-tier@ey m@iii@g oii uiow@@edu  Wed May  1 21:32:17 2024
+From: iuke-tier@ey m@iii@g oii uiow@@edu (iuke-tier@ey m@iii@g oii uiow@@edu)
+Date: Wed, 1 May 2024 14:32:17 -0500 (CDT)
+Subject: [R-pkg-devel] [External]  May .External2() be used in packages?
+In-Reply-To: <CAM2gKPaYYcaqLGyL7RQueB-YsL4VVbAZKtXf0Z-9aiDeJrF8LA@mail.gmail.com>
+References: <CAM2gKPbHwVi4PiDOYK=r5NCVozN-4sJonp5FqeL0Jy5Xpm6N8g@mail.gmail.com>
+ <421bdf2-aa7c-983d-2687-1e83dc20bfcd@uiowa.edu>
+ <CAM2gKPaYYcaqLGyL7RQueB-YsL4VVbAZKtXf0Z-9aiDeJrF8LA@mail.gmail.com>
+Message-ID: <d4ca5af-8c2e-ebc3-de78-2cccea4e72b@uiowa.edu>
+
+yOn Wed, 1 May 2024, Konrad Rudolph wrote:
+
+> Thanks,
+> 
+> That?s a shame but good to know.
+>
+>       Packages that for whatever reason have chosen to use it
+>       could instead use .External(), and that is what yo should use.
+> 
+> 
+> Unfortunately .External() is not a replacement (in general, or for my
+> purpose) since it?s missing the `call` and `rho` arguments, and computing
+> the same information without these arguments in C code is far from trivial.
+
+The call you would get is not likely to be all that useful, but it is
+the one you wrote. The environment is the one you get from environment()
+at the point where you would call .External2. So instead of
+
+.External2("foo", x, y)
+
+do
+
+.External("foo", quote(.External2("foo", x, y)), environment(), x, y)
+
+and adjust your C function accordingly.
+
+Best,
+
+luke
+
+> --
+> Konrad Rudolph // @klmr
+> 
+>
+
+-- 
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa                  Phone:             319-335-3386
+Department of Statistics and        Fax:               319-335-3017
+    Actuarial Science
+241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu
+
+From konr@d@rudo|ph @end|ng |rom gm@||@com  Wed May  1 21:59:05 2024
+From: konr@d@rudo|ph @end|ng |rom gm@||@com (Konrad Rudolph)
+Date: Wed, 1 May 2024 21:59:05 +0200
+Subject: [R-pkg-devel] [External]  May .External2() be used in packages?
+In-Reply-To: <d4ca5af-8c2e-ebc3-de78-2cccea4e72b@uiowa.edu>
+References: <CAM2gKPbHwVi4PiDOYK=r5NCVozN-4sJonp5FqeL0Jy5Xpm6N8g@mail.gmail.com>
+ <421bdf2-aa7c-983d-2687-1e83dc20bfcd@uiowa.edu>
+ <CAM2gKPaYYcaqLGyL7RQueB-YsL4VVbAZKtXf0Z-9aiDeJrF8LA@mail.gmail.com>
+ <d4ca5af-8c2e-ebc3-de78-2cccea4e72b@uiowa.edu>
+Message-ID: <CAM2gKPYLqBwh7Oe9-zrFz1u3_yqNC-bkjrCo7y38rrS1jEdLiw@mail.gmail.com>
+
+Hi Luke,
+
+Thanks, obviously that will work and I didn?t think of it.
+
+In my defence I had previously used match.call() to capture the call on the
+R side, and representative microbenchmarks show that it adds a prohibitive
+overhead for my use-case. On the C side I only need the caller information
+in the non-performance sensitive path (for error message formatting) so I
+can compute it on demand. And I hadn?t included .External2() in that
+benchmark yet. I assume that it?ll be no faster than the way you proposed,
+so it isn?t actually needed in my case ? just as you said.
+
+
+On Wed, 1 May 2024 at 21:32, <luke-tierney at uiowa.edu> wrote:
+
+> yOn Wed, 1 May 2024, Konrad Rudolph wrote:
+>
+> > Thanks,
+> >
+> > That?s a shame but good to know.
+> >
+> >       Packages that for whatever reason have chosen to use it
+> >       could instead use .External(), and that is what yo should use.
+> >
+> >
+> > Unfortunately .External() is not a replacement (in general, or for my
+> > purpose) since it?s missing the `call` and `rho` arguments, and computing
+> > the same information without these arguments in C code is far from
+> trivial.
+>
+> The call you would get is not likely to be all that useful, but it is
+> the one you wrote. The environment is the one you get from environment()
+> at the point where you would call .External2. So instead of
+>
+> .External2("foo", x, y)
+>
+> do
+>
+> .External("foo", quote(.External2("foo", x, y)), environment(), x, y)
+>
+> and adjust your C function accordingly.
+>
+> Best,
+>
+> luke
+>
+> > --
+> > Konrad Rudolph // @klmr
+> >
+> >
+>
+> --
+> Luke Tierney
+> Ralph E. Wareham Professor of Mathematical Sciences
+> University of Iowa                  Phone:             319-335-3386
+> Department of Statistics and        Fax:               319-335-3017
+>     Actuarial Science
+> 241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+> Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu
+
+
+
+-- 
+Konrad Rudolph // @klmr
+
+	[[alternative HTML version deleted]]
+
+
+From kev|n@r@coombe@ @end|ng |rom gm@||@com  Wed May  1 22:56:31 2024
+From: kev|n@r@coombe@ @end|ng |rom gm@||@com (Kevin R. Coombes)
+Date: Wed, 1 May 2024 16:56:31 -0400
+Subject: [R-pkg-devel] re-exporting plot method?
+In-Reply-To: <D333808A-E2F7-4A37-A203-5C4BD8AE168C@R-project.org>
+References: <422b1f93-c779-40fd-a492-c6656960b354@gmail.com>
+ <D333808A-E2F7-4A37-A203-5C4BD8AE168C@R-project.org>
+Message-ID: <46021147-bd1f-4955-9bf9-657a22b7f029@gmail.com>
+
+Hi Simon,
+
+Thanks for the detailed answer. I had considered all those 
+possibilities, and was hoping that I had just missed something obvious.
+
+I have been using S4 classes in my own packages for quite a while. But 
+here, I didn't see any need to create my own class. Now, I may make my 
+own, which presents a more abstract "graph" that can have realizations 
+both as 'igraph' or "graphNEL' - 'Rargaph'. I'll have to think about, 
+but that seems like the only reliable way to prevent putting al of 
+Rgraphviz into the user's namespace.
+
+Oh, and CRAN doesn't complain about importing Rgraphviz, since 
+BioConductor is one of the "standard mainstream" repositories.
+
+Best,
+ ? Kevin
+
+On 4/30/2024 11:46 PM, Simon Urbanek wrote:
+> Kevin,
+>
+> welcome to the S4 world! ;) There is really no good solution since S4 only works at all if you attach the package since it relies on replacing the base S3 generic with its own - so the question remains what are your options to do it.
+>
+> The most obvious is to simply add Depends: Rgraphviz which makes sure that any generics required are attached so your package doesn't need to worry. This is the most reliable in a way as you are not limiting the functionality to methods you know about. The side-effect, though, (beside exposing functions the user may not care about) is that such package cannot be on CRAN since Rgraphics is not on CRAN (that said, you mentioned you are already importing then you seem not to worry about that).
+>
+> The next option is to simply ignore Rgraphviz and instead add setGeneric("plot") to your package and add methods to Depends and importFrom(methods, setGeneric) + exportMethods(plot) to the namespace. This allows you to forget about any dependencies - you are just creating the S4 generic from base::plot to make the dispatch work. This is the most light-weight solution as you only cherry-pick methods you need and there are no dependencies other than "methods". However, it is limited to just the functions you care about.
+>
+> Finally, you could re-export the S4 plot generic from Rgraphviz, but I'd say that is the least sensible option, since it doesn't have any benefit over doing it yourself and only adds a hard dependency for no good reason. Also copying functions from another package opens up a can of worms with versions etc. - even if the risk is likely minimal.
+>
+> Just for completeness - a really sneaky way would be to export an S3 plot method from your package - it would be only called in the case where the plot generic has not been replaced yet, so you could "fix" things on the fly by calling the generic from Rgraphviz, but that sounds a little hacky even for my taste ;).
+>
+> Cheers,
+> Simon
+>
+>
+>
+>> On 1/05/2024, at 6:03 AM, Kevin R. Coombes <kevin.r.coombes at gmail.com> wrote:
+>>
+>> Hi,
+>>
+>> I am working on a new package that primarily makes use of "igraph" representations of certain mathematical graphs, in order to apply lots of the comp sci algorithms already implemented in that package. For display purposes, my "igraph" objects already include information that defines node shapes and colors and edge styles and colors. But, I believe that the "graph" - "Rgraphviz" - "graphNEL" set of tools will produce better plots of the graphs.
+>>
+>> So, I wrote my own "as.graphNEL" function that converts the "igraph" objects I want to use into graphNEL (or maybe into "Ragraph") format in order to be able to use their graph layout and rendering routines. This function is smart enough to translate the node and edge attributes from igraph into something that works correctly when plotted using the tools in Rgraphviz. (My DESCRIPTION and NAMESPACE files already import the set of functions from Rgraphviz necessary to make this happen.)
+>>
+>> In principle, I'd like the eventual user to simply do something like
+>>
+>> library("KevinsNewPackage")
+>> IG <- makeIgraphFromFile(sourcefile)
+>> GN <- as.graphNEL(IG)
+>> plot(GN)
+>>
+>> The first three lines work fine, but the "plot" function only works if the user also explicitly includes the line
+>>
+>> library("Rgraphviz")
+>>
+>> I suspect that there is a way with imports and exports in the NAMESPACE to make this work without having to remind the user to load the other package. But (in part because the plot function in Rgraphviz is actually an S4 method, which I don't need to alter in any way), I'm not sure exactly what needs to be imported or exported.
+>>
+>> Helpful suggestion would be greatly appreciated.
+>>
+>> Best,
+>>    Kevin
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+
+
