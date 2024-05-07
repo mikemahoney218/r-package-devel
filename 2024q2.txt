@@ -7648,3 +7648,182 @@ Vladimir Dergachev
 >
 
 
+From @|mon@urb@nek @end|ng |rom R-project@org  Mon May  6 04:37:49 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Mon, 6 May 2024 14:37:49 +1200
+Subject: [R-pkg-devel] Error handling in C code
+In-Reply-To: <DU2PR05MB10863FF6B2A05EFDB63B7D731AC1F2@DU2PR05MB10863.eurprd05.prod.outlook.com>
+References: <DU2PR05MB10863FF6B2A05EFDB63B7D731AC1F2@DU2PR05MB10863.eurprd05.prod.outlook.com>
+Message-ID: <49818A23-B5E0-480B-8F6D-25BE759424A4@R-project.org>
+
+Jarrod,
+
+could you point us to the code? There is not much to go by based on your email. One thing just in general: it's always safer to not re-map function names, especially since "error" can be defined in many random other headers, so it's better to use Rf_error() instead to avoid confusions with 3rd party headers that may (re-)define the "error" macro (depending on the order you include them in).
+
+Cheers,
+Simon
+
+
+> On 4/05/2024, at 3:17 AM, Jarrod Hadfield <j.hadfield at ed.ac.uk> wrote:
+> 
+> Hi,
+> 
+> I have an R library with C code in it. It has failed the CRAN checks for Debian.  The problem is with the error function being undefined. Section 6.2 of the Writing R extensions (see below) suggests error handling can be handled by error and the appropriate header file is included in R.h, but this seems not to be the case?
+> 
+> Any help would be appreciated!
+> 
+> Thanks,
+> 
+> Jarrod
+> 
+> 6.2 Error signaling
+> 
+> The basic error signaling routines are the equivalents of stop and warning in R code, and use the same interface.
+> 
+> void error(const char * format, ...);
+> void warning(const char * format, ...);
+> void errorcall(SEXP call, const char * format, ...);
+> void warningcall(SEXP call, const char * format, ...);
+> void warningcall_immediate(SEXP call, const char * format, ...);
+> 
+> These have the same call sequences as calls to printf, but in the simplest case can be called with a single character string argument giving the error message. (Don?t do this if the string contains ?%? or might otherwise be interpreted as a format.)
+> 
+> These are defined in header R_ext/Error.h included by R.h.
+> The University of Edinburgh is a charitable body, registered in Scotland, with registration number SC005336. Is e buidheann carthannais a th? ann an Oilthigh Dh?n ?ideann, cl?raichte an Alba, ?ireamh cl?raidh SC005336.
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From j@h@d||e|d @end|ng |rom ed@@c@uk  Mon May  6 16:41:16 2024
+From: j@h@d||e|d @end|ng |rom ed@@c@uk (Jarrod Hadfield)
+Date: Mon, 6 May 2024 14:41:16 +0000
+Subject: [R-pkg-devel] Error handling in C code
+In-Reply-To: <49818A23-B5E0-480B-8F6D-25BE759424A4@R-project.org>
+References: <DU2PR05MB10863FF6B2A05EFDB63B7D731AC1F2@DU2PR05MB10863.eurprd05.prod.outlook.com>
+ <49818A23-B5E0-480B-8F6D-25BE759424A4@R-project.org>
+Message-ID: <DU2PR05MB10863884D33D94D0E1FECF98AAC1C2@DU2PR05MB10863.eurprd05.prod.outlook.com>
+
+Hi,
+
+Using Rf_error() rather than error() fixed the problem. Not sure why the problem was only flagged on Debian, but it seems to have been triggered by R_NO_REMAP being defined (which will be default in R 4.5.0).
+
+Thanks for the help.
+
+Jarrod
+
+From: Simon Urbanek <simon.urbanek at R-project.org>
+Date: Monday, 6 May 2024 at 03:38
+To: Jarrod Hadfield <j.hadfield at ed.ac.uk>
+Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Error handling in C code
+This email was sent to you by someone outside the University.
+You should only click on links or attachments if you are certain that the email is genuine and the content is safe.
+
+Jarrod,
+
+could you point us to the code? There is not much to go by based on your email. One thing just in general: it's always safer to not re-map function names, especially since "error" can be defined in many random other headers, so it's better to use Rf_error() instead to avoid confusions with 3rd party headers that may (re-)define the "error" macro (depending on the order you include them in).
+
+Cheers,
+Simon
+
+
+> On 4/05/2024, at 3:17 AM, Jarrod Hadfield <j.hadfield at ed.ac.uk> wrote:
+>
+> Hi,
+>
+> I have an R library with C code in it. It has failed the CRAN checks for Debian.  The problem is with the error function being undefined. Section 6.2 of the Writing R extensions (see below) suggests error handling can be handled by error and the appropriate header file is included in R.h, but this seems not to be the case?
+>
+> Any help would be appreciated!
+>
+> Thanks,
+>
+> Jarrod
+>
+> 6.2 Error signaling
+>
+> The basic error signaling routines are the equivalents of stop and warning in R code, and use the same interface.
+>
+> void error(const char * format, ...);
+> void warning(const char * format, ...);
+> void errorcall(SEXP call, const char * format, ...);
+> void warningcall(SEXP call, const char * format, ...);
+> void warningcall_immediate(SEXP call, const char * format, ...);
+>
+> These have the same call sequences as calls to printf, but in the simplest case can be called with a single character string argument giving the error message. (Don?t do this if the string contains ?%? or might otherwise be interpreted as a format.)
+>
+> These are defined in header R_ext/Error.h included by R.h.
+> The University of Edinburgh is a charitable body, registered in Scotland, with registration number SC005336. Is e buidheann carthannais a th? ann an Oilthigh Dh?n ?ideann, cl?raichte an Alba, ?ireamh cl?raidh SC005336.
+>
+>       [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://eur02.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-package-devel&data=05%7C02%7C%7C27d13d00316a466dc91f08dc6d759134%7C2e9f06b016694589878910a06934dc61%7C0%7C0%7C638505599232790068%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C&sdata=bhr0SQN0UJq4FQgEgboltgm6dH1wo5aonYTDqRvsf2g%3D&reserved=0<https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+
+	[[alternative HTML version deleted]]
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Tue May  7 00:07:59 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Tue, 7 May 2024 10:07:59 +1200
+Subject: [R-pkg-devel] 
+ Trouble with dependencies on phyloseq and microViz
+In-Reply-To: <20240504193210.0332d714@Tarkus>
+References: <1FB885FF-2DA6-4CB6-A987-38858C3AF7FA@clemson.edu>
+ <20240504193210.0332d714@Tarkus>
+Message-ID: <7205534A-6666-4EDE-B613-68AAAFED2F2D@R-project.org>
+
+
+
+> On 5/05/2024, at 4:32 AM, Ivan Krylov via R-package-devel <r-package-devel at r-project.org> wrote:
+> 
+> ? Sat, 4 May 2024 15:53:25 +0000
+> Sharon Bewick <sbewick at clemson.edu> ?????:
+> 
+>> I have a dependency on phyloseq, which is available through GitHub
+>> but not on the CRAN site. I have a similar problem with microViz,
+>> however I?ve managed to make it suggested, rather than required.
+>> There is no way to get around the phyloseq requirement. How do I fix
+>> this problem so that I can upload my package to the CRAN website?
+> 
+> Did a human reviewer tell you to get rid of the dependencies? There is
+> at least 444 packages on CRAN with strong dependencies on Bioconductor
+> packages, so your phyloseq dependency should work. In fact, 14 of them
+> depend on phyloseq.
+> 
+> What you need is an Additional_repositories field in your DESCRIPTION
+> specifying the source package repository where microViz could be
+> installed from. I think that
+> 
+> Additional_repositories: https://david-barnett.r-universe.dev
+> 
+> ...should work.
+> 
+
+That doesn't work - additional repositories are not allowed on CRAN other than in very exceptional cases, because it means the package cannot be installed by users making it somewhat pointless. Bioconductor doesn't need to be flagged in Additional_repositories, but not all packages are available - only those that do no depend on the data repository.
+
+As for the OP, can you post the name of the package and/or the link to the errors so I can have a look?
+
+Cheers,
+Simon
+
+
+
+> Besides that, you'll need to increment the version and list the *.Rproj
+> file in .Rbuildignore:
+> https://win-builder.r-project.org/incoming_pretest/HybridMicrobiomes_0.1.1_20240504_173331/Debian/00check.log
+> 
+> -- 
+> Best regards,
+> Ivan
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
