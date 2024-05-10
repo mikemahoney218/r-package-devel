@@ -9230,3 +9230,1127 @@ wrote:
 	[[alternative HTML version deleted]]
 
 
+From @@meh@@bdu|@h @end|ng |rom k@u@t@edu@@@  Thu May  9 05:20:58 2024
+From: @@meh@@bdu|@h @end|ng |rom k@u@t@edu@@@ (Sameh Abdulah)
+Date: Thu, 9 May 2024 03:20:58 +0000
+Subject: [R-pkg-devel] Fast Matrix Serialization in R?
+Message-ID: <VI1P192MB028541BF45707A413F9210BBFBE62@VI1P192MB0285.EURP192.PROD.OUTLOOK.COM>
+
+Hi,
+
+I need to serialize and save a 20K x 20K matrix as a binary file. This process is significantly slower in R compared to Python (4X slower).
+
+I'm not sure about the best approach to optimize the below code. Is it possible to parallelize the serialization function to enhance performance?
+
+
+  n <- 20000^2
+  cat("Generating matrices ... ")
+  INI.TIME <- proc.time()
+  A <- matrix(runif(n), ncol = m)
+  END_GEN.TIME <- proc.time()
+  arg_ser <- serialize(object = A, connection = NULL)
+
+  END_SER.TIME <- proc.time()
+  con <- file(description = "matrix_file", open = "wb")
+  writeBin(object = arg_ser, con = con)
+  close(con)
+  END_WRITE.TIME <- proc.time()
+  con <- file(description = "matrix_file", open = "rb")
+  par_raw <- readBin(con, what = raw(), n = file.info("matrix_file")$size)
+  END_READ.TIME <- proc.time()
+  B <- unserialize(connection = par_raw)
+  close(con)
+  END_DES.TIME <- proc.time()
+  TIME <- END_GEN.TIME - INI.TIME
+  cat("Generation time", TIME[3], " seconds.")
+
+  TIME <- END_SER.TIME - END_GEN.TIME
+  cat("Serialization time", TIME[3], " seconds.")
+
+  TIME <- END_WRITE.TIME - END_SER.TIME
+  cat("Writting time", TIME[3], " seconds.")
+
+  TIME <- END_READ.TIME - END_WRITE.TIME
+  cat("Read time", TIME[3], " seconds.")
+
+  TIME <- END_DES.TIME - END_READ.TIME
+  cat("Deserialize time", TIME[3], " seconds.")
+
+
+
+
+Best,
+--Sameh
+
+-- 
+
+This message and its contents, including attachments are intended solely 
+for the original recipient. If you are not the intended recipient or have 
+received this message in error, please notify me immediately and delete 
+this message from your computer system. Any unauthorized use or 
+distribution is prohibited. Please consider the environment before printing 
+this email.
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Thu May  9 05:35:34 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 8 May 2024 22:35:34 -0500
+Subject: [R-pkg-devel] Fast Matrix Serialization in R?
+In-Reply-To: <VI1P192MB028541BF45707A413F9210BBFBE62@VI1P192MB0285.EURP192.PROD.OUTLOOK.COM>
+References: <VI1P192MB028541BF45707A413F9210BBFBE62@VI1P192MB0285.EURP192.PROD.OUTLOOK.COM>
+Message-ID: <26172.17542.683175.713755@rob.eddelbuettel.com>
+
+
+On 9 May 2024 at 03:20, Sameh Abdulah wrote:
+| I need to serialize and save a 20K x 20K matrix as a binary file.
+
+Hm that is an incomplete specification: _what_ do you want to do with it?
+Read it back in R?  Share it with other languages (like Python) ? I.e. what
+really is your use case?  Also, you only seem to use readBin / writeBin. Why
+not readRDS / saveRDS which at least give you compression?
+
+If it is to read/write from / to R look into the qs package. It is good. The
+README.md at its repo has benchmarks: https://github.com/traversc/qs If you
+want to index into the stored data look into fst. Else also look at databases
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From @@meh@@bdu|@h @end|ng |rom k@u@t@edu@@@  Thu May  9 05:56:25 2024
+From: @@meh@@bdu|@h @end|ng |rom k@u@t@edu@@@ (Sameh Abdulah)
+Date: Thu, 9 May 2024 03:56:25 +0000
+Subject: [R-pkg-devel] [EXTERNAL] Re:  Fast Matrix Serialization in R?
+In-Reply-To: <26172.17542.683175.713755@rob.eddelbuettel.com>
+References: <VI1P192MB028541BF45707A413F9210BBFBE62@VI1P192MB0285.EURP192.PROD.OUTLOOK.COM>
+ <26172.17542.683175.713755@rob.eddelbuettel.com>
+Message-ID: <VI1P192MB02854B877B90BA3C40408505FBE62@VI1P192MB0285.EURP192.PROD.OUTLOOK.COM>
+
+Thanks!
+
+
+I want to save data from a matrix to a file and then retrieve it later while running R code, all within R.
+
+As long as the compression doesn't result in data loss, it should be suitable for my needs.
+
+
+Best,
+--Sameh
+
+
+
+From: Dirk Eddelbuettel <edd at debian.org>
+Date: Thursday, May 9, 2024 at 6:35?AM
+To: Sameh Abdulah <sameh.abdulah at kaust.edu.sa>
+Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: [EXTERNAL] Re: [R-pkg-devel] Fast Matrix Serialization in R?
+
+On 9 May 2024 at 03:20, Sameh Abdulah wrote:
+| I need to serialize and save a 20K x 20K matrix as a binary file.
+
+Hm that is an incomplete specification: _what_ do you want to do with it?
+Read it back in R?  Share it with other languages (like Python) ? I.e. what
+really is your use case?  Also, you only seem to use readBin / writeBin. Why
+not readRDS / saveRDS which at least give you compression?
+
+If it is to read/write from / to R look into the qs package. It is good. The
+README.md at its repo has benchmarks: https://urldefense.com/v3/__https://github.com/traversc/qs__;!!Nmw4Hv0!zZitnMd5aMqDWhLShhC5Npmd8pkisFVejC3grX2YGSGWFZihVaHAezYyo5nXbAwIdqCj2T8Nbk-Yofxa-y8$<https://urldefense.com/v3/__https:/github.com/traversc/qs__;!!Nmw4Hv0!zZitnMd5aMqDWhLShhC5Npmd8pkisFVejC3grX2YGSGWFZihVaHAezYyo5nXbAwIdqCj2T8Nbk-Yofxa-y8$>  If you
+want to index into the stored data look into fst. Else also look at databases
+
+Dirk
+
+--
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+-- 
+
+This message and its contents, including attachments are intended solely 
+for the original recipient. If you are not the intended recipient or have 
+received this message in error, please notify me immediately and delete 
+this message from your computer system. Any unauthorized use or 
+distribution is prohibited. Please consider the environment before printing 
+this email.
+
+	[[alternative HTML version deleted]]
+
+
+From berw|n@tur|@ch @end|ng |rom gm@||@com  Thu May  9 06:30:52 2024
+From: berw|n@tur|@ch @end|ng |rom gm@||@com (Berwin A Turlach)
+Date: Thu, 9 May 2024 12:30:52 +0800
+Subject: [R-pkg-devel] is Fortran write still strictly forbidden?
+In-Reply-To: <95b62a98-7920-4a36-8339-fce63a89e3e5@gmail.com>
+References: <95b62a98-7920-4a36-8339-fce63a89e3e5@gmail.com>
+Message-ID: <20240509123052.3f1d5c3b@dep59159.uniwa.uwa.edu.au>
+
+Hi Jisca,
+
+On Wed, 8 May 2024 10:37:28 +0200
+Jisca Huisman <jisca.huisman at gmail.com> wrote:
+
+> I like to use write() in Fortran code [...] But from 'writing R
+> extensions' it seems that there have been quite a few changes with
+> respect to support for Fortran code, and it currently reads:
+> 
+> 6.5.1 Printing from Fortran
+> 
+> On many systems Fortran|write|and|print|statements can be used, but
+> the output may not interleave well with that of C, and may be
+> invisible onGUIinterfaces. They are not portable and best avoided.
+
+I am not aware that there were any recent changes regarding printing
+from Fortran recently, or that it was every strictly forbidden (perhaps
+it is for packages that are submitted to CRAN?).  In fact, R-exts.texi
+for R 1.0.0 states pretty much the same as what you quoted from the
+current WRE manual:
+
+  @subsection Printing from Fortran
+  @cindex Printing from C
+
+  In theory Fortran @code{write} and @code{print} statements can be
+  used, but the output may not interleave well with that of C, and will
+  be invisible on GUI interfaces.  They are best avoided.
+
+  Three subroutines are provided to ease the output of information from
+  Fortran code.
+
+  @example
+  subroutine dblepr(@var{label}, @var{nchar}, @var{data}, @var{ndata})
+  subroutine realpr(@var{label}, @var{nchar}, @var{data}, @var{ndata})
+  subroutine intpr (@var{label}, @var{nchar}, @var{data}, @var{ndata})
+  @end example
+
+Cheers,
+	
+	Berwin
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Thu May  9 07:26:45 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Thu, 9 May 2024 17:26:45 +1200
+Subject: [R-pkg-devel] Fast Matrix Serialization in R?
+In-Reply-To: <VI1P192MB028541BF45707A413F9210BBFBE62@VI1P192MB0285.EURP192.PROD.OUTLOOK.COM>
+References: <VI1P192MB028541BF45707A413F9210BBFBE62@VI1P192MB0285.EURP192.PROD.OUTLOOK.COM>
+Message-ID: <3517F470-4DA5-4146-ADF9-5B26002AC650@R-project.org>
+
+Sameh,
+
+if it's a matrix, that's easy as you can write it directly which is the fastest possible way without compression - e.g. quick proof of concept:
+
+n <- 20000^2
+A <- matrix(runif(n), ncol = sqrt(n))
+
+## write (dim + payload)
+con <- file(description = "matrix_file", open = "wb")
+system.time({
+writeBin(d <- dim(A), con)
+dim(A)=NULL
+writeBin(A, con)
+dim(A)=d
+})
+close(con)
+
+## read
+con <- file(description = "matrix_file", open = "rb")
+system.time({
+d <- readBin(con, 1L, 2)
+A1 <- readBin(con, 1, d[1] * d[2])
+dim(A1) <- d
+})
+close(con)
+identical(A, A1)
+
+   user  system elapsed 
+  0.931   2.713   3.644 
+   user  system elapsed 
+  0.089   1.360   1.451 
+[1] TRUE
+
+So it's really just limited by the speed of your disk, parallelization won't help here.
+
+Note that in general you get faster read times by using compression as most data is reasonably compressible, so that's where parallelization can be useful. There are plenty of package with more tricks like mmapping the files etc., but the above is just base R.
+
+Cheers,
+Simon
+
+
+
+> On 9/05/2024, at 3:20 PM, Sameh Abdulah <sameh.abdulah at kaust.edu.sa> wrote:
+> 
+> Hi,
+> 
+> I need to serialize and save a 20K x 20K matrix as a binary file. This process is significantly slower in R compared to Python (4X slower).
+> 
+> I'm not sure about the best approach to optimize the below code. Is it possible to parallelize the serialization function to enhance performance?
+> 
+> 
+>  n <- 20000^2
+>  cat("Generating matrices ... ")
+>  INI.TIME <- proc.time()
+>  A <- matrix(runif(n), ncol = m)
+>  END_GEN.TIME <- proc.time()
+>  arg_ser <- serialize(object = A, connection = NULL)
+> 
+>  END_SER.TIME <- proc.time()
+>  con <- file(description = "matrix_file", open = "wb")
+>  writeBin(object = arg_ser, con = con)
+>  close(con)
+>  END_WRITE.TIME <- proc.time()
+>  con <- file(description = "matrix_file", open = "rb")
+>  par_raw <- readBin(con, what = raw(), n = file.info("matrix_file")$size)
+>  END_READ.TIME <- proc.time()
+>  B <- unserialize(connection = par_raw)
+>  close(con)
+>  END_DES.TIME <- proc.time()
+>  TIME <- END_GEN.TIME - INI.TIME
+>  cat("Generation time", TIME[3], " seconds.")
+> 
+>  TIME <- END_SER.TIME - END_GEN.TIME
+>  cat("Serialization time", TIME[3], " seconds.")
+> 
+>  TIME <- END_WRITE.TIME - END_SER.TIME
+>  cat("Writting time", TIME[3], " seconds.")
+> 
+>  TIME <- END_READ.TIME - END_WRITE.TIME
+>  cat("Read time", TIME[3], " seconds.")
+> 
+>  TIME <- END_DES.TIME - END_READ.TIME
+>  cat("Deserialize time", TIME[3], " seconds.")
+> 
+> 
+> 
+> 
+> Best,
+> --Sameh
+> 
+> -- 
+> 
+> This message and its contents, including attachments are intended solely 
+> for the original recipient. If you are not the intended recipient or have 
+> received this message in error, please notify me immediately and delete 
+> this message from your computer system. Any unauthorized use or 
+> distribution is prohibited. Please consider the environment before printing 
+> this email.
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From j|@c@@hu|@m@n @end|ng |rom gm@||@com  Thu May  9 08:33:34 2024
+From: j|@c@@hu|@m@n @end|ng |rom gm@||@com (Jisca Huisman)
+Date: Thu, 9 May 2024 08:33:34 +0200
+Subject: [R-pkg-devel] is Fortran write still strictly forbidden?
+In-Reply-To: <20240509123052.3f1d5c3b@dep59159.uniwa.uwa.edu.au>
+References: <95b62a98-7920-4a36-8339-fce63a89e3e5@gmail.com>
+ <20240509123052.3f1d5c3b@dep59159.uniwa.uwa.edu.au>
+Message-ID: <a0275573-309d-4d47-8182-efba2b04fe87@gmail.com>
+
+Dear Berwin & Erin,
+
+Thanks for your replies. I should perhaps have clarified - this is for a 
+package on CRAN.
+
+In my experience anything with Fortran write will get a NOTE from CRAN's 
+auto-check:
+
+Check: compiled code, Result: NOTE
+   File 'sequoia/libs/sequoia.so':
+     Found '_gfortran_st_write', possibly from 'write' (Fortran), 'print'
+       (Fortran)
+       Object: 'sequoia.o'
+   
+   Compiled code should not call entry points which might terminate R nor
+   write to stdout/stderr instead of to the console, nor use Fortran I/O
+   nor system RNGs.
+
+
+In the past (2018) I've tried to `write` the iteration number to a char 
+to then combine into the message send to R with `dplepr`, but when I 
+tried to argue this was a false positive as it wasn't writing to a file 
+I got the following reply from UL:
+
+
+> The manual says
+>
+> <quote>
+> In particular, any package that makes use of Fortran I/O will when 
+> compiled on Windows interfere with C I/O: when the Fortran I/O support 
+> code is initialized (typically when the package is loaded) the C 
+> stdout and stderr are switched to LF line endings.
+> </quote>
+>
+> and both of us read too quickly: when the Fortran I/O support code is 
+> initialized (typically when the package is loaded) the C stdout and 
+> stderr are switched to LF line endings.
+> This happens alway, even if you write to another variable.
+>
+> You could of course write C interface code to do the conversion if you 
+> have to rely on write(). 
+
+So what I'm wondering now - has the issue with the switch to LF line 
+endings been fixed, and is it OK to use non-file `write`? Because I 
+don't really want to make the time to figure out how to 'write C 
+interface code to do the conversion' just for some prettier messages...
+
+
+Thanks for your help!
+
+
+
+
+On Thu, 09/05/2024 06:30, Berwin A Turlach wrote:
+> Hi Jisca,
+>
+> On Wed, 8 May 2024 10:37:28 +0200
+> Jisca Huisman <jisca.huisman at gmail.com> wrote:
+>
+>> I like to use write() in Fortran code [...] But from 'writing R
+>> extensions' it seems that there have been quite a few changes with
+>> respect to support for Fortran code, and it currently reads:
+>>
+>> 6.5.1 Printing from Fortran
+>>
+>> On many systems Fortran|write|and|print|statements can be used, but
+>> the output may not interleave well with that of C, and may be
+>> invisible onGUIinterfaces. They are not portable and best avoided.
+> I am not aware that there were any recent changes regarding printing
+> from Fortran recently, or that it was every strictly forbidden (perhaps
+> it is for packages that are submitted to CRAN?).  In fact, R-exts.texi
+> for R 1.0.0 states pretty much the same as what you quoted from the
+> current WRE manual:
+>
+>    @subsection Printing from Fortran
+>    @cindex Printing from C
+>
+>    In theory Fortran @code{write} and @code{print} statements can be
+>    used, but the output may not interleave well with that of C, and will
+>    be invisible on GUI interfaces.  They are best avoided.
+>
+>    Three subroutines are provided to ease the output of information from
+>    Fortran code.
+>
+>    @example
+>    subroutine dblepr(@var{label}, @var{nchar}, @var{data}, @var{ndata})
+>    subroutine realpr(@var{label}, @var{nchar}, @var{data}, @var{ndata})
+>    subroutine intpr (@var{label}, @var{nchar}, @var{data}, @var{ndata})
+>    @end example
+>
+> Cheers,
+> 	
+> 	Berwin
+
+
+From bhh @end|ng |rom x@4@||@n|  Thu May  9 13:08:10 2024
+From: bhh @end|ng |rom x@4@||@n| (Berend Hasselman)
+Date: Thu, 9 May 2024 13:08:10 +0200
+Subject: [R-pkg-devel] is Fortran write still strictly forbidden?
+In-Reply-To: <95b62a98-7920-4a36-8339-fce63a89e3e5@gmail.com>
+References: <95b62a98-7920-4a36-8339-fce63a89e3e5@gmail.com>
+Message-ID: <7A4A5FF4-26B6-49EA-BB4A-F916A2EC981A@xs4all.nl>
+
+
+Hi,
+
+Have a look at package nleqslv to see how you can avoid Fortran write completely.
+Look at the file src/nwout.c and the calls of various functions therein in the other fortran files.
+
+regards,
+
+Berend Hasselman
+
+> On 08-05-2024, at 10:37, Jisca Huisman <jisca.huisman at gmail.com> wrote:
+> 
+> Hello,
+> 
+> I like to use write() in Fortran code to combine text with some integers 
+> & doubles, to pass runtime information to R in a way that is prettier 
+> and more legible than with intpr() & dblepr(). In the past any calls to 
+> write() were strictly forbidden in Fortran code, as apparently it messed 
+> something up internally (I cannot recall the details). But from 'writing 
+> R extensions' it seems that there have been quite a few changes with 
+> respect to support for Fortran code, and it currently reads:
+> 
+> 
+> 6.5.1 Printing from Fortran
+> 
+> On many systems Fortran|write|and|print|statements can be used, but the 
+> output may not interleave well with that of C, and may be invisible 
+> onGUIinterfaces. They are not portable and best avoided.
+> 
+> 
+> To be more specific, would the subroutine below be allowed? Is it needed 
+> to declare R >= 4.0 (?) in the package DESCRIPTION (& then use labelpr() 
+> instead of intpr() ?) Is there an alternative without write() to get the 
+> same result?
+> 
+> 
+> subroutine Rprint_pretty(iter, x)
+>     integer, intent(IN) :: iter
+>     double precision, intent(IN) :: x
+>     integer :: date_time_values(8), nchar, IntDummy(0)
+>     character(len=8) :: time_now
+>     character(len=200) :: msg_to_R
+> 
+>     call date_and_time(VALUES=date_time_values)
+>     write(time_now, '(i2.2,":",i2.2,":",i2.2)') date_time_values(5:7)
+>     write(msg_to_R, '(a8, " i: ", i5, "  value: ", f8.2)') time_now, 
+> iter, x
+> 
+>     nchar = len(trim(msg_to_R))
+>    call intpr(trim(msg_to_R), nchar, IntDummy, 0)
+> 
+>   end subroutine Rprint_pretty
+> 
+> 
+> Thanks!
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From j|@c@@hu|@m@n @end|ng |rom gm@||@com  Thu May  9 13:40:00 2024
+From: j|@c@@hu|@m@n @end|ng |rom gm@||@com (Jisca Huisman)
+Date: Thu, 9 May 2024 13:40:00 +0200
+Subject: [R-pkg-devel] is Fortran write still strictly forbidden?
+In-Reply-To: <7A4A5FF4-26B6-49EA-BB4A-F916A2EC981A@xs4all.nl>
+References: <95b62a98-7920-4a36-8339-fce63a89e3e5@gmail.com>
+ <7A4A5FF4-26B6-49EA-BB4A-F916A2EC981A@xs4all.nl>
+Message-ID: <ae9dfc80-aa6b-4372-9067-b2b0324af61c@gmail.com>
+
+Hello Berend,
+
+Fantastic, thank you! I'm fairly sure I'll be able to figure something 
+out with your code as a guide.
+
+best,
+
+Jisca
+
+
+On Thu, 09/05/2024 13:08, Berend Hasselman wrote:
+> Hi,
+>
+> Have a look at package nleqslv to see how you can avoid Fortran write completely.
+> Look at the file src/nwout.c and the calls of various functions therein in the other fortran files.
+>
+> regards,
+>
+> Berend Hasselman
+>
+>> On 08-05-2024, at 10:37, Jisca Huisman <jisca.huisman at gmail.com> wrote:
+>>
+>> Hello,
+>>
+>> I like to use write() in Fortran code to combine text with some integers
+>> & doubles, to pass runtime information to R in a way that is prettier
+>> and more legible than with intpr() & dblepr(). In the past any calls to
+>> write() were strictly forbidden in Fortran code, as apparently it messed
+>> something up internally (I cannot recall the details). But from 'writing
+>> R extensions' it seems that there have been quite a few changes with
+>> respect to support for Fortran code, and it currently reads:
+>>
+>>
+>> 6.5.1 Printing from Fortran
+>>
+>> On many systems Fortran|write|and|print|statements can be used, but the
+>> output may not interleave well with that of C, and may be invisible
+>> onGUIinterfaces. They are not portable and best avoided.
+>>
+>>
+>> To be more specific, would the subroutine below be allowed? Is it needed
+>> to declare R >= 4.0 (?) in the package DESCRIPTION (& then use labelpr()
+>> instead of intpr() ?) Is there an alternative without write() to get the
+>> same result?
+>>
+>>
+>> subroutine Rprint_pretty(iter, x)
+>>      integer, intent(IN) :: iter
+>>      double precision, intent(IN) :: x
+>>      integer :: date_time_values(8), nchar, IntDummy(0)
+>>      character(len=8) :: time_now
+>>      character(len=200) :: msg_to_R
+>>
+>>      call date_and_time(VALUES=date_time_values)
+>>      write(time_now, '(i2.2,":",i2.2,":",i2.2)') date_time_values(5:7)
+>>      write(msg_to_R, '(a8, " i: ", i5, "  value: ", f8.2)') time_now,
+>> iter, x
+>>
+>>      nchar = len(trim(msg_to_R))
+>>     call intpr(trim(msg_to_R), nchar, IntDummy, 0)
+>>
+>>    end subroutine Rprint_pretty
+>>
+>>
+>> Thanks!
+>>
+>>
+>> 	[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From vo|ody@ @end|ng |rom m|nd@pr|ng@com  Thu May  9 13:58:43 2024
+From: vo|ody@ @end|ng |rom m|nd@pr|ng@com (Vladimir Dergachev)
+Date: Thu, 9 May 2024 07:58:43 -0400 (EDT)
+Subject: [R-pkg-devel] Fast Matrix Serialization in R?
+In-Reply-To: <VI1P192MB028541BF45707A413F9210BBFBE62@VI1P192MB0285.EURP192.PROD.OUTLOOK.COM>
+References: <VI1P192MB028541BF45707A413F9210BBFBE62@VI1P192MB0285.EURP192.PROD.OUTLOOK.COM>
+Message-ID: <alpine.DEB.2.22.394.2405090752230.3559@iridium>
+
+
+
+On Thu, 9 May 2024, Sameh Abdulah wrote:
+
+> Hi,
+>
+> I need to serialize and save a 20K x 20K matrix as a binary file. This process is significantly slower in R compared to Python (4X slower).
+>
+> I'm not sure about the best approach to optimize the below code. Is it possible to parallelize the serialization function to enhance performance?
+
+Parallelization should not help - a single CPU thread should be able to 
+saturate your disk or your network, assuming you have a typical computer.
+
+The problem is possibly the conversion to text, writing it as binary 
+should be much faster.
+
+To add to other suggestions, you might want to try my package "RMVL" - 
+aside from fast writes, it also gives you ability to share data between 
+ultimate users of the package.
+
+best
+
+Vladimir Dergachev
+
+PS Example:
+
+library("RMVL")
+
+M<-mvl_open("test1.mvl", append=TRUE, create=TRUE)
+
+n <- 20000^2
+cat("Generating matrices ... ")
+INI.TIME <- proc.time()
+A <- matrix(runif(n), ncol = m)
+END_GEN.TIME <- proc.time()
+
+mvl_write(M, A, name="A")
+
+mvl_close(M)
+
+END_SER.TIME <- proc.time()
+
+
+# Use in another script:
+
+library("RMVL")
+
+M2<-mvl_open("test1.mvl")
+
+print(M2$A[1:10, 1:10])
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Thu May  9 15:38:27 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Thu, 9 May 2024 15:38:27 +0200
+Subject: [R-pkg-devel] package removed from CRAN
+In-Reply-To: <C6A4D596-999E-4654-B020-080B1EB0BF25@uco.es>
+References: <C6A4D596-999E-4654-B020-080B1EB0BF25@uco.es>
+Message-ID: <daf7c5cf-078b-4a95-a39b-bff7fc4a4376@statistik.tu-dortmund.de>
+
+
+
+On 08.05.2024 17:30, Jose V. Die Ramon wrote:
+> Hello,
+> 
+> I just discovered that my package 'refseqR' was removed from the CRAN repository on April 30th.
+> https://cran.r-project.org/web/packages/refseqR/index.html?
+> 
+> This news is extremely upsetting, especially because I did not receive any communication or warning regarding the issue. Could anyone please help me understand the reasons behind this, or suggest any steps I should take to resolve it?
+> 
+> Thanks,
+> Jose
+
+Professor Ripley sent you email on April 16 and asked for a fix within 2 
+weeks --- to your maintainer address which is apparently different from 
+the one you are using here.
+
+Best,
+Uwe Ligges
+
+From |kry|ov @end|ng |rom d|@root@org  Thu May  9 16:41:01 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 9 May 2024 17:41:01 +0300
+Subject: [R-pkg-devel] flang doesn't support derived types
+In-Reply-To: <6ffdcf71-8ebf-4af3-ac53-fc166092b07b@protonmail.com>
+References: <6ffdcf71-8ebf-4af3-ac53-fc166092b07b@protonmail.com>
+Message-ID: <20240509174101.0c7edfd9@trisector>
+
+Dear Othman El Hammouchi,
+
+Welcome to R-package-devel!
+
+? Wed, 08 May 2024 16:52:51 +0000
+Othman El Hammouchi <othman.el.hammouchi at protonmail.com> ?????:
+
+> However, upon submission I received an automatic reply shortly
+> afterwards saying the build had failed on CRAN's servers for Debian.
+> The log gives the following error:
+> 
+> flang/lib/Lower/CallInterface.cpp:949: not yet implemented: support
+> for polymorphic types
+
+Your use of contained procedures in class(t_mack_triangle) and
+class(t_cl_res) signifies the derived types as being extensible and
+thus potentially polymorphic. You'll have to replace class(...) with
+type(...) and move the contained procedures out of the type definitions
+(and maybe additionally make the types 'sequence' or 'bind(C)' to
+signify them being non-extensible) to make the code work with flang-18.
+I'm afraid this will also prevent you from defining destructors for
+these types.
+
+flang-new can be a very disappointing compiler at times [*], but it's
+what people do use in the real world, especially for 64-bit ARM
+processors, so in order to keep our packages portable, we have to cater
+to its whims.
+
+-- 
+Best regards,
+Ivan
+
+[*] https://stat.ethz.ch/pipermail/r-package-devel/2023q4/009987.html
+
+
+From othm@n@e|@h@mmouch| @end|ng |rom protonm@||@com  Thu May  9 17:31:25 2024
+From: othm@n@e|@h@mmouch| @end|ng |rom protonm@||@com (Othman El Hammouchi)
+Date: Thu, 09 May 2024 15:31:25 +0000
+Subject: [R-pkg-devel] flang doesn't support derived types
+In-Reply-To: <20240509174101.0c7edfd9@trisector>
+References: <6ffdcf71-8ebf-4af3-ac53-fc166092b07b@protonmail.com>
+ <20240509174101.0c7edfd9@trisector>
+Message-ID: <Q7tjMuOB9hopqEEI5GxgOrVM0PysRZxQ3QDh4Y0utotv5owykqcineoZKG53vJI4UYGEt8Ez2dQ8Z3fOwaalTllQE9Ybin9usoKAxFLfPnI=@protonmail.com>
+
+Dear Ivan,
+
+Thank you so much for taking the time. I'd already figured out my misunderstanding on polymorphism in the mean time. The flang limitations are quite unfortunate, especially since there's no way to know this in development. The CI pipeline provided by the RStudio folks uses gfortran, and as far as I know it's the standard compiler in most distributions. Do I understand it correctly that there is no way to specify a Fortran standard in the SystemRequirements? I had resubmitted my package in the mean time with a configure script that aborts the install if the compiler does not support polymorphism, but I understand that this is a fruitless avenue for CRAN?
+
+On the practical side, I did experiment with what you suggested. However, I'm now getting other errors about initialisation of allocatable arrays and the use of intrinsics like isnan, which would be impossible to take out. I should point out my local flang install is version 16, but I cannot install 18 on my system since it's in unstable (this again underscores the problem of developing under these constraints).
+
+What would you advise? And don't you think these Fortran constraints should be better documenten.
+
+Thanks for bearing with me,
+
+Othman El Hammouchi
+
+Sent from Proton Mail mobile
+
+-------- Original Message --------
+On 9 May 2024, 16:41, Ivan Krylov wrote:
+
+> Dear Othman El Hammouchi, Welcome to R-package-devel! ? Wed, 08 May 2024 16:52:51 +0000 Othman El Hammouchi  ?????: > However, upon submission I received an automatic reply shortly > afterwards saying the build had failed on CRAN's servers for Debian. > The log gives the following error: > > flang/lib/Lower/CallInterface.cpp:949: not yet implemented: support > for polymorphic types Your use of contained procedures in class(t_mack_triangle) and class(t_cl_res) signifies the derived types as being extensible and thus potentially polymorphic. You'll have to replace class(...) with type(...) and move the contained procedures out of the type definitions (and maybe additionally make the types 'sequence' or 'bind(C)' to signify them being non-extensible) to make the code work with flang-18. I'm afraid this will also prevent you from defining destructors for these types. flang-new can be a very disappointing compiler at times [*], but it's what people do use in the real world, especially for 64-bit ARM processors, so in order to keep our packages portable, we have to cater to its whims. -- Best regards, Ivan [*] https://stat.ethz.ch/pipermail/r-package-devel/2023q4/009987.html
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Thu May  9 18:34:30 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 9 May 2024 19:34:30 +0300
+Subject: [R-pkg-devel] flang doesn't support derived types
+In-Reply-To: <Q7tjMuOB9hopqEEI5GxgOrVM0PysRZxQ3QDh4Y0utotv5owykqcineoZKG53vJI4UYGEt8Ez2dQ8Z3fOwaalTllQE9Ybin9usoKAxFLfPnI=@protonmail.com>
+References: <6ffdcf71-8ebf-4af3-ac53-fc166092b07b@protonmail.com>
+ <20240509174101.0c7edfd9@trisector>
+ <Q7tjMuOB9hopqEEI5GxgOrVM0PysRZxQ3QDh4Y0utotv5owykqcineoZKG53vJI4UYGEt8Ez2dQ8Z3fOwaalTllQE9Ybin9usoKAxFLfPnI=@protonmail.com>
+Message-ID: <20240509193430.1998b917@Tarkus>
+
+? Thu, 09 May 2024 15:31:25 +0000
+Othman El Hammouchi <othman.el.hammouchi at protonmail.com> ?????:
+
+> Do I understand it correctly that there is no way to specify a
+> Fortran standard in the SystemRequirements?
+
+It's possible (and even recommended) to describe the Fortran version
+requirement in SystemRequirements [1], but this field is for now mostly
+informational. I think I remember efforts to standardise it, but they
+are far from complete.
+
+> I had resubmitted my package in the mean time with a configure script
+> that aborts the install if the compiler does not support
+> polymorphism, but I understand that this is a fruitless avenue for
+> CRAN?
+
+Signs point to yes, at least judging by a previous time we had
+flang-related problems [2]. On the other hand, there were relatively
+easy workarounds that time, and here I'm not seeing anything as simple.
+
+> I should point out my local flang install is version 16, but I cannot
+> install 18 on my system since it's in unstable (this again
+> underscores the problem of developing under these constraints).
+
+Would you consider containers for this purpose? I was able to reproduce
+the problem relatively quickly by starting podman run --rm -it
+debian:sid and installing flang-18 in there. (Unlike Docker a few years
+ago, podman can be installed straight from the repository, at least on
+Debian, and doesn't require adding users to special groups in order to
+work. Maybe Docker has also improved.) I don't like containers as a
+basis for software distribution, but I can't deny that they are being
+great at letting me quickly reproduce problems without installing 10
+different GNU/Linux distros.
+
+> What would you advise? And don't you think these Fortran constraints
+> should be better documenten.
+
+I'm afraid I don't have any more specific advice besides testing your
+workarounds with Debian Sid in a container or a virtual machine or a
+chroot. I can try to take a look at more concrete problems. I hope you
+will be able to find a relatively painless workaround.
+
+I do wish that flang-new would be a better compiler or at least a
+better documented one, but instead of a list of features on their
+website, I can only see "Getting Involved [3] for tips on how to get in
+touch <...> and to learn more about the current status". There is only
+so many projects one can get involved in.
+
+-- 
+Best regards,
+Ivan
+
+[1]
+https://cran.r-project.org/doc/manuals/R-exts.html#Using-modern-Fortran-code
+
+[2]
+https://stat.ethz.ch/pipermail/r-package-devel/2023q4/010065.html
+
+[3]
+https://flang.llvm.org/docs/GettingInvolved.html
+
+
+From |kry|ov @end|ng |rom d|@root@org  Thu May  9 19:07:21 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 9 May 2024 20:07:21 +0300
+Subject: [R-pkg-devel] Overcoming CRAN's 5mb vendoring requirement
+In-Reply-To: <CAL3ufU+GEjfJ+WznZ+59wxZBkjJ2wUdrfMV3GU_xWj17MtsJjw@mail.gmail.com>
+References: <CAL3ufULZDHv9aVAnmrE4m-fF_z=UvhkPGiKMYR3ZkQYN7=z+5A@mail.gmail.com>
+ <CAOCv4hgS24JSWpxy=Ljxp6_VTW7Gx6a5WJKWvg_ryhbbyqJe8g@mail.gmail.com>
+ <CAL3ufULVrsZT-znYKa1wPgHud+fG4+KpPOe6XGNy7AcE9NZwyg@mail.gmail.com>
+ <20240508223200.4d659fe4@Tarkus>
+ <CAL3ufU+GEjfJ+WznZ+59wxZBkjJ2wUdrfMV3GU_xWj17MtsJjw@mail.gmail.com>
+Message-ID: <20240509200721.2209bad4@Tarkus>
+
+? Wed, 8 May 2024 16:01:23 -0400
+Josiah Parry <josiah.parry at gmail.com> ?????:
+
+>    - I'll see if I can get the configure.ac to make the appropriate
+> Rscript call for configure.win.
+>       - I think the idea of having a single `confgure.ac` file to
+> generate both configure and configure.win is nice. Guidance with
+> GitHub actions and ChatGPT is essentially a must for me since my bash
+> is remedial at best.
+
+Then you might like Kevin Ushey's configure
+<https://github.com/kevinushey/configure>, which is like autoconf
+redone in R. The only few lines of bash are the system-specific bits in
+{configure,cleanup}{.win,} to run the R scripts under tools/, and they
+are already written for you.
+
+Generating two system-specific configures from one configure.ac might
+be possible - GNU m4 is very versatile - but to implement that, you
+would have to program m4, which is even more niche than bash.
+
+> The requirement to avoid GitHub feels surprisingly anachronistic
+> given how central it is to the vast majority of software development.
+
+I think that Ben Bolker's answer explains it very well. Part of the
+goal of the CRAN archive is to be able to take a package, a
+period-appropriate version of R and install the former on the latter.
+The URL carrying the code must be able to survive as long. Unlike
+Zenodo, GitHub's goal is not directly to provide storage forever, and
+its current owners have a reputation [*] that could have played a part
+in the requirement to avoid them.
+
+I wonder if it would be ethical to use Archive.org for this.
+
+In an ideal world, CRAN would be able to directly archive larger
+software packages (just like PyPI is currently hosting more than a
+terabyte of Tensorflow builds and a few terabytes more of other
+GPU-related code [**]) without requiring the maintainers to swim
+between the Scylla of vendoring the dependencies and the Charybdis of
+making the build depend on an external URL, but that's a luxury someone
+would have to pay for.
+
+-- 
+Best regards,
+Ivan
+
+[*]
+https://stat.ethz.ch/pipermail/r-package-devel/2024q2/010708.html
+
+[**]
+https://discuss.python.org/t/what-to-do-about-gpus-and-the-built-distributions-that-support-them/7125/16
+
+
+From edd @end|ng |rom deb|@n@org  Thu May  9 19:21:42 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 9 May 2024 12:21:42 -0500
+Subject: [R-pkg-devel] Overcoming CRAN's 5mb vendoring requirement
+In-Reply-To: <20240509200721.2209bad4@Tarkus>
+References: <CAL3ufULZDHv9aVAnmrE4m-fF_z=UvhkPGiKMYR3ZkQYN7=z+5A@mail.gmail.com>
+ <CAOCv4hgS24JSWpxy=Ljxp6_VTW7Gx6a5WJKWvg_ryhbbyqJe8g@mail.gmail.com>
+ <CAL3ufULVrsZT-znYKa1wPgHud+fG4+KpPOe6XGNy7AcE9NZwyg@mail.gmail.com>
+ <20240508223200.4d659fe4@Tarkus>
+ <CAL3ufU+GEjfJ+WznZ+59wxZBkjJ2wUdrfMV3GU_xWj17MtsJjw@mail.gmail.com>
+ <20240509200721.2209bad4@Tarkus>
+Message-ID: <26173.1574.43304.738024@rob.eddelbuettel.com>
+
+
+Software Heritage (see [1] for their website and [2] for a brief intro I gave
+at useR! 2019 in Toulouse) covers GitHub and CRAN [3]. It is by now 'in
+collaboration with UNESCO', supported by a long and posh list of sponsors [4]
+and about as good as it gets to 'ensure longevity of artifacts'.
+
+It is of course not meant for downloads during frequent builds.
+
+But given the 'quasi-institutional nature' and sponsorship, we could think of
+using GitHub as an 'active cache'. But CRAN is CRAN and as it now stands
+GitHub is not trusted.  ?\_(?)_/?
+
+Dirk
+
+
+[1] https://www.softwareheritage.org/
+[2] https://dirk.eddelbuettel.com/papers/useR2019_swh_cran_talk.pdf
+[3] https://www.softwareheritage.org/faq/ question 2.1
+[4] https://www.softwareheritage.org/support/sponsors/
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Thu May  9 20:29:29 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Thu, 9 May 2024 14:29:29 -0400
+Subject: [R-pkg-devel] Overcoming CRAN's 5mb vendoring requirement
+In-Reply-To: <26173.1574.43304.738024@rob.eddelbuettel.com>
+References: <CAL3ufULZDHv9aVAnmrE4m-fF_z=UvhkPGiKMYR3ZkQYN7=z+5A@mail.gmail.com>
+ <CAOCv4hgS24JSWpxy=Ljxp6_VTW7Gx6a5WJKWvg_ryhbbyqJe8g@mail.gmail.com>
+ <CAL3ufULVrsZT-znYKa1wPgHud+fG4+KpPOe6XGNy7AcE9NZwyg@mail.gmail.com>
+ <20240508223200.4d659fe4@Tarkus>
+ <CAL3ufU+GEjfJ+WznZ+59wxZBkjJ2wUdrfMV3GU_xWj17MtsJjw@mail.gmail.com>
+ <20240509200721.2209bad4@Tarkus>
+ <26173.1574.43304.738024@rob.eddelbuettel.com>
+Message-ID: <CAL3ufULanwXzEVb-w7AGSkKm1-GV5PN1fTib-HxMUUFT73+6BA@mail.gmail.com>
+
+>
+> ...but that's a luxury someone would have to pay for.
+>
+
+I'd happily give up my Netflix subscription for this. I suspect the
+R-foundation/consortium could assist as well?
+
+Referring to the "Using Rust in CRAN packages" document we must be able to
+
+...download a specific version from a secure and reliable site
+
+
+but, as far as I can tell, there is no definition of "secure" or "reliable"
+or examples of these.
+Is there a specification of availability / uptime for the site? Or
+otherwise.
+
+*What venues do we have for working on this issue in a formal manner?*
+
+I think that these small issues add up and really do hamper the ability for
+R to grow as a language.
+Talented developers (that adjective does not apply to myself) spend *a lot* of
+time trying to resolve
+these issues. And too many (one is too many) have given up on CRAN and
+consequently their
+contributions to R have dwindled.
+
+There are a number of really great tools that have to handle this
+independently (arrow R packages and DuckDB
+are good examples) but they have teams and funding behind them. If the bar
+is going to be so high to publish
+a package, we need to at least make a ladder (tools, packages, templates
+etc) to get there.
+
+
+----
+
+ https://cran.r-project.org/web/packages/using_rust.html
+
+
+
+
+On Thu, May 9, 2024 at 1:21?PM Dirk Eddelbuettel <edd at debian.org> wrote:
+
+>
+> Software Heritage (see [1] for their website and [2] for a brief intro I
+> gave
+> at useR! 2019 in Toulouse) covers GitHub and CRAN [3]. It is by now 'in
+> collaboration with UNESCO', supported by a long and posh list of sponsors
+> [4]
+> and about as good as it gets to 'ensure longevity of artifacts'.
+>
+> It is of course not meant for downloads during frequent builds.
+>
+> But given the 'quasi-institutional nature' and sponsorship, we could think
+> of
+> using GitHub as an 'active cache'. But CRAN is CRAN and as it now stands
+> GitHub is not trusted.  ?\_(?)_/?
+>
+> Dirk
+>
+>
+> [1] https://www.softwareheritage.org/
+> [2] https://dirk.eddelbuettel.com/papers/useR2019_swh_cran_talk.pdf
+> [3] https://www.softwareheritage.org/faq/ question 2.1
+> [4] https://www.softwareheritage.org/support/sponsors/
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Fri May 10 00:45:44 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Fri, 10 May 2024 10:45:44 +1200
+Subject: [R-pkg-devel] Fast Matrix Serialization in R?
+In-Reply-To: <alpine.DEB.2.22.394.2405090752230.3559@iridium>
+References: <VI1P192MB028541BF45707A413F9210BBFBE62@VI1P192MB0285.EURP192.PROD.OUTLOOK.COM>
+ <alpine.DEB.2.22.394.2405090752230.3559@iridium>
+Message-ID: <82807F66-5421-4C62-ADB0-6B60B17BCA14@R-project.org>
+
+
+
+> On 9/05/2024, at 11:58 PM, Vladimir Dergachev <volodya at mindspring.com> wrote:
+> 
+> 
+> 
+> On Thu, 9 May 2024, Sameh Abdulah wrote:
+> 
+>> Hi,
+>> 
+>> I need to serialize and save a 20K x 20K matrix as a binary file. This process is significantly slower in R compared to Python (4X slower).
+>> 
+>> I'm not sure about the best approach to optimize the below code. Is it possible to parallelize the serialization function to enhance performance?
+> 
+> Parallelization should not help - a single CPU thread should be able to saturate your disk or your network, assuming you have a typical computer.
+> 
+> The problem is possibly the conversion to text, writing it as binary should be much faster.
+> 
+
+
+FWIW serialize() is binary so there is no conversion to text:
+
+> serialize(1:10+0L, NULL)
+ [1] 58 0a 00 00 00 03 00 04 02 00 00 03 05 00 00 00 00 05 55 54 46 2d 38 00 00
+[26] 00 0d 00 00 00 0a 00 00 00 01 00 00 00 02 00 00 00 03 00 00 00 04 00 00 00
+[51] 05 00 00 00 06 00 00 00 07 00 00 00 08 00 00 00 09 00 00 00 0a
+
+It uses the native representation so it is actually not as bad as it sounds.
+
+One aspect I forgot to mention in the earlier thread is that if you don't need to exchange the serialized objects between machines with different endianness then avoiding the swap makes it faster. E.g, on Intel (which is little-endian and thus needs swapping):
+
+> a=1:1e8/2
+> system.time(serialize(a, NULL))
+   user  system elapsed 
+  2.123   0.468   2.661 
+> system.time(serialize(a, NULL, xdr=FALSE))
+   user  system elapsed 
+  0.393   0.348   0.742 
+
+Cheers,
+Simon
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Fri May 10 02:31:06 2024
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Thu, 9 May 2024 17:31:06 -0700
+Subject: [R-pkg-devel] Fast Matrix Serialization in R?
+In-Reply-To: <82807F66-5421-4C62-ADB0-6B60B17BCA14@R-project.org>
+References: <VI1P192MB028541BF45707A413F9210BBFBE62@VI1P192MB0285.EURP192.PROD.OUTLOOK.COM>
+ <alpine.DEB.2.22.394.2405090752230.3559@iridium>
+ <82807F66-5421-4C62-ADB0-6B60B17BCA14@R-project.org>
+Message-ID: <CAFDcVCTc9Mkg5QF0BQe8xT3xk5oCQBG9jzJk4jesk8eehbAd3w@mail.gmail.com>
+
+On Thu, May 9, 2024 at 3:46?PM Simon Urbanek
+<simon.urbanek at r-project.org> wrote:
+>
+>
+>
+> > On 9/05/2024, at 11:58 PM, Vladimir Dergachev <volodya at mindspring.com> wrote:
+> >
+> >
+> >
+> > On Thu, 9 May 2024, Sameh Abdulah wrote:
+> >
+> >> Hi,
+> >>
+> >> I need to serialize and save a 20K x 20K matrix as a binary file. This process is significantly slower in R compared to Python (4X slower).
+> >>
+> >> I'm not sure about the best approach to optimize the below code. Is it possible to parallelize the serialization function to enhance performance?
+> >
+> > Parallelization should not help - a single CPU thread should be able to saturate your disk or your network, assuming you have a typical computer.
+> >
+> > The problem is possibly the conversion to text, writing it as binary should be much faster.
+> >
+>
+>
+> FWIW serialize() is binary so there is no conversion to text:
+>
+> > serialize(1:10+0L, NULL)
+>  [1] 58 0a 00 00 00 03 00 04 02 00 00 03 05 00 00 00 00 05 55 54 46 2d 38 00 00
+> [26] 00 0d 00 00 00 0a 00 00 00 01 00 00 00 02 00 00 00 03 00 00 00 04 00 00 00
+> [51] 05 00 00 00 06 00 00 00 07 00 00 00 08 00 00 00 09 00 00 00 0a
+>
+> It uses the native representation so it is actually not as bad as it sounds.
+>
+> One aspect I forgot to mention in the earlier thread is that if you don't need to exchange the serialized objects between machines with different endianness then avoiding the swap makes it faster. E.g, on Intel (which is little-endian and thus needs swapping):
+>
+> > a=1:1e8/2
+> > system.time(serialize(a, NULL))
+>    user  system elapsed
+>   2.123   0.468   2.661
+> > system.time(serialize(a, NULL, xdr=FALSE))
+>    user  system elapsed
+>   0.393   0.348   0.742
+
+Would it be worth looking into making xdr=FALSE the default? From
+help("serialize"):
+
+xdr: a logical: if a binary representation is used, should a
+big-endian one (XDR) be used?
+...
+As almost all systems in current use are little-endian, xdr = FALSE
+can be used to avoid byte-shuffling at both ends when transferring
+data from one little-endian machine to another (or between processes
+on the same machine). Depending on the system, this can speed up
+serialization and unserialization by a factor of up to 3x.
+
+This seems like a low-hanging fruit that could spare the world from
+wasting unnecessary CPU cycles.
+
+/Henrik
+
+
+
+>
+> Cheers,
+> Simon
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
