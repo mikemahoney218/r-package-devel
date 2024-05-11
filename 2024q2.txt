@@ -10354,3 +10354,211 @@ wasting unnecessary CPU cycles.
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From @|mon@urb@nek @end|ng |rom R-project@org  Fri May 10 05:12:17 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Fri, 10 May 2024 15:12:17 +1200
+Subject: [R-pkg-devel] Fast Matrix Serialization in R?
+In-Reply-To: <CAFDcVCTc9Mkg5QF0BQe8xT3xk5oCQBG9jzJk4jesk8eehbAd3w@mail.gmail.com>
+References: <VI1P192MB028541BF45707A413F9210BBFBE62@VI1P192MB0285.EURP192.PROD.OUTLOOK.COM>
+ <alpine.DEB.2.22.394.2405090752230.3559@iridium>
+ <82807F66-5421-4C62-ADB0-6B60B17BCA14@R-project.org>
+ <CAFDcVCTc9Mkg5QF0BQe8xT3xk5oCQBG9jzJk4jesk8eehbAd3w@mail.gmail.com>
+Message-ID: <BA52E392-AB6E-4D81-A6C2-7B992248D43F@R-project.org>
+
+
+
+> On 10/05/2024, at 12:31 PM, Henrik Bengtsson <henrik.bengtsson at gmail.com> wrote:
+> 
+> On Thu, May 9, 2024 at 3:46?PM Simon Urbanek
+> <simon.urbanek at r-project.org> wrote:
+>> 
+>> FWIW serialize() is binary so there is no conversion to text:
+>> 
+>>> serialize(1:10+0L, NULL)
+>> [1] 58 0a 00 00 00 03 00 04 02 00 00 03 05 00 00 00 00 05 55 54 46 2d 38 00 00
+>> [26] 00 0d 00 00 00 0a 00 00 00 01 00 00 00 02 00 00 00 03 00 00 00 04 00 00 00
+>> [51] 05 00 00 00 06 00 00 00 07 00 00 00 08 00 00 00 09 00 00 00 0a
+>> 
+>> It uses the native representation so it is actually not as bad as it sounds.
+>> 
+>> One aspect I forgot to mention in the earlier thread is that if you don't need to exchange the serialized objects between machines with different endianness then avoiding the swap makes it faster. E.g, on Intel (which is little-endian and thus needs swapping):
+>> 
+>>> a=1:1e8/2
+>>> system.time(serialize(a, NULL))
+>>   user  system elapsed
+>>  2.123   0.468   2.661
+>>> system.time(serialize(a, NULL, xdr=FALSE))
+>>   user  system elapsed
+>>  0.393   0.348   0.742
+> 
+> Would it be worth looking into making xdr=FALSE the default? From
+> help("serialize"):
+> 
+> xdr: a logical: if a binary representation is used, should a
+> big-endian one (XDR) be used?
+> ...
+> As almost all systems in current use are little-endian, xdr = FALSE
+> can be used to avoid byte-shuffling at both ends when transferring
+> data from one little-endian machine to another (or between processes
+> on the same machine). Depending on the system, this can speed up
+> serialization and unserialization by a factor of up to 3x.
+> 
+> This seems like a low-hanging fruit that could spare the world from
+> wasting unnecessary CPU cycles.
+> 
+
+
+I thought about it before, but the main problem here is (as often) compatibility. The current default guarantees that the output can be safely read on any machine while xdr=FALSE only works if used on machines with the same endianness and will fail horribly otherwise. R cannot really know whether the user intends to transport the serialized data to another machine or not, so it cannot assume it is safe unless the user indicates so. Therefore all we can safely do is tell the users that they should use it where appropriate -- and the documentation explicitly says so:
+
+     As almost all systems in current use are little-endian, ?xdr =
+     FALSE? can be used to avoid byte-shuffling at both ends when
+     transferring data from one little-endian machine to another (or
+     between processes on the same machine).  Depending on the system,
+     this can speed up serialization and unserialization by a factor of
+     up to 3x.
+
+Unfortunately, no one bothers to reads the documentation so it is not as effective as changing the default, but for reasons above it is just not as easy to change. I do acknowledge that the risk is relatively low since big-endian machines are becoming rare, but it's not zero.
+
+That said, what worries me a bit more is that some derived functions such as saveRDS() don't expose the xdr option, so you actually have no way to use the native binary format. I understand the logic - see above, but as you said, that makes them unnecessarily slow. I wonder if it may be worth doing something a bit smarter and tag officially a "reverse XDR" format instead - that way it would be well-defined and could be made the default. Interestingly, the de-serialization part actually doesn't care, so you can use readRDS() on the binary serialization even in current R versions, so just adding the option would still be backwards-compatible. Definitely something to think about...
+
+Cheers,
+Simon
+
+
+> 
+> 
+>> 
+>> Cheers,
+>> Simon
+>> 
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From othm@n@e|@h@mmouch| @end|ng |rom protonm@||@com  Fri May 10 08:04:16 2024
+From: othm@n@e|@h@mmouch| @end|ng |rom protonm@||@com (Othman El Hammouchi)
+Date: Fri, 10 May 2024 06:04:16 +0000
+Subject: [R-pkg-devel] flang doesn't support derived types
+In-Reply-To: <20240509193430.1998b917@Tarkus>
+References: <6ffdcf71-8ebf-4af3-ac53-fc166092b07b@protonmail.com>
+ <20240509174101.0c7edfd9@trisector>
+ <Q7tjMuOB9hopqEEI5GxgOrVM0PysRZxQ3QDh4Y0utotv5owykqcineoZKG53vJI4UYGEt8Ez2dQ8Z3fOwaalTllQE9Ybin9usoKAxFLfPnI=@protonmail.com>
+ <20240509193430.1998b917@Tarkus>
+Message-ID: <56070879-a6bb-4e7d-8454-f1145085625f@protonmail.com>
+
+Dear Ivan,
+
+
+Thanks again for the help, you've given me some great pointers to 
+pursue. I will keep you posted on what CRAN responds and whether I find 
+a workaround.
+
+ > I do wish that flang-new would be a better compiler or at least a
+ > better documented one, but instead of a list of features on their
+ > website, I can only see "Getting Involved [3] for tips on how to get in
+ > touch <...> and to learn more about the current status". There is only
+ > so many projects one can get involved in.
+
+The problem is not the quality of the compiler so much as the fact that 
+it's not finished. They don't make a big secret of the fact that it's 
+still under development. It may be the standard in industry as you say, 
+but it would greatly surprise me if it was the default for most ordinary 
+users. Most distros and platforms seem to ship the (much more complete) 
+gfortran.
+
+
+Yours,
+
+
+Othman El Hammouchi
+
+On 09/05/2024 18:34, Ivan Krylov wrote:
+> ? Thu, 09 May 2024 15:31:25 +0000
+> Othman El Hammouchi <othman.el.hammouchi at protonmail.com> ?????:
+>
+>> Do I understand it correctly that there is no way to specify a
+>> Fortran standard in the SystemRequirements?
+> It's possible (and even recommended) to describe the Fortran version
+> requirement in SystemRequirements [1], but this field is for now mostly
+> informational. I think I remember efforts to standardise it, but they
+> are far from complete.
+>
+>> I had resubmitted my package in the mean time with a configure script
+>> that aborts the install if the compiler does not support
+>> polymorphism, but I understand that this is a fruitless avenue for
+>> CRAN?
+> Signs point to yes, at least judging by a previous time we had
+> flang-related problems [2]. On the other hand, there were relatively
+> easy workarounds that time, and here I'm not seeing anything as simple.
+>
+>> I should point out my local flang install is version 16, but I cannot
+>> install 18 on my system since it's in unstable (this again
+>> underscores the problem of developing under these constraints).
+> Would you consider containers for this purpose? I was able to reproduce
+> the problem relatively quickly by starting podman run --rm -it
+> debian:sid and installing flang-18 in there. (Unlike Docker a few years
+> ago, podman can be installed straight from the repository, at least on
+> Debian, and doesn't require adding users to special groups in order to
+> work. Maybe Docker has also improved.) I don't like containers as a
+> basis for software distribution, but I can't deny that they are being
+> great at letting me quickly reproduce problems without installing 10
+> different GNU/Linux distros.
+>
+>> What would you advise? And don't you think these Fortran constraints
+>> should be better documenten.
+> I'm afraid I don't have any more specific advice besides testing your
+> workarounds with Debian Sid in a container or a virtual machine or a
+> chroot. I can try to take a look at more concrete problems. I hope you
+> will be able to find a relatively painless workaround.
+>
+> I do wish that flang-new would be a better compiler or at least a
+> better documented one, but instead of a list of features on their
+> website, I can only see "Getting Involved [3] for tips on how to get in
+> touch <...> and to learn more about the current status". There is only
+> so many projects one can get involved in.
+>
+> --
+> Best regards,
+> Ivan
+>
+> [1]
+> https://cran.r-project.org/doc/manuals/R-exts.html#Using-modern-Fortran-code
+>
+> [2]
+> https://stat.ethz.ch/pipermail/r-package-devel/2023q4/010065.html
+>
+> [3]
+> https://flang.llvm.org/docs/GettingInvolved.html
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri May 10 17:38:43 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 10 May 2024 18:38:43 +0300
+Subject: [R-pkg-devel] Fast Matrix Serialization in R?
+In-Reply-To: <BA52E392-AB6E-4D81-A6C2-7B992248D43F@R-project.org>
+References: <VI1P192MB028541BF45707A413F9210BBFBE62@VI1P192MB0285.EURP192.PROD.OUTLOOK.COM>
+ <alpine.DEB.2.22.394.2405090752230.3559@iridium>
+ <82807F66-5421-4C62-ADB0-6B60B17BCA14@R-project.org>
+ <CAFDcVCTc9Mkg5QF0BQe8xT3xk5oCQBG9jzJk4jesk8eehbAd3w@mail.gmail.com>
+ <BA52E392-AB6E-4D81-A6C2-7B992248D43F@R-project.org>
+Message-ID: <20240510183843.5c60cfe1@Tarkus>
+
+On Fri, 10 May 2024 15:12:17 +1200
+Simon Urbanek <simon.urbanek at R-project.org> wrote:
+
+> I wonder if it may be worth doing something a bit smarter and tag
+> officially a "reverse XDR" format instead - that way it would be
+> well-defined and could be made the default.
+
+Do you mean changing R so that when reading a "B\n" serialized stream,
+a format code read as 0x02000000 or 0x03000000 would mean regular
+formats 2 or 3 but byte-swapped? That would be backwards-compatible,
+and we probably weren't going to have >= 65536 format versions anyway...
+
+-- 
+Best regards,
+Ivan
+
+
