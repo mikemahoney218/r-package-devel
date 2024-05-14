@@ -10624,3 +10624,194 @@ Simon
 > 
 
 
+From |kry|ov @end|ng |rom d|@root@org  Mon May 13 09:03:21 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 13 May 2024 10:03:21 +0300
+Subject: [R-pkg-devel] clang-UBSAN
+In-Reply-To: <CAAsVnm+Tis8hyByXCtRdatsXukCz4Pa6tZPB3iYEvDTh51_ZVA@mail.gmail.com>
+References: <CAAsVnm+Tis8hyByXCtRdatsXukCz4Pa6tZPB3iYEvDTh51_ZVA@mail.gmail.com>
+Message-ID: <20240513100321.297ae1da@Tarkus>
+
+? Sun, 12 May 2024 14:43:18 -0400
+Kaifeng Lu <kaifenglu at gmail.com> ?????:
+
+> /data/gannet/ripley/R/test-clang/Rcpp/include/Rcpp/internal/caster.h:30:25:
+> runtime error: nan is outside the range of representable values of
+> type 'int'
+
+On line 4618 of src/misc.cpp of the lrstat package, you have a
+suspicious default parameter value:
+
+>> const int n = NA_REAL
+
+NA_REAL is a special kind of NaN, and C++ signed integers cannot
+represent NaNs. You probably meant NA_INTEGER.
+
+I think that Rcpp::traits::input_parameter<const int> takes care of
+asking R to cast NA_REAL to NA_INTEGER, so this shouldn't directly
+cause problems, but without a link to the code and the full error
+report we have to resort to forbidden OSINT techniques [1], which don't
+always work reliably and may attract the wrong kind of attention on the
+darknet [2].
+
+> Is there any way to reproduce the error before submitting the package
+> to CRAN?
+
+Yes.
+
+If you use containers, try the rocker/r-devel-ubsan-clang [3] image
+that should already contain a "sanitized" build of R produced with the
+clang compiler.
+
+If that doesn't help, start with a Fedoda 36 installation and follow
+the description [4] to install clang and compile R from source with
+sanitizers enabled. This procedure is described in more detail in WRE
+4.3.4 [5].
+
+If you start having problems using the Docker/podman image or compiling
+R from source, don't hesitate to ask further questions.
+
+-- 
+Best regards,
+Ivan
+
+[1]
+Such as searching your name on CRAN and GitHub.
+
+[2]
+Such as Google suggesting AI-powered results.
+
+[3]
+https://rocker-project.org/images/
+
+[4]
+https://www.stats.ox.ac.uk/pub/bdr/memtests/README.txt
+
+[5]
+https://cran.r-project.org/doc/manuals/R-exts.html#Using-Undefined-Behaviour-Sanitizer
+
+
+From c@@rd|@g@bor @end|ng |rom gm@||@com  Mon May 13 09:24:20 2024
+From: c@@rd|@g@bor @end|ng |rom gm@||@com (=?UTF-8?B?R8OhYm9yIENzw6FyZGk=?=)
+Date: Mon, 13 May 2024 09:24:20 +0200
+Subject: [R-pkg-devel] clang-UBSAN
+In-Reply-To: <CAAsVnm+Tis8hyByXCtRdatsXukCz4Pa6tZPB3iYEvDTh51_ZVA@mail.gmail.com>
+References: <CAAsVnm+Tis8hyByXCtRdatsXukCz4Pa6tZPB3iYEvDTh51_ZVA@mail.gmail.com>
+Message-ID: <CABtg=K=sb58Fm3w7tBA1wnQw4Pjepaej1V8vWSaSEkpFQK-BRQ@mail.gmail.com>
+
+The rhub package should be able to reproduce that, see
+https://github.com/r-hub/rhub#readme
+
+Or you can use the clang-asan container directly:
+https://r-hub.github.io/containers/
+
+Gabor
+
+On Mon, May 13, 2024 at 12:31?AM Kaifeng Lu <kaifenglu at gmail.com> wrote:
+>
+> Dear friends,
+>
+> I am developing an R package built with Rcpp. The package passed the test
+> with devtools::check() before submission to CRAN, but failed with the
+> following clang-UBSAN issue after submission to CRAN:
+>
+> /data/gannet/ripley/R/test-clang/Rcpp/include/Rcpp/internal/caster.h:30:25:
+> runtime error: nan is outside the range of representable values of type
+> 'int'
+>
+> Is there any way to reproduce the error before submitting the package to
+> CRAN?
+>
+> Thank you very much for helping!
+>
+> Regards,
+> Kaifeng
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From ruw@n|r@@@nj@||h @end|ng |rom gm@||@com  Mon May 13 15:33:04 2024
+From: ruw@n|r@@@nj@||h @end|ng |rom gm@||@com (Ruwani Herath)
+Date: Mon, 13 May 2024 08:33:04 -0500
+Subject: [R-pkg-devel] An issue regarding the authors field in DESCRIPTION
+Message-ID: <CAHNarzP5YgXF6UjRoirv87LQTW9P6QwW5FLVFOwm_J2C97nBwg@mail.gmail.com>
+
+Hi,
+I have submitted an R package and I got the following notes from the CRAN
+test. I couldn't find what should be the change I have to do to correct
+this issue. Please check this and guide me to solve the issue.
+
+* checking CRAN incoming feasibility ... NOTE
+Maintainer: 'Ruwani Herath <ruwanirasanjalih at gmail.com>'
+
+* checking DESCRIPTION meta-information ... NOTE
+
+Author field differs from that derived from Authors at R
+  Author:    'Ruwani Herath [aut,cre,cph,com], Leila Amiri [ctb],
+Mahmoud Torabi [ctb]'
+  Authors at R: 'Ruwani Herath [aut, cre, cph, com], Leila Amiri [ctb],
+Mahmoud Torabi [ctb]'
+
+
+This is what I entered in DESCRIPTION field.
+
+Authors at R: c(person(given = "Ruwani", family = "Herath", role = c("aut","cre"),
+                    email = "ruwanirasanjalih at gmail.com"),
+	     person(given = "Leila", family = "Amiri",  role = "ctb"),
+             person(given = "Mahmoud", family = "Torabi", role = "ctb"))
+
+Authors: Ruwani Herath [aut, cre],
+  Leila Amiri [ctb],
+  Mahmoud Torabi [ctb]
+Maintainer: Ruwani Herath <ruwanirasanjalih at gmail.com>
+
+
+Thank you.
+
+Regards,
+
+Ruwani
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Mon May 13 15:54:08 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 13 May 2024 16:54:08 +0300
+Subject: [R-pkg-devel] 
+ An issue regarding the authors field in DESCRIPTION
+In-Reply-To: <CAHNarzP5YgXF6UjRoirv87LQTW9P6QwW5FLVFOwm_J2C97nBwg@mail.gmail.com>
+References: <CAHNarzP5YgXF6UjRoirv87LQTW9P6QwW5FLVFOwm_J2C97nBwg@mail.gmail.com>
+Message-ID: <20240513165408.460c1e79@arachnoid>
+
+? Mon, 13 May 2024 08:33:04 -0500
+Ruwani Herath <ruwanirasanjalih at gmail.com> ?????:
+
+> This is what I entered in DESCRIPTION field.
+> 
+> Authors at R: c(person(given = "Ruwani", family = "Herath", role =
+> c("aut","cre"), email = "ruwanirasanjalih at gmail.com"),
+> 	     person(given = "Leila", family = "Amiri",  role = "ctb"),
+>              person(given = "Mahmoud", family = "Torabi", role =
+> "ctb"))
+> 
+> Authors: Ruwani Herath [aut, cre],
+>   Leila Amiri [ctb],
+>   Mahmoud Torabi [ctb]
+> Maintainer: Ruwani Herath <ruwanirasanjalih at gmail.com>
+
+R CMD build generates the fields "Authors" and "Maintainers" from the
+field "Authors at R", so the easiest way forward is to delete Authors: and
+Maintainer: from your DESCRIPTION. Next time you run R CMD build, the
+DESCRIPTION file inside the resulting *.tar.gz file will contain the
+correct fields "Authors" and "Maintainers".
+
+-- 
+Best regards,
+Ivan
+
+
