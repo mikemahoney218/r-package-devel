@@ -10958,3 +10958,357 @@ On Tue, 14 May 2024 at 22:48, Li, Junhui <Junhui.Li11 at umassmed.edu> wrote:
 	[[alternative HTML version deleted]]
 
 
+From d@v|d@corte@@r|ver@ @end|ng |rom gm@||@com  Wed May 15 18:54:37 2024
+From: d@v|d@corte@@r|ver@ @end|ng |rom gm@||@com (David Cortes)
+Date: Wed, 15 May 2024 18:54:37 +0200
+Subject: [R-pkg-devel] Altrep header, MSVC, and STRUCT_SUBTYPES macro
+Message-ID: <a0fc09bbb47d0c3f9aea55aa91247ce7cf74445a.camel@gmail.com>
+
+I'm seeing some issues using R Altrep classes when compiling a package
+with the MSVC compiler on windows.
+
+While CRAN doesn't build windows binaries with this compiler, some
+packages such as Arrow and LightGBM have had some success in building
+their R packages with MSVC outside of CRAN, in order to enable
+functionalities that MinGW doesn't support.
+
+Some R headers do not work out-of-the-box with MSVC, but can be made to
+work by using alternative declarations of data structures which the
+headers provide. For example, defining the macro 'R_LEGACY_RCOMPLEX'
+switches to an alternate declaration of R's complex type, which
+compiles just fine under msvc, while the regular declaration doesn't
+compile.
+
+I am now trying to use Altrep classes in a package. The code compiles
+without errors under MSVC, but executing code that involves returning
+Altrep objects leads to segfaults and memory corruptions, even though
+it works fine under other compilers.
+
+I see the R Altrep header has this section:
+#define STRUCT_SUBTYPES
+#ifdef STRUCT_SUBTYPES
+# define R_SEXP(x) (x).ptr
+# define R_SUBTYPE_INIT(x) { x }
+  typedef struct { SEXP ptr; } R_altrep_class_t;
+#else
+# define R_SEXP(x) ((SEXP) (x))
+# define R_SUBTYPE_INIT(x) (void *) (x)
+  typedef struct R_altcls *R_altrep_class_t;
+#endif
+
+Link:
+https://github.com/wch/r-source/blob/531d0fd05d3bdc0f8a0350e3ecd3e101d315ab59/src/include/R_ext/Altrep.h#L33
+
+If I manually edit the R header to remove the definition of
+'STRUCT_SUBTYPES', leading to the second definition of
+'R_altrep_class_t' being used, then things work as expected when the
+package is compiled with MSVC (no segfaults and no memory corruptions).
+
+Unfortunately, the Altrep header forcibly defines the macro right there
+before the #ifdef. I am guessing that the alternative defintion was
+offered there in order for users to try it out with problematic
+compilers, but it doesn't seem to be configurable like
+'R_LEGACY_RCOMPLEX'.
+
+Is there some way that I can get an R package to use the alternative
+declaration of 'R_altrep_class_t' when including that header, or
+otherwise some other solution for using Altrep classes under MSVC?
+
+
+From |eon@rdo@ce|@|o @end|ng |rom un|b@@|t  Wed May 15 19:52:16 2024
+From: |eon@rdo@ce|@|o @end|ng |rom un|b@@|t (Leonardo Cefalo)
+Date: Wed, 15 May 2024 19:52:16 +0200
+Subject: [R-pkg-devel] Interpretation of rhub check failures
+Message-ID: <c53d21351efb0e6afbaa432514430f33@uniba.it>
+
+Dear all,
+
+I should submit a new version of the package SchoolDataIT 
+<https://cran.r-project.org/web/packages/SchoolDataIT/index.html> and 
+before doing so I need to check it on multiple flavors.
+
+So I have started trying some checks with rhub.
+I have loaded the new version of the package on github 
+<https://github.com/lcef97/SchoolDataIT>.
+It basically fails all checks, even if changes with respect to the 
+previous version (the one on CRAN) are minor and should have no impact 
+on the *most likely* causes of error, nor do devtools::check() or 
+devtools::check_win_devel() return any error (but I cannot rely solely 
+on these two checks since I have already experienced how unpredictably 
+they behave on different flavors).
+
+What I am wondering about, however, is how to interpret error outputs 
+like this 
+(https://github.com/lcef97/SchoolDataIT/actions/runs/9092369467/job/24988944819, 
+ubuntu-clang) or 
+this(https://github.com/lcef97/SchoolDataIT/actions/runs/9092427648/job/24989126404 
+atlas). I guess something wrong happens in the functions with 
+--run-donttest.
+
+Could somebody please point me a way to interpret  these failures, or 
+way to run checks with operating systems different than mine that does 
+not involve the passage on github?
+
+Thank you very much in advance
+Best regards
+Leonardo
+________________________________________________________________________________________________
+Sostieni la formazione e la ricerca universitaria con il tuo 5 per mille 
+all'Universit? di Bari.
+Firma la casella "Finanziamento della ricerca scientifica e della 
+Universit?"
+indicando il codice fiscale 80002170720.
+
+Il tuo contributo pu? fare la differenza: oggi pi? che mai!
+
+
+From M@rce|@R@mo@Perez @end|ng |rom Ro@we||P@rk@org  Wed May 15 23:49:50 2024
+From: M@rce|@R@mo@Perez @end|ng |rom Ro@we||P@rk@org (Ramos Perez, Marcel)
+Date: Wed, 15 May 2024 21:49:50 +0000
+Subject: [R-pkg-devel] 
+ EXTERNAL: CRAN packages dependency on bioconductor packages
+In-Reply-To: <PH0PR10MB5612E8CF3DAE5ADB26034B799BE32@PH0PR10MB5612.namprd10.prod.outlook.com>
+References: <PH0PR10MB5612E8CF3DAE5ADB26034B799BE32@PH0PR10MB5612.namprd10.prod.outlook.com>
+Message-ID: <SA3PR12MB8761AB37FB0C3704C43F82CFFAEC2@SA3PR12MB8761.namprd12.prod.outlook.com>
+
+Hi Junhui,
+
+There are about 25 packages in CRAN that use BiocStyle, including yours.
+It seems that MetaIntegrator is also facing the same error. I have not
+looked too deeply into the issue but it seems that you should also
+include "rmarkdown" in the Suggests field.
+
+AFAIK, there is no need to include an empty `biocViews:` field in the
+DESCRIPTION. CRAN knows about Bioconductor repositories via
+setRepositories().
+
+Note. Users should use BiocManager to resolve Bioconductor dependencies
+(rather than setRepositories).
+
+Best regards,
+Marcel
+
+________________________________
+From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Li, Junhui <Junhui.Li11 at umassmed.edu>
+Sent: Tuesday, May 14, 2024 3:51 PM
+To: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: EXTERNAL: [R-pkg-devel] CRAN packages dependency on bioconductor packages
+
+Hi everyone,
+
+I recently developed an R package called 'StepReg' and used the Bioconductor R package 'BiocStyle' in my vignettes, as shown below:
+
+output:
+  BiocStyle::html_document:
+    toc_float: true
+  BiocStyle::pdf_document: default
+
+In my DESCRIPTION file, I added 'BiocStyle' to the Suggests field and included a new line 'biocViews:', as follows:
+
+VignetteBuilder: knitr
+biocViews:
+Suggests:
+    knitr,
+    testthat,
+    BiocStyle,
+    kableExtra
+
+You may find all those information here: https://github.com/JunhuiLi1017/StepReg/tree/dev
+
+There were no error messages when checking with 'R CMD check' and on https://win-builder.r-project.org/upload.aspx. However, an error message occurred when I attempted to upload it to CRAN:
+
+* checking re-building of vignette outputs ... ERROR
+Error(s) in re-building vignettes:
+--- re-building 'StepReg.Rmd' using rmarkdown
+Error: processing vignette 'StepReg.Rmd' failed with diagnostics:
+there is no package called 'BiocStyle'
+--- failed re-building 'StepReg.Rmd'
+
+SUMMARY: processing the following file failed:
+   'StepReg.Rmd'
+
+Error: Vignette re-building failed.
+Execution halted
+
+For version 1.5.0 (https://cran.r-project.org/web/packages/StepReg/index.html), I successfully uploaded it to CRAN without including 'biocViews:' in the DESCRIPTION file two months ago. However, I'm encountering difficulties this time. Any insights or suggestions on resolving this issue would be greatly appreciated.
+
+Thanks,
+Junhui
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+This email message may contain legally privileged and/or confidential information.  If you are not the intended recipient(s), or the employee or agent responsible for the delivery of this message to the intended recipient(s), you are hereby notified that any disclosure, copying, distribution, or use of this email message is prohibited.  If you have received this message in error, please notify the sender immediately by e-mail and delete this email message from your computer. Thank you.
+	[[alternative HTML version deleted]]
+
+
+From c|yde @end|ng |rom duke@edu  Thu May 16 01:45:46 2024
+From: c|yde @end|ng |rom duke@edu (Merlise Clyde, Ph.D.)
+Date: Wed, 15 May 2024 23:45:46 +0000
+Subject: [R-pkg-devel] Altrep header, MSVC, and STRUCT_SUBTYPES macro
+In-Reply-To: <a0fc09bbb47d0c3f9aea55aa91247ce7cf74445a.camel@gmail.com>
+References: <a0fc09bbb47d0c3f9aea55aa91247ce7cf74445a.camel@gmail.com>
+Message-ID: <CY8PR05MB100343DF90DDA53DB07724165C8EC2@CY8PR05MB10034.namprd05.prod.outlook.com>
+
+Are R ALTREP objects memory mapped
+
+
+Get Outlook for iOS<https://aka.ms/o0ukef>
+________________________________
+From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of David Cortes <david.cortes.rivera at gmail.com>
+Sent: Wednesday, May 15, 2024 12:54:37 PM
+To: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: [R-pkg-devel] Altrep header, MSVC, and STRUCT_SUBTYPES macro
+
+I'm seeing some issues using R Altrep classes when compiling a package
+with the MSVC compiler on windows.
+
+While CRAN doesn't build windows binaries with this compiler, some
+packages such as Arrow and LightGBM have had some success in building
+their R packages with MSVC outside of CRAN, in order to enable
+functionalities that MinGW doesn't support.
+
+Some R headers do not work out-of-the-box with MSVC, but can be made to
+work by using alternative declarations of data structures which the
+headers provide. For example, defining the macro 'R_LEGACY_RCOMPLEX'
+switches to an alternate declaration of R's complex type, which
+compiles just fine under msvc, while the regular declaration doesn't
+compile.
+
+I am now trying to use Altrep classes in a package. The code compiles
+without errors under MSVC, but executing code that involves returning
+Altrep objects leads to segfaults and memory corruptions, even though
+it works fine under other compilers.
+
+I see the R Altrep header has this section:
+#define STRUCT_SUBTYPES
+#ifdef STRUCT_SUBTYPES
+# define R_SEXP(x) (x).ptr
+# define R_SUBTYPE_INIT(x) { x }
+  typedef struct { SEXP ptr; } R_altrep_class_t;
+#else
+# define R_SEXP(x) ((SEXP) (x))
+# define R_SUBTYPE_INIT(x) (void *) (x)
+  typedef struct R_altcls *R_altrep_class_t;
+#endif
+
+Link:
+https://urldefense.com/v3/__https://github.com/wch/r-source/blob/531d0fd05d3bdc0f8a0350e3ecd3e101d315ab59/src/include/R_ext/Altrep.h*L33__;Iw!!OToaGQ!sO-S2sqzEKxviRHAbRPwKMl4JgRCoBJIOsL5KIIERL8DuU4I4R_JUOIagZqVcH54jScJLr5u6WJWlmymhkOuF-R4wQ$
+
+If I manually edit the R header to remove the definition of
+'STRUCT_SUBTYPES', leading to the second definition of
+'R_altrep_class_t' being used, then things work as expected when the
+package is compiled with MSVC (no segfaults and no memory corruptions).
+
+Unfortunately, the Altrep header forcibly defines the macro right there
+before the #ifdef. I am guessing that the alternative defintion was
+offered there in order for users to try it out with problematic
+compilers, but it doesn't seem to be configurable like
+'R_LEGACY_RCOMPLEX'.
+
+Is there some way that I can get an R package to use the alternative
+declaration of 'R_altrep_class_t' when including that header, or
+otherwise some other solution for using Altrep classes under MSVC?
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!OToaGQ!sO-S2sqzEKxviRHAbRPwKMl4JgRCoBJIOsL5KIIERL8DuU4I4R_JUOIagZqVcH54jScJLr5u6WJWlmymhkMDdZo2_A$
+
+	[[alternative HTML version deleted]]
+
+
+From c|yde @end|ng |rom duke@edu  Thu May 16 01:49:28 2024
+From: c|yde @end|ng |rom duke@edu (Merlise Clyde, Ph.D.)
+Date: Wed, 15 May 2024 23:49:28 +0000
+Subject: [R-pkg-devel] Altrep header, MSVC, and STRUCT_SUBTYPES macro
+In-Reply-To: <CY8PR05MB100343DF90DDA53DB07724165C8EC2@CY8PR05MB10034.namprd05.prod.outlook.com>
+References: <a0fc09bbb47d0c3f9aea55aa91247ce7cf74445a.camel@gmail.com>
+ <CY8PR05MB100343DF90DDA53DB07724165C8EC2@CY8PR05MB10034.namprd05.prod.outlook.com>
+Message-ID: <CY8PR05MB1003456D08D27E0217755B22DC8EC2@CY8PR05MB10034.namprd05.prod.outlook.com>
+
+Sent as mistake - my apologies!
+
+Get Outlook for iOS<https://aka.ms/o0ukef>
+________________________________
+From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Merlise Clyde, Ph.D. <clyde at duke.edu>
+Sent: Wednesday, May 15, 2024 7:45:46 PM
+To: David Cortes <david.cortes.rivera at gmail.com>; r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Altrep header, MSVC, and STRUCT_SUBTYPES macro
+
+Are R ALTREP objects memory mapped
+
+
+Get Outlook for iOS<https://urldefense.com/v3/__https://aka.ms/o0ukef__;!!OToaGQ!sQGikKTlQoAmI45egICo7N98HJfNnTCQsgj5Ph6gyLGcSVZNHMX3AhYeQ4yyzUmAdga3rulz3lmIGg$ >
+________________________________
+From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of David Cortes <david.cortes.rivera at gmail.com>
+Sent: Wednesday, May 15, 2024 12:54:37 PM
+To: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: [R-pkg-devel] Altrep header, MSVC, and STRUCT_SUBTYPES macro
+
+I'm seeing some issues using R Altrep classes when compiling a package
+with the MSVC compiler on windows.
+
+While CRAN doesn't build windows binaries with this compiler, some
+packages such as Arrow and LightGBM have had some success in building
+their R packages with MSVC outside of CRAN, in order to enable
+functionalities that MinGW doesn't support.
+
+Some R headers do not work out-of-the-box with MSVC, but can be made to
+work by using alternative declarations of data structures which the
+headers provide. For example, defining the macro 'R_LEGACY_RCOMPLEX'
+switches to an alternate declaration of R's complex type, which
+compiles just fine under msvc, while the regular declaration doesn't
+compile.
+
+I am now trying to use Altrep classes in a package. The code compiles
+without errors under MSVC, but executing code that involves returning
+Altrep objects leads to segfaults and memory corruptions, even though
+it works fine under other compilers.
+
+I see the R Altrep header has this section:
+#define STRUCT_SUBTYPES
+#ifdef STRUCT_SUBTYPES
+# define R_SEXP(x) (x).ptr
+# define R_SUBTYPE_INIT(x) { x }
+  typedef struct { SEXP ptr; } R_altrep_class_t;
+#else
+# define R_SEXP(x) ((SEXP) (x))
+# define R_SUBTYPE_INIT(x) (void *) (x)
+  typedef struct R_altcls *R_altrep_class_t;
+#endif
+
+Link:
+https://urldefense.com/v3/__https://github.com/wch/r-source/blob/531d0fd05d3bdc0f8a0350e3ecd3e101d315ab59/src/include/R_ext/Altrep.h*L33__;Iw!!OToaGQ!sO-S2sqzEKxviRHAbRPwKMl4JgRCoBJIOsL5KIIERL8DuU4I4R_JUOIagZqVcH54jScJLr5u6WJWlmymhkOuF-R4wQ$
+
+If I manually edit the R header to remove the definition of
+'STRUCT_SUBTYPES', leading to the second definition of
+'R_altrep_class_t' being used, then things work as expected when the
+package is compiled with MSVC (no segfaults and no memory corruptions).
+
+Unfortunately, the Altrep header forcibly defines the macro right there
+before the #ifdef. I am guessing that the alternative defintion was
+offered there in order for users to try it out with problematic
+compilers, but it doesn't seem to be configurable like
+'R_LEGACY_RCOMPLEX'.
+
+Is there some way that I can get an R package to use the alternative
+declaration of 'R_altrep_class_t' when including that header, or
+otherwise some other solution for using Altrep classes under MSVC?
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!OToaGQ!sO-S2sqzEKxviRHAbRPwKMl4JgRCoBJIOsL5KIIERL8DuU4I4R_JUOIagZqVcH54jScJLr5u6WJWlmymhkMDdZo2_A$
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!OToaGQ!sQGikKTlQoAmI45egICo7N98HJfNnTCQsgj5Ph6gyLGcSVZNHMX3AhYeQ4yyzUmAdga3rulxYRXeAg$
+
+	[[alternative HTML version deleted]]
+
+
