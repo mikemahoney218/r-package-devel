@@ -13106,3 +13106,199 @@ On Thu, May 16, 2024 at 8:40?PM G?bor Cs?rdi <csardi.gabor at gmail.com> wrote:
 > > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From |kry|ov @end|ng |rom d|@root@org  Fri May 17 17:30:17 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 17 May 2024 18:30:17 +0300
+Subject: [R-pkg-devel] Altrep header, MSVC, and STRUCT_SUBTYPES macro
+In-Reply-To: <27c2ea71b166445f2ab8a67c11a2d491466807dc.camel@gmail.com>
+References: <a0fc09bbb47d0c3f9aea55aa91247ce7cf74445a.camel@gmail.com>
+ <20240516162512.2e6b3f4e@arachnoid>
+ <27c2ea71b166445f2ab8a67c11a2d491466807dc.camel@gmail.com>
+Message-ID: <20240517183017.144c3f5c@arachnoid>
+
+? Thu, 16 May 2024 21:32:24 +0200
+David Cortes <david.cortes.rivera at gmail.com> ?????:
+
+> Unfortunately, after some further testing, it seems this was just a
+> matter of getting lucky - using the alternative non-STRUCT_SUBTYPES 
+> def. of Altrep still leads to memory corruptions and crashes, just at
+> different points than when using the STRUCT_SUBTYPES definition.
+
+So much for the hope for an easy solution.
+ 
+> May I ask: how would you go around getting R code into Godbolt?
+
+Definitely not much of it. I was assuming that the problem was due to
+passing structs by value (something that had been a problem for MSVC
+compatibility more than a decade ago on x86 Windows), so I only
+provided typedef struct SEXPREC *SEXP, one of the two definitions of
+R_altrep_class_t and related macros, declared a number of functions
+that would accept or return R_altrep_class_t by value, and tried to
+call them.
+
+I don't know a good way to use Godbolt for larger amounts of code.
+
+> As far as I can tell, the altrep methods are calling the functions
+> which they were assigned so at least the 'set' and 'dataptr' methods
+> are working, but memory corruptions that crash the program happen
+> after calling such altrep methods, particularly when there is a
+> combination of 'R_UnwindProtect', C++ 'catch' that involves
+> destructing variables before 'R_ContinueUnwind', and then 'Rf_error'.
+
+What do the crashes look like? Is it heap corruption? Stack corruption?
+Are they at least deterministic?
+
+Can you reproduce the error by compiling one of the example ALTREP
+classes [1] with MSVC, without C++ exception handling? What about using
+R_ContinueUnwind() and/or C++ exceptions in some non-ALTREP code
+compiled using MSVC?
+
+Maybe if you run the code under Dr. Memory [2] or Application Verifier
+[3], it'll detect the corruption slightly earlier and let you pinpoint
+the problem? I'm assuming that there is no good way to link a sanitizer
+into the process.
+
+Can you eliminate C runtime incompatibility? Is there a chance that a
+heap object allocated by the UCRT linked to R is freed by the CRT
+linked to the MSVC-side library (or vice versa)?
+
+-- 
+Best regards,
+Ivan
+
+[1]
+https://github.com/altrep-examples
+
+[2]
+https://drmemory.org/
+
+[3]
+https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/application-verifier
+
+
+From z@m@@hregh| @end|ng |rom uw|nn|peg@c@  Fri May 17 17:59:19 2024
+From: z@m@@hregh| @end|ng |rom uw|nn|peg@c@ (Zeinab Mashreghi)
+Date: Fri, 17 May 2024 15:59:19 +0000
+Subject: [R-pkg-devel] Assistance Needed to Resolve CRAN Submission Note
+In-Reply-To: <20240516202709.7bea1838@arachnoid>
+References: <YT2PR01MB82153031C04661E6C4C7E57694ED2@YT2PR01MB8215.CANPRD01.PROD.OUTLOOK.COM>
+ <20240516120656.362ac94b@arachnoid>
+ <YT2PR01MB821577606BFECEA023B31D3594ED2@YT2PR01MB8215.CANPRD01.PROD.OUTLOOK.COM>
+ <20240516202709.7bea1838@arachnoid>
+Message-ID: <YT2PR01MB82150723357F31988F2EB51094EE2@YT2PR01MB8215.CANPRD01.PROD.OUTLOOK.COM>
+
+Hi,
+
+Thanks for all the suggestions and help.
+
+Yes, I'm using an Apple computer. The tidy version was from 2006. I submitted the package without any issues.
+
+Thanks again!
+
+Zeinab
+
+From: Ivan Krylov <ikrylov at disroot.org>
+Date: Thursday, May 16, 2024 at 12:27 PM
+To: Zeinab Mashreghi <z.mashreghi at uwinnipeg.ca>
+Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Assistance Needed to Resolve CRAN Submission Note
+Notice: This is external email. Verify the sender and use caution with any content.
+
+
+? Thu, 16 May 2024 16:01:45 +0000
+Zeinab Mashreghi <z.mashreghi at uwinnipeg.ca> ?????:
+
+> checking HTML version of manual ... NOTE
+> Found the following HTML validation problems:
+> All.data.html:4:1 (All.data.Rd:10): Warning: <link> inserting "type"
+> attribute
+> All.data.html:12:1 (All.data.Rd:10): Warning: <script> proprietary
+> attribute "onload"
+
+Are you using an Apple computer? R relies on a program called "tidy" to
+verify the generated HTML documentation. macOS comes with an old
+version of "tidy" [*] that doesn't support the HTML5 attributes used by
+R, which results in these NOTEs. You didn't get them on CRAN, so feel
+free to ignore them.
+
+If you run tidy -v or tidy --version, what does it say?
+
+--
+Best regards,
+Ivan
+
+[*]
+https://cran.r-project.org/doc/manuals/R-exts.html#FOOT57
+https://stat.ethz.ch/pipermail/r-devel/2023-August/082763.html
+
+	[[alternative HTML version deleted]]
+
+
+From m@rc_grt @end|ng |rom y@hoo@|r  Fri May 17 21:31:39 2024
+From: m@rc_grt @end|ng |rom y@hoo@|r (Marc Girondot)
+Date: Fri, 17 May 2024 21:31:39 +0200
+Subject: [R-pkg-devel] Assistance Needed to Resolve CRAN Submission Note
+In-Reply-To: <YT2PR01MB82150723357F31988F2EB51094EE2@YT2PR01MB8215.CANPRD01.PROD.OUTLOOK.COM>
+References: <YT2PR01MB82153031C04661E6C4C7E57694ED2@YT2PR01MB8215.CANPRD01.PROD.OUTLOOK.COM>
+ <20240516120656.362ac94b@arachnoid>
+ <YT2PR01MB821577606BFECEA023B31D3594ED2@YT2PR01MB8215.CANPRD01.PROD.OUTLOOK.COM>
+ <20240516202709.7bea1838@arachnoid>
+ <YT2PR01MB82150723357F31988F2EB51094EE2@YT2PR01MB8215.CANPRD01.PROD.OUTLOOK.COM>
+Message-ID: <9024d212-b461-48ce-84d4-5dd519bc51b9@yahoo.fr>
+
+Here is the solution to update tidy to a recent version:
+https://www.html-tidy.org
+
+Marc
+Le 17/05/2024 ? 17:59, Zeinab Mashreghi a ?crit?:
+> Hi,
+>
+> Thanks for all the suggestions and help.
+>
+> Yes, I'm using an Apple computer. The tidy version was from 2006. I submitted the package without any issues.
+>
+> Thanks again!
+>
+> Zeinab
+>
+> From: Ivan Krylov <ikrylov at disroot.org>
+> Date: Thursday, May 16, 2024 at 12:27 PM
+> To: Zeinab Mashreghi <z.mashreghi at uwinnipeg.ca>
+> Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+> Subject: Re: [R-pkg-devel] Assistance Needed to Resolve CRAN Submission Note
+> Notice: This is external email. Verify the sender and use caution with any content.
+>
+>
+> ? Thu, 16 May 2024 16:01:45 +0000
+> Zeinab Mashreghi <z.mashreghi at uwinnipeg.ca> ?????:
+>
+>> checking HTML version of manual ... NOTE
+>> Found the following HTML validation problems:
+>> All.data.html:4:1 (All.data.Rd:10): Warning: <link> inserting "type"
+>> attribute
+>> All.data.html:12:1 (All.data.Rd:10): Warning: <script> proprietary
+>> attribute "onload"
+> Are you using an Apple computer? R relies on a program called "tidy" to
+> verify the generated HTML documentation. macOS comes with an old
+> version of "tidy" [*] that doesn't support the HTML5 attributes used by
+> R, which results in these NOTEs. You didn't get them on CRAN, so feel
+> free to ignore them.
+>
+> If you run tidy -v or tidy --version, what does it say?
+>
+> --
+> Best regards,
+> Ivan
+>
+> [*]
+> https://cran.r-project.org/doc/manuals/R-exts.html#FOOT57
+> https://stat.ethz.ch/pipermail/r-devel/2023-August/082763.html
+>
+> 	[[alternative HTML version deleted]]
+>
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
