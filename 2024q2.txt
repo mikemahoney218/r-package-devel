@@ -14150,3 +14150,513 @@ Simon
 > 
 
 
+From vo|ody@ @end|ng |rom m|nd@pr|ng@com  Wed May 22 05:16:01 2024
+From: vo|ody@ @end|ng |rom m|nd@pr|ng@com (Vladimir Dergachev)
+Date: Tue, 21 May 2024 23:16:01 -0400 (EDT)
+Subject: [R-pkg-devel] handling documentation build tools
+In-Reply-To: <BY3PR05MB8116853A0F676E3C4C4659D987EA2@BY3PR05MB8116.namprd05.prod.outlook.com>
+References: <BY3PR05MB8116D430AB46C7B5F0A60E7D87EA2@BY3PR05MB8116.namprd05.prod.outlook.com>
+ <26189.3853.144855.840680@rob.eddelbuettel.com>
+ <BY3PR05MB8116853A0F676E3C4C4659D987EA2@BY3PR05MB8116.namprd05.prod.outlook.com>
+Message-ID: <alpine.DEB.2.22.394.2405212312310.3271@iridium>
+
+
+
+On Tue, 21 May 2024, Boylan, Ross via R-package-devel wrote:
+
+> Thanks for the pointer.  You may have been thrown off by some goofs I made in the intro, which said
+>> I would like to build the automatically, with requiring either users or repositories to have the tools.
+>
+> The intended meaning, with corrections in **, was
+>> I would like to build the  *custom documentation* automatically, with*out* requiring either users or repositories to have the tools.
+>
+> So I want to build the document only locally, as you suggest, but am not sure how to accomplish that.
+
+I usually just create a Makefile.
+
+It can be something like this:
+
+
+all: documentation.pdf
+
+documentation.pdf: documentation.lyx
+ 	lyx --export pdf4 documentation.lyx
+
+Then every time before you do R build, must run make in the directory with 
+the Makefile.
+
+best
+
+Vladimir Dergachev
+
+>
+> Regarding the trick, I'm puzzled by what it gains.  It seems like a complicated way to get the core pdf copied to inst/doc.
+>
+> Also, my main concern was how to automate production of the "core" pdf, using the language of the blog post.
+>
+> Ross
+>
+>
+> ________________________________________
+> From: Dirk Eddelbuettel <edd at debian.org>
+> Sent: Tuesday, May 21, 2024 2:15 PM
+> To: Boylan, Ross
+> Cc: r-package-devel at r-project.org
+> Subject: Re: [R-pkg-devel] handling documentation build tools
+>
+> !-------------------------------------------------------------------|
+>  This Message Is From an External Sender
+>  This message came from outside your organization.
+> |-------------------------------------------------------------------!
+>
+>
+> As lyx is not listed in 'Writing R Extensions', the one (authorative) manual
+> describing how to build packages for R, I would not assume it to be present
+> on every CRAN machine building packages. Also note that several user recently
+> had to ask here how to deal with less common fonts for style files for
+> (pdf)latex.
+>
+> So I would recommend 'localising' the pdf creation to your own machine, and
+> to ship the resulting pdf. You can have pre-made pdfs as core of a vignette,
+> I trick I quite like to make package building simpler and more robust.  See
+> https://urldefense.com/v3/__https://www.r-bloggers.com/2019/01/add-a-static-pdf-vignette-to-an-r-package/__;!!LQC6Cpwp!vcNeLBuZJDE3hWqjhjwi0NVVeEkEHhrSe847H98Eqj9ZEEBspCetgb6g-F7a518JPRd35jL-7xkOlj0$
+> for details.
+>
+> Cheers, Dirk
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+From m@p5672 @end|ng |rom p@u@edu  Wed May 22 15:54:17 2024
+From: m@p5672 @end|ng |rom p@u@edu (Nixon, Michelle Pistner)
+Date: Wed, 22 May 2024 13:54:17 +0000
+Subject: [R-pkg-devel] 
+ Compile issues on r-devel-linux-x86_64-debian-clang with OpenMP
+In-Reply-To: <26189.42335.878252.968636@hornik.net>
+References: <IA1PR02MB916074AAAA1015936080A95BACEA2@IA1PR02MB9160.namprd02.prod.outlook.com>
+ <26189.3381.349748.286592@rob.eddelbuettel.com>
+ <26189.42335.878252.968636@hornik.net>
+Message-ID: <DM4PR02MB9167124C2B58630265E20AE0ACEB2@DM4PR02MB9167.namprd02.prod.outlook.com>
+
+Thank you both for your responses and help! Kurt-- your message makes a lot of sense. I'll try to debug soon and will reach out if I have more questions.
+
+Thanks,
+Michelle
+________________________________
+From: Kurt Hornik <Kurt.Hornik at wu.ac.at>
+Sent: Wednesday, May 22, 2024 3:57 AM
+To: Dirk Eddelbuettel <edd at debian.org>
+Cc: Nixon, Michelle Pistner <map5672 at psu.edu>; r-package-devel at r-project.org <r-package-devel at r-project.org>; Kurt Hornik <Kurt.Hornik at wu.ac.at>
+Subject: Re: [R-pkg-devel] Compile issues on r-devel-linux-x86_64-debian-clang with OpenMP
+
+[You don't often get email from kurt.hornik at wu.ac.at. Learn why this is important at https://aka.ms/LearnAboutSenderIdentification ]
+
+>>>>> Dirk Eddelbuettel writes:
+
+Friends, the Debian pretest check system uses LLVM 18 and has the
+corresponding OpenMP headers and libraries installed, but R is
+configured not to use these.  However, the configure test in fido does
+
+cat <<EOF > test-omp.cpp
+#include <omp.h>
+int main() {
+  return omp_get_num_threads();
+}
+EOF
+
+## Execute R CMD SHLIB.
+"${R_HOME}/bin/R" CMD SHLIB test-omp.cpp >/dev/null 2>&1
+if test x"$?" = x"0"; then
+    AC_MSG_RESULT([yes])
+    openmp_already_works="yes"
+else
+    AC_MSG_RESULT([no])
+fi
+
+which does not work as intended: R CMD SHLIB will happily link but the
+.so will end up with an unresolved symbol:
+
+$ nm test-omp.so | grep omp_
+                 U omp_get_num_threads
+
+Hth
+-k
+
+> Hi Michelle,
+
+> On 21 May 2024 at 13:46, Nixon, Michelle Pistner wrote:
+> | Hi all,
+> |
+> | I'm running into build issues for my package (fido: https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fgithub.com%2Fjsilve24%2Ffido&data=05%7C02%7Cmap5672%40psu.edu%7C7993944f52ae4a017d3d08dc7a34d1d6%7C7cf48d453ddb4389a9c1c115526eb52e%7C0%7C0%7C638519614500263726%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C&sdata=C4BI6%2FUgTjd%2FCRPzBF8NuUkPvlQkIxb2r1%2BzIqKNPpE%3D&reserved=0)<https://github.com/jsilve24/fido> on the r-devel-linux-x86_64-debian-clang system on CRAN (full check log here: https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fwin-builder.r-project.org%2Fincoming_pretest%2Ffido_1.1.0_20240515_211644%2FDebian%2F00install.out&data=05%7C02%7Cmap5672%40psu.edu%7C7993944f52ae4a017d3d08dc7a34d1d6%7C7cf48d453ddb4389a9c1c115526eb52e%7C0%7C0%7C638519614500272862%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C&sdata=TKpQrkImemwz%2FuK7yYqCLEECU6WCCvgYwcrAId%2Bpmb0%3D&reserved=0)<https://win-builder.r-project.org/incoming_pretest/fido_1.1.0_20240515_211644/Debian/00install.out>. fido relies on several of the Rcpp packages, and I think the error is due to how OpenMP is set up in our package. The error in question states:
+> |
+> | "Error: package or namespace load failed for ?fido? in dyn.load(file, DLLpath = DLLpath, ...):
+> |  unable to load shared object '/home/hornik/tmp/R.check/r-devel-clang/Work/build/Packages/00LOCK-fido/00new/fido/libs/fido.so':
+> |   /home/hornik/tmp/R.check/r-devel-clang/Work/build/Packages/00LOCK-fido/00new/fido/libs/fido.so: undefined symbol: omp_get_thread_num"
+> |
+> | I've had a hard time recreating the error, as I can successfully get the package to build on other systems (GitHub action results here: https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fgithub.com%2Fjsilve24%2Ffido%2Factions&data=05%7C02%7Cmap5672%40psu.edu%7C7993944f52ae4a017d3d08dc7a34d1d6%7C7cf48d453ddb4389a9c1c115526eb52e%7C0%7C0%7C638519614500275695%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C&sdata=zXCul23gWAevfEhCsfyJg8KewU8fjSuy1qZgZemNy7M%3D&reserved=0)<https://github.com/jsilve24/fido/actions> including a system using the same version of R/clang as the failing CRAN check. Looking at the logs between the two, the major difference is the lack of -fopenmp in the compiling function on the CRAN version (which is there on the r-hub check version with the same specifications):
+> |
+> | (From the CRAN version) clang++-18 -std=gnu++17 -shared -L/home/hornik/tmp/R-d-clang-18/lib -Wl,-O1 -o fido.so ConjugateLinearModel.o MaltipooCollapsed_LGH.o MaltipooCollapsed_Optim.o MatrixAlgebra.o PibbleCollapsed_LGH.o PibbleCollapsed_Optim.o PibbleCollapsed_Uncollapse.o PibbleCollapsed_Uncollapse_sigmaKnown.o RcppExports.o SpecialFunctions.o test_LaplaceApproximation.o test_MultDirichletBoot.o test_utils.o -L/home/hornik/tmp/R-d-clang-18/lib -lR
+> |
+> | My initial thought was an issue in the configure scripts (which we borrowed heavily from RcppArmadillo but made slight changes to (which is the most likely cause if there is issue here)) or that there is some mismatch somewhere as to whether or not OpenMP is available, but there isn't an obvious bug to me.
+> |
+> | Any guidance on how to debug would be greatly appreciated!
+
+> I seem to recall that that machine is 'known-bad' for OpenMP due to the
+> reliance on clang-18 which cannot (?) build with it.  Might be best to
+> contact Kurt Hornik (CC'ed) and/or CRAN.
+
+> Best, Dirk
+
+
+> | Thanks,
+> | Michelle
+> |
+> | Michelle Nixon, PhD
+> |
+> | Assistant Research Professor
+> | College of Information Sciences and Technology
+> | The Pennsylvania State University
+> |
+> |     [[alternative HTML version deleted]]
+> |
+> | ______________________________________________
+> | R-package-devel at r-project.org mailing list
+> | https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-package-devel&data=05%7C02%7Cmap5672%40psu.edu%7C7993944f52ae4a017d3d08dc7a34d1d6%7C7cf48d453ddb4389a9c1c115526eb52e%7C0%7C0%7C638519614500278321%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C&sdata=LdxZWjZQvd1slPS4Tc8GkeKeV5OyoU5YL2NraN6chuY%3D&reserved=0<https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Wed May 22 16:18:13 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 22 May 2024 09:18:13 -0500
+Subject: [R-pkg-devel] 
+ Compile issues on r-devel-linux-x86_64-debian-clang with OpenMP
+In-Reply-To: <DM4PR02MB9167124C2B58630265E20AE0ACEB2@DM4PR02MB9167.namprd02.prod.outlook.com>
+References: <IA1PR02MB916074AAAA1015936080A95BACEA2@IA1PR02MB9160.namprd02.prod.outlook.com>
+ <26189.3381.349748.286592@rob.eddelbuettel.com>
+ <26189.42335.878252.968636@hornik.net>
+ <DM4PR02MB9167124C2B58630265E20AE0ACEB2@DM4PR02MB9167.namprd02.prod.outlook.com>
+Message-ID: <26189.65189.524885.982156@rob.eddelbuettel.com>
+
+
+On 22 May 2024 at 13:54, Nixon, Michelle Pistner wrote:
+| Thank you both for your responses and help! Kurt-- your message makes a lot of
+| sense. I'll try to debug soon and will reach out if I have more questions.
+
+Interesting.
+
+Kurt, is there a recommended way to test for this (rare, I may add) case of
+'OpenMP present but usage verboten by R' ?  I do not see an option for 'R CMD
+config' jumping out, and there is no pkg-config file either.
+
+Testing via 'nm' as you show is possible but not exactly 'portable'.  So any
+suggestions as to what to condition on here?  Michelle did AFAICT the Right
+Thing (TM) by 'borrowing' from the fairly mature check in RcppArmadillo.
+
+Dirk
+
+| 
+| Thanks,
+| Michelle
+| ???????????????????????????????????????????????????????????????????????????????
+| From: Kurt Hornik <Kurt.Hornik at wu.ac.at>
+| Sent: Wednesday, May 22, 2024 3:57 AM
+| To: Dirk Eddelbuettel <edd at debian.org>
+| Cc: Nixon, Michelle Pistner <map5672 at psu.edu>; r-package-devel at r-project.org
+| <r-package-devel at r-project.org>; Kurt Hornik <Kurt.Hornik at wu.ac.at>
+| Subject: Re: [R-pkg-devel] Compile issues on r-devel-linux-x86_64-debian-clang
+| with OpenMP
+|  
+| [You don't often get email from kurt.hornik at wu.ac.at. Learn why this is
+| important at https://aka.ms/LearnAboutSenderIdentification ]
+| 
+| >>>>> Dirk Eddelbuettel writes:
+| 
+| Friends, the Debian pretest check system uses LLVM 18 and has the
+| corresponding OpenMP headers and libraries installed, but R is
+| configured not to use these.  However, the configure test in fido does
+| 
+| cat <<EOF > test-omp.cpp
+| #include <omp.h>
+| int main() {
+|   return omp_get_num_threads();
+| }
+| EOF
+| 
+| ## Execute R CMD SHLIB.
+| "${R_HOME}/bin/R" CMD SHLIB test-omp.cpp >/dev/null 2>&1
+| if test x"$?" = x"0"; then
+|     AC_MSG_RESULT([yes])
+|     openmp_already_works="yes"
+| else
+|     AC_MSG_RESULT([no])
+| fi
+| 
+| which does not work as intended: R CMD SHLIB will happily link but the
+| .so will end up with an unresolved symbol:
+| 
+| $ nm test-omp.so | grep omp_
+|                  U omp_get_num_threads
+| 
+| Hth
+| -k
+| 
+| > Hi Michelle,
+| 
+| > On 21 May 2024 at 13:46, Nixon, Michelle Pistner wrote:
+| > | Hi all,
+| > |
+| > | I'm running into build issues for my package (fido: https://
+| nam10.safelinks.protection.outlook.com/?url=
+| https%3A%2F%2Fgithub.com%2Fjsilve24%2Ffido&data=
+| 05%7C02%7Cmap5672%40psu.edu%7C7993944f52ae4a017d3d08dc7a34d1d6%7C7cf48d453ddb4389a9c1c115526eb52e%7C0%7C0%7C638519614500263726%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C
+| &sdata=C4BI6%2FUgTjd%2FCRPzBF8NuUkPvlQkIxb2r1%2BzIqKNPpE%3D&reserved=0) on the
+| r-devel-linux-x86_64-debian-clang system on CRAN (full check log here: https://
+| nam10.safelinks.protection.outlook.com/?url=
+| https%3A%2F%2Fwin-builder.r-project.org%2Fincoming_pretest%2Ffido_1.1.0_20240515_211644%2FDebian%2F00install.out
+| &data=
+| 05%7C02%7Cmap5672%40psu.edu%7C7993944f52ae4a017d3d08dc7a34d1d6%7C7cf48d453ddb4389a9c1c115526eb52e%7C0%7C0%7C638519614500272862%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C
+| &sdata=TKpQrkImemwz%2FuK7yYqCLEECU6WCCvgYwcrAId%2Bpmb0%3D&reserved=0). fido
+| relies on several of the Rcpp packages, and I think the error is due to how
+| OpenMP is set up in our package. The error in question states:
+| > |
+| > | "Error: package or namespace load failed for ?fido? in dyn.load(file,
+| DLLpath = DLLpath, ...):
+| > |  unable to load shared object '/home/hornik/tmp/R.check/r-devel-clang/Work/
+| build/Packages/00LOCK-fido/00new/fido/libs/fido.so':
+| > |   /home/hornik/tmp/R.check/r-devel-clang/Work/build/Packages/00LOCK-fido/
+| 00new/fido/libs/fido.so: undefined symbol: omp_get_thread_num"
+| > |
+| > | I've had a hard time recreating the error, as I can successfully get the
+| package to build on other systems (GitHub action results here: https://
+| nam10.safelinks.protection.outlook.com/?url=
+| https%3A%2F%2Fgithub.com%2Fjsilve24%2Ffido%2Factions&data=
+| 05%7C02%7Cmap5672%40psu.edu%7C7993944f52ae4a017d3d08dc7a34d1d6%7C7cf48d453ddb4389a9c1c115526eb52e%7C0%7C0%7C638519614500275695%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C
+| &sdata=zXCul23gWAevfEhCsfyJg8KewU8fjSuy1qZgZemNy7M%3D&reserved=0) including a
+| system using the same version of R/clang as the failing CRAN check. Looking at
+| the logs between the two, the major difference is the lack of -fopenmp in the
+| compiling function on the CRAN version (which is there on the r-hub check
+| version with the same specifications):
+| > |
+| > | (From the CRAN version) clang++-18 -std=gnu++17 -shared -L/home/hornik/tmp/
+| R-d-clang-18/lib -Wl,-O1 -o fido.so ConjugateLinearModel.o
+| MaltipooCollapsed_LGH.o MaltipooCollapsed_Optim.o MatrixAlgebra.o
+| PibbleCollapsed_LGH.o PibbleCollapsed_Optim.o PibbleCollapsed_Uncollapse.o
+| PibbleCollapsed_Uncollapse_sigmaKnown.o RcppExports.o SpecialFunctions.o
+| test_LaplaceApproximation.o test_MultDirichletBoot.o test_utils.o -L/home/
+| hornik/tmp/R-d-clang-18/lib -lR
+| > |
+| > | My initial thought was an issue in the configure scripts (which we borrowed
+| heavily from RcppArmadillo but made slight changes to (which is the most likely
+| cause if there is issue here)) or that there is some mismatch somewhere as to
+| whether or not OpenMP is available, but there isn't an obvious bug to me.
+| > |
+| > | Any guidance on how to debug would be greatly appreciated!
+| 
+| > I seem to recall that that machine is 'known-bad' for OpenMP due to the
+| > reliance on clang-18 which cannot (?) build with it.  Might be best to
+| > contact Kurt Hornik (CC'ed) and/or CRAN.
+| 
+| > Best, Dirk
+| 
+| 
+| > | Thanks,
+| > | Michelle
+| > |
+| > | Michelle Nixon, PhD
+| > |
+| > | Assistant Research Professor
+| > | College of Information Sciences and Technology
+| > | The Pennsylvania State University
+| > |
+| > |     [[alternative HTML version deleted]]
+| > |
+| > | ______________________________________________
+| > | R-package-devel at r-project.org mailing list
+| > | https://nam10.safelinks.protection.outlook.com/?url=
+| https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-package-devel&data=
+| 05%7C02%7Cmap5672%40psu.edu%7C7993944f52ae4a017d3d08dc7a34d1d6%7C7cf48d453ddb4389a9c1c115526eb52e%7C0%7C0%7C638519614500278321%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C
+| &sdata=LdxZWjZQvd1slPS4Tc8GkeKeV5OyoU5YL2NraN6chuY%3D&reserved=0
+| 
+| > --
+| > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed May 22 20:03:43 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 22 May 2024 14:03:43 -0400
+Subject: [R-pkg-devel] 
+ Compile issues on r-devel-linux-x86_64-debian-clang with OpenMP
+In-Reply-To: <26189.65189.524885.982156@rob.eddelbuettel.com>
+References: <IA1PR02MB916074AAAA1015936080A95BACEA2@IA1PR02MB9160.namprd02.prod.outlook.com>
+ <26189.3381.349748.286592@rob.eddelbuettel.com>
+ <26189.42335.878252.968636@hornik.net>
+ <DM4PR02MB9167124C2B58630265E20AE0ACEB2@DM4PR02MB9167.namprd02.prod.outlook.com>
+ <26189.65189.524885.982156@rob.eddelbuettel.com>
+Message-ID: <9816e440-a01c-486c-9634-83ffcfbd3e3f@gmail.com>
+
+On 2024-05-22 10:18 a.m., Dirk Eddelbuettel wrote:
+> 
+> On 22 May 2024 at 13:54, Nixon, Michelle Pistner wrote:
+> | Thank you both for your responses and help! Kurt-- your message makes a lot of
+> | sense. I'll try to debug soon and will reach out if I have more questions.
+> 
+> Interesting.
+> 
+> Kurt, is there a recommended way to test for this (rare, I may add) case of
+> 'OpenMP present but usage verboten by R' ?  I do not see an option for 'R CMD
+> config' jumping out, and there is no pkg-config file either.
+> 
+> Testing via 'nm' as you show is possible but not exactly 'portable'.  So any
+> suggestions as to what to condition on here?  Michelle did AFAICT the Right
+> Thing (TM) by 'borrowing' from the fairly mature check in RcppArmadillo.
+
+Not that I know much about writing configure tests, but won't 
+src/include/config.h in the R build dir have "HAVE_OPENMP" defined if 
+OpenMP is supported?
+
+Duncan
+
+> 
+> Dirk
+> 
+> |
+> | Thanks,
+> | Michelle
+> | ???????????????????????????????????????????????????????????????????????????????
+> | From: Kurt Hornik <Kurt.Hornik at wu.ac.at>
+> | Sent: Wednesday, May 22, 2024 3:57 AM
+> | To: Dirk Eddelbuettel <edd at debian.org>
+> | Cc: Nixon, Michelle Pistner <map5672 at psu.edu>; r-package-devel at r-project.org
+> | <r-package-devel at r-project.org>; Kurt Hornik <Kurt.Hornik at wu.ac.at>
+> | Subject: Re: [R-pkg-devel] Compile issues on r-devel-linux-x86_64-debian-clang
+> | with OpenMP
+> |
+> | [You don't often get email from kurt.hornik at wu.ac.at. Learn why this is
+> | important at https://aka.ms/LearnAboutSenderIdentification ]
+> |
+> | >>>>> Dirk Eddelbuettel writes:
+> |
+> | Friends, the Debian pretest check system uses LLVM 18 and has the
+> | corresponding OpenMP headers and libraries installed, but R is
+> | configured not to use these.  However, the configure test in fido does
+> |
+> | cat <<EOF > test-omp.cpp
+> | #include <omp.h>
+> | int main() {
+> |   return omp_get_num_threads();
+> | }
+> | EOF
+> |
+> | ## Execute R CMD SHLIB.
+> | "${R_HOME}/bin/R" CMD SHLIB test-omp.cpp >/dev/null 2>&1
+> | if test x"$?" = x"0"; then
+> |     AC_MSG_RESULT([yes])
+> |     openmp_already_works="yes"
+> | else
+> |     AC_MSG_RESULT([no])
+> | fi
+> |
+> | which does not work as intended: R CMD SHLIB will happily link but the
+> | .so will end up with an unresolved symbol:
+> |
+> | $ nm test-omp.so | grep omp_
+> |                  U omp_get_num_threads
+> |
+> | Hth
+> | -k
+> |
+> | > Hi Michelle,
+> |
+> | > On 21 May 2024 at 13:46, Nixon, Michelle Pistner wrote:
+> | > | Hi all,
+> | > |
+> | > | I'm running into build issues for my package (fido: https://
+> | nam10.safelinks.protection.outlook.com/?url=
+> | https%3A%2F%2Fgithub.com%2Fjsilve24%2Ffido&data=
+> | 05%7C02%7Cmap5672%40psu.edu%7C7993944f52ae4a017d3d08dc7a34d1d6%7C7cf48d453ddb4389a9c1c115526eb52e%7C0%7C0%7C638519614500263726%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C
+> | &sdata=C4BI6%2FUgTjd%2FCRPzBF8NuUkPvlQkIxb2r1%2BzIqKNPpE%3D&reserved=0) on the
+> | r-devel-linux-x86_64-debian-clang system on CRAN (full check log here: https://
+> | nam10.safelinks.protection.outlook.com/?url=
+> | https%3A%2F%2Fwin-builder.r-project.org%2Fincoming_pretest%2Ffido_1.1.0_20240515_211644%2FDebian%2F00install.out
+> | &data=
+> | 05%7C02%7Cmap5672%40psu.edu%7C7993944f52ae4a017d3d08dc7a34d1d6%7C7cf48d453ddb4389a9c1c115526eb52e%7C0%7C0%7C638519614500272862%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C
+> | &sdata=TKpQrkImemwz%2FuK7yYqCLEECU6WCCvgYwcrAId%2Bpmb0%3D&reserved=0). fido
+> | relies on several of the Rcpp packages, and I think the error is due to how
+> | OpenMP is set up in our package. The error in question states:
+> | > |
+> | > | "Error: package or namespace load failed for ?fido? in dyn.load(file,
+> | DLLpath = DLLpath, ...):
+> | > |  unable to load shared object '/home/hornik/tmp/R.check/r-devel-clang/Work/
+> | build/Packages/00LOCK-fido/00new/fido/libs/fido.so':
+> | > |   /home/hornik/tmp/R.check/r-devel-clang/Work/build/Packages/00LOCK-fido/
+> | 00new/fido/libs/fido.so: undefined symbol: omp_get_thread_num"
+> | > |
+> | > | I've had a hard time recreating the error, as I can successfully get the
+> | package to build on other systems (GitHub action results here: https://
+> | nam10.safelinks.protection.outlook.com/?url=
+> | https%3A%2F%2Fgithub.com%2Fjsilve24%2Ffido%2Factions&data=
+> | 05%7C02%7Cmap5672%40psu.edu%7C7993944f52ae4a017d3d08dc7a34d1d6%7C7cf48d453ddb4389a9c1c115526eb52e%7C0%7C0%7C638519614500275695%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C
+> | &sdata=zXCul23gWAevfEhCsfyJg8KewU8fjSuy1qZgZemNy7M%3D&reserved=0) including a
+> | system using the same version of R/clang as the failing CRAN check. Looking at
+> | the logs between the two, the major difference is the lack of -fopenmp in the
+> | compiling function on the CRAN version (which is there on the r-hub check
+> | version with the same specifications):
+> | > |
+> | > | (From the CRAN version) clang++-18 -std=gnu++17 -shared -L/home/hornik/tmp/
+> | R-d-clang-18/lib -Wl,-O1 -o fido.so ConjugateLinearModel.o
+> | MaltipooCollapsed_LGH.o MaltipooCollapsed_Optim.o MatrixAlgebra.o
+> | PibbleCollapsed_LGH.o PibbleCollapsed_Optim.o PibbleCollapsed_Uncollapse.o
+> | PibbleCollapsed_Uncollapse_sigmaKnown.o RcppExports.o SpecialFunctions.o
+> | test_LaplaceApproximation.o test_MultDirichletBoot.o test_utils.o -L/home/
+> | hornik/tmp/R-d-clang-18/lib -lR
+> | > |
+> | > | My initial thought was an issue in the configure scripts (which we borrowed
+> | heavily from RcppArmadillo but made slight changes to (which is the most likely
+> | cause if there is issue here)) or that there is some mismatch somewhere as to
+> | whether or not OpenMP is available, but there isn't an obvious bug to me.
+> | > |
+> | > | Any guidance on how to debug would be greatly appreciated!
+> |
+> | > I seem to recall that that machine is 'known-bad' for OpenMP due to the
+> | > reliance on clang-18 which cannot (?) build with it.  Might be best to
+> | > contact Kurt Hornik (CC'ed) and/or CRAN.
+> |
+> | > Best, Dirk
+> |
+> |
+> | > | Thanks,
+> | > | Michelle
+> | > |
+> | > | Michelle Nixon, PhD
+> | > |
+> | > | Assistant Research Professor
+> | > | College of Information Sciences and Technology
+> | > | The Pennsylvania State University
+> | > |
+> | > |     [[alternative HTML version deleted]]
+> | > |
+> | > | ______________________________________________
+> | > | R-package-devel at r-project.org mailing list
+> | > | https://nam10.safelinks.protection.outlook.com/?url=
+> | https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-package-devel&data=
+> | 05%7C02%7Cmap5672%40psu.edu%7C7993944f52ae4a017d3d08dc7a34d1d6%7C7cf48d453ddb4389a9c1c115526eb52e%7C0%7C0%7C638519614500278321%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C
+> | &sdata=LdxZWjZQvd1slPS4Tc8GkeKeV5OyoU5YL2NraN6chuY%3D&reserved=0
+> |
+> | > --
+> | > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+
+
