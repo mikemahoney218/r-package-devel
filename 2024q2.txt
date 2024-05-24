@@ -14660,3 +14660,326 @@ Duncan
 >
 
 
+From @hu|@|@cheung @end|ng |rom gm@||@com  Thu May 23 04:49:38 2024
+From: @hu|@|@cheung @end|ng |rom gm@||@com (Shu Fai Cheung)
+Date: Thu, 23 May 2024 10:49:38 +0800
+Subject: [R-pkg-devel] callr and CRAN policy on the max number of cores
+Message-ID: <CAPVJd2Uw_9SHVYct0tDAh+H4h9mtWOW7wVSkGw1fONgUKO-hQg@mail.gmail.com>
+
+Hil,
+
+I am exploring the use of callr in a package. I know that for packages
+that do parallel computing, we should not use more than two cores in
+examples, tests, etc. when being checked on CRAN.
+
+I believe I can use callr in tests and examples. How should I use
+callr in compliance with CRAN policy? Because even just one call to
+callr will start a new R session, should I limit the use of callr such
+that at any one time, only one background R session created by callr
+is active?
+
+Regards,
+Shu Fai
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Thu May 23 05:45:36 2024
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Wed, 22 May 2024 20:45:36 -0700
+Subject: [R-pkg-devel] callr and CRAN policy on the max number of cores
+In-Reply-To: <CAPVJd2Uw_9SHVYct0tDAh+H4h9mtWOW7wVSkGw1fONgUKO-hQg@mail.gmail.com>
+References: <CAPVJd2Uw_9SHVYct0tDAh+H4h9mtWOW7wVSkGw1fONgUKO-hQg@mail.gmail.com>
+Message-ID: <CAFDcVCQhM3rnnLFXn7Sp89h3JE_t26nLbRc2jtKs1Ux5_PWbmw@mail.gmail.com>
+
+Two parallel processes are okay, so you can use two callr background
+processes ("children"), as long as you don't do heavy computations on
+the main R process ("parent"). This is commonly done in many R
+packages, e.g.
+
+library(parallel)
+cl <- makeCluster(2)
+y <- parLapply(cl = cl, X = 1:10, fun = slow_fcn)
+stopCluster(cl)
+
+/Henrik
+
+On Wed, May 22, 2024 at 7:50?PM Shu Fai Cheung <shufai.cheung at gmail.com> wrote:
+>
+> Hil,
+>
+> I am exploring the use of callr in a package. I know that for packages
+> that do parallel computing, we should not use more than two cores in
+> examples, tests, etc. when being checked on CRAN.
+>
+> I believe I can use callr in tests and examples. How should I use
+> callr in compliance with CRAN policy? Because even just one call to
+> callr will start a new R session, should I limit the use of callr such
+> that at any one time, only one background R session created by callr
+> is active?
+>
+> Regards,
+> Shu Fai
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From edd @end|ng |rom deb|@n@org  Thu May 23 17:49:04 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 23 May 2024 10:49:04 -0500
+Subject: [R-pkg-devel] 
+ Compile issues on r-devel-linux-x86_64-debian-clang with OpenMP
+In-Reply-To: <9816e440-a01c-486c-9634-83ffcfbd3e3f@gmail.com>
+References: <IA1PR02MB916074AAAA1015936080A95BACEA2@IA1PR02MB9160.namprd02.prod.outlook.com>
+ <26189.3381.349748.286592@rob.eddelbuettel.com>
+ <26189.42335.878252.968636@hornik.net>
+ <DM4PR02MB9167124C2B58630265E20AE0ACEB2@DM4PR02MB9167.namprd02.prod.outlook.com>
+ <26189.65189.524885.982156@rob.eddelbuettel.com>
+ <9816e440-a01c-486c-9634-83ffcfbd3e3f@gmail.com>
+Message-ID: <26191.25968.49468.493548@rob.eddelbuettel.com>
+
+
+On 22 May 2024 at 14:03, Duncan Murdoch wrote:
+| On 2024-05-22 10:18 a.m., Dirk Eddelbuettel wrote:
+| > 
+| > On 22 May 2024 at 13:54, Nixon, Michelle Pistner wrote:
+| > | Thank you both for your responses and help! Kurt-- your message makes a lot of
+| > | sense. I'll try to debug soon and will reach out if I have more questions.
+| > 
+| > Interesting.
+| > 
+| > Kurt, is there a recommended way to test for this (rare, I may add) case of
+| > 'OpenMP present but usage verboten by R' ?  I do not see an option for 'R CMD
+| > config' jumping out, and there is no pkg-config file either.
+| > 
+| > Testing via 'nm' as you show is possible but not exactly 'portable'.  So any
+| > suggestions as to what to condition on here?  Michelle did AFAICT the Right
+| > Thing (TM) by 'borrowing' from the fairly mature check in RcppArmadillo.
+| 
+| Not that I know much about writing configure tests, but won't 
+| src/include/config.h in the R build dir have "HAVE_OPENMP" defined if
+                       ^^^^^^^^^^^^^^^^^^
+| OpenMP is supported?
+
+I think what Michelle and I are after is for an _installed_ version of R to
+tell us if we can, or cannot, use OpenMP.  Maybe capabilities() needs and extension?
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu May 23 18:04:06 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 23 May 2024 12:04:06 -0400
+Subject: [R-pkg-devel] 
+ Compile issues on r-devel-linux-x86_64-debian-clang with OpenMP
+In-Reply-To: <26191.25968.49468.493548@rob.eddelbuettel.com>
+References: <IA1PR02MB916074AAAA1015936080A95BACEA2@IA1PR02MB9160.namprd02.prod.outlook.com>
+ <26189.3381.349748.286592@rob.eddelbuettel.com>
+ <26189.42335.878252.968636@hornik.net>
+ <DM4PR02MB9167124C2B58630265E20AE0ACEB2@DM4PR02MB9167.namprd02.prod.outlook.com>
+ <26189.65189.524885.982156@rob.eddelbuettel.com>
+ <9816e440-a01c-486c-9634-83ffcfbd3e3f@gmail.com>
+ <26191.25968.49468.493548@rob.eddelbuettel.com>
+Message-ID: <91944de5-d0d1-476d-a39c-03c8ced79410@gmail.com>
+
+On 2024-05-23 11:49 a.m., Dirk Eddelbuettel wrote:
+> 
+> On 22 May 2024 at 14:03, Duncan Murdoch wrote:
+> | On 2024-05-22 10:18 a.m., Dirk Eddelbuettel wrote:
+> | >
+> | > On 22 May 2024 at 13:54, Nixon, Michelle Pistner wrote:
+> | > | Thank you both for your responses and help! Kurt-- your message makes a lot of
+> | > | sense. I'll try to debug soon and will reach out if I have more questions.
+> | >
+> | > Interesting.
+> | >
+> | > Kurt, is there a recommended way to test for this (rare, I may add) case of
+> | > 'OpenMP present but usage verboten by R' ?  I do not see an option for 'R CMD
+> | > config' jumping out, and there is no pkg-config file either.
+> | >
+> | > Testing via 'nm' as you show is possible but not exactly 'portable'.  So any
+> | > suggestions as to what to condition on here?  Michelle did AFAICT the Right
+> | > Thing (TM) by 'borrowing' from the fairly mature check in RcppArmadillo.
+> |
+> | Not that I know much about writing configure tests, but won't
+> | src/include/config.h in the R build dir have "HAVE_OPENMP" defined if
+>                         ^^^^^^^^^^^^^^^^^^
+> | OpenMP is supported?
+> 
+> I think what Michelle and I are after is for an _installed_ version of R to
+> tell us if we can, or cannot, use OpenMP.  Maybe capabilities() needs and extension?
+
+Right, sorry.  I thought that file was distributed, but it's Rconfig.h 
+that gets installed, and it only has a subset of the definitions.
+
+Duncan
+
+
+From |kry|ov @end|ng |rom d|@root@org  Thu May 23 19:02:37 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 23 May 2024 20:02:37 +0300
+Subject: [R-pkg-devel] 
+ Compile issues on r-devel-linux-x86_64-debian-clang with OpenMP
+In-Reply-To: <26189.65189.524885.982156@rob.eddelbuettel.com>
+References: <IA1PR02MB916074AAAA1015936080A95BACEA2@IA1PR02MB9160.namprd02.prod.outlook.com>
+ <26189.3381.349748.286592@rob.eddelbuettel.com>
+ <26189.42335.878252.968636@hornik.net>
+ <DM4PR02MB9167124C2B58630265E20AE0ACEB2@DM4PR02MB9167.namprd02.prod.outlook.com>
+ <26189.65189.524885.982156@rob.eddelbuettel.com>
+Message-ID: <20240523200237.5b66d34c@arachnoid>
+
+On Wed, 22 May 2024 09:18:13 -0500
+Dirk Eddelbuettel <edd at debian.org> wrote:
+
+> Testing via 'nm' as you show is possible but not exactly 'portable'.
+> So any suggestions as to what to condition on here?
+
+(My apologies if you already got an answer from Kurt. I think we're not
+seeing his mails to the list.)
+
+Perhaps take the configure test a bit further and try to dyn.load() the
+resulting shared object? To be extra sure, call the function that uses
+the OpenMP features? (Some weird systems may have lazy binding enabled,
+making dyn.load() succeed but crashing the process on invocation of a
+missing function.)
+
+On GNU/Linux, the linker will happily leave undefined symbols in when
+creating a shared library (unlike on, say, Windows, where extern void
+foo(void); foo(); is a link-time error unless an object file or an
+import library providing foo() is also present). When loading such a
+library, the operation fails unless the missing symbols are already
+present in the address space of the process (e.g. from a different
+shared library).
+
+A fresh process of R built without OpenMP support will neither link in
+the OpenMP runtime while running SHLIB nor have the OpenMP runtime
+loaded and so should successfully fail the test.
+
+I also wouldn't call the entry point "main" just in case some future
+compiler considers this a violation of the rules? [*] and breaks the
+code. extern "C" void configtest(int*) would be compatible with .C()
+without having to talk to R's memory manager:
+
+# The configure script:
+cat > test-omp.cpp <<EOF
+#include <omp.h>
+extern "C" void configtest(int * arg) {
+  *arg = omp_get_num_threads();
+}
+EOF
+# Without the following you're relying on the GNU/Linux-like behaviour
+# w.r.t. undefined symbols (see WRE 1.2.1.1):
+cat > Makevars <<EOF
+PKG_CXXFLAGS = \$(SHLIB_OPENMP_CXXFLAGS)
+PKG_LIBS = \$(SHLIB_OPENMP_CXXFLAGS)
+EOF
+R CMD SHLIB test-omp.cpp
+
+# And then in R:
+dyn.load(paste0("test-omp", .Platform$dynlib.ext))
+# There's probably no need to test the return value, right?
+.C("configtest", arg = integer(1))$arg
+
+-- 
+Best regards,
+Ivan
+
+[*]
+In C++, main() is the function-that-must-not-be-named:
+https://en.cppreference.com/w/cpp/language/main_function
+
+
+From edd @end|ng |rom deb|@n@org  Thu May 23 21:47:44 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 23 May 2024 14:47:44 -0500
+Subject: [R-pkg-devel] 
+ Compile issues on r-devel-linux-x86_64-debian-clang with OpenMP
+In-Reply-To: <20240523200237.5b66d34c@arachnoid>
+References: <IA1PR02MB916074AAAA1015936080A95BACEA2@IA1PR02MB9160.namprd02.prod.outlook.com>
+ <26189.3381.349748.286592@rob.eddelbuettel.com>
+ <26189.42335.878252.968636@hornik.net>
+ <DM4PR02MB9167124C2B58630265E20AE0ACEB2@DM4PR02MB9167.namprd02.prod.outlook.com>
+ <26189.65189.524885.982156@rob.eddelbuettel.com>
+ <20240523200237.5b66d34c@arachnoid>
+Message-ID: <26191.40288.67910.94838@rob.eddelbuettel.com>
+
+
+On 23 May 2024 at 20:02, Ivan Krylov wrote:
+| On Wed, 22 May 2024 09:18:13 -0500
+| Dirk Eddelbuettel <edd at debian.org> wrote:
+| 
+| > Testing via 'nm' as you show is possible but not exactly 'portable'.
+| > So any suggestions as to what to condition on here?
+| 
+| (My apologies if you already got an answer from Kurt. I think we're not
+| seeing his mails to the list.)
+| 
+| Perhaps take the configure test a bit further and try to dyn.load() the
+| resulting shared object? To be extra sure, call the function that uses
+| the OpenMP features? (Some weird systems may have lazy binding enabled,
+| making dyn.load() succeed but crashing the process on invocation of a
+| missing function.)
+| 
+| On GNU/Linux, the linker will happily leave undefined symbols in when
+| creating a shared library (unlike on, say, Windows, where extern void
+| foo(void); foo(); is a link-time error unless an object file or an
+| import library providing foo() is also present). When loading such a
+| library, the operation fails unless the missing symbols are already
+| present in the address space of the process (e.g. from a different
+| shared library).
+| 
+| A fresh process of R built without OpenMP support will neither link in
+| the OpenMP runtime while running SHLIB nor have the OpenMP runtime
+| loaded and so should successfully fail the test.
+| 
+| I also wouldn't call the entry point "main" just in case some future
+| compiler considers this a violation of the rules? [*] and breaks the
+| code. extern "C" void configtest(int*) would be compatible with .C()
+| without having to talk to R's memory manager:
+| 
+| # The configure script:
+| cat > test-omp.cpp <<EOF
+| #include <omp.h>
+| extern "C" void configtest(int * arg) {
+|   *arg = omp_get_num_threads();
+| }
+| EOF
+| # Without the following you're relying on the GNU/Linux-like behaviour
+| # w.r.t. undefined symbols (see WRE 1.2.1.1):
+| cat > Makevars <<EOF
+| PKG_CXXFLAGS = \$(SHLIB_OPENMP_CXXFLAGS)
+| PKG_LIBS = \$(SHLIB_OPENMP_CXXFLAGS)
+| EOF
+| R CMD SHLIB test-omp.cpp
+| 
+| # And then in R:
+| dyn.load(paste0("test-omp", .Platform$dynlib.ext))
+| # There's probably no need to test the return value, right?
+| .C("configtest", arg = integer(1))$arg
+
+Given that comes from RcppArmadillo we can rely on Rcpp::cppFunction() or
+Rcpp::sourceCpp() which should make that dance a little simpler.
+
+I had forgotten this was in fact a home-grown shell snippet (per `git blame`
+last polished by Kevin, now CC'ed, in 2020).  That should make an explicit
+load -- and noticing when we fail to load -- feasible.
+
+Maybe someone has time and appetite for contributing a PR?
+
+Cheers, Dirk
+
+| -- 
+| Best regards,
+| Ivan
+| 
+| [*]
+| In C++, main() is the function-that-must-not-be-named:
+| https://en.cppreference.com/w/cpp/language/main_function
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
