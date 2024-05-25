@@ -14983,3 +14983,256 @@ Cheers, Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From edd @end|ng |rom deb|@n@org  Fri May 24 15:22:04 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 24 May 2024 08:22:04 -0500
+Subject: [R-pkg-devel] 
+ Compile issues on r-devel-linux-x86_64-debian-clang with OpenMP
+In-Reply-To: <26192.18377.714360.89762@hornik.net>
+References: <IA1PR02MB916074AAAA1015936080A95BACEA2@IA1PR02MB9160.namprd02.prod.outlook.com>
+ <26189.3381.349748.286592@rob.eddelbuettel.com>
+ <26189.42335.878252.968636@hornik.net>
+ <DM4PR02MB9167124C2B58630265E20AE0ACEB2@DM4PR02MB9167.namprd02.prod.outlook.com>
+ <26189.65189.524885.982156@rob.eddelbuettel.com>
+ <20240523200237.5b66d34c@arachnoid>
+ <26191.40288.67910.94838@rob.eddelbuettel.com>
+ <26192.18377.714360.89762@hornik.net>
+Message-ID: <26192.38012.666476.138164@rob.eddelbuettel.com>
+
+
+Kurt,
+
+Could you do me a favour and run on that clang18-using machine in question
+the following one-liner (provided your session has access to a .libPaths()
+including Rcpp) and, in the case of success, the resulting function?
+
+  > Rcpp::cppFunction("int ompconfigtest() { return omp_get_num_threads(); }", includes="#include <omp.h>", plugin="openmp")
+  > ompconfigtest()
+  [1] 1
+  > 
+
+On a "normal" development machine such as mine here it works.
+
+Presumably it will fail at your end because -fopenmp will not be / cannot be
+substituted in from the openmp plugin defined by Rcpp:
+
+  ## built-in OpenMP plugin
+  .plugins[["openmp"]] <- function() {
+      list(env = list(PKG_CXXFLAGS="-fopenmp",
+                      PKG_LIBS="-fopenmp"))
+  }
+
+but it would be nice to know if that does indeed fail.
+
+Thanks,  Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From Kurt@Horn|k @end|ng |rom wu@@c@@t  Fri May 24 09:54:49 2024
+From: Kurt@Horn|k @end|ng |rom wu@@c@@t (Kurt Hornik)
+Date: Fri, 24 May 2024 09:54:49 +0200
+Subject: [R-pkg-devel] 
+ Compile issues on r-devel-linux-x86_64-debian-clang with OpenMP
+In-Reply-To: <26191.40288.67910.94838@rob.eddelbuettel.com>
+References: <IA1PR02MB916074AAAA1015936080A95BACEA2@IA1PR02MB9160.namprd02.prod.outlook.com>
+ <26189.3381.349748.286592@rob.eddelbuettel.com>
+ <26189.42335.878252.968636@hornik.net>
+ <DM4PR02MB9167124C2B58630265E20AE0ACEB2@DM4PR02MB9167.namprd02.prod.outlook.com>
+ <26189.65189.524885.982156@rob.eddelbuettel.com>
+ <20240523200237.5b66d34c@arachnoid>
+ <26191.40288.67910.94838@rob.eddelbuettel.com>
+Message-ID: <26192.18377.714360.89762@hornik.net>
+
+>>>>> Dirk Eddelbuettel writes:
+
+> On 23 May 2024 at 20:02, Ivan Krylov wrote:
+> | On Wed, 22 May 2024 09:18:13 -0500
+> | Dirk Eddelbuettel <edd at debian.org> wrote:
+> | 
+> | > Testing via 'nm' as you show is possible but not exactly 'portable'.
+> | > So any suggestions as to what to condition on here?
+> | 
+> | (My apologies if you already got an answer from Kurt. I think we're not
+> | seeing his mails to the list.)
+> | 
+> | Perhaps take the configure test a bit further and try to dyn.load() the
+> | resulting shared object? To be extra sure, call the function that uses
+> | the OpenMP features? (Some weird systems may have lazy binding enabled,
+> | making dyn.load() succeed but crashing the process on invocation of a
+> | missing function.)
+> | 
+> | On GNU/Linux, the linker will happily leave undefined symbols in when
+> | creating a shared library (unlike on, say, Windows, where extern void
+> | foo(void); foo(); is a link-time error unless an object file or an
+> | import library providing foo() is also present). When loading such a
+> | library, the operation fails unless the missing symbols are already
+> | present in the address space of the process (e.g. from a different
+> | shared library).
+> | 
+> | A fresh process of R built without OpenMP support will neither link in
+> | the OpenMP runtime while running SHLIB nor have the OpenMP runtime
+> | loaded and so should successfully fail the test.
+> | 
+> | I also wouldn't call the entry point "main" just in case some future
+> | compiler considers this a violation of the rules? [*] and breaks the
+> | code. extern "C" void configtest(int*) would be compatible with .C()
+> | without having to talk to R's memory manager:
+> | 
+> | # The configure script:
+> | cat > test-omp.cpp <<EOF
+> | #include <omp.h>
+> | extern "C" void configtest(int * arg) {
+> |   *arg = omp_get_num_threads();
+> | }
+> | EOF
+> | # Without the following you're relying on the GNU/Linux-like behaviour
+> | # w.r.t. undefined symbols (see WRE 1.2.1.1):
+> | cat > Makevars <<EOF
+> | PKG_CXXFLAGS = \$(SHLIB_OPENMP_CXXFLAGS)
+> | PKG_LIBS = \$(SHLIB_OPENMP_CXXFLAGS)
+> | EOF
+> | R CMD SHLIB test-omp.cpp
+> | 
+> | # And then in R:
+> | dyn.load(paste0("test-omp", .Platform$dynlib.ext))
+> | # There's probably no need to test the return value, right?
+> | .C("configtest", arg = integer(1))$arg
+
+That seems a very nice way of following WRE's 
+
+  If you do use your own checks, make sure that OpenMP support is
+  complete by compiling and linking an OpenMP-using program
+
+Modulo not hard-wiring 'R' in the configure code, and instead doing the
+usual
+
+  : ${R_HOME=`R RHOME`}
+  if test -z "${R_HOME}"; then
+    echo "could not determine R_HOME"
+    exit 1
+  fi
+  
+  "${R_HOME}/bin/R" CMD SHLIB .....
+
+etc.
+
+Best
+-k
+
+> Given that comes from RcppArmadillo we can rely on Rcpp::cppFunction() or
+> Rcpp::sourceCpp() which should make that dance a little simpler.
+
+> I had forgotten this was in fact a home-grown shell snippet (per `git blame`
+> last polished by Kevin, now CC'ed, in 2020).  That should make an explicit
+> load -- and noticing when we fail to load -- feasible.
+
+> Maybe someone has time and appetite for contributing a PR?
+
+> Cheers, Dirk
+
+> | -- 
+> | Best regards,
+> | Ivan
+> | 
+> | [*]
+> | In C++, main() is the function-that-must-not-be-named:
+> | https://en.cppreference.com/w/cpp/language/main_function
+
+> -- 
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From br@d|eyjeck @end|ng |rom gm@||@com  Fri May 24 21:01:56 2024
+From: br@d|eyjeck @end|ng |rom gm@||@com (Brad Eck)
+Date: Fri, 24 May 2024 20:01:56 +0100
+Subject: [R-pkg-devel] gcc14 checks on fedora
+Message-ID: <CALECgParnvn232ruRzc72H5d7F_xymBn5=6TaPA8Q+aufs2qkQ@mail.gmail.com>
+
+Dear List -
+
+I received a note that my package -- epanet2toolkit -- was showing a
+warning in the fedora-gcc results on CRAN.
+https://www.stats.ox.ac.uk/pub/bdr/gcc12/epanet2toolkit.out
+
+I'd like to reproduce the warning and fix it.  Usually I'd do that with
+Docker.  Is anyone aware of a docker image or dockerfile with this setup?
+
+Thanks,
+
+Brad
+
+	[[alternative HTML version deleted]]
+
+
+From c@@rd|@g@bor @end|ng |rom gm@||@com  Fri May 24 21:28:16 2024
+From: c@@rd|@g@bor @end|ng |rom gm@||@com (=?UTF-8?B?R8OhYm9yIENzw6FyZGk=?=)
+Date: Fri, 24 May 2024 21:28:16 +0200
+Subject: [R-pkg-devel] gcc14 checks on fedora
+In-Reply-To: <CALECgParnvn232ruRzc72H5d7F_xymBn5=6TaPA8Q+aufs2qkQ@mail.gmail.com>
+References: <CALECgParnvn232ruRzc72H5d7F_xymBn5=6TaPA8Q+aufs2qkQ@mail.gmail.com>
+Message-ID: <CABtg=Kn1aH4990ZwNOFM5ONSdQju+f=UHO2WPrA4zf3sfnUvFQ@mail.gmail.com>
+
+Fedora 40 comes with gcc 14.1.x. But I would first try to use the
+`-Wformat-truncation=` flag with the compiler you have, it is possible
+that you don't need gcc 14.1. If you do, then the `fedora:40`
+container should be good.
+
+Gabor
+
+On Fri, May 24, 2024 at 9:02?PM Brad Eck <bradleyjeck at gmail.com> wrote:
+>
+> Dear List -
+>
+> I received a note that my package -- epanet2toolkit -- was showing a
+> warning in the fedora-gcc results on CRAN.
+> https://www.stats.ox.ac.uk/pub/bdr/gcc12/epanet2toolkit.out
+>
+> I'd like to reproduce the warning and fix it.  Usually I'd do that with
+> Docker.  Is anyone aware of a docker image or dockerfile with this setup?
+>
+> Thanks,
+>
+> Brad
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From edd @end|ng |rom deb|@n@org  Fri May 24 21:53:20 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 24 May 2024 14:53:20 -0500
+Subject: [R-pkg-devel] gcc14 checks on fedora
+In-Reply-To: <CALECgParnvn232ruRzc72H5d7F_xymBn5=6TaPA8Q+aufs2qkQ@mail.gmail.com>
+References: <CALECgParnvn232ruRzc72H5d7F_xymBn5=6TaPA8Q+aufs2qkQ@mail.gmail.com>
+Message-ID: <26192.61488.308667.346493@rob.eddelbuettel.com>
+
+
+On 24 May 2024 at 20:01, Brad Eck wrote:
+| I received a note that my package -- epanet2toolkit -- was showing a
+| warning in the fedora-gcc results on CRAN.
+| https://www.stats.ox.ac.uk/pub/bdr/gcc12/epanet2toolkit.out
+| 
+| I'd like to reproduce the warning and fix it.  Usually I'd do that with
+| Docker.  Is anyone aware of a docker image or dockerfile with this setup?
+
+By habit I usually try to see if what I need is already in Debian unstable
+(or experimental if I must). So I just fired up 'docker run --rm -ti
+rocker/r-base bash' and that one (which I stand behind) does have
+gcc-14. Twice, infact, as 14.1.0 in unstable and 14-20240330 in testing.
+
+There are also some efforts to provide containers of the (generally not
+"exported") setup(s) at CRAN which may by now have this.  The last time I
+looked for it it either wasn't quite there yet or fell short for another
+reason.
+
+Good luck,  Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
