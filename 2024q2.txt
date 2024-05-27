@@ -15236,3 +15236,140 @@ Good luck,  Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From Kurt@Horn|k @end|ng |rom wu@@c@@t  Sun May 26 13:31:29 2024
+From: Kurt@Horn|k @end|ng |rom wu@@c@@t (Kurt Hornik)
+Date: Sun, 26 May 2024 13:31:29 +0200
+Subject: [R-pkg-devel] 
+ Compile issues on r-devel-linux-x86_64-debian-clang with OpenMP
+In-Reply-To: <26192.38012.666476.138164@rob.eddelbuettel.com>
+References: <IA1PR02MB916074AAAA1015936080A95BACEA2@IA1PR02MB9160.namprd02.prod.outlook.com>
+ <26189.3381.349748.286592@rob.eddelbuettel.com>
+ <26189.42335.878252.968636@hornik.net>
+ <DM4PR02MB9167124C2B58630265E20AE0ACEB2@DM4PR02MB9167.namprd02.prod.outlook.com>
+ <26189.65189.524885.982156@rob.eddelbuettel.com>
+ <20240523200237.5b66d34c@arachnoid>
+ <26191.40288.67910.94838@rob.eddelbuettel.com>
+ <26192.18377.714360.89762@hornik.net>
+ <26192.38012.666476.138164@rob.eddelbuettel.com>
+Message-ID: <26195.7569.546002.811440@hornik.net>
+
+>>>>> Dirk Eddelbuettel writes:
+
+> Kurt,
+
+> Could you do me a favour and run on that clang18-using machine in question
+> the following one-liner (provided your session has access to a .libPaths()
+> including Rcpp) and, in the case of success, the resulting function?
+
+I can: 
+
+R> Rcpp::cppFunction("int ompconfigtest() { return omp_get_num_threads(); }", includes="#include <omp.h>", plugin="openmp")
+Warning in Rcpp::cppFunction("int ompconfigtest() { return omp_get_num_threads(); }",  :
+  partial argument match of 'plugin' to 'plugins'
+R>  ompconfigtest()
+[1] 1
+
+The system has OpenMP, but R was configured not to use it.
+
+In general, packages should leave the decision to use OpenMP to the
+*user*, who can use their own Makevars files to override the R system
+Makevars SHLIB_OPENMP_* settings as desired.  
+
+Best
+-k
+
+
+>> Rcpp::cppFunction("int ompconfigtest() { return omp_get_num_threads(); }", includes="#include <omp.h>", plugin="openmp")
+>> ompconfigtest()
+>   [1] 1
+>> 
+
+> On a "normal" development machine such as mine here it works.
+
+> Presumably it will fail at your end because -fopenmp will not be / cannot be
+> substituted in from the openmp plugin defined by Rcpp:
+
+>   ## built-in OpenMP plugin
+>   .plugins[["openmp"]] <- function() {
+>       list(env = list(PKG_CXXFLAGS="-fopenmp",
+>                       PKG_LIBS="-fopenmp"))
+>   }
+
+> but it would be nice to know if that does indeed fail.
+
+> Thanks,  Dirk
+
+> -- 
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From edd @end|ng |rom deb|@n@org  Mon May 27 00:57:17 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Sun, 26 May 2024 17:57:17 -0500
+Subject: [R-pkg-devel] 
+ Compile issues on r-devel-linux-x86_64-debian-clang with OpenMP
+In-Reply-To: <26195.7569.546002.811440@hornik.net>
+References: <IA1PR02MB916074AAAA1015936080A95BACEA2@IA1PR02MB9160.namprd02.prod.outlook.com>
+ <26189.3381.349748.286592@rob.eddelbuettel.com>
+ <26189.42335.878252.968636@hornik.net>
+ <DM4PR02MB9167124C2B58630265E20AE0ACEB2@DM4PR02MB9167.namprd02.prod.outlook.com>
+ <26189.65189.524885.982156@rob.eddelbuettel.com>
+ <20240523200237.5b66d34c@arachnoid>
+ <26191.40288.67910.94838@rob.eddelbuettel.com>
+ <26192.18377.714360.89762@hornik.net>
+ <26192.38012.666476.138164@rob.eddelbuettel.com>
+ <26195.7569.546002.811440@hornik.net>
+Message-ID: <26195.48717.487117.741677@rob.eddelbuettel.com>
+
+
+On 26 May 2024 at 13:31, Kurt Hornik wrote:
+| >>>>> Dirk Eddelbuettel writes:
+| 
+| > Kurt,
+| 
+| > Could you do me a favour and run on that clang18-using machine in question
+| > the following one-liner (provided your session has access to a .libPaths()
+| > including Rcpp) and, in the case of success, the resulting function?
+| 
+| I can: 
+| 
+| R> Rcpp::cppFunction("int ompconfigtest() { return omp_get_num_threads(); }", includes="#include <omp.h>", plugin="openmp")
+| Warning in Rcpp::cppFunction("int ompconfigtest() { return omp_get_num_threads(); }",  :
+|   partial argument match of 'plugin' to 'plugins'
+| R>  ompconfigtest()
+| [1] 1
+
+Hmpf.
+
+| The system has OpenMP, but R was configured not to use it.
+
+Again, it would be lovely if we could _query_ that.
+
+| In general, packages should leave the decision to use OpenMP to the
+| *user*, who can use their own Makevars files to override the R system
+| Makevars SHLIB_OPENMP_* settings as desired.
+
+Didn't help here, did it?  Or maybe Rcpp was too eager with 
+
+   .plugins[["openmp"]] <- function() {
+       list(env = list(PKG_CXXFLAGS="-fopenmp",
+                       PKG_LIBS="-fopenmp"))
+   }
+
+and we'd need something like this (untested)
+
+   .plugins[["openmp"]] <- function() {
+       list(env = list(PKG_CXXFLAGS=Sys.getenv("SHLIB_OPENMP_CXXFLAGS, ""),
+                       PKG_LIBS=Sys.getenv("SHLIB_OPENMP_CXXFLAGS, "")))
+   }
+
+Actually, does not work it does come into the R session. Only goes to `make`.
+
+So I got nothing. Sorry.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
