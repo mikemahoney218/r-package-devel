@@ -15373,3 +15373,236 @@ Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From br@d|eyjeck @end|ng |rom gm@||@com  Mon May 27 10:57:09 2024
+From: br@d|eyjeck @end|ng |rom gm@||@com (Brad Eck)
+Date: Mon, 27 May 2024 09:57:09 +0100
+Subject: [R-pkg-devel] gcc14 checks on fedora
+In-Reply-To: <CABtg=Kn1aH4990ZwNOFM5ONSdQju+f=UHO2WPrA4zf3sfnUvFQ@mail.gmail.com>
+References: <CALECgParnvn232ruRzc72H5d7F_xymBn5=6TaPA8Q+aufs2qkQ@mail.gmail.com>
+ <CABtg=Kn1aH4990ZwNOFM5ONSdQju+f=UHO2WPrA4zf3sfnUvFQ@mail.gmail.com>
+Message-ID: <CALECgPb+=v9E-rcEK3qThrO_X7f2jfz3N1=mbfvwV0tKdW=Bsw@mail.gmail.com>
+
+Thanks G?bor and Dirk for the suggestions. This one seemed to need fedora
+to replicate the issue.  Docker did make it easy:
+
+FROM fedora:40
+USER root
+RUN dnf -y install R
+
+
+Brad
+
+
+On Fri 24 May 2024 at 20:28, G?bor Cs?rdi <csardi.gabor at gmail.com> wrote:
+
+> Fedora 40 comes with gcc 14.1.x. But I would first try to use the
+> `-Wformat-truncation=` flag with the compiler you have, it is possible
+> that you don't need gcc 14.1. If you do, then the `fedora:40`
+> container should be good.
+>
+> Gabor
+>
+> On Fri, May 24, 2024 at 9:02?PM Brad Eck <bradleyjeck at gmail.com> wrote:
+> >
+> > Dear List -
+> >
+> > I received a note that my package -- epanet2toolkit -- was showing a
+> > warning in the fedora-gcc results on CRAN.
+> > https://www.stats.ox.ac.uk/pub/bdr/gcc12/epanet2toolkit.out
+> >
+> > I'd like to reproduce the warning and fix it.  Usually I'd do that with
+> > Docker.  Is anyone aware of a docker image or dockerfile with this setup?
+> >
+> > Thanks,
+> >
+> > Brad
+> >
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Mon May 27 09:23:01 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 27 May 2024 10:23:01 +0300
+Subject: [R-pkg-devel] 
+ Compile issues on r-devel-linux-x86_64-debian-clang with OpenMP
+In-Reply-To: <26195.48717.487117.741677@rob.eddelbuettel.com>
+References: <IA1PR02MB916074AAAA1015936080A95BACEA2@IA1PR02MB9160.namprd02.prod.outlook.com>
+ <26189.3381.349748.286592@rob.eddelbuettel.com>
+ <26189.42335.878252.968636@hornik.net>
+ <DM4PR02MB9167124C2B58630265E20AE0ACEB2@DM4PR02MB9167.namprd02.prod.outlook.com>
+ <26189.65189.524885.982156@rob.eddelbuettel.com>
+ <20240523200237.5b66d34c@arachnoid>
+ <26191.40288.67910.94838@rob.eddelbuettel.com>
+ <26192.18377.714360.89762@hornik.net>
+ <26192.38012.666476.138164@rob.eddelbuettel.com>
+ <26195.7569.546002.811440@hornik.net>
+ <26195.48717.487117.741677@rob.eddelbuettel.com>
+Message-ID: <20240527102301.23e6b208@Tarkus>
+
+On Sun, 26 May 2024 17:57:17 -0500
+Dirk Eddelbuettel <edd at debian.org> wrote:
+
+> and we'd need something like this (untested)
+> 
+>    .plugins[["openmp"]] <- function() {
+>        list(env =
+> list(PKG_CXXFLAGS=Sys.getenv("SHLIB_OPENMP_CXXFLAGS, ""),
+> PKG_LIBS=Sys.getenv("SHLIB_OPENMP_CXXFLAGS, ""))) }
+
+From the documentation, it sounds like a good use for
+
+# variables will be pre-loaded from Makeconf
+Rcpp.plugin.maker(Makevars = '
+ PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS)
+ PKG_LIBS = $(SHLIB_OPENMP_CXXFLAGS)
+')
+
+...but I can't figure out where out$Makevars is used in Rcpp.
+
+This could also be a use for R CMD config, but SHLIB_OPENMP_CXXFLAGS is
+not currently on the list of variables to query:
+
+# Makes use of implementation details, ignores user settings
+make \
+ R_HOME=/usr/lib/R R_SHARE_DIR=/usr/share/R/share \
+ -f /usr/lib/R/etc/Makeconf -f /usr/share/R/share/make/config.mk \
+ print VAR=SHLIB_OPENMP_CXXFLAGS
+# => -fopenmp
+
+R CMD config SHLIB_OPENMP_CXXFLAGS
+# => ERROR: no information for variable 'SHLIB_OPENMP_CXXFLAGS'
+
+Looking at RcppArmadillo:::inlineCxxPlugin itself, it seems that
+there's no escaping, so Make expressions can be used directly inside
+the environment variables:
+
+registerPlugin('openmp', function() list(env = list(
+ PKG_LIBS = '$(SHLIB_OPENMP_CXXFLAGS)',
+ PKG_CPPFLAGS = '$(SHLIB_OPENMP_CXXFLAGS)'
+)))
+
+This is mandated by POSIX ("All other environment variables, including
+those with null values, shall be used as macros") and seems to work in
+OpenBSD make too.
+
+-- 
+Best regards,
+Ivan
+
+
+From @rmeyer@2 @end|ng |rom w|@c@edu  Mon May 27 20:29:56 2024
+From: @rmeyer@2 @end|ng |rom w|@c@edu (Stephen Meyers)
+Date: Mon, 27 May 2024 13:29:56 -0500
+Subject: [R-pkg-devel] Debian and Fedora clang segmentation faults
+Message-ID: <d1326754-d4d1-4b9e-9525-f68cedfcfb66@wisc.edu>
+
+Hello everyone,
+
+I'm updating the 'astrochron' R package, and I'm trying to resolve a new segmentation fault that arises only with the Debian and Fedora clang compilers. An example is the function 'asm', which has been a component of astrochron since its debut July 2014:
+
+https://cran.r-project.org/web/checks/check_results_astrochron.html
+
+I'm developing this on a Intel Mac, and trying to track down the specific issue, without success yet.
+
+The relevant source is in /src/asm1.8cR.f
+
+Many thanks for any advice you can provide!
+
+All the best,
+
+  ?Stephen Meyers
+
+
+From |kry|ov @end|ng |rom d|@root@org  Mon May 27 22:37:18 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 27 May 2024 23:37:18 +0300
+Subject: [R-pkg-devel] Debian and Fedora clang segmentation faults
+In-Reply-To: <d1326754-d4d1-4b9e-9525-f68cedfcfb66@wisc.edu>
+References: <d1326754-d4d1-4b9e-9525-f68cedfcfb66@wisc.edu>
+Message-ID: <20240527233718.4d4ecee4@Tarkus>
+
+? Mon, 27 May 2024 13:29:56 -0500
+Stephen Meyers <srmeyers2 at wisc.edu> ?????:
+
+> I'm updating the 'astrochron' R package, and I'm trying to resolve a
+> new segmentation fault that arises only with the Debian and Fedora
+> clang compilers. An example is the function 'asm', which has been a
+> component of astrochron since its debut July 2014:
+> 
+> https://cran.r-project.org/web/checks/check_results_astrochron.html
+
+This one is reproducible using containers or a virtual machine. Indeed,
+the code crashes at the very beginning of the asm18_R subroutine:
+
+> asm(freq=freq,target=target,fper=fper,rayleigh=rayleigh,nyquist=nyquist,sedmin=0.5,sedmax=3,
++     numsed=100,linLog=1,iter=100000,output=FALSE)
+
+----- PERFORMING AVERAGE SPECTRAL MISFIT ANALYSIS -----
+
+Program received signal SIGSEGV, Segmentation fault.
+0x00007ff407f36774 in asm18_r_ ()
+(gdb) disas
+Dump of assembler code for function asm18_r_:
+   0x00007ff407f36760 <+0>:     push   %rbp
+   0x00007ff407f36761 <+1>:     mov    %rsp,%rbp
+   0x00007ff407f36764 <+4>:     push   %r15
+   0x00007ff407f36766 <+6>:     push   %r14
+   0x00007ff407f36768 <+8>:     push   %r13
+   0x00007ff407f3676a <+10>:    push   %r12
+   0x00007ff407f3676c <+12>:    push   %rbx
+   0x00007ff407f3676d <+13>:    sub    $0x17e42a78,%rsp
+=> 0x00007ff407f36774 <+20>:    mov    %r9,-0x17e42838(%rbp)
+   0x00007ff407f3677b <+27>:    mov    %r8,-0x17e42830(%rbp)
+   0x00007ff407f36782 <+34>:    mov    %rcx,-0x17e42828(%rbp)
+   0x00007ff407f36789 <+41>:    mov    %rdx,-0x17e42820(%rbp)
+   0x00007ff407f36790 <+48>:    mov    %rsi,-0x17e42818(%rbp)
+   0x00007ff407f36797 <+55>:    mov    %rdi,-0x17e42810(%rbp)
+
+flang-new-18 decided to subtract 400 megabytes from the stack pointer
+right from the start, and never mind the fact that operating systems
+treat the stack space like hundred-year-old brandy and the total stack
+size limit is only 8 megabytes or so.
+
+I think that the 400.8 megabytes come from the saveAsm(mxsr,mxdata)
+array, which is mxsr=500 * mxdata=100000 * 8 bytes per real(8) in size,
+and store(mxdata), which takes additional 800 kilobytes. When compiling
+with warnings enabled, GFortran even produces a message about it:
+
+>> Warning: Array ?saveasm? at (1) is larger than limit set by
+>> ?-fmax-stack-var-size=?, moved from stack to static storage. This
+>> makes the procedure unsafe when called recursively, or concurrently
+>> from multiple threads. Consider increasing the
+>> ?-fmax-stack-var-size=? limit (or use ?-frecursive?, which implies
+>> unlimited ?-fmax-stack-var-size?) - or change the code to use an
+>> ALLOCATABLE array. If the variable is never accessed concurrently,
+>> this warning can be ignored, and the variable could also be declared
+>> with the SAVE attribute. [-Wsurprising]
+
+The Fortran standard is silent about the stack vs heap vs static
+storage issue, so flang-new is technically allowed to try to fit 400
+megabytes of temporary storage on the stack [*].
+
+Since asm18_R doesn't seem to be supposed to be reentrant, the fix is
+to give the SAVE attribute to the two large variables, making the
+Fortran processors prefer a different memory location for them:
+
+implicit real(8) (a-h,o-z)
+save saveAsm, store
+
+(Untested because I accidentally deleted the container while preparing
+the message.)
+
+-- 
+Best regards,
+Ivan
+
+[*] https://stat.ethz.ch/pipermail/r-package-devel/2023q4/010237.html
+
+
