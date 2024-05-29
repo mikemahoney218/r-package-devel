@@ -15606,3 +15606,346 @@ Ivan
 [*] https://stat.ethz.ch/pipermail/r-package-devel/2023q4/010237.html
 
 
+From @@j5xsj9 m@iii@g oii @iiiy@@ddy@io  Tue May 28 06:18:10 2024
+From: @@j5xsj9 m@iii@g oii @iiiy@@ddy@io (@@j5xsj9 m@iii@g oii @iiiy@@ddy@io)
+Date: Tue, 28 May 2024 04:18:10 +0000
+Subject: [R-pkg-devel] Flex missing in win-builder
+Message-ID: <df0af092a596a804e24b20e5ce2c17f3@nilly.addy.io>
+
+Is it possible to get flex in the win-builder windows environment? It's present in the debian environment. My package depends on cmake, bison, and flex. Each of these are listed in the `SystemRequirments` field of my DESCRIPTION file but flex is the only one that cmake can't find.
+
+The win-builder home page (https://win-builder.r-project.org/) doesn't say much about foreign dependencies other than we have what's available in Rtools plus a small list of others. But neither cmake or bison are available by default in Rtools, they both have to be explicitly installed with `pacman`. Flex can also be installed via `pacman`, so why are the other two available?
+
+I can't find much on how the `SystemRequirments` is used in "Writing R Extensions" either, is this used to tell CRAN what is needed to build the package? Or is it just a hint to end users? If the former how are they supposed to be named? Different package managers have different names for the same packages. Does it need to be named `libfl-dev`? (This Rstudio repo: https://github.com/rstudio/r-system-requirements, makes it look like it's just a hint for humans.)
+
+If not able to access flex, I think I can generate the files locally and commit those but I'm pretty sure that will require doing what `rigraph` had to do and get `Make` compile all the external code that is currently handled by various `CMakeLists.txt` which is probably doable but looks like a lot work and requires manually regenerating and commiting flex files whenever updating external dependencies. Any better alternatives?
+	[[alternative HTML version deleted]]
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Tue May 28 12:10:06 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Tue, 28 May 2024 12:10:06 +0200
+Subject: [R-pkg-devel] Flex missing in win-builder
+In-Reply-To: <df0af092a596a804e24b20e5ce2c17f3@nilly.addy.io>
+References: <df0af092a596a804e24b20e5ce2c17f3@nilly.addy.io>
+Message-ID: <ab5e6506-9bbe-4241-a514-1b29ade9ce9b@gmail.com>
+
+On 5/28/24 06:18, drc via R-package-devel wrote:
+> Is it possible to get flex in the win-builder windows environment? It's present in the debian environment. My package depends on cmake, bison, and flex. Each of these are listed in the `SystemRequirments` field of my DESCRIPTION file but flex is the only one that cmake can't find.
+
+Please see CRAN repository policy and contacts included there:
+https://cran.r-project.org/web/packages/external_libs.html
+
+But if possible I would include the generated parsers in the source code 
+of your package. This is also how R itself does it.
+
+> The win-builder home page (https://win-builder.r-project.org/) doesn't say much about foreign dependencies other than we have what's available in Rtools plus a small list of others. But neither cmake or bison are available by default in Rtools, they both have to be explicitly installed with `pacman`. Flex can also be installed via `pacman`, so why are the other two available?
+
+cmake is part of Rtools, please see
+https://cran.r-project.org/bin/windows/base/howto-R-devel.html
+
+Best Tomas
+
+
+From Ro@@@Boy|@n @end|ng |rom uc@|@edu  Wed May 29 00:20:44 2024
+From: Ro@@@Boy|@n @end|ng |rom uc@|@edu (Boylan, Ross)
+Date: Tue, 28 May 2024 22:20:44 +0000
+Subject: [R-pkg-devel] different build tools
+Message-ID: <BY3PR05MB8116896F80ED196594F07BFA87F12@BY3PR05MB8116.namprd05.prod.outlook.com>
+
+There are at  least 4 ways to build a package:
+
+  1.  R CMD build
+  2.  pkgbuild::build(), which I  believe calls 1.
+  3.  devtools::build(), which calls 2.
+  4.  RStudio GUI, which calls 3.
+
+I recently discovered these don't all behave the same.  Invoking bootstrap.R at  the start
+requires 2 or greater.  And invoking 3 directly produced different behavior than 4,
+apparently because of  different defaults for the clean_doc option of 2.
+
+Similar remarks apply to R CMD check.
+
+I'm puzzled by the plethora of tools and options.  In particular I had assumed that if check
+and build worked in RStudio, I'd get the same results from R CMD.  I assume the latter is
+used on CRAN, and so it would be reasonable to expect the package would build there.
+
+Can anyone help me understand what's going on?  More specifically, what are the design
+goals of the different tools.  Clearly if devtools::build were the same as pkgbuild:build there
+would be no reason for the former to exist.
+
+Thanks.
+Ross
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed May 29 00:29:41 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 28 May 2024 18:29:41 -0400
+Subject: [R-pkg-devel] different build tools
+In-Reply-To: <BY3PR05MB8116896F80ED196594F07BFA87F12@BY3PR05MB8116.namprd05.prod.outlook.com>
+References: <BY3PR05MB8116896F80ED196594F07BFA87F12@BY3PR05MB8116.namprd05.prod.outlook.com>
+Message-ID: <d6cb4dc9-e460-47c9-98f5-3a23f352a410@gmail.com>
+
+On 2024-05-28 6:20 p.m., Boylan, Ross via R-package-devel wrote:
+> There are at  least 4 ways to build a package:
+> 
+>    1.  R CMD build
+>    2.  pkgbuild::build(), which I  believe calls 1.
+>    3.  devtools::build(), which calls 2.
+>    4.  RStudio GUI, which calls 3.
+> 
+> I recently discovered these don't all behave the same.  Invoking bootstrap.R at  the start
+> requires 2 or greater. 
+
+What is bootstrap.R?
+
+  And invoking 3 directly produced different behavior than 4,
+> apparently because of  different defaults for the clean_doc option of 2.
+> 
+> Similar remarks apply to R CMD check.
+> 
+> I'm puzzled by the plethora of tools and options.  In particular I had assumed that if check
+> and build worked in RStudio, I'd get the same results from R CMD.  I assume the latter is
+> used on CRAN, and so it would be reasonable to expect the package would build there.
+> 
+> Can anyone help me understand what's going on?  More specifically, what are the design
+> goals of the different tools.  Clearly if devtools::build were the same as pkgbuild:build there
+> would be no reason for the former to exist.
+> 
+
+pkgbuild, devtools and RStudio are all products of Posit, so it would 
+make sense to ask your question in one of their forums.
+
+By the way, RStudio has project and global options that affect its 
+builds; the default uses devtools, but I generally deselect that, and go 
+straight to 1.
+
+Duncan Murdoch
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Wed May 29 01:09:32 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Wed, 29 May 2024 11:09:32 +1200
+Subject: [R-pkg-devel] different build tools
+In-Reply-To: <BY3PR05MB8116896F80ED196594F07BFA87F12@BY3PR05MB8116.namprd05.prod.outlook.com>
+References: <BY3PR05MB8116896F80ED196594F07BFA87F12@BY3PR05MB8116.namprd05.prod.outlook.com>
+Message-ID: <05BC0F7D-1A05-4AAD-9FC7-10C0C935FEAD@R-project.org>
+
+Ross,
+
+R CMD build is the only offical way to build a (source) package in R.
+
+All other "tools" are just convenience wrappers by 3rd parties that call R CMD build eventually. There is no reason to assume that those tools should behave in a certain way - nor are you required to use them. They typically do other pre-processing which their authors deemed useful (typically based on yet another packages). Finally, RStudio is a 3rd party GUI by the company Posit Software, PBC which changes/augments the behaviour of R and provides additional tools - it is not R nor directly related to R (nor CRAN). The packages you mentioned are also maintained by Posit.
+
+Please note that CRAN has nothing to do with any of the above - a package submitted to CRAN is the resulting package source tar ball which the author created by calling R CMD build - CRAN is not involved in the source package creation, it only requires it to be created with R CMD build for submission. Whether you desire some pre-processing, before you call R CMD build yourself, it's up to you.
+
+Cheers,
+Simon
+
+
+> On 29/05/2024, at 10:20 AM, Boylan, Ross via R-package-devel <r-package-devel at r-project.org> wrote:
+> 
+> There are at  least 4 ways to build a package:
+> 
+>  1.  R CMD build
+>  2.  pkgbuild::build(), which I  believe calls 1.
+>  3.  devtools::build(), which calls 2.
+>  4.  RStudio GUI, which calls 3.
+> 
+> I recently discovered these don't all behave the same.  Invoking bootstrap.R at  the start
+> requires 2 or greater.  And invoking 3 directly produced different behavior than 4,
+> apparently because of  different defaults for the clean_doc option of 2.
+> 
+> Similar remarks apply to R CMD check.
+> 
+> I'm puzzled by the plethora of tools and options.  In particular I had assumed that if check
+> and build worked in RStudio, I'd get the same results from R CMD.  I assume the latter is
+> used on CRAN, and so it would be reasonable to expect the package would build there.
+> 
+> Can anyone help me understand what's going on?  More specifically, what are the design
+> goals of the different tools.  Clearly if devtools::build were the same as pkgbuild:build there
+> would be no reason for the former to exist.
+> 
+> Thanks.
+> Ross
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From Ro@@@Boy|@n @end|ng |rom uc@|@edu  Wed May 29 01:10:13 2024
+From: Ro@@@Boy|@n @end|ng |rom uc@|@edu (Boylan, Ross)
+Date: Tue, 28 May 2024 23:10:13 +0000
+Subject: [R-pkg-devel] different build tools
+In-Reply-To: <d6cb4dc9-e460-47c9-98f5-3a23f352a410@gmail.com>
+References: <BY3PR05MB8116896F80ED196594F07BFA87F12@BY3PR05MB8116.namprd05.prod.outlook.com>
+ <d6cb4dc9-e460-47c9-98f5-3a23f352a410@gmail.com>
+Message-ID: <BY3PR05MB811638015444B26FADBCA89A87F12@BY3PR05MB8116.namprd05.prod.outlook.com>
+
+-----Original Message-----
+From: Duncan Murdoch <murdoch.duncan at gmail.com> 
+Sent: Tuesday, May 28, 2024 3:30 PM
+To: Boylan, Ross <Ross.Boylan at ucsf.edu>; r-package-devel at r-project.org
+Subject: Re: [R-pkg-devel] different build tools
+
+On 2024-05-28 6:20 p.m., Boylan, Ross via R-package-devel wrote:
+> There are at  least 4 ways to build a package:
+> 
+>    1.  R CMD build
+>    2.  pkgbuild::build(), which I  believe calls 1.
+>    3.  devtools::build(), which calls 2.
+>    4.  RStudio GUI, which calls 3.
+> 
+> I recently discovered these don't all behave the same.  Invoking 
+> bootstrap.R at  the start requires 2 or greater.
+
+What is bootstrap.R?
+
+
+Duncan Murdoch
+----------------------------------
+
+Response:
+
+It's a script one can enable to run at the start of the build.  There is no  standard script; it is up to the author(s) to provide it.
+
+The devtools::build help says there is a configuration option in DESCRIPTION:
+
+Config/build/bootstrap can be set to TRUE to run ?Rscript bootstrap.R? in the source directory prior to running subsequent build steps.
+
+I'm using it to build some custom documentation.  Furthermore, I put boostrap.R in .Rbuildignore so that package consumers won't try to run software that they may not have.
+
+In other words, I'm using it to do some special master-copy-only processing, though I doubt that was the intent of the feature.
+
+Ross
+
+P.S. Another difference between the RStudio build and R CMD build is that RStudio adds directories to PATH with the additional software it supplies, like pango, which builds require.  Plain R CMD build did not have access to them and failed for that reason until I added them to PATH.  Alternately I could have done a separate installation of the necessary tools, but that seemed a wasteful complication.
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Wed May 29 01:12:08 2024
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Tue, 28 May 2024 16:12:08 -0700
+Subject: [R-pkg-devel] different build tools
+In-Reply-To: <d6cb4dc9-e460-47c9-98f5-3a23f352a410@gmail.com>
+References: <BY3PR05MB8116896F80ED196594F07BFA87F12@BY3PR05MB8116.namprd05.prod.outlook.com>
+ <d6cb4dc9-e460-47c9-98f5-3a23f352a410@gmail.com>
+Message-ID: <18875A25-E640-4455-9526-482874B23DD5@dcn.davis.ca.us>
+
+Duncan's point about options is key... the build options set by default in devtools etc are generally configured to minimize the time required to identify the next big issue to address. Options appropriate for preparing to submit to CRAN are slow and inconvenient for developing.
+
+I recommend that you always use option 1 when preparing to share or submit your package.
+
+Note that while using support tools like roxygen, devtools, and RStudio are common, they are intended to streamline the package development process by filling in a lot of busywork details. However, they do not represent the official R-supported development process, and may become out-of-date during R version transitions.
+
+On May 28, 2024 3:29:41 PM PDT, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>On 2024-05-28 6:20 p.m., Boylan, Ross via R-package-devel wrote:
+>> There are at  least 4 ways to build a package:
+>> 
+>>    1.  R CMD build
+>>    2.  pkgbuild::build(), which I  believe calls 1.
+>>    3.  devtools::build(), which calls 2.
+>>    4.  RStudio GUI, which calls 3.
+>> 
+>> I recently discovered these don't all behave the same.  Invoking bootstrap.R at  the start
+>> requires 2 or greater. 
+>
+>What is bootstrap.R?
+>
+> And invoking 3 directly produced different behavior than 4,
+>> apparently because of  different defaults for the clean_doc option of 2.
+>> 
+>> Similar remarks apply to R CMD check.
+>> 
+>> I'm puzzled by the plethora of tools and options.  In particular I had assumed that if check
+>> and build worked in RStudio, I'd get the same results from R CMD.  I assume the latter is
+>> used on CRAN, and so it would be reasonable to expect the package would build there.
+>> 
+>> Can anyone help me understand what's going on?  More specifically, what are the design
+>> goals of the different tools.  Clearly if devtools::build were the same as pkgbuild:build there
+>> would be no reason for the former to exist.
+>> 
+>
+>pkgbuild, devtools and RStudio are all products of Posit, so it would make sense to ask your question in one of their forums.
+>
+>By the way, RStudio has project and global options that affect its builds; the default uses devtools, but I generally deselect that, and go straight to 1.
+>
+>Duncan Murdoch
+>
+>______________________________________________
+>R-package-devel at r-project.org mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From Ro@@@Boy|@n @end|ng |rom uc@|@edu  Wed May 29 01:21:35 2024
+From: Ro@@@Boy|@n @end|ng |rom uc@|@edu (Boylan, Ross)
+Date: Tue, 28 May 2024 23:21:35 +0000
+Subject: [R-pkg-devel] different build tools
+In-Reply-To: <05BC0F7D-1A05-4AAD-9FC7-10C0C935FEAD@R-project.org>
+References: <BY3PR05MB8116896F80ED196594F07BFA87F12@BY3PR05MB8116.namprd05.prod.outlook.com>
+ <05BC0F7D-1A05-4AAD-9FC7-10C0C935FEAD@R-project.org>
+Message-ID: <BY3PR05MB81166F405C3E778D6C62356C87F12@BY3PR05MB8116.namprd05.prod.outlook.com>
+
+[Sorry: Outlook doesn't quote messages the "normal" way]
+
+-----Original Message-----
+From: Simon Urbanek <simon.urbanek at R-project.org> 
+Sent: Tuesday, May 28, 2024 4:10 PM
+
+Ross,
+
+R CMD build is the only offical way to build a (source) package in R.
+
+All other "tools" are just convenience wrappers [....]
+
+Please note that CRAN has nothing to do with any of the above - a package submitted to CRAN is the resulting package source tar ball which the author created by calling R CMD build - CRAN is not involved in the source package creation, it only requires it to be created with R CMD build for submission. Whether you desire some pre-processing, before you call R CMD build yourself, it's up to you.
+
+Cheers,
+Simon
+---------------------------------------
+
+Is it required that the package submitted to CRAN have been built with R CMD build rather than some other tool?  When you say "CRAN has nothing to do with any of the above [different tools]" it sounds as if one can use anything; but "a package submitted to CRAN is ... created by calling R CMD build"  sounds as if  that's mandatory.
+
+Ross
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Wed May 29 01:29:45 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Wed, 29 May 2024 11:29:45 +1200
+Subject: [R-pkg-devel] different build tools
+In-Reply-To: <BY3PR05MB81166F405C3E778D6C62356C87F12@BY3PR05MB8116.namprd05.prod.outlook.com>
+References: <BY3PR05MB8116896F80ED196594F07BFA87F12@BY3PR05MB8116.namprd05.prod.outlook.com>
+ <05BC0F7D-1A05-4AAD-9FC7-10C0C935FEAD@R-project.org>
+ <BY3PR05MB81166F405C3E778D6C62356C87F12@BY3PR05MB8116.namprd05.prod.outlook.com>
+Message-ID: <64C6AB8E-2ED0-45C2-A548-7EFE64C3BFE0@R-project.org>
+
+
+
+> On 29/05/2024, at 11:21 AM, Boylan, Ross <Ross.Boylan at ucsf.edu> wrote:
+> 
+> Is it required that the package submitted to CRAN have been built with R CMD build rather than some other tool?  When you say "CRAN has nothing to do with any of the above [different tools]" it sounds as if one can use anything; but "a package submitted to CRAN is ... created by calling R CMD build"  sounds as if  that's mandatory.
+> 
+
+
+Yes, it is - from the CRAN policy:
+
+
+ Uploads must be source tarballs created by R CMD build and
+ following the PACKAGE_VERSION.tar.gz naming scheme.
+ This should be done with current R-patched or the current release of R.
+
+
+But as explained in the previous email the Posit tools you mentioned are simply front-ends which do some stuff and then call R CMD build at the end, so they still fit the bill.
+
+Cheers,
+Simon
+
+
