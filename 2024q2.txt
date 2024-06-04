@@ -16345,3 +16345,377 @@ On Sun, Jun 2, 2024, 19:33 Gregory Raskind <graskind1 at gmail.com> wrote:
 	[[alternative HTML version deleted]]
 
 
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon Jun  3 11:56:05 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 3 Jun 2024 05:56:05 -0400
+Subject: [R-pkg-devel] Including "Rmath.h" in C code for an R package
+In-Reply-To: <CADNULg8d0PUyykpECF0B4rcXaBuvEJbOZBiF07=PL+mBQzu58g@mail.gmail.com>
+References: <CAKyzev0G+X4_htpLo1yZPDqtJz6hU-CbK=jREW=PS4GVthCxwQ@mail.gmail.com>
+ <CADNULg8d0PUyykpECF0B4rcXaBuvEJbOZBiF07=PL+mBQzu58g@mail.gmail.com>
+Message-ID: <b3a5bff4-6b6f-48c7-92c7-6ca590a8b1a3@gmail.com>
+
+On 2024-06-02 7:39 p.m., Iris Simmons wrote:
+> To avoid the remapping of beta to Rf_beta, you should
+> define R_NO_REMAP_RMATH before you include Rmath:
+> 
+> #define R_NO_REMAP_RMATH
+> #include <Rmath.h>
+
+... and then remember to include the "Rf_" prefix on the routines that 
+you do want to use.
+
+Duncan Murdoch
+
+> 
+> On Sun, Jun 2, 2024, 19:33 Gregory Raskind <graskind1 at gmail.com> wrote:
+> 
+>> Hi,
+>>
+>> I'm extending an R package that uses the R C API directly. I'd like to use
+>> some distribution functions, so I included the "Rmath.h" header. The issue
+>> is that this introduces macros that have unintended consequences for the
+>> code. For example, I have a local variable named "beta", which is expanded
+>> to "Rf_beta".
+>>
+>> Is there a way of including the "Rmath.h" header without applying the
+>> macros to my code? E.g. if I want to use the beta function, I would use it
+>> with "Rf_beta(a,b)", but "beta" would remain my local variable.
+>>
+>> Thanks for your time!
+>>
+>> Best,
+>> Greg
+>>
+>>          [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From gr@@k|nd1 @end|ng |rom gm@||@com  Mon Jun  3 16:57:25 2024
+From: gr@@k|nd1 @end|ng |rom gm@||@com (Gregory Raskind)
+Date: Mon, 3 Jun 2024 10:57:25 -0400
+Subject: [R-pkg-devel] Including "Rmath.h" in C code for an R package
+In-Reply-To: <b3a5bff4-6b6f-48c7-92c7-6ca590a8b1a3@gmail.com>
+References: <CAKyzev0G+X4_htpLo1yZPDqtJz6hU-CbK=jREW=PS4GVthCxwQ@mail.gmail.com>
+ <CADNULg8d0PUyykpECF0B4rcXaBuvEJbOZBiF07=PL+mBQzu58g@mail.gmail.com>
+ <b3a5bff4-6b6f-48c7-92c7-6ca590a8b1a3@gmail.com>
+Message-ID: <CAKyzev2=A5Pn3VZbGLHBmkr3kpddDGVipUkFd7pA_RU6sQR0nQ@mail.gmail.com>
+
+Thank you for the suggestion! It looks like that caused problems with other
+parts of the code, so I just added these couple of lines after the import
+to avoid the beta remaps:
+
+#ifdef beta
+#undef beta
+#endif
+
+On Mon, Jun 3, 2024 at 5:56?AM Duncan Murdoch <murdoch.duncan at gmail.com>
+wrote:
+
+> On 2024-06-02 7:39 p.m., Iris Simmons wrote:
+> > To avoid the remapping of beta to Rf_beta, you should
+> > define R_NO_REMAP_RMATH before you include Rmath:
+> >
+> > #define R_NO_REMAP_RMATH
+> > #include <Rmath.h>
+>
+> ... and then remember to include the "Rf_" prefix on the routines that
+> you do want to use.
+>
+> Duncan Murdoch
+>
+> >
+> > On Sun, Jun 2, 2024, 19:33 Gregory Raskind <graskind1 at gmail.com> wrote:
+> >
+> >> Hi,
+> >>
+> >> I'm extending an R package that uses the R C API directly. I'd like to
+> use
+> >> some distribution functions, so I included the "Rmath.h" header. The
+> issue
+> >> is that this introduces macros that have unintended consequences for the
+> >> code. For example, I have a local variable named "beta", which is
+> expanded
+> >> to "Rf_beta".
+> >>
+> >> Is there a way of including the "Rmath.h" header without applying the
+> >> macros to my code? E.g. if I want to use the beta function, I would use
+> it
+> >> with "Rf_beta(a,b)", but "beta" would remain my local variable.
+> >>
+> >> Thanks for your time!
+> >>
+> >> Best,
+> >> Greg
+> >>
+> >>          [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-package-devel at r-project.org mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >>
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From othm@n@e|@h@mmouch| @end|ng |rom protonm@||@com  Mon Jun  3 21:09:38 2024
+From: othm@n@e|@h@mmouch| @end|ng |rom protonm@||@com (Othman El Hammouchi)
+Date: Mon, 03 Jun 2024 19:09:38 +0000
+Subject: [R-pkg-devel] flang doesn't support derived types
+In-Reply-To: <20240509193430.1998b917@Tarkus>
+References: <6ffdcf71-8ebf-4af3-ac53-fc166092b07b@protonmail.com>
+ <20240509174101.0c7edfd9@trisector>
+ <Q7tjMuOB9hopqEEI5GxgOrVM0PysRZxQ3QDh4Y0utotv5owykqcineoZKG53vJI4UYGEt8Ez2dQ8Z3fOwaalTllQE9Ybin9usoKAxFLfPnI=@protonmail.com>
+ <20240509193430.1998b917@Tarkus>
+Message-ID: <718b1424-f9a5-435c-9f39-cd6b9f2f2e85@protonmail.com>
+
+Hello once again,
+
+
+Unfortunately, I didn't receive a reply to the mail I sent CRAN nor the 
+follow-up/reminder I sent on 2024-05-09. It's been nearly a month now. I 
+understand they're busy of course, but it's a bit disheartening not to 
+know what one can do to remedy the situation after putting in so much 
+work to try to get it published. Would you (or anyone else) have some 
+pointers as to how I can receive a reply from CRAN?
+
+
+Yours,
+
+
+Othman El Hammouchi
+
+On 10/05/2024 08:04, Othman El Hammouchi wrote:
+> Dear Ivan,
+>
+>
+> Thanks again for the help, you've given me some great pointers to 
+> pursue. I will keep you posted on what CRAN responds and whether I 
+> find a workaround.
+>
+> > I do wish that flang-new would be a better compiler or at least a
+> > better documented one, but instead of a list of features on their
+> > website, I can only see "Getting Involved [3] for tips on how to get in
+> > touch <...> and to learn more about the current status". There is only
+> > so many projects one can get involved in.
+>
+> The problem is not the quality of the compiler so much as the fact 
+> that it's not finished. They don't make a big secret of the fact that 
+> it's still under development. It may be the standard in industry as 
+> you say, but it would greatly surprise me if it was the default for 
+> most ordinary users. Most distros and platforms seem to ship the (much 
+> more complete) gfortran.
+>
+>
+> Yours,
+>
+>
+> Othman El Hammouchi
+>
+> On 09/05/2024 18:34, Ivan Krylov wrote:
+>> ? Thu, 09 May 2024 15:31:25 +0000
+>> Othman El Hammouchi <othman.el.hammouchi at protonmail.com> ?????:
+>>
+>>> Do I understand it correctly that there is no way to specify a
+>>> Fortran standard in the SystemRequirements?
+>> It's possible (and even recommended) to describe the Fortran version
+>> requirement in SystemRequirements [1], but this field is for now mostly
+>> informational. I think I remember efforts to standardise it, but they
+>> are far from complete.
+>>
+>>> I had resubmitted my package in the mean time with a configure script
+>>> that aborts the install if the compiler does not support
+>>> polymorphism, but I understand that this is a fruitless avenue for
+>>> CRAN?
+>> Signs point to yes, at least judging by a previous time we had
+>> flang-related problems [2]. On the other hand, there were relatively
+>> easy workarounds that time, and here I'm not seeing anything as simple.
+>>
+>>> I should point out my local flang install is version 16, but I cannot
+>>> install 18 on my system since it's in unstable (this again
+>>> underscores the problem of developing under these constraints).
+>> Would you consider containers for this purpose? I was able to reproduce
+>> the problem relatively quickly by starting podman run --rm -it
+>> debian:sid and installing flang-18 in there. (Unlike Docker a few years
+>> ago, podman can be installed straight from the repository, at least on
+>> Debian, and doesn't require adding users to special groups in order to
+>> work. Maybe Docker has also improved.) I don't like containers as a
+>> basis for software distribution, but I can't deny that they are being
+>> great at letting me quickly reproduce problems without installing 10
+>> different GNU/Linux distros.
+>>
+>>> What would you advise? And don't you think these Fortran constraints
+>>> should be better documenten.
+>> I'm afraid I don't have any more specific advice besides testing your
+>> workarounds with Debian Sid in a container or a virtual machine or a
+>> chroot. I can try to take a look at more concrete problems. I hope you
+>> will be able to find a relatively painless workaround.
+>>
+>> I do wish that flang-new would be a better compiler or at least a
+>> better documented one, but instead of a list of features on their
+>> website, I can only see "Getting Involved [3] for tips on how to get in
+>> touch <...> and to learn more about the current status". There is only
+>> so many projects one can get involved in.
+>>
+>> -- 
+>> Best regards,
+>> Ivan
+>>
+>> [1]
+>> https://cran.r-project.org/doc/manuals/R-exts.html#Using-modern-Fortran-code 
+>>
+>>
+>> [2]
+>> https://stat.ethz.ch/pipermail/r-package-devel/2023q4/010065.html
+>>
+>> [3]
+>> https://flang.llvm.org/docs/GettingInvolved.html
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Mon Jun  3 22:44:39 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Tue, 4 Jun 2024 08:44:39 +1200
+Subject: [R-pkg-devel] flang doesn't support derived types
+In-Reply-To: <718b1424-f9a5-435c-9f39-cd6b9f2f2e85@protonmail.com>
+References: <6ffdcf71-8ebf-4af3-ac53-fc166092b07b@protonmail.com>
+ <20240509174101.0c7edfd9@trisector>
+ <Q7tjMuOB9hopqEEI5GxgOrVM0PysRZxQ3QDh4Y0utotv5owykqcineoZKG53vJI4UYGEt8Ez2dQ8Z3fOwaalTllQE9Ybin9usoKAxFLfPnI=@protonmail.com>
+ <20240509193430.1998b917@Tarkus>
+ <718b1424-f9a5-435c-9f39-cd6b9f2f2e85@protonmail.com>
+Message-ID: <DA881F14-19C6-4B63-A949-2D5144A4F7C7@R-project.org>
+
+Othman,
+
+I'm not sure why you would expect a response from CRAN. The ball is in your court - you have to either fix your code (ideally) or provide a justification why you think it is safe. I have not seen any email from you to cran at R-project.org and you have not mentioned the name of the package in this thread (you should really post the link to the sources if you are at all serious about this) so it's hard to follow up on - thus I wouldn't expect anything more on this thread until you make the move.
+
+Cheers,
+Simon
+
+
+> On 4/06/2024, at 7:09 AM, Othman El Hammouchi <othman.el.hammouchi at protonmail.com> wrote:
+> 
+> Hello once again,
+> 
+> 
+> Unfortunately, I didn't receive a reply to the mail I sent CRAN nor the 
+> follow-up/reminder I sent on 2024-05-09. It's been nearly a month now. I 
+> understand they're busy of course, but it's a bit disheartening not to 
+> know what one can do to remedy the situation after putting in so much 
+> work to try to get it published. Would you (or anyone else) have some 
+> pointers as to how I can receive a reply from CRAN?
+> 
+> 
+> Yours,
+> 
+> 
+> Othman El Hammouchi
+> 
+> On 10/05/2024 08:04, Othman El Hammouchi wrote:
+>> Dear Ivan,
+>> 
+>> 
+>> Thanks again for the help, you've given me some great pointers to 
+>> pursue. I will keep you posted on what CRAN responds and whether I 
+>> find a workaround.
+>> 
+>>> I do wish that flang-new would be a better compiler or at least a
+>>> better documented one, but instead of a list of features on their
+>>> website, I can only see "Getting Involved [3] for tips on how to get in
+>>> touch <...> and to learn more about the current status". There is only
+>>> so many projects one can get involved in.
+>> 
+>> The problem is not the quality of the compiler so much as the fact 
+>> that it's not finished. They don't make a big secret of the fact that 
+>> it's still under development. It may be the standard in industry as 
+>> you say, but it would greatly surprise me if it was the default for 
+>> most ordinary users. Most distros and platforms seem to ship the (much 
+>> more complete) gfortran.
+>> 
+>> 
+>> Yours,
+>> 
+>> 
+>> Othman El Hammouchi
+>> 
+>> On 09/05/2024 18:34, Ivan Krylov wrote:
+>>> ? Thu, 09 May 2024 15:31:25 +0000
+>>> Othman El Hammouchi <othman.el.hammouchi at protonmail.com> ?????:
+>>> 
+>>>> Do I understand it correctly that there is no way to specify a
+>>>> Fortran standard in the SystemRequirements?
+>>> It's possible (and even recommended) to describe the Fortran version
+>>> requirement in SystemRequirements [1], but this field is for now mostly
+>>> informational. I think I remember efforts to standardise it, but they
+>>> are far from complete.
+>>> 
+>>>> I had resubmitted my package in the mean time with a configure script
+>>>> that aborts the install if the compiler does not support
+>>>> polymorphism, but I understand that this is a fruitless avenue for
+>>>> CRAN?
+>>> Signs point to yes, at least judging by a previous time we had
+>>> flang-related problems [2]. On the other hand, there were relatively
+>>> easy workarounds that time, and here I'm not seeing anything as simple.
+>>> 
+>>>> I should point out my local flang install is version 16, but I cannot
+>>>> install 18 on my system since it's in unstable (this again
+>>>> underscores the problem of developing under these constraints).
+>>> Would you consider containers for this purpose? I was able to reproduce
+>>> the problem relatively quickly by starting podman run --rm -it
+>>> debian:sid and installing flang-18 in there. (Unlike Docker a few years
+>>> ago, podman can be installed straight from the repository, at least on
+>>> Debian, and doesn't require adding users to special groups in order to
+>>> work. Maybe Docker has also improved.) I don't like containers as a
+>>> basis for software distribution, but I can't deny that they are being
+>>> great at letting me quickly reproduce problems without installing 10
+>>> different GNU/Linux distros.
+>>> 
+>>>> What would you advise? And don't you think these Fortran constraints
+>>>> should be better documenten.
+>>> I'm afraid I don't have any more specific advice besides testing your
+>>> workarounds with Debian Sid in a container or a virtual machine or a
+>>> chroot. I can try to take a look at more concrete problems. I hope you
+>>> will be able to find a relatively painless workaround.
+>>> 
+>>> I do wish that flang-new would be a better compiler or at least a
+>>> better documented one, but instead of a list of features on their
+>>> website, I can only see "Getting Involved [3] for tips on how to get in
+>>> touch <...> and to learn more about the current status". There is only
+>>> so many projects one can get involved in.
+>>> 
+>>> -- 
+>>> Best regards,
+>>> Ivan
+>>> 
+>>> [1]
+>>> https://cran.r-project.org/doc/manuals/R-exts.html#Using-modern-Fortran-code 
+>>> 
+>>> 
+>>> [2]
+>>> https://stat.ethz.ch/pipermail/r-package-devel/2023q4/010065.html
+>>> 
+>>> [3]
+>>> https://flang.llvm.org/docs/GettingInvolved.html
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
