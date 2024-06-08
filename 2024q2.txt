@@ -17219,3 +17219,536 @@ r-package-devel at r-project.org> wrote:
 	[[alternative HTML version deleted]]
 
 
+From @orenh @end|ng |rom m@th@@@u@dk  Fri Jun  7 06:04:09 2024
+From: @orenh @end|ng |rom m@th@@@u@dk (=?utf-8?B?U8O4cmVuIEjDuGpzZ2FhcmQ=?=)
+Date: Fri, 7 Jun 2024 04:04:09 +0000
+Subject: [R-pkg-devel] warning: explicit assigning values of variable of
+ type ....
+In-Reply-To: <CADNULg_FdmUiTa6re2sraZQvW-=afxDFkv3iQWQ0noAhMcT3Ug@mail.gmail.com>
+References: <d5cc8cb44bcc0f6762d6c9b9bec55381aa6a6c0d.camel@math.aau.dk>
+ <CADNULg_FdmUiTa6re2sraZQvW-=afxDFkv3iQWQ0noAhMcT3Ug@mail.gmail.com>
+Message-ID: <bac8f2b4c634c5e57ed867408c335991cab60778.camel@math.aau.dk>
+
+Thanks :)
+
+-----Original Message-----
+From: Iris Simmons <ikwsimmo at gmail.com<mailto:Iris%20Simmons%20%3cikwsimmo at gmail.com%3e>>
+To: S?ren H?jsgaard <sorenh at math.aau.dk<mailto:%3d%3fISO-8859-1%3fQ%3fS%3dF8ren_H%3dF8jsgaard%3f%3d%20%3csorenh at math.aau.dk%3e>>
+Cc: List r-package-devel <r-package-devel at r-project.org<mailto:List%20r-package-devel%20%3cr-package-devel at r-project.org%3e>>
+Subject: Re: [R-pkg-devel] warning: explicit assigning values of variable of type ....
+Date: 06/07/2024 02:13:26 AM
+
+Unless I'm misunderstanding, you're trying to pass a value by name to a function. That is not a thing in C nor C++. However if you want to name the arguments, you can do so with comments:
+
+/* print = */ print
+
+On Thu, Jun 6, 2024, 19:16 S?ren H?jsgaard via R-package-devel <r-package-devel at r-project.org<mailto:r-package-devel at r-project.org>> wrote:
+Dear all,
+
+From CRAN maintainers I recieve:
+
+
+Flavor: r-devel-linux-x86_64-debian-gcc
+Check: whether package can be installed, Result: WARNING
+  Found the following significant warnings:
+    grips_fit_ips.cpp:149:45: warning: explicitly assigning value of variable of type 'int' to itself [-Wself-assign]
+    grips_fit_ips.cpp:213:16: warning: explicitly assigning value of variable of type 'int' to itself [-Wself-assign]
+    grips_fit_ips.cpp:254:10: warning: explicitly assigning value of variable of type 'int' to itself [-Wself-assign]
+    grips_fit_ips.cpp:254:21: warning: explicitly assigning value of variable of type 'double' to itself [-Wself-assign]
+
+
+
+The first warning pertains to the line:
+
+    conips_inner_(S, K, elst0, clist0, print=print);
+
+print on lhs of "=" is the formal name and print on rhs of "=" the name of a variable. Does the compiler think I assign an integer
+to itself? Like if I write
+
+int a=7;
+a=a;
+
+Can anyone help me throw light on this?
+
+Thanks in advance
+S?ren
+______________________________________________
+R-package-devel at r-project.org<mailto:R-package-devel at r-project.org> mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+	[[alternative HTML version deleted]]
+
+
+From vo|ody@ @end|ng |rom m|nd@pr|ng@com  Fri Jun  7 12:49:41 2024
+From: vo|ody@ @end|ng |rom m|nd@pr|ng@com (Vladimir Dergachev)
+Date: Fri, 7 Jun 2024 06:49:41 -0400 (EDT)
+Subject: [R-pkg-devel] warning: explicit assigning values of variable of
+ type ....
+In-Reply-To: <CADNULg_FdmUiTa6re2sraZQvW-=afxDFkv3iQWQ0noAhMcT3Ug@mail.gmail.com>
+References: <d5cc8cb44bcc0f6762d6c9b9bec55381aa6a6c0d.camel@math.aau.dk>
+ <CADNULg_FdmUiTa6re2sraZQvW-=afxDFkv3iQWQ0noAhMcT3Ug@mail.gmail.com>
+Message-ID: <alpine.DEB.2.22.394.2406070644040.3271@iridium>
+
+
+
+On Thu, 6 Jun 2024, Iris Simmons wrote:
+
+> Unless I'm misunderstanding, you're trying to pass a value by name to a
+> function. That is not a thing in C nor C++. However if you want to name the
+> arguments, you can do so with comments:
+>
+> /* print = */ print
+
+I would recommend against using comments in this fashion because while it 
+tells you what you meant to do, the compiler does not know it. If you made 
+an error the comment will make it harder to find.
+
+If you happen to have a function with a lot of arguments of similar types 
+and putting arguments in order is a concern, you can instead convert them 
+to a struct and pass a struct instead:
+
+typedef struct {
+          int a;
+          int b;
+          } INPUT_TYPE1
+
+void myfunc(INPUT_TYPE1 x);
+
+And somewhere:
+{
+INPUT_TYPE1 x;
+
+x.a=3;
+x.b=4;
+
+myfunc(x);
+}
+
+I don't know whether the modern compilers are smart enough to optimize 
+this in the same way as passing an argument list. If this is a concern, 
+probably some code restructuring is a good idea.
+
+best
+
+Vladimir Dergachev
+
+>
+> On Thu, Jun 6, 2024, 19:16 S?ren H?jsgaard via R-package-devel <
+> r-package-devel at r-project.org> wrote:
+>
+>> Dear all,
+>>
+>> From CRAN maintainers I recieve:
+>>
+>>
+>> Flavor: r-devel-linux-x86_64-debian-gcc
+>> Check: whether package can be installed, Result: WARNING
+>>   Found the following significant warnings:
+>>     grips_fit_ips.cpp:149:45: warning: explicitly assigning value of
+>> variable of type 'int' to itself [-Wself-assign]
+>>     grips_fit_ips.cpp:213:16: warning: explicitly assigning value of
+>> variable of type 'int' to itself [-Wself-assign]
+>>     grips_fit_ips.cpp:254:10: warning: explicitly assigning value of
+>> variable of type 'int' to itself [-Wself-assign]
+>>     grips_fit_ips.cpp:254:21: warning: explicitly assigning value of
+>> variable of type 'double' to itself [-Wself-assign]
+>>
+>>
+>>
+>> The first warning pertains to the line:
+>>
+>>     conips_inner_(S, K, elst0, clist0, print=print);
+>>
+>> print on lhs of "=" is the formal name and print on rhs of "=" the name of
+>> a variable. Does the compiler think I assign an integer
+>> to itself? Like if I write
+>>
+>> int a=7;
+>> a=a;
+>>
+>> Can anyone help me throw light on this?
+>>
+>> Thanks in advance
+>> S?ren
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+From ch@|n@@wt|ney @end|ng |rom gm@||@com  Fri Jun  7 09:10:03 2024
+From: ch@|n@@wt|ney @end|ng |rom gm@||@com (C.H.)
+Date: Fri, 7 Jun 2024 09:10:03 +0200
+Subject: [R-pkg-devel] Check errors for RMarkdown vignettes with error chunks
+Message-ID: <CAHfK2MsCoQ-n=-qwfWWmd7R4wBo81vy5AUN1HV+JqqkbHakXjg@mail.gmail.com>
+
+Dear all,
+
+RMarkdown vignettes are sometimes used to demonstrate errors and one
+can write vignettes with `error` chunks.
+
+```{r, error = TRUE}
+stop()
+```
+
+This was not an issue for a long time. But I've experienced sometimes
+in the past that packages with these vignettes going through `R CMD
+check` gave ERRORS due to these `error` chunks. But recently, I do not
+experience the same ERRORS with R 4.4.0.
+
+MacPorts maintainer Sergey Fedorov also reported these ERRORs to the
+developers of rio (i.e. I) and tibbles with his darwin-powerpc setup
+with the current release, R 4.4.0, on Mac OS X 10.6.
+
+https://github.com/gesistsa/rio/issues/424
+
+https://github.com/tidyverse/tibble/issues/1575
+
+One can easily attribute this to his a-little-bit-archaic setup. But
+now CRAN also reports the same ERRORS for mac and linux `oldrel`
+(4.3.3).
+
+https://cran.r-project.org/web/checks/check_results_rio.html
+
+I was wondering if you have any experience with these errors. A
+relevant point in the release notes of 4.4.0 is perhaps this:
+
+> tools::testInstalledPackage() is no longer silent about failures from running examples or tests and its return code no longer ignores failures from checking vignettes.
+
+Regards,
+Chung-hong Chan
+
+
+From @tvjc @end|ng |rom ch@nn|ng@h@rv@rd@edu  Fri Jun  7 14:40:48 2024
+From: @tvjc @end|ng |rom ch@nn|ng@h@rv@rd@edu (Vincent Carey)
+Date: Fri, 7 Jun 2024 08:40:48 -0400
+Subject: [R-pkg-devel] debugging R CMD build
+Message-ID: <CAANT7+VikHZJ9QuRa_AbJk8+K918ZOnh+XaSzCHWSYNmAZcXZw@mail.gmail.com>
+
+https://bioconductor.org/checkResults/3.20/bioc-LATEST/velociraptor/nebbiolo2-buildsrc.html
+
+shows an error arising in R CMD build that cannot be reproduced
+in manual attempts with the vignette code that is triggering the
+error.  "It works fine except in CMD build" (on linux).
+
+I have tried debugging tools::buildVignettes by setting a debug
+call in .Rprofile but it won't step through during R CMD build.  I want
+to find out how CMD build manipulates environment to inhibit
+resolution of symbols that can be resolved during ordinary interactive
+use.
+
+I haven't dug hard into the buildVignettes function.  Before doing so,
+I wanted to know if anyone has a way of stepping through in a CMD
+build task.
+
+-- 
+The information in this email is intended only for the p...{{dropped:12}}
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Jun  7 15:50:59 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 7 Jun 2024 16:50:59 +0300
+Subject: [R-pkg-devel] Check errors for RMarkdown vignettes with error
+ chunks
+In-Reply-To: <CAHfK2MsCoQ-n=-qwfWWmd7R4wBo81vy5AUN1HV+JqqkbHakXjg@mail.gmail.com>
+References: <CAHfK2MsCoQ-n=-qwfWWmd7R4wBo81vy5AUN1HV+JqqkbHakXjg@mail.gmail.com>
+Message-ID: <20240607165059.3eb5ba3d@arachnoid>
+
+? Fri, 7 Jun 2024 09:10:03 +0200
+"C.H." <chainsawtiney at gmail.com> ?????:
+
+> RMarkdown vignettes are sometimes used to demonstrate errors and one
+> can write vignettes with `error` chunks.
+> 
+> ```{r, error = TRUE}
+> stop()
+> ```
+
+> But now CRAN also reports the same ERRORS for mac and linux `oldrel`
+> (4.3.3).
+> 
+> https://cran.r-project.org/web/checks/check_results_rio.html
+
+It sounds like R Markdown, when tangling a vignette into an *.R file,
+should provide additional wrapping for chunks with the error = TRUE
+option set. Would a try({ chunk content }) suffice?
+
+R CMD check relies on the tangled script not to crash, and there is
+currently no such wrapping in the generated output:
+https://github.com/cran/rio/blob/master/inst/doc/remap.R
+
+-- 
+Best regards,
+Ivan
+
+
+From t|m@t@y|or @end|ng |rom h|ddene|eph@nt@@co@uk  Fri Jun  7 15:58:12 2024
+From: t|m@t@y|or @end|ng |rom h|ddene|eph@nt@@co@uk (Tim Taylor)
+Date: Fri, 7 Jun 2024 14:58:12 +0100
+Subject: [R-pkg-devel] Check errors for RMarkdown vignettes with error
+ chunks
+In-Reply-To: <20240607165059.3eb5ba3d@arachnoid>
+References: <CAHfK2MsCoQ-n=-qwfWWmd7R4wBo81vy5AUN1HV+JqqkbHakXjg@mail.gmail.com>
+ <20240607165059.3eb5ba3d@arachnoid>
+Message-ID: <be4b64ab-3cbc-4199-8478-436aca0c91ec@hiddenelephants.co.uk>
+
+Does this issue over in knitr shed some additional light ...
+
+https://github.com/yihui/knitr/issues/2338
+
+Tim
+
+On 07/06/2024 14:50, Ivan Krylov via R-package-devel wrote:
+> ? Fri, 7 Jun 2024 09:10:03 +0200
+> "C.H." <chainsawtiney at gmail.com> ?????:
+>
+>> RMarkdown vignettes are sometimes used to demonstrate errors and one
+>> can write vignettes with `error` chunks.
+>>
+>> ```{r, error = TRUE}
+>> stop()
+>> ```
+>> But now CRAN also reports the same ERRORS for mac and linux `oldrel`
+>> (4.3.3).
+>>
+>> https://cran.r-project.org/web/checks/check_results_rio.html
+> It sounds like R Markdown, when tangling a vignette into an *.R file,
+> should provide additional wrapping for chunks with the error = TRUE
+> option set. Would a try({ chunk content }) suffice?
+>
+> R CMD check relies on the tangled script not to crash, and there is
+> currently no such wrapping in the generated output:
+> https://github.com/cran/rio/blob/master/inst/doc/remap.R
+>
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Jun  7 16:02:26 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 7 Jun 2024 17:02:26 +0300
+Subject: [R-pkg-devel] debugging R CMD build
+In-Reply-To: <CAANT7+VikHZJ9QuRa_AbJk8+K918ZOnh+XaSzCHWSYNmAZcXZw@mail.gmail.com>
+References: <CAANT7+VikHZJ9QuRa_AbJk8+K918ZOnh+XaSzCHWSYNmAZcXZw@mail.gmail.com>
+Message-ID: <20240607170226.4b34698e@arachnoid>
+
+? Fri, 7 Jun 2024 08:40:48 -0400
+Vincent Carey <stvjc at channing.harvard.edu> ?????:
+
+> I wanted to know if anyone has a way of stepping through in a CMD
+> build task.
+
+On Linux, R CMD build launches file.path(R.home('bin'), 'build'), which
+is a short script. It should be possible to step into R CMD build by
+doing the same thing in an interactive R session:
+
+R_DEFAULT_PACKAGES= LC_COLLATE=C R --no-restore
+# set hooks as needed
+debug(system)
+debug(system2)
+# run CMD build
+tools:::.build_packages(args = 'package/source/directory')
+
+-- 
+Best regards,
+Ivan
+
+
+From edd @end|ng |rom deb|@n@org  Fri Jun  7 16:11:21 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 7 Jun 2024 09:11:21 -0500
+Subject: [R-pkg-devel] 
+ No email with confirmation link on resubmission of package
+In-Reply-To: <MEYPR01MB746072D7D167FC00A121C20DCAFA2@MEYPR01MB7460.ausprd01.prod.outlook.com>
+References: <MEYPR01MB7460B73CB97D06D42434BFE9CAF92@MEYPR01MB7460.ausprd01.prod.outlook.com>
+ <4653215c-312f-4468-bb10-e0ebda05d22d@gmail.com>
+ <MEYPR01MB746072D7D167FC00A121C20DCAFA2@MEYPR01MB7460.ausprd01.prod.outlook.com>
+Message-ID: <26211.5385.325389.125160@rob.eddelbuettel.com>
+
+
+On 6 June 2024 at 04:47, Paul Kabaila wrote:
+| When I resubmitted, I didn't realise that I needed to change the version number.
+
+As this comes up every now and then: This is still a _soft_ requirement. CRAN
+does not 'cache' what versions you used in uploads. I have often reiterated
+with the same number.
+
+And small add if you like the command-line (in a responsive way) better than
+a browser, package `ciw` on CRAN and the example script ciw.r (in `littler`,
+only at github yet) make 'spying' at incoming quite easy and
+convenient. Right now and showing the default view as well as some options:
+
+edd at rob:~$ ciw.r
+     Folder                    Name                Time   Size           Age
+     <char>                  <char>              <POSc> <char>    <difftime>
+ 1: pretest       ppgm_1.0.1.tar.gz 2024-06-07 15:55:00   2.7M    0.25 hours
+ 2: pretest  AirExposure_1.0.tar.gz 2024-06-07 15:47:00   5.3M    0.38 hours
+ 3: recheck        cna_3.6.0.tar.gz 2024-06-07 15:36:00   915K    0.57 hours
+ 4: inspect    admiral_1.1.0.tar.gz 2024-06-07 14:27:00   1.5M    1.72 hours
+ 5: waiting TreeTools_1.11.1.tar.gz 2024-06-07 07:37:00   938K    8.55 hours
+ 6: pending  robusTest_1.1.0.tar.gz 2024-06-06 23:27:00   2.8M   16.72 hours
+ 7: waiting      boot_1.3-31.tar.gz 2024-06-06 22:17:00   228K   17.88 hours
+ 8: pending       kit_0.0.18.tar.gz 2024-06-06 20:01:00    89K   20.15 hours
+ 9: inspect    geodata_0.6-2.tar.gz 2024-06-06 12:00:00    55K   28.17 hours
+10: pending     duckdb_1.0.0.tar.gz 2024-06-06 08:15:00   4.0M   31.92 hours
+11: waiting      hdsvm_1.0.1.tar.gz 2024-06-06 04:08:00    35K   36.03 hours
+12: waiting       hdqr_1.0.1.tar.gz 2024-06-06 03:49:00    35K   36.35 hours
+13: waiting      cofid_1.0.1.tar.gz 2024-06-03 21:53:00   1.2M   90.28 hours
+14: waiting     Matrix_1.7-0.tar.gz 2024-03-20 17:41:00   2.3M 1893.48 hours
+edd at rob:~$ ciw.r --help
+Usage: ciw.r [-h] [-x] [-a] [-m] [-i] [-t] [-p] [-w] [-r] [-s] [-n] [-u] [-l rows] [-z] [ARG...]
+
+-m --mega           use 'mega' mode of all folders (see --usage)
+-i --inspect        visit 'inspect' folder
+-t --pretest        visit 'pretest' folder
+-p --pending        visit 'pending' folder
+-w --waiting        visit 'waiting' folder
+-r --recheck        visit 'recheck' folder
+-a --archive        visit 'archive' folder
+-n --newbies        visit 'newbies' folder
+-u --publish        visit 'publish' folder
+-s --skipsort       skip sorting of aggregate results by age
+-l --lines rows     print top 'rows' of the result object [default: 50]
+-z --ping           run the connectivity check first
+-h --help           show this help text
+-x --usage          show help and short example usage 
+edd at rob:~$
+
+Calling `ciw::ciw()` from your R prompt of course also works (if that is your jam).
+
+Dirk
+
+
+| 
+| I changed the version number of my package from 1.2.0 to 1.2.1 and the resubmission worked fine.
+| 
+| Paul Kabaila
+| 
+| From: R-package-devel <r-package-devel-bounces at r-project.org> On Behalf Of Ben Bolker
+| Sent: Thursday, June 6, 2024 8:08 AM
+| To: r-package-devel at r-project.org
+| Subject: Re: [R-pkg-devel] No email with confirmation link on resubmission of package
+| 
+| You don't often get email from bbolker at gmail.com<mailto:bbolker at gmail.com>. Learn why this is important<https://aka.ms/LearnAboutSenderIdentification>
+| Check your spam folder(s) ?
+| 
+| Try the web form <https://cran.r-project.org/submit.html<https://cran.r-project.org/submit.html>> just in
+| case something is wonky with devtools::submit_cran() ?
+| 
+| 
+| 
+| On 2024-06-05 4:19 a.m., Paul Kabaila wrote:
+| > (1) Today, I submitted my R package to CRAN using
+| > devtools::submit_cran()
+| > which resulted in an email from
+| > CRAN Package Submission Form cransubmit at xmbombadil.wu.ac.at<mailto:cransubmit at xmbombadil.wu.ac.at<mailto:cransubmit at xmbombadil.wu.ac.at%3cmailto:cransubmit at xmbombadil.wu.ac.at>>
+| > with a confirmation link, which I clicked on.
+| >
+| > (2) I was then sent an email from
+| > ligges at statistik.tu-dortmund.de<mailto:ligges at statistik.tu-dortmund.de<mailto:ligges at statistik.tu-dortmund.de%3cmailto:ligges at statistik.tu-dortmund.de>>
+| > which notified that my package "does not pass the incoming checks automatically",
+| > with 0 errors, 0 warnings and 2 notes.
+| >
+| >
+| > (3) I then fixed the problem for one of the notes and explained the reason for the
+| > other note and put this information into the file
+| > cran-comments.md
+| > Then I resubmitted my R package to CRAN using
+| > devtools::submit_cran()
+| >
+| > However, this time I did not receive an email with a confirmation link.
+| >
+| > Has my package been resubmitted or do I need to resubmit it in some different way?
+| >
+| > Paul Kabaila
+| >
+| >
+| > La Trobe University | TEQSA PRV12132 - Australian University | CRICOS Provider 00115M
+| >
+| > [[alternative HTML version deleted]]
+| >
+| > ______________________________________________
+| > R-package-devel at r-project.org<mailto:R-package-devel at r-project.org> mailing list
+| > https://stat.ethz.ch/mailman/listinfo/r-package-devel<https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+| 
+| ______________________________________________
+| R-package-devel at r-project.org<mailto:R-package-devel at r-project.org> mailing list
+| https://stat.ethz.ch/mailman/listinfo/r-package-devel<https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+| 
+| La Trobe University | TEQSA PRV12132 - Australian University | CRICOS Provider 00115M
+| 
+| 	[[alternative HTML version deleted]]
+| 
+| ______________________________________________
+| R-package-devel at r-project.org mailing list
+| https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From j|@c@@hu|@m@n @end|ng |rom gm@||@com  Fri Jun  7 17:21:57 2024
+From: j|@c@@hu|@m@n @end|ng |rom gm@||@com (Jisca huisman)
+Date: Fri, 7 Jun 2024 17:21:57 +0200
+Subject: [R-pkg-devel] Check errors for RMarkdown vignettes with error
+ chunks
+In-Reply-To: <be4b64ab-3cbc-4199-8478-436aca0c91ec@hiddenelephants.co.uk>
+References: <CAHfK2MsCoQ-n=-qwfWWmd7R4wBo81vy5AUN1HV+JqqkbHakXjg@mail.gmail.com>
+ <20240607165059.3eb5ba3d@arachnoid>
+ <be4b64ab-3cbc-4199-8478-436aca0c91ec@hiddenelephants.co.uk>
+Message-ID: <CAK0dd0wXVTxajZjK=O9Ou1s1uw2262Z4nyNj_+NS9fyhzvwp7A@mail.gmail.com>
+
+Hi Ivan,
+
+In my experience, if you add purl=FALSE to those chunks, it will pass the
+checks. This was the default but changed/ is the default on some platforms
+not others when you have error=TRUE (don't recall details).
+
+Jisca
+
+
+On Fri, 7 Jun 2024, 16:05 Tim Taylor, <tim.taylor at hiddenelephants.co.uk>
+wrote:
+
+> Does this issue over in knitr shed some additional light ...
+>
+> https://github.com/yihui/knitr/issues/2338
+>
+> Tim
+>
+> On 07/06/2024 14:50, Ivan Krylov via R-package-devel wrote:
+> > ? Fri, 7 Jun 2024 09:10:03 +0200
+> > "C.H." <chainsawtiney at gmail.com> ?????:
+> >
+> >> RMarkdown vignettes are sometimes used to demonstrate errors and one
+> >> can write vignettes with `error` chunks.
+> >>
+> >> ```{r, error = TRUE}
+> >> stop()
+> >> ```
+> >> But now CRAN also reports the same ERRORS for mac and linux `oldrel`
+> >> (4.3.3).
+> >>
+> >> https://cran.r-project.org/web/checks/check_results_rio.html
+> > It sounds like R Markdown, when tangling a vignette into an *.R file,
+> > should provide additional wrapping for chunks with the error = TRUE
+> > option set. Would a try({ chunk content }) suffice?
+> >
+> > R CMD check relies on the tangled script not to crash, and there is
+> > currently no such wrapping in the generated output:
+> > https://github.com/cran/rio/blob/master/inst/doc/remap.R
+> >
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
