@@ -17752,3 +17752,246 @@ wrote:
 	[[alternative HTML version deleted]]
 
 
+From je||reybyron|ew|@ @end|ng |rom gm@||@com  Fri Jun  7 21:03:23 2024
+From: je||reybyron|ew|@ @end|ng |rom gm@||@com (Jeff Lewis)
+Date: Fri, 7 Jun 2024 12:03:23 -0700
+Subject: [R-pkg-devel] Seeking help with a phantom "re-building vignettes"
+ error in 00check.log from CRAN
+In-Reply-To: <CAFmEHH626uA2j1x9tSQ6taUpS6UHXybXi7Zd3DWd8hsiodfttA@mail.gmail.com>
+References: <CAFmEHH6xxRrzhbHPUnF-uPR4yi8YZS45ubJKUcWJZm5pqjVB7g@mail.gmail.com>
+ <CAFmEHH626uA2j1x9tSQ6taUpS6UHXybXi7Zd3DWd8hsiodfttA@mail.gmail.com>
+Message-ID: <CAFmEHH7AgvoOmA7Fi07Sh8AC7bw2JMpLROBsV575uSgrzNmYzg@mail.gmail.com>
+
+Hi,
+
+
+I am hoping someone has a solution to my befuddling situation.  I am trying
+to push an update of a package that has been on CRAN for over a decade.
+
+I am running into a perplexing issue that creates an error in the Windows
+build when I submit the package to CRAN.  The error does not occur on:
+win-builder-devel,
+Debian on CRAN, my mac, or in Docker using r-base on my mac.  Here is the
+reported error and the lines above and below in the 00check.log from CRAN
+(under windows):
+
+
+...
+
+* checking package vignettes ... OK
+* checking re-building of vignette outputs ... [13s] ERROR
+Error(s) in re-building vignettes:
+--- re-building 'wnominate.Rnw' using Sweave
+
+
+* checking PDF version of manual ... [21s] OK
+...
+
+
+In other environments, I get
+
+
+...
+
+* checking package vignettes ... OK
+* checking re-building of vignette outputs ... [6s/6s] OK
+* checking PDF version of manual ... [3s/3s] OK
+
+...
+
+
+The complete logs (that otherwise appear ok to me) are linked below
+(though, of course, they will disappear in a few days):
+
+https://win-builder.r-project.org/incoming_pretest/wnominate_1.5_20240607_192611/Windows/00check.log
+https://win-builder.r-project.org/incoming_pretest/wnominate_1.5_20240607_192611/Debian/00check.log
+https://win-builder.r-project.org/6518MsBoQpPl/00check.log
+
+
+I know that there is something going on with the vignette (which is, FWIW,
+in Sweave) construction process, but I cannot figure out what.  On my mac,
+using "--compact-vignettes=both" when doing the build doesn't change the
+vignette pdf size, but on other platforms it does.  qpdf and gs are
+available to R on my mac, but weirdly, if I try to do the compacting
+directly using
+
+> tools::compactPDF(gs_quality = "ebook", "wnominate.pdf", verbose = TRUE)
+
+I get back
+
+qs_quality="ebook" : use_gs=TRUE, use_qpdf=TRUE
+#{pdf}s = length(paths) = 1
+- wnominate.pdf:    gs: res=0;  + qpdf: res=0;
+    ==> (new=7.4894e+06)/(old=451405) = 16.5913 .. not worth using
+
+This would (I think) suggest that the "compacting" would make the pdf 16.5
+times bigger which seems like an issue.  On the other platforms, compacting
+does what I expect.  It reduces the pdf file by about 50%.  I thought the
+"uncompacted" vignette was the cause of the error when I originally
+submitted to CRAN last night and got a similar error, so I rebuilt the
+package using Docker and submitted that build.  However, no dice. So, maybe
+the compacting issue is not related to what is hanging me up now.  In any
+case, this is where I am right now.
+
+I maintain this package for a friend who has retired and I thought the
+tedious part of keeping it on CRAN was going to be bringing 4k+ lines of
+legacy Fortran (sort of) into the 21th century, but I have now spent way
+more time on this mysterious vignette building error.  I hope someone can
+share a solution or even just a strategy for figuring this issue out.
+
+
+Best,
+
+
+Jeff
+
+
+-- 
+
+Jeffrey B. Lewis
+Special Assistant to the Executive Vice Chancellor and Provost
+    for Academic Planning and Budget
+Professor, Department of Political Science
+University of California, Los Angeles
+BOX 951472, 4289A Bunche Hall
+Los Angeles, CA 90095-1472
+
+	[[alternative HTML version deleted]]
+
+
+From h@n@on @end|ng |rom dep@uw@edu  Sun Jun  9 00:06:22 2024
+From: h@n@on @end|ng |rom dep@uw@edu (Bryan Hanson)
+Date: Sat, 8 Jun 2024 15:06:22 -0700
+Subject: [R-pkg-devel] 
+ Seeking help with a phantom "re-building vignettes"
+ error in 00check.log from CRAN
+In-Reply-To: <CAFmEHH7AgvoOmA7Fi07Sh8AC7bw2JMpLROBsV575uSgrzNmYzg@mail.gmail.com>
+References: <CAFmEHH6xxRrzhbHPUnF-uPR4yi8YZS45ubJKUcWJZm5pqjVB7g@mail.gmail.com>
+ <CAFmEHH626uA2j1x9tSQ6taUpS6UHXybXi7Zd3DWd8hsiodfttA@mail.gmail.com>
+ <CAFmEHH7AgvoOmA7Fi07Sh8AC7bw2JMpLROBsV575uSgrzNmYzg@mail.gmail.com>
+Message-ID: <BBAC18DC-131D-46B8-B946-85A9ADA45DF7@depauw.edu>
+
+Regarding the vignette compacting issue, I ran into this recently and the problem was a bad build of Ghostscript on my Mac, which came from Homebrew. I downloaded GS directly and built locally and it worked correctly (though by now it may have been fixed at Homebrew).  Ivan Krylov figured this one out as he often does!  Thread starts at: https://stat.ethz.ch/pipermail/r-package-devel/2024q2/010666.html
+
+Bryan
+
+> On Jun 7, 2024, at 12:03?PM, Jeff Lewis <jeffreybyronlewis at gmail.com> wrote:
+> 
+> Hi,
+> 
+> 
+> I am hoping someone has a solution to my befuddling situation.  I am trying
+> to push an update of a package that has been on CRAN for over a decade.
+> 
+> I am running into a perplexing issue that creates an error in the Windows
+> build when I submit the package to CRAN.  The error does not occur on:
+> win-builder-devel,
+> Debian on CRAN, my mac, or in Docker using r-base on my mac.  Here is the
+> reported error and the lines above and below in the 00check.log from CRAN
+> (under windows):
+> 
+> 
+> ...
+> 
+> * checking package vignettes ... OK
+> * checking re-building of vignette outputs ... [13s] ERROR
+> Error(s) in re-building vignettes:
+> --- re-building 'wnominate.Rnw' using Sweave
+> 
+> 
+> * checking PDF version of manual ... [21s] OK
+> ...
+> 
+> 
+> In other environments, I get
+> 
+> 
+> ...
+> 
+> * checking package vignettes ... OK
+> * checking re-building of vignette outputs ... [6s/6s] OK
+> * checking PDF version of manual ... [3s/3s] OK
+> 
+> ...
+> 
+> 
+> The complete logs (that otherwise appear ok to me) are linked below
+> (though, of course, they will disappear in a few days):
+> 
+> https://win-builder.r-project.org/incoming_pretest/wnominate_1.5_20240607_192611/Windows/00check.log
+> https://win-builder.r-project.org/incoming_pretest/wnominate_1.5_20240607_192611/Debian/00check.log
+> https://win-builder.r-project.org/6518MsBoQpPl/00check.log
+> 
+> 
+> I know that there is something going on with the vignette (which is, FWIW,
+> in Sweave) construction process, but I cannot figure out what.  On my mac,
+> using "--compact-vignettes=both" when doing the build doesn't change the
+> vignette pdf size, but on other platforms it does.  qpdf and gs are
+> available to R on my mac, but weirdly, if I try to do the compacting
+> directly using
+> 
+>> tools::compactPDF(gs_quality = "ebook", "wnominate.pdf", verbose = TRUE)
+> 
+> I get back
+> 
+> qs_quality="ebook" : use_gs=TRUE, use_qpdf=TRUE
+> #{pdf}s = length(paths) = 1
+> - wnominate.pdf:    gs: res=0;  + qpdf: res=0;
+>    ==> (new=7.4894e+06)/(old=451405) = 16.5913 .. not worth using
+> 
+> This would (I think) suggest that the "compacting" would make the pdf 16.5
+> times bigger which seems like an issue.  On the other platforms, compacting
+> does what I expect.  It reduces the pdf file by about 50%.  I thought the
+> "uncompacted" vignette was the cause of the error when I originally
+> submitted to CRAN last night and got a similar error, so I rebuilt the
+> package using Docker and submitted that build.  However, no dice. So, maybe
+> the compacting issue is not related to what is hanging me up now.  In any
+> case, this is where I am right now.
+> 
+> I maintain this package for a friend who has retired and I thought the
+> tedious part of keeping it on CRAN was going to be bringing 4k+ lines of
+> legacy Fortran (sort of) into the 21th century, but I have now spent way
+> more time on this mysterious vignette building error.  I hope someone can
+> share a solution or even just a strategy for figuring this issue out.
+> 
+> 
+> Best,
+> 
+> 
+> Jeff
+> 
+> 
+> -- 
+> 
+> Jeffrey B. Lewis
+> Special Assistant to the Executive Vice Chancellor and Provost
+>    for Academic Planning and Budget
+> Professor, Department of Political Science
+> University of California, Los Angeles
+> BOX 951472, 4289A Bunche Hall
+> Los Angeles, CA 90095-1472
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+=============
+Bryan A. Hanson
+Prof. Emeritus, DePauw University
+Chemistry & Biochemistry
+hanson at depauw.edu
+profbryanhanson at gmail.com
+Nerdy blog: ChemoSpec.org
+I?m at GMT -7 year round
+
+
+
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
