@@ -17995,3 +17995,80 @@ I?m at GMT -7 year round
 	[[alternative HTML version deleted]]
 
 
+From |kry|ov @end|ng |rom d|@root@org  Sun Jun  9 11:33:59 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sun, 9 Jun 2024 12:33:59 +0300
+Subject: [R-pkg-devel] 
+ Seeking help with a phantom "re-building vignettes"
+ error in 00check.log from CRAN
+In-Reply-To: <CAFmEHH7AgvoOmA7Fi07Sh8AC7bw2JMpLROBsV575uSgrzNmYzg@mail.gmail.com>
+References: <CAFmEHH6xxRrzhbHPUnF-uPR4yi8YZS45ubJKUcWJZm5pqjVB7g@mail.gmail.com>
+ <CAFmEHH626uA2j1x9tSQ6taUpS6UHXybXi7Zd3DWd8hsiodfttA@mail.gmail.com>
+ <CAFmEHH7AgvoOmA7Fi07Sh8AC7bw2JMpLROBsV575uSgrzNmYzg@mail.gmail.com>
+Message-ID: <20240609123359.291b14ff@trisector>
+
+? Fri, 7 Jun 2024 12:03:23 -0700
+Jeff Lewis <jeffreybyronlewis at gmail.com> ?????:
+
+> I am running into a perplexing issue that creates an error in the
+> Windows build when I submit the package to CRAN.  The error does not
+> occur on: win-builder-devel,
+> Debian on CRAN, my mac, or in Docker using r-base on my mac.  Here is
+> the reported error and the lines above and below in the 00check.log
+> from CRAN (under windows):
+> 
+> 
+> ...
+> 
+> * checking package vignettes ... OK
+> * checking re-building of vignette outputs ... [13s] ERROR
+> Error(s) in re-building vignettes:
+> --- re-building 'wnominate.Rnw' using Sweave
+> 
+> 
+> * checking PDF version of manual ... [21s] OK
+
+It looks the the process terminates without producing an R-level error.
+(E.g. putting q('no', status = 254) in a code block gave me a similar
+result.)
+
+> I maintain this package for a friend who has retired and I thought the
+> tedious part of keeping it on CRAN was going to be bringing 4k+ lines
+> of legacy Fortran (sort of) into the 21th century
+
+I think you have been right about the Fortran code. Running R CMD check
+compiled with -fsanitize=address,undefined gives me memory access
+errors in both the examples and the vignette:
+
+ERROR: AddressSanitizer: heap-buffer-overflow on address 0x62500385b0c0
+WRITE of size 4 at 0x62500385b0c0 thread T0
+    #0 0x7f080a61b213 in wnom_
+    .../wnominate.Rcheck/00_pkg_src/wnominate/src/wnominate.f90:757
+
+0x62500385b0c0 is located 72 bytes to the right of 8056-byte region
+[0x625003859100,0x62500385b078) allocated by thread T0 here:
+#0 0x7f0818eb89cf in __interceptor_malloc
+../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:69
+#1 0x56024a3746a7 in Rf_allocVector3 ../../../src/main/memory.c:2886
+#2 0x56024a378c7b in Rf_allocVector
+../../../src/include/Rinlinedfuns.h:597
+#3 0x56024a378c7b in R_alloc ../../../src/main/memory.c:2332
+#4 0x560249fcfde4 in do_dotCode ../../../src/main/dotcode.c:1817
+
+Subroutine WNOM overflows a REAL(4) buffer POOLE(NUMMEMBERS,NUMVOTES)
+allocated for it inside R's .Fortran(). A breakpoint set at line 757
+reveals that I is 21 and J is 101 at this point. This is to be
+expected, given the two nested DO-loops for J=1,NRCALL (=NUMVOTES, 100)
+and I=1,NP (=NUMMEMBERS, 20) in the preceding lines.
+
+I think that the original code in version 1.4 was meant to extend both
+loops until the line 109 CONTINUE, not to immediately end them with
+1091 CONTINUE and 1092 CONTINUE after performing (NP*NRCALL)
+assignments to the variable ICH, as done in version 1.5 (just
+downloaded from the CRAN FTP server, subdirectory incoming/archive).
+
+-- 
+Best regards,
+Ivan
+
+
