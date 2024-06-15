@@ -18901,3 +18901,157 @@ On 12.06.2024 20:12, Lucas Godoy wrote:
 > R-package-devel at r-project.org mailing list
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
+From ro|@nd@|u@@ @end|ng |rom thuenen@de  Fri Jun 14 07:58:09 2024
+From: ro|@nd@|u@@ @end|ng |rom thuenen@de (=?UTF-8?Q?Roland_Fu=C3=9F?=)
+Date: Fri, 14 Jun 2024 07:58:09 +0200
+Subject: [R-pkg-devel] Vignette with error=TRUE chunks fails CRAN checks on
+ r-oldrel-macos
+Message-ID: <6d05eb94-f883-490d-ba97-05b3b2b2db6c@thuenen.de>
+
+Hi,
+
+We are seeing this with our ALFAM2 package: 
+https://cran.r-project.org/web/checks/check_results_ALFAM2.html
+
+We have many code chunks with knitr option `error=TRUE`. My 
+understanding is that CRAN machines should have set 
+`_R_CHECK_VIGNETTES_SKIP_RUN_MAYBE_=true` and not check the tangled code 
+but I see:
+
+"When sourcing ?ALFAM2-start.R?:
+
+Error: Missing value(s) in predictor variable(s)
+
+ ?? See above for variables.
+
+ ?? Check these rows: 3
+
+Execution halted"
+
+Before I dive deeper into this and we maybe switch to `eval=FALSE`, is 
+my understanding wrong? Or is the setup on the oldrel-macos machines 
+different?
+
+
+Thanks in advance,
+
+Roland
+
+-- 
+Dr. Roland Fu?
+
+Th?nen-Institut f?r Agrarklimaschutz/
+Th?nen Institute of Climate-Smart Agriculture
+
+Bundesallee 65
+D-38116 Braunschweig, Germany
+
+Tel.: ++49 531 596 2627
+Fax:  ++49 531 596 2699
+Email: roland.fuss at thuenen.de
+
+Arbeitsgruppe "Emissionsberichterstattung"/
+Working group "Emission Inventories"
+Email: emissionsinventare at thuenen.de
+
+Das Johann Heinrich von Th?nen-Institut,
+Bundesforschungsinstitut f?r L?ndliche R?ume,
+Wald und Fischerei ? kurz: Th?nen-Institut ?
+besteht aus 15 Fachinstituten, die in den
+Bereichen ?konomie, ?kologie und Technologie
+forschen und die Politik beraten.
+
+The Johann Heinrich von Th?nen Institute,
+Federal Research Institute for Rural Areas,
+Forestry and Fisheries ? Th?nen Institute in brief ?
+consists of 15 specialized institutes that
+carry out research and provide policy advice
+in the fields of economy, ecology and technology.
+
+
+From bbo|ker @end|ng |rom gm@||@com  Fri Jun 14 17:20:15 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Fri, 14 Jun 2024 11:20:15 -0400
+Subject: [R-pkg-devel] 
+ Vignette with error=TRUE chunks fails CRAN checks on r-oldrel-macos
+In-Reply-To: <6d05eb94-f883-490d-ba97-05b3b2b2db6c@thuenen.de>
+References: <6d05eb94-f883-490d-ba97-05b3b2b2db6c@thuenen.de>
+Message-ID: <209e50a0-6e14-468c-953d-ff3c44adfab8@gmail.com>
+
+   I feel like I've seen this go by on a forum or issues list somewhere 
+recently, but can't find it again.
+
+   Whatever CRAN is doing, I think that adding purl=FALSE along with 
+error=TRUE might help.
+
+On 2024-06-14 1:58 a.m., Roland Fu? wrote:
+> Hi,
+> 
+> We are seeing this with our ALFAM2 package: 
+> https://cran.r-project.org/web/checks/check_results_ALFAM2.html
+> 
+> We have many code chunks with knitr option `error=TRUE`. My 
+> understanding is that CRAN machines should have set 
+> `_R_CHECK_VIGNETTES_SKIP_RUN_MAYBE_=true` and not check the tangled code 
+> but I see:
+> 
+> "When sourcing ?ALFAM2-start.R?:
+> 
+> Error: Missing value(s) in predictor variable(s)
+> 
+>  ?? See above for variables.
+> 
+>  ?? Check these rows: 3
+> 
+> Execution halted"
+> 
+> Before I dive deeper into this and we maybe switch to `eval=FALSE`, is 
+> my understanding wrong? Or is the setup on the oldrel-macos machines 
+> different?
+> 
+> 
+> Thanks in advance,
+> 
+> Roland
+>
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Jun 14 17:49:14 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 14 Jun 2024 18:49:14 +0300
+Subject: [R-pkg-devel] 
+ Vignette with error=TRUE chunks fails CRAN checks on r-oldrel-macos
+In-Reply-To: <6d05eb94-f883-490d-ba97-05b3b2b2db6c@thuenen.de>
+References: <6d05eb94-f883-490d-ba97-05b3b2b2db6c@thuenen.de>
+Message-ID: <20240614184914.1ef61ae8@arachnoid>
+
+? Fri, 14 Jun 2024 07:58:09 +0200
+Roland Fu? <roland.fuss at thuenen.de> ?????:
+
+> We have many code chunks with knitr option `error=TRUE`.
+
+A recent change required knitr to actually tangle the code for
+vignettes when requested by R CMD check, with the intent to make sure
+that the resulting *.R file runs without errors. Unfortunately, chunks
+with error = TRUE get included in the tangled output, but it's not so
+simple to fix for historical reasons, partially because a simple tangle
+would not work for vignettes that expect to interact with the
+vignette engine from inside their code chunks or rely on the side
+effects from inline expressions.
+
+Tim Taylor has very helpfully provided [*] the link to the knitr issue
+with more context: https://github.com/yihui/knitr/issues/2338
+
+purl=FALSE should indeed work; see
+https://github.com/yihui/knitr/pull/2036 and
+https://stat.ethz.ch/pipermail/r-devel/2014-May/069113.html for more
+context.
+
+-- 
+Best regards,
+Ivan
+
+[*]
+https://stat.ethz.ch/pipermail/r-package-devel/2024q2/010868.html
+
+
