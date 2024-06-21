@@ -19085,3 +19085,837 @@ Is this just a temporary issue with the servers?
 Dave
 
 
+From |kry|ov @end|ng |rom d|@root@org  Thu Jun 20 17:47:54 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 20 Jun 2024 18:47:54 +0300
+Subject: [R-pkg-devel] CRAN check servers terminating on stanExports_*.o
+ files
+In-Reply-To: <SA3PR11MB76269FCE308D0A31884FFF06B3C32@SA3PR11MB7626.namprd11.prod.outlook.com>
+References: <SA3PR11MB76269FCE308D0A31884FFF06B3C32@SA3PR11MB7626.namprd11.prod.outlook.com>
+Message-ID: <20240620184754.1fda29b8@arachnoid>
+
+? Sat, 15 Jun 2024 15:11:36 +0000
+"Slager, Dave" <dslager at fredhutch.org> ?????:
+
+> The r-patched-linux-x86_64 and/or r-release-linux-x86_64 CRAN check
+> servers seem to be erroring out on multiple packages, including
+> these, for similar reasons:
+> 
+> bakR
+> baldur
+> bayes4psy
+> BayesGmed
+> ctsem
+> eggCounts
+> FlexReg
+> networkscaleup
+> ssMousetrack
+> thurstonianIRT
+> trialr
+
+I've experimented with BayesGmed a bit (because it has less
+dependencies than other packages in the list). Most of its object files
+require the C++ compiler to allocate more than three gigabytes of
+memory. Additionally, ctsem has a slightly different error:
+
+>> g++-13: fatal error: Killed signal terminated program cc1plus
+>> compilation terminated.
+>> make[1]: ***
+>> [/home/hornik/tmp/R.check/r-release-gcc/Work/build/etc/Makeconf:200:
+>> stanExports_ctsm.o] Error 1
+
+This is evidence of the computer running out of memory and killing the
+processes that the kernel deems responsible.
+
+How much memory should it normally take to install a package that makes
+use of rstan?
+
+-- 
+Best regards,
+Ivan
+
+
+From n@r@@ @end|ng |rom @t@n|ord@edu  Thu Jun 20 17:57:09 2024
+From: n@r@@ @end|ng |rom @t@n|ord@edu (Balasubramanian Narasimhan)
+Date: Thu, 20 Jun 2024 08:57:09 -0700
+Subject: [R-pkg-devel] NOTEs in packages using Rust
+Message-ID: <cae76207-a3dd-4ff6-9592-9e388abeab8f@stanford.edu>
+
+I am preparing an update of Clarabel to synchronize with the upstream 
+repo. When checking the package, I get NOTEs such as:
+
+    Found the following CITATION file in a non-standard place:
+     ? src/rust/vendor/clarabel/CITATION.bib
+    Most likely ?inst/CITATION? should be used instead.
+
+    Found the following sources/headers not terminated with a newline:
+    src/rust/vendor/lapack-sys/lapack/LAPACKE/src/lapacke_cgetsqrhrt_work.c
+
+etc.
+
+These are coming from the vendored sources and I plan to note that in my 
+submission. Will that suffice?
+
+I will, of course, let the crate authors know and even submit a PR, but 
+not sure if it will yield an update in a reasonable time.
+
+PS. Excluding files in tarring or fixing newlines are not an option as 
+the checksums will fail.
+
+Thanks.
+
+-Naras
+
+
+	[[alternative HTML version deleted]]
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Thu Jun 20 18:08:10 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Thu, 20 Jun 2024 12:08:10 -0400
+Subject: [R-pkg-devel] NOTEs in packages using Rust
+In-Reply-To: <cae76207-a3dd-4ff6-9592-9e388abeab8f@stanford.edu>
+References: <cae76207-a3dd-4ff6-9592-9e388abeab8f@stanford.edu>
+Message-ID: <CAL3ufUK0T9zgAd2hH1tcs43nvZhS=qiRY1QtRyLQwAi0bPnntg@mail.gmail.com>
+
+Hi Naras, this should be handled by the Makevars itself. Are you using
+extendr to do this?
+
+Using `rextendr::use_cran_defaults()` should handle it for you. Then you
+can use `rextendr::vendor_pkgs()` to handle vendoring.
+
+
+On Thu, Jun 20, 2024 at 11:57?AM Balasubramanian Narasimhan <
+naras at stanford.edu> wrote:
+
+> I am preparing an update of Clarabel to synchronize with the upstream
+> repo. When checking the package, I get NOTEs such as:
+>
+>     Found the following CITATION file in a non-standard place:
+>        src/rust/vendor/clarabel/CITATION.bib
+>     Most likely ?inst/CITATION? should be used instead.
+>
+>     Found the following sources/headers not terminated with a newline:
+>     src/rust/vendor/lapack-sys/lapack/LAPACKE/src/lapacke_cgetsqrhrt_work.c
+>
+> etc.
+>
+> These are coming from the vendored sources and I plan to note that in my
+> submission. Will that suffice?
+>
+> I will, of course, let the crate authors know and even submit a PR, but
+> not sure if it will yield an update in a reasonable time.
+>
+> PS. Excluding files in tarring or fixing newlines are not an option as
+> the checksums will fail.
+>
+> Thanks.
+>
+> -Naras
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Thu Jun 20 18:22:22 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Thu, 20 Jun 2024 12:22:22 -0400
+Subject: [R-pkg-devel] NOTEs in packages using Rust
+In-Reply-To: <BYAPR02MB4728090F7F7FE8D6893F11DED8C82@BYAPR02MB4728.namprd02.prod.outlook.com>
+References: <cae76207-a3dd-4ff6-9592-9e388abeab8f@stanford.edu>
+ <CAL3ufUK0T9zgAd2hH1tcs43nvZhS=qiRY1QtRyLQwAi0bPnntg@mail.gmail.com>
+ <BYAPR02MB4728090F7F7FE8D6893F11DED8C82@BYAPR02MB4728.namprd02.prod.outlook.com>
+Message-ID: <CAL3ufUKjEq0es5u=XcVcQq3rbUqR-sbY7E3iChNLxtRx51M-jQ@mail.gmail.com>
+
+Hi Naras, then I can't help you there! Last I checked, savvy is opposed to
+supporting CRAN publication
+
+On Thu, Jun 20, 2024 at 12:19?PM Balasubramanian Narasimhan <
+naras at stanford.edu> wrote:
+
+> I?m using savvy but the version on CRAN uses extendr.
+>
+> Could you clarify?
+>
+> I?m not sure I know at which point to intervene in Makevars to fix things
+> myself?
+>
+> Thanks.
+> -Naras
+>
+> Balasubramanian Narasimhan
+> ------------------------------
+> *From:* Josiah Parry <josiah.parry at gmail.com>
+> *Sent:* Thursday, June 20, 2024 9:08:10 AM
+> *To:* Balasubramanian Narasimhan <naras at stanford.edu>
+> *Cc:* r-package-devel at r-project.org <r-package-devel at r-project.org>
+> *Subject:* Re: [R-pkg-devel] NOTEs in packages using Rust
+>
+> Hi Naras, this should be handled by the Makevars itself. Are you using
+> extendr to do this?
+>
+> Using `rextendr::use_cran_defaults()` should handle it for you. Then you
+> can use `rextendr::vendor_pkgs()` to handle vendoring.
+>
+>
+> On Thu, Jun 20, 2024 at 11:57?AM Balasubramanian Narasimhan <
+> naras at stanford.edu> wrote:
+>
+> I am preparing an update of Clarabel to synchronize with the upstream
+> repo. When checking the package, I get NOTEs such as:
+>
+>     Found the following CITATION file in a non-standard place:
+>        src/rust/vendor/clarabel/CITATION.bib
+>     Most likely ?inst/CITATION? should be used instead.
+>
+>     Found the following sources/headers not terminated with a newline:
+>     src/rust/vendor/lapack-sys/lapack/LAPACKE/src/lapacke_cgetsqrhrt_work.c
+>
+> etc.
+>
+> These are coming from the vendored sources and I plan to note that in my
+> submission. Will that suffice?
+>
+> I will, of course, let the crate authors know and even submit a PR, but
+> not sure if it will yield an update in a reasonable time.
+>
+> PS. Excluding files in tarring or fixing newlines are not an option as
+> the checksums will fail.
+>
+> Thanks.
+>
+> -Naras
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From n@r@@ @end|ng |rom @t@n|ord@edu  Thu Jun 20 18:19:05 2024
+From: n@r@@ @end|ng |rom @t@n|ord@edu (Balasubramanian Narasimhan)
+Date: Thu, 20 Jun 2024 16:19:05 +0000
+Subject: [R-pkg-devel] NOTEs in packages using Rust
+In-Reply-To: <CAL3ufUK0T9zgAd2hH1tcs43nvZhS=qiRY1QtRyLQwAi0bPnntg@mail.gmail.com>
+References: <cae76207-a3dd-4ff6-9592-9e388abeab8f@stanford.edu>
+ <CAL3ufUK0T9zgAd2hH1tcs43nvZhS=qiRY1QtRyLQwAi0bPnntg@mail.gmail.com>
+Message-ID: <BYAPR02MB4728090F7F7FE8D6893F11DED8C82@BYAPR02MB4728.namprd02.prod.outlook.com>
+
+I?m using savvy but the version on CRAN uses extendr.
+
+Could you clarify?
+
+I?m not sure I know at which point to intervene in Makevars to fix things myself?
+
+Thanks.
+-Naras
+
+Balasubramanian Narasimhan
+________________________________
+From: Josiah Parry <josiah.parry at gmail.com>
+Sent: Thursday, June 20, 2024 9:08:10 AM
+To: Balasubramanian Narasimhan <naras at stanford.edu>
+Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] NOTEs in packages using Rust
+
+Hi Naras, this should be handled by the Makevars itself. Are you using extendr to do this?
+
+Using `rextendr::use_cran_defaults()` should handle it for you. Then you can use `rextendr::vendor_pkgs()` to handle vendoring.
+
+
+On Thu, Jun 20, 2024 at 11:57?AM Balasubramanian Narasimhan <naras at stanford.edu<mailto:naras at stanford.edu>> wrote:
+I am preparing an update of Clarabel to synchronize with the upstream
+repo. When checking the package, I get NOTEs such as:
+
+    Found the following CITATION file in a non-standard place:
+       src/rust/vendor/clarabel/CITATION.bib
+    Most likely ?inst/CITATION? should be used instead.
+
+    Found the following sources/headers not terminated with a newline:
+    src/rust/vendor/lapack-sys/lapack/LAPACKE/src/lapacke_cgetsqrhrt_work.c
+
+etc.
+
+These are coming from the vendored sources and I plan to note that in my
+submission. Will that suffice?
+
+I will, of course, let the crate authors know and even submit a PR, but
+not sure if it will yield an update in a reasonable time.
+
+PS. Excluding files in tarring or fixing newlines are not an option as
+the checksums will fail.
+
+Thanks.
+
+-Naras
+
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-package-devel at r-project.org<mailto:R-package-devel at r-project.org> mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Thu Jun 20 18:21:09 2024
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Thu, 20 Jun 2024 09:21:09 -0700
+Subject: [R-pkg-devel] NOTEs in packages using Rust
+In-Reply-To: <cae76207-a3dd-4ff6-9592-9e388abeab8f@stanford.edu>
+References: <cae76207-a3dd-4ff6-9592-9e388abeab8f@stanford.edu>
+Message-ID: <DE7DB942-4CB6-4B25-BC4C-EB932E1E35E6@dcn.davis.ca.us>
+
+I am not connected to CRAN (by a long shot), but if I were I would not accept any of the arguments you are making here.
+
+I don't know what you are talking about with respect to excluding files in tarring... you should be using the package build processes as documented in Writing R Extensions.
+
+Adding a final carriage return is straightforward to do using a Makefile as part of your vendoring updates... or you could submit patches upstream.
+
+On June 20, 2024 8:57:09 AM PDT, Balasubramanian Narasimhan <naras at stanford.edu> wrote:
+>I am preparing an update of Clarabel to synchronize with the upstream 
+>repo. When checking the package, I get NOTEs such as:
+>
+>    Found the following CITATION file in a non-standard place:
+>     ? src/rust/vendor/clarabel/CITATION.bib
+>    Most likely ?inst/CITATION? should be used instead.
+>
+>    Found the following sources/headers not terminated with a newline:
+>    src/rust/vendor/lapack-sys/lapack/LAPACKE/src/lapacke_cgetsqrhrt_work.c
+>
+>etc.
+>
+>These are coming from the vendored sources and I plan to note that in my 
+>submission. Will that suffice?
+>
+>I will, of course, let the crate authors know and even submit a PR, but 
+>not sure if it will yield an update in a reasonable time.
+>
+>PS. Excluding files in tarring or fixing newlines are not an option as 
+>the checksums will fail.
+>
+>Thanks.
+>
+>-Naras
+>
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-package-devel at r-project.org mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Thu Jun 20 18:32:04 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Thu, 20 Jun 2024 12:32:04 -0400
+Subject: [R-pkg-devel] NOTEs in packages using Rust
+In-Reply-To: <DE7DB942-4CB6-4B25-BC4C-EB932E1E35E6@dcn.davis.ca.us>
+References: <cae76207-a3dd-4ff6-9592-9e388abeab8f@stanford.edu>
+ <DE7DB942-4CB6-4B25-BC4C-EB932E1E35E6@dcn.davis.ca.us>
+Message-ID: <CAL3ufULB-Eu3wM_hXyVKZYggrCW_6Fji8Lddq99rK-RNKRg0rA@mail.gmail.com>
+
+To be clear, you need to delete the untarred folders after the build
+process. You only need the dependencies at build time. After the build time
+it has been compiled into a .so/.dll and then you must delete the vendored
+sources. There's no reason that installing an R package should keep the *source
+code *of the rust dependencies.
+
+On Thu, Jun 20, 2024 at 12:28?PM Jeff Newmiller via R-package-devel <
+r-package-devel at r-project.org> wrote:
+
+> I am not connected to CRAN (by a long shot), but if I were I would not
+> accept any of the arguments you are making here.
+>
+> I don't know what you are talking about with respect to excluding files in
+> tarring... you should be using the package build processes as documented in
+> Writing R Extensions.
+>
+> Adding a final carriage return is straightforward to do using a Makefile
+> as part of your vendoring updates... or you could submit patches upstream.
+>
+> On June 20, 2024 8:57:09 AM PDT, Balasubramanian Narasimhan <
+> naras at stanford.edu> wrote:
+> >I am preparing an update of Clarabel to synchronize with the upstream
+> >repo. When checking the package, I get NOTEs such as:
+> >
+> >    Found the following CITATION file in a non-standard place:
+> >       src/rust/vendor/clarabel/CITATION.bib
+> >    Most likely ?inst/CITATION? should be used instead.
+> >
+> >    Found the following sources/headers not terminated with a newline:
+> >
+> src/rust/vendor/lapack-sys/lapack/LAPACKE/src/lapacke_cgetsqrhrt_work.c
+> >
+> >etc.
+> >
+> >These are coming from the vendored sources and I plan to note that in my
+> >submission. Will that suffice?
+> >
+> >I will, of course, let the crate authors know and even submit a PR, but
+> >not sure if it will yield an update in a reasonable time.
+> >
+> >PS. Excluding files in tarring or fixing newlines are not an option as
+> >the checksums will fail.
+> >
+> >Thanks.
+> >
+> >-Naras
+> >
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> >______________________________________________
+> >R-package-devel at r-project.org mailing list
+> >https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+> --
+> Sent from my phone. Please excuse my brevity.
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From n@r@@ @end|ng |rom @t@n|ord@edu  Thu Jun 20 18:40:37 2024
+From: n@r@@ @end|ng |rom @t@n|ord@edu (Balasubramanian Narasimhan)
+Date: Thu, 20 Jun 2024 16:40:37 +0000
+Subject: [R-pkg-devel] NOTEs in packages using Rust
+In-Reply-To: <CAL3ufULB-Eu3wM_hXyVKZYggrCW_6Fji8Lddq99rK-RNKRg0rA@mail.gmail.com>
+References: <cae76207-a3dd-4ff6-9592-9e388abeab8f@stanford.edu>
+ <DE7DB942-4CB6-4B25-BC4C-EB932E1E35E6@dcn.davis.ca.us>
+ <CAL3ufULB-Eu3wM_hXyVKZYggrCW_6Fji8Lddq99rK-RNKRg0rA@mail.gmail.com>
+Message-ID: <BYAPR02MB4728D214763B070D94E6AEAAD8C82@BYAPR02MB4728.namprd02.prod.outlook.com>
+
+I think your answer suggests the nub of solution: to delete the offending vendor directory at the right time. Will try.
+
+@JosiahParry, I just remembered that I also have an extendr version that suffers from a similar affliction.
+Thanks.
+-Naras
+
+Balasubramanian Narasimhan
+________________________________
+From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Josiah Parry <josiah.parry at gmail.com>
+Sent: Thursday, June 20, 2024 9:32:04 AM
+To: Jeff Newmiller <jdnewmil at dcn.davis.ca.us>
+Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] NOTEs in packages using Rust
+
+To be clear, you need to delete the untarred folders after the build
+process. You only need the dependencies at build time. After the build time
+it has been compiled into a .so/.dll and then you must delete the vendored
+sources. There's no reason that installing an R package should keep the *source
+code *of the rust dependencies.
+
+On Thu, Jun 20, 2024 at 12:28?PM Jeff Newmiller via R-package-devel <
+r-package-devel at r-project.org> wrote:
+
+> I am not connected to CRAN (by a long shot), but if I were I would not
+> accept any of the arguments you are making here.
+>
+> I don't know what you are talking about with respect to excluding files in
+> tarring... you should be using the package build processes as documented in
+> Writing R Extensions.
+>
+> Adding a final carriage return is straightforward to do using a Makefile
+> as part of your vendoring updates... or you could submit patches upstream.
+>
+> On June 20, 2024 8:57:09 AM PDT, Balasubramanian Narasimhan <
+> naras at stanford.edu> wrote:
+> >I am preparing an update of Clarabel to synchronize with the upstream
+> >repo. When checking the package, I get NOTEs such as:
+> >
+> >    Found the following CITATION file in a non-standard place:
+> >       src/rust/vendor/clarabel/CITATION.bib
+> >    Most likely ?inst/CITATION? should be used instead.
+> >
+> >    Found the following sources/headers not terminated with a newline:
+> >
+> src/rust/vendor/lapack-sys/lapack/LAPACKE/src/lapacke_cgetsqrhrt_work.c
+> >
+> >etc.
+> >
+> >These are coming from the vendored sources and I plan to note that in my
+> >submission. Will that suffice?
+> >
+> >I will, of course, let the crate authors know and even submit a PR, but
+> >not sure if it will yield an update in a reasonable time.
+> >
+> >PS. Excluding files in tarring or fixing newlines are not an option as
+> >the checksums will fail.
+> >
+> >Thanks.
+> >
+> >-Naras
+> >
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> >______________________________________________
+> >R-package-devel at r-project.org mailing list
+> >https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+> --
+> Sent from my phone. Please excuse my brevity.
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+	[[alternative HTML version deleted]]
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Thu Jun 20 18:47:44 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Thu, 20 Jun 2024 12:47:44 -0400
+Subject: [R-pkg-devel] NOTEs in packages using Rust
+In-Reply-To: <BYAPR02MB4728D214763B070D94E6AEAAD8C82@BYAPR02MB4728.namprd02.prod.outlook.com>
+References: <cae76207-a3dd-4ff6-9592-9e388abeab8f@stanford.edu>
+ <DE7DB942-4CB6-4B25-BC4C-EB932E1E35E6@dcn.davis.ca.us>
+ <CAL3ufULB-Eu3wM_hXyVKZYggrCW_6Fji8Lddq99rK-RNKRg0rA@mail.gmail.com>
+ <BYAPR02MB4728D214763B070D94E6AEAAD8C82@BYAPR02MB4728.namprd02.prod.outlook.com>
+Message-ID: <CAL3ufU+5NmFmsUcaoqD5OeRgfHpY4GPyDUNZ=x48O7Osq2onLw@mail.gmail.com>
+
+I personally wrote the rextendr functions to handle this. If you follow the
+instructions below you most likely shouldn't have an issue. I have quite a
+number of extendr based R package on CRAN.
+
+https://extendr.github.io/rextendr/dev/articles/cran-compliance.html
+
+On Thu, Jun 20, 2024 at 12:40?PM Balasubramanian Narasimhan <
+naras at stanford.edu> wrote:
+
+> I think your answer suggests the nub of solution: to delete the offending
+> vendor directory at the right time. Will try.
+>
+> @JosiahParry, I just remembered that I also have an extendr version that
+> suffers from a similar affliction.
+> Thanks.
+> -Naras
+>
+> Balasubramanian Narasimhan
+> ------------------------------
+> *From:* R-package-devel <r-package-devel-bounces at r-project.org> on behalf
+> of Josiah Parry <josiah.parry at gmail.com>
+> *Sent:* Thursday, June 20, 2024 9:32:04 AM
+> *To:* Jeff Newmiller <jdnewmil at dcn.davis.ca.us>
+> *Cc:* r-package-devel at r-project.org <r-package-devel at r-project.org>
+> *Subject:* Re: [R-pkg-devel] NOTEs in packages using Rust
+>
+> To be clear, you need to delete the untarred folders after the build
+> process. You only need the dependencies at build time. After the build time
+> it has been compiled into a .so/.dll and then you must delete the vendored
+> sources. There's no reason that installing an R package should keep the
+> *source
+> code *of the rust dependencies.
+>
+> On Thu, Jun 20, 2024 at 12:28?PM Jeff Newmiller via R-package-devel <
+> r-package-devel at r-project.org> wrote:
+>
+> > I am not connected to CRAN (by a long shot), but if I were I would not
+> > accept any of the arguments you are making here.
+> >
+> > I don't know what you are talking about with respect to excluding files
+> in
+> > tarring... you should be using the package build processes as documented
+> in
+> > Writing R Extensions.
+> >
+> > Adding a final carriage return is straightforward to do using a Makefile
+> > as part of your vendoring updates... or you could submit patches
+> upstream.
+> >
+> > On June 20, 2024 8:57:09 AM PDT, Balasubramanian Narasimhan <
+> > naras at stanford.edu> wrote:
+> > >I am preparing an update of Clarabel to synchronize with the upstream
+> > >repo. When checking the package, I get NOTEs such as:
+> > >
+> > >    Found the following CITATION file in a non-standard place:
+> > >       src/rust/vendor/clarabel/CITATION.bib
+> > >    Most likely ?inst/CITATION? should be used instead.
+> > >
+> > >    Found the following sources/headers not terminated with a newline:
+> > >
+> > src/rust/vendor/lapack-sys/lapack/LAPACKE/src/lapacke_cgetsqrhrt_work.c
+> > >
+> > >etc.
+> > >
+> > >These are coming from the vendored sources and I plan to note that in my
+> > >submission. Will that suffice?
+> > >
+> > >I will, of course, let the crate authors know and even submit a PR, but
+> > >not sure if it will yield an update in a reasonable time.
+> > >
+> > >PS. Excluding files in tarring or fixing newlines are not an option as
+> > >the checksums will fail.
+> > >
+> > >Thanks.
+> > >
+> > >-Naras
+> > >
+> > >
+> > >       [[alternative HTML version deleted]]
+> > >
+> > >______________________________________________
+> > >R-package-devel at r-project.org mailing list
+> > >https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >
+> > --
+> > Sent from my phone. Please excuse my brevity.
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From n@r@@ @end|ng |rom @t@n|ord@edu  Thu Jun 20 19:56:45 2024
+From: n@r@@ @end|ng |rom @t@n|ord@edu (Balasubramanian Narasimhan)
+Date: Thu, 20 Jun 2024 10:56:45 -0700
+Subject: [R-pkg-devel] NOTEs in packages using Rust
+In-Reply-To: <BYAPR02MB4728D214763B070D94E6AEAAD8C82@BYAPR02MB4728.namprd02.prod.outlook.com>
+References: <cae76207-a3dd-4ff6-9592-9e388abeab8f@stanford.edu>
+ <DE7DB942-4CB6-4B25-BC4C-EB932E1E35E6@dcn.davis.ca.us>
+ <CAL3ufULB-Eu3wM_hXyVKZYggrCW_6Fji8Lddq99rK-RNKRg0rA@mail.gmail.com>
+ <BYAPR02MB4728D214763B070D94E6AEAAD8C82@BYAPR02MB4728.namprd02.prod.outlook.com>
+Message-ID: <190d007e-9e5d-48c4-9bbc-e3a80472e28e@stanford.edu>
+
+@JeffNewmiller, indeed, deleting the vendor directory after cargo does 
+its job fixes things. (Don't know how I missed that!)
+
+@JosiahParry,? the documentation was helpful.
+
+As to why my rextendr version still suffered from the same problem: the 
+version of clarabel on CRAN predated the current version of rextendr and 
+I rolled my Makevars following Hiroaki Yutani's string2path package. 
+Regenerating the all the files files solves the problem.
+
+Thanks to you both.
+
+-Naras
+
+On 6/20/24 9:40 AM, Balasubramanian Narasimhan wrote:
+> I think your answer suggests the nub of solution: to delete the offending vendor directory at the right time. Will try.
+>
+> @JosiahParry, I just remembered that I also have an extendr version that suffers from a similar affliction.
+> Thanks.
+> -Naras
+>
+> Balasubramanian Narasimhan
+> ________________________________
+> From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Josiah Parry <josiah.parry at gmail.com>
+> Sent: Thursday, June 20, 2024 9:32:04 AM
+> To: Jeff Newmiller <jdnewmil at dcn.davis.ca.us>
+> Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+> Subject: Re: [R-pkg-devel] NOTEs in packages using Rust
+>
+> To be clear, you need to delete the untarred folders after the build
+> process. You only need the dependencies at build time. After the build time
+> it has been compiled into a .so/.dll and then you must delete the vendored
+> sources. There's no reason that installing an R package should keep the *source
+> code *of the rust dependencies.
+>
+> On Thu, Jun 20, 2024 at 12:28?PM Jeff Newmiller via R-package-devel <
+> r-package-devel at r-project.org> wrote:
+>
+>> I am not connected to CRAN (by a long shot), but if I were I would not
+>> accept any of the arguments you are making here.
+>>
+>> I don't know what you are talking about with respect to excluding files in
+>> tarring... you should be using the package build processes as documented in
+>> Writing R Extensions.
+>>
+>> Adding a final carriage return is straightforward to do using a Makefile
+>> as part of your vendoring updates... or you could submit patches upstream.
+>>
+>> On June 20, 2024 8:57:09 AM PDT, Balasubramanian Narasimhan <
+>> naras at stanford.edu> wrote:
+>>> I am preparing an update of Clarabel to synchronize with the upstream
+>>> repo. When checking the package, I get NOTEs such as:
+>>>
+>>>     Found the following CITATION file in a non-standard place:
+>>>        src/rust/vendor/clarabel/CITATION.bib
+>>>     Most likely ?inst/CITATION? should be used instead.
+>>>
+>>>     Found the following sources/headers not terminated with a newline:
+>>>
+>> src/rust/vendor/lapack-sys/lapack/LAPACKE/src/lapacke_cgetsqrhrt_work.c
+>>> etc.
+>>>
+>>> These are coming from the vendored sources and I plan to note that in my
+>>> submission. Will that suffice?
+>>>
+>>> I will, of course, let the crate authors know and even submit a PR, but
+>>> not sure if it will yield an update in a reasonable time.
+>>>
+>>> PS. Excluding files in tarring or fixing newlines are not an option as
+>>> the checksums will fail.
+>>>
+>>> Thanks.
+>>>
+>>> -Naras
+>>>
+>>>
+>>>        [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>> --
+>> Sent from my phone. Please excuse my brevity.
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>          [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From yut@n|@|n| @end|ng |rom gm@||@com  Fri Jun 21 01:40:23 2024
+From: yut@n|@|n| @end|ng |rom gm@||@com (Hiroaki Yutani)
+Date: Fri, 21 Jun 2024 08:40:23 +0900
+Subject: [R-pkg-devel] NOTEs in packages using Rust
+In-Reply-To: <CAL3ufUKjEq0es5u=XcVcQq3rbUqR-sbY7E3iChNLxtRx51M-jQ@mail.gmail.com>
+References: <cae76207-a3dd-4ff6-9592-9e388abeab8f@stanford.edu>
+ <CAL3ufUK0T9zgAd2hH1tcs43nvZhS=qiRY1QtRyLQwAi0bPnntg@mail.gmail.com>
+ <BYAPR02MB4728090F7F7FE8D6893F11DED8C82@BYAPR02MB4728.namprd02.prod.outlook.com>
+ <CAL3ufUKjEq0es5u=XcVcQq3rbUqR-sbY7E3iChNLxtRx51M-jQ@mail.gmail.com>
+Message-ID: <CALyqOb8yEi0t30ya_D98ya2JZuB-p74=5NpviSE=me+KRgQspg@mail.gmail.com>
+
+> savvy is opposed to supporting CRAN publication
+
+Let me correct a bit. While it's true **I** don't recommend CRAN for
+Rust-powered R packages unless you are an expert, savvy is not that
+opinionated. It does nothing to prevent you from submitting to CRAN.
+
+Best,
+Yutani
+
+
+2024?6?21?(?) 1:28 Josiah Parry <josiah.parry at gmail.com>:
+
+> Hi Naras, then I can't help you there! Last I checked, savvy is opposed to
+> supporting CRAN publication
+>
+> On Thu, Jun 20, 2024 at 12:19?PM Balasubramanian Narasimhan <
+> naras at stanford.edu> wrote:
+>
+> > I?m using savvy but the version on CRAN uses extendr.
+> >
+> > Could you clarify?
+> >
+> > I?m not sure I know at which point to intervene in Makevars to fix things
+> > myself?
+> >
+> > Thanks.
+> > -Naras
+> >
+> > Balasubramanian Narasimhan
+> > ------------------------------
+> > *From:* Josiah Parry <josiah.parry at gmail.com>
+> > *Sent:* Thursday, June 20, 2024 9:08:10 AM
+> > *To:* Balasubramanian Narasimhan <naras at stanford.edu>
+> > *Cc:* r-package-devel at r-project.org <r-package-devel at r-project.org>
+> > *Subject:* Re: [R-pkg-devel] NOTEs in packages using Rust
+> >
+> > Hi Naras, this should be handled by the Makevars itself. Are you using
+> > extendr to do this?
+> >
+> > Using `rextendr::use_cran_defaults()` should handle it for you. Then you
+> > can use `rextendr::vendor_pkgs()` to handle vendoring.
+> >
+> >
+> > On Thu, Jun 20, 2024 at 11:57?AM Balasubramanian Narasimhan <
+> > naras at stanford.edu> wrote:
+> >
+> > I am preparing an update of Clarabel to synchronize with the upstream
+> > repo. When checking the package, I get NOTEs such as:
+> >
+> >     Found the following CITATION file in a non-standard place:
+> >        src/rust/vendor/clarabel/CITATION.bib
+> >     Most likely ?inst/CITATION? should be used instead.
+> >
+> >     Found the following sources/headers not terminated with a newline:
+> >
+>  src/rust/vendor/lapack-sys/lapack/LAPACKE/src/lapacke_cgetsqrhrt_work.c
+> >
+> > etc.
+> >
+> > These are coming from the vendored sources and I plan to note that in my
+> > submission. Will that suffice?
+> >
+> > I will, of course, let the crate authors know and even submit a PR, but
+> > not sure if it will yield an update in a reasonable time.
+> >
+> > PS. Excluding files in tarring or fixing newlines are not an option as
+> > the checksums will fail.
+> >
+> > Thanks.
+> >
+> > -Naras
+> >
+> >
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >
+> >
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
