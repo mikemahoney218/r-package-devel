@@ -20279,3 +20279,177 @@ On 23/06/2024 14.48, Duncan Murdoch wrote:
 >
 
 
+From @gner @end|ng |rom @gner@org  Mon Jun 24 08:25:10 2024
+From: @gner @end|ng |rom @gner@org (Agner Fog)
+Date: Mon, 24 Jun 2024 08:25:10 +0200
+Subject: [R-pkg-devel] "Writing R Extensions" manual needs update [was:
+ Error handling in C code]
+Message-ID: <191ba39b-46f5-4066-b09e-3e1242350119@agner.org>
+
+Jarrod Hadfield wrote:
+
+> Using Rf_error() rather than error() fixed the problem. Not sure why the problem was only flagged on Debian, but it
+> seems to have been triggered by R_NO_REMAP being defined (which will be default in R 4.5.0).
+
+I had the same problem. A lot of functions in my package 'BiasedUrn' had 
+to be changed to the Rf_ prefix names. It took me a long time to figure 
+out because I couldn't find proper documentation anywhere.
+
+Apparently, the remapped function names can no longer be used. The 
+consequences of this change are far-reaching: /all /existing packages 
+containing C++ code must be modified to use the Rf_ function names for 
+/all /R API function calls.
+
+This change is not properly documented. The "Writing R Extensions" 
+manual still lists the remapped function names without Rf_ prefix. This 
+manual needs to be updated to replace all remapped function names with 
+the Rf_ prefix names. I also think that it needs to add instructions on 
+how to fix legacy C++ code, including a list of the function names that 
+need to be changed. I cannot see where the change in?R_NO_REMAP? is 
+documented.
+
+I don't know why R_NO_REMAP is currently defined in Debian but not in 
+Windows, but the consequence is that the "Writing R Extensions" manual 
+must be updated now, and not wait for R version 4.5.0.
+
+I think there should be a way to enable the remapped function names for 
+the sake of compatibility with legacy code. What should we do with old 
+packages where the maintainer is no longer contactable or is somebody 
+less competent than the original programmer?
+
+Does it work to? #undef R_NO_REMAP? before? #include <R.h> ?
+
+Let me suggest a simple solution: Define a preprocessing macro 
+R_FORCE_REMAP which can override R_NO_REMAP. Legacy C++ code can then be 
+fixed by adding a Makevars file with -DR_FORCE_REMAP
+
+You may also reconsider the decision to add R_NO_REMAP as standard.
+
+I have written to the maintainers and asked them to change the "Writing 
+R Extensions" manual, but got no reponse.
+
+- Agner
+	[[alternative HTML version deleted]]
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Mon Jun 24 08:56:35 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Mon, 24 Jun 2024 08:56:35 +0200
+Subject: [R-pkg-devel] "Writing R Extensions" manual needs update [was:
+ Error handling in C code]
+In-Reply-To: <191ba39b-46f5-4066-b09e-3e1242350119@agner.org>
+References: <191ba39b-46f5-4066-b09e-3e1242350119@agner.org>
+Message-ID: <404cbd83-575b-4f76-bbbe-3286ce5d4ca4@gmail.com>
+
+
+On 6/24/24 08:25, Agner Fog wrote:
+> Jarrod Hadfield wrote:
+>
+>> Using Rf_error() rather than error() fixed the problem. Not sure why the problem was only flagged on Debian, but it
+>> seems to have been triggered by R_NO_REMAP being defined (which will be default in R 4.5.0).
+> I had the same problem. A lot of functions in my package 'BiasedUrn' had
+> to be changed to the Rf_ prefix names. It took me a long time to figure
+> out because I couldn't find proper documentation anywhere.
+>
+> Apparently, the remapped function names can no longer be used. The
+> consequences of this change are far-reaching: /all /existing packages
+> containing C++ code must be modified to use the Rf_ function names for
+> /all /R API function calls.
+>
+> This change is not properly documented. The "Writing R Extensions"
+> manual still lists the remapped function names without Rf_ prefix. This
+> manual needs to be updated to replace all remapped function names with
+> the Rf_ prefix names. I also think that it needs to add instructions on
+> how to fix legacy C++ code, including a list of the function names that
+> need to be changed. I cannot see where the change in?R_NO_REMAP? is
+> documented.
+>
+> I don't know why R_NO_REMAP is currently defined in Debian but not in
+> Windows, but the consequence is that the "Writing R Extensions" manual
+> must be updated now, and not wait for R version 4.5.0.
+>
+> I think there should be a way to enable the remapped function names for
+> the sake of compatibility with legacy code. What should we do with old
+> packages where the maintainer is no longer contactable or is somebody
+> less competent than the original programmer?
+>
+> Does it work to? #undef R_NO_REMAP? before? #include <R.h> ?
+>
+> Let me suggest a simple solution: Define a preprocessing macro
+> R_FORCE_REMAP which can override R_NO_REMAP. Legacy C++ code can then be
+> fixed by adding a Makevars file with -DR_FORCE_REMAP
+>
+> You may also reconsider the decision to add R_NO_REMAP as standard.
+>
+> I have written to the maintainers and asked them to change the "Writing
+> R Extensions" manual, but got no reponse.
+
+In principle it is the NEWS file that gives hints about important 
+changes and then one can find the details in Writing R Extensions.? The 
+NEWS file as of mid-April says that "R CMD check --as-cran" will compile 
+C++ code with -DR_NO_REMAP. And then in Writing R Extensions, one can 
+read about what is R_NO_REMAP and that this has been planned to become 
+the default in the future. It is an important thing to do for the 
+maintainability of the package space: the situation with name clashes 
+with system headers (typically appearing just on some platforms) has 
+only been getting worse.
+
+Best
+Tomas
+
+>
+> - Agner
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From @gner @end|ng |rom @gner@org  Mon Jun 24 09:45:18 2024
+From: @gner @end|ng |rom @gner@org (Agner Fog)
+Date: Mon, 24 Jun 2024 09:45:18 +0200
+Subject: [R-pkg-devel] "Writing R Extensions" manual needs update [was:
+ Error handling in C code]
+In-Reply-To: <404cbd83-575b-4f76-bbbe-3286ce5d4ca4@gmail.com>
+References: <191ba39b-46f5-4066-b09e-3e1242350119@agner.org>
+ <404cbd83-575b-4f76-bbbe-3286ce5d4ca4@gmail.com>
+Message-ID: <d4490f36-cd50-43c3-826c-c4828c536f83@agner.org>
+
+On 24/06/2024 08.56, Tomas Kalibera wrote:
+>
+> In principle it is the NEWS file that gives hints about important 
+> changes and then one can find the details in Writing R Extensions.? 
+> The NEWS file as of mid-April says that "R CMD check --as-cran" will 
+> compile C++ code with -DR_NO_REMAP. And then in Writing R Extensions, 
+> one can read about what is R_NO_REMAP and that this has been planned 
+> to become the default in the future. It is an important thing to do 
+> for the maintainability of the package space: the situation with name 
+> clashes with system headers (typically appearing just on some 
+> platforms) has only been getting worse.
+>
+Thanks, but I couldn't find it when I searched for help, and I still 
+can't find the news you are mentioning. The "Writing R Extensions" guide 
+does not list the required Rf_ function names. This manual definitely 
+has to be changed.
+
+I predict chaos when you add R_NO_REMAP to the Windows compilation: A 
+large number of old packages containing C++ code will fail. Mails will 
+be sent to the maintainers. Some maintainers will be uncontactable. Some 
+packages are maintained by somebody less competent than the original 
+programmers. Some maintainers will be too busy to react, or they have 
+forgotten how to submit a package. You will be bombarded with help 
+requests. In the end, somebody will have to help update the packages 
+when the maintainers fail to do so.
+
+This mess is a consequence of a bad decision many years ago when 
+somebody used non-unique function names like "error" and "warning". But 
+the world looked very different back then, and now we are facing the 
+consequences.
+
+It would be useful to do a test to see how many packages need to be 
+changed.
+
+- Agner
+
+
