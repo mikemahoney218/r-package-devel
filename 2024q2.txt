@@ -20929,3 +20929,182 @@ On June 28, 2024 4:00:06 PM PDT, Iris Simmons <ikwsimmo at gmail.com> wrote:
 Sent from my phone. Please excuse my brevity.
 
 
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Sat Jun 29 05:55:23 2024
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Fri, 28 Jun 2024 22:55:23 -0500
+Subject: [R-pkg-devel] Vignette error: "there is no package called
+ 'markdown'"
+Message-ID: <241930de-d9b2-4d9b-8f9f-9cccc5815706@effectivedefense.org>
+
+Hello, All:
+
+
+	  I'm getting, "Error: processing vignette 'sos.Rmd' failed with 
+diagnostics: there is no package called 'markdown'":
+
+
+https://github.com/sbgraves237/sos/actions/runs/9721300082/job/26833793243
+
+
+	  This is in:
+
+
+https://github.com/sbgraves237/sos/blob/master/vignettes/sos.Rmd
+
+
+	  This package has been on CRAN with a vignette since 2009. To isolate 
+a new bug, I tried to translate the vignette from Sweave to RMarkdown. 
+I've cut the vignette to almost nothing and still cannot see what's wrong.
+
+
+	  Suggestions?
+	  Thanks,
+	  Spencer Graves
+
+
+From |kry|ov @end|ng |rom d|@root@org  Sat Jun 29 11:47:28 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sat, 29 Jun 2024 12:47:28 +0300
+Subject: [R-pkg-devel] Vignette error: "there is no package called
+ 'markdown'"
+In-Reply-To: <241930de-d9b2-4d9b-8f9f-9cccc5815706@effectivedefense.org>
+References: <241930de-d9b2-4d9b-8f9f-9cccc5815706@effectivedefense.org>
+Message-ID: <20240629124728.53c239f0@trisector>
+
+? Fri, 28 Jun 2024 22:55:23 -0500
+Spencer Graves <spencer.graves at effectivedefense.org> ?????:
+
+> 	  I'm getting, "Error: processing vignette 'sos.Rmd' failed
+> with diagnostics: there is no package called 'markdown'":
+> 
+> 
+> https://github.com/sbgraves237/sos/actions/runs/9721300082/job/26833793243
+> 
+> 
+> 	  This is in:
+> 
+> 
+> https://github.com/sbgraves237/sos/blob/master/vignettes/sos.Rmd
+
+This is an rmarkdown vignette, but you're setting
+\VignetteBuilder{knitr::knitr}. Does the error go away if you set
+\VignetteBuilder{knitr::rmarkdown}?
+
+Also, it's best to put both knitr and rmarkdown in the VignetteBuilder
+field of the DESCRIPTION, because both packages are required to process
+the vignette successfully.
+
+-- 
+Best regards,
+Ivan
+
+
+From |kry|ov @end|ng |rom d|@root@org  Sat Jun 29 12:28:07 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sat, 29 Jun 2024 13:28:07 +0300
+Subject: [R-pkg-devel] Incomprehensible warning while checking
+In-Reply-To: <CADNULg91M_qM5118NYGQCq02s9gCQZ=pHpThHAYDbgYJtsw73A@mail.gmail.com>
+References: <CADNULg91M_qM5118NYGQCq02s9gCQZ=pHpThHAYDbgYJtsw73A@mail.gmail.com>
+Message-ID: <20240629132807.038925f6@trisector>
+
+? Fri, 28 Jun 2024 17:57:13 -0400
+Iris Simmons <ikwsimmo at gmail.com> ?????:
+
+> * checking whether the namespace can be unloaded cleanly ... WARNING
+> ---- unloading
+
+Here's what the check does (in a separate process):
+
+invisible(suppressMessages(loadNamespace("this.path")));
+cat('\n---- unloading\n');
+unloadNamespace("this.path")
+
+Since the output stops at "---- unloading", the package may be crashing
+somewhere in SEXP do_onUnload(...). I couldn't reproduce the crash with
+this.path_2.4.0.20 (commit 301f3691e93dce95adf937387b1a7bbbed5ae15d)
+you currently have available in the Git repository, but I did find
+this.path_2.5.0.tar.gz in the archive subdirectory on the CRAN FTP
+server, which crashes R-devel but not R-4.4.1 on Windows:
+
+* checking whether the namespace can be unloaded cleanly ...Rterm.exe caused an Access Violation at location 00007FFCC43B2640 DEP violation at location 00007FFCC43B2640.
+
+AddrPC           Params
+00007FFCC43B2640 00007FFCB98E85D8 000001DCA1D23E60 000001DCA1D20500
+00007FFCBFB758B4 000001DCA1D24AB0 0000000000000000 0000000000000000  this.path.dll!getInFrame+0x54  [C:/Users/user/THISPA~1.RCH/00_PKG~1/THIS~1.PAT/src/thispathdefn.c @ 120]
+   118:         Rf_error(_("object '%s' not found"), EncodeChar(PRINTNAME(sym)));
+   119:     if (TYPEOF(value) == PROMSXP) {
+>  120:         if (ptr_PRVALUE(value) == R_UnboundValue) {
+   121:             Rf_protect(value);
+   122:             value = Rf_eval(value, R_EmptyEnv);
+00007FFCBFB579B1 000001DCA1D04110 0000006D595FCA78 000001DC9D42BFC8  this.path.dll!do_onUnload+0x2c1  [C:/Users/user/THISPA~1.RCH/00_PKG~1/THIS~1.PAT/src/ns-hooks.c @ 1011]
+  1009:         R_ProtectWithIndex(expr = Rf_cons(libpath, R_NilValue), &indx);
+  1010:         R_Reprotect(expr = Rf_cons(Rf_mkString("this.path"), expr), indx);
+> 1011:         R_Reprotect(expr = Rf_lcons(getFromBase(Rf_install("library.dynam.unload")), expr), indx);
+  1012:         R_Reprotect(expr = Rf_cons(expr, R_NilValue), indx);
+  1013:         R_Reprotect(expr = Rf_lcons(getFromBase(on_exitSymbol), expr), indx);
+00007FFCB7525CCF 000001DCA02A6C70 000001DC9D452A78 000001DC9D42BF58  R.dll!do_External+0x28f  [C:/R/R-svn/src/main/dotcode.c @ 573]
+
+I don't understand why a call to
+on.exit(library.dynam.unload("this.path", libpath)) has to be
+constructed this way and not directly in R/ns-hooks.R (something to do
+with R-2.15.0 compatibility? that's very impressive, by the way, as are
+the rest of the package internals), but I hope that this helps you
+diagnose the problem further.
+
+One other thing I also found was a small memory leak: the memory
+allocated in path_join -> unix_path_join -> src/pathjoin.c:461 is not
+released. (Looks like it's the same in windows_path_join.) I'd use
+R_alloc if I could.
+
+-- 
+Best regards,
+Ivan
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Sat Jun 29 15:00:30 2024
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Sat, 29 Jun 2024 08:00:30 -0500
+Subject: [R-pkg-devel] Vignette error: "there is no package called
+ 'markdown'"
+In-Reply-To: <20240629124728.53c239f0@trisector>
+References: <241930de-d9b2-4d9b-8f9f-9cccc5815706@effectivedefense.org>
+ <20240629124728.53c239f0@trisector>
+Message-ID: <4bcd29bd-264c-474d-a682-56a10b3fb11b@effectivedefense.org>
+
+	  That was it. Thanks very much.
+
+
+	  Now I can go back to working on the "[.findFn" problem that you 
+helped me identify. (I translated the Sweave vignette to RMarkdown to 
+isolate that. Progress, with your help.)
+
+
+	  Spencer
+
+
+On 6/29/24 04:47, Ivan Krylov wrote:
+> ? Fri, 28 Jun 2024 22:55:23 -0500
+> Spencer Graves <spencer.graves at effectivedefense.org> ?????:
+> 
+>> 	  I'm getting, "Error: processing vignette 'sos.Rmd' failed
+>> with diagnostics: there is no package called 'markdown'":
+>>
+>>
+>> https://github.com/sbgraves237/sos/actions/runs/9721300082/job/26833793243
+>>
+>>
+>> 	  This is in:
+>>
+>>
+>> https://github.com/sbgraves237/sos/blob/master/vignettes/sos.Rmd
+> 
+> This is an rmarkdown vignette, but you're setting
+> \VignetteBuilder{knitr::knitr}. Does the error go away if you set
+> \VignetteBuilder{knitr::rmarkdown}?
+> 
+> Also, it's best to put both knitr and rmarkdown in the VignetteBuilder
+> field of the DESCRIPTION, because both packages are required to process
+> the vignette successfully.
+>
+
+
