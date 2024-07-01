@@ -21108,3 +21108,206 @@ On 6/29/24 04:47, Ivan Krylov wrote:
 >
 
 
+From pedro@@ph@|o @end|ng |rom he|@|nk|@||  Sun Jun 30 11:17:39 2024
+From: pedro@@ph@|o @end|ng |rom he|@|nk|@|| (Aphalo, Pedro J)
+Date: Sun, 30 Jun 2024 09:17:39 +0000
+Subject: [R-pkg-devel] Help needed with CRAN check error under MacOS and
+ old-rel
+Message-ID: <AS2PR07MB94919A70AB11B6C24C9A411895D22@AS2PR07MB9491.eurprd07.prod.outlook.com>
+
+Hello,
+A few days ago I submitted to CRAN an updated version of package 'ggpp', it passed checks during submission and version 0.5.8 is now on CRAN. However I see errors for old-rel only for MacOS at https://cran.r-project.org/web/checks/check_results_ggpp.html and I am stuck as I do not have where to rerun this test.
+
+The error itself is surprising as it seems to be caused by not finding df1, which is just a data frame defined in a code chunk in the same vignette, which uses 'pkgdown'. This error is limited to MacOS R old-rel but affects both arm64 and x86_64. (For either of these, I could not find a working setup for GitHub integration or at https://mac.r-project.org/macbuilder/submit.html).
+
+The offending code is in nudge-examples.Rmd starting at line 250. This file was last modified six-months' ago, i.e., it is the same as in the previous CRAN version of 'ggpp'.
+
+(I would rather track the origin of the problem than disable all three possibly affected code examples.)
+
+Thanks in advance for any help,
+
+Pedro.
+
+________________________________
+Pedro J. Aphalo
+Senior University Lecturer, Principal Investigator
+(Room 5605, Biocenter 3, Viikinkaari 1, Helsinki)
+Organismal and Evolutionary Biology
+
+P.O. Box 65
+00014 University of Helsinki
+Finland
+
+e-mail: pedro.aphalo at helsinki.fi<mailto:pedro.aphalo at helsinki.fi>
+Tel. (mobile) +358 50 4150623
+Tel. (office) +358 2941 57897
+
+________________________________
+Web sites and blogs
+Web site (research group): http://blogs.helsinki.fi/senpep-blog/
+Web site (using R in photobiology): http://www.r4photobiology.info/
+________________________________
+Societies
+UV4Plants<http://www.uv4plants.org/> (member), PSB<http://www.plantbehavior.org/> (member), ESP<http://www.photobiology.eu/> (member) SEB<http://www.sebiology.org/> (member), BES<http://www.britishecologicalsociety.org/> (member), SPPS<http://www.spps.fi/> (member), SMS<http://www.metsatieteellinenseura.fi/english> (member), TUG<http://tug.org/> (member), FOAS<http://www.foastat.org/> (member).
+________________________________
+
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sun Jun 30 13:25:09 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sun, 30 Jun 2024 07:25:09 -0400
+Subject: [R-pkg-devel] Help needed with CRAN check error under MacOS and
+ old-rel
+In-Reply-To: <AS2PR07MB94919A70AB11B6C24C9A411895D22@AS2PR07MB9491.eurprd07.prod.outlook.com>
+References: <AS2PR07MB94919A70AB11B6C24C9A411895D22@AS2PR07MB9491.eurprd07.prod.outlook.com>
+Message-ID: <dfac655b-21dc-4fcf-8017-224ca45a2423@gmail.com>
+
+On 2024-06-30 5:17 a.m., Aphalo, Pedro J wrote:
+> Hello,
+> A few days ago I submitted to CRAN an updated version of package 'ggpp', it passed checks during submission and version 0.5.8 is now on CRAN. However I see errors for old-rel only for MacOS at https://cran.r-project.org/web/checks/check_results_ggpp.html and I am stuck as I do not have where to rerun this test.
+> 
+> The error itself is surprising as it seems to be caused by not finding df1, which is just a data frame defined in a code chunk in the same vignette, which uses 'pkgdown'. This error is limited to MacOS R old-rel but affects both arm64 and x86_64. (For either of these, I could not find a working setup for GitHub integration or at https://mac.r-project.org/macbuilder/submit.html).
+> 
+> The offending code is in nudge-examples.Rmd starting at line 250. This file was last modified six-months' ago, i.e., it is the same as in the previous CRAN version of 'ggpp'.
+> 
+> (I would rather track the origin of the problem than disable all three possibly affected code examples.)
+> 
+> Thanks in advance for any help,
+
+I would guess the issue is that `df1` is created conditionally on 
+`eval_ggrepel`, but evaluated unconditionally.  Perhaps on that old 
+platform `eval_ggrepel` was `FALSE`, because of some issue installing 
+the `ggrepel` package.
+
+I tried to see if `ggrepel` had issues, but it was updated today, and no 
+issues are shown:  so perhaps your package will work today.  Still, I'd 
+fix the "create conditionally, evaluate unconditionally" bug.
+
+Duncan Murdoch
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Sun Jun 30 13:32:39 2024
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Sun, 30 Jun 2024 06:32:39 -0500
+Subject: [R-pkg-devel] Help needed with CRAN check error under MacOS and
+ old-rel
+In-Reply-To: <AS2PR07MB94919A70AB11B6C24C9A411895D22@AS2PR07MB9491.eurprd07.prod.outlook.com>
+References: <AS2PR07MB94919A70AB11B6C24C9A411895D22@AS2PR07MB9491.eurprd07.prod.outlook.com>
+Message-ID: <1115bcd5-3df7-4a16-bc48-9c79ff275f24@effectivedefense.org>
+
+Hello, Pedro et al.:
+
+
+	  Your package is on GitHub with GitHub Actions.[1] If whoever manages 
+GitHub actions feels inclined to add macos-latest (oldrel-1), this would 
+be one argument for doing that, though this kind of problem may be too 
+rare to justify the expense. That's particularly true since it's with 
+oldrel.
+
+
+	  However, the fact that your ggpp package is available on GitHub would 
+make it easy with a Mac user with oldrel installed to run that for you. 
+If you don't the problem fixed from help on this list, you could try 
+R-SIG-MAC.
+
+
+	  I just noticed that the error is in a vignette. I don't know if 
+vignettes are run by GitHub Actions. I recently had a latent bug in a 
+vignette reported to me by another user who updated a package that 
+depended on mine. It was apparently reported to him by 
+revdepcheck::revdep_check. I found the bug in the vignette and added a 
+small test cases to add to the examples of the problem function. Then I 
+fixed the problem (with help from Ivan Krylov on this list).
+
+
+	  hope this helps.
+	  spencer graves
+
+
+[1]
+
+
+https://github.com/aphalo/ggpp
+
+
+On 6/30/24 04:17, Aphalo, Pedro J wrote:
+> Hello,
+> A few days ago I submitted to CRAN an updated version of package 'ggpp', it passed checks during submission and version 0.5.8 is now on CRAN. However I see errors for old-rel only for MacOS at https://cran.r-project.org/web/checks/check_results_ggpp.html and I am stuck as I do not have where to rerun this test.
+> 
+> The error itself is surprising as it seems to be caused by not finding df1, which is just a data frame defined in a code chunk in the same vignette, which uses 'pkgdown'. This error is limited to MacOS R old-rel but affects both arm64 and x86_64. (For either of these, I could not find a working setup for GitHub integration or at https://mac.r-project.org/macbuilder/submit.html).
+> 
+> The offending code is in nudge-examples.Rmd starting at line 250. This file was last modified six-months' ago, i.e., it is the same as in the previous CRAN version of 'ggpp'.
+> 
+> (I would rather track the origin of the problem than disable all three possibly affected code examples.)
+> 
+> Thanks in advance for any help,
+> 
+> Pedro.
+> 
+> ________________________________
+> Pedro J. Aphalo
+> Senior University Lecturer, Principal Investigator
+> (Room 5605, Biocenter 3, Viikinkaari 1, Helsinki)
+> Organismal and Evolutionary Biology
+> 
+> P.O. Box 65
+> 00014 University of Helsinki
+> Finland
+> 
+> e-mail: pedro.aphalo at helsinki.fi<mailto:pedro.aphalo at helsinki.fi>
+> Tel. (mobile) +358 50 4150623
+> Tel. (office) +358 2941 57897
+> 
+> ________________________________
+> Web sites and blogs
+> Web site (research group): http://blogs.helsinki.fi/senpep-blog/
+> Web site (using R in photobiology): http://www.r4photobiology.info/
+> ________________________________
+> Societies
+> UV4Plants<http://www.uv4plants.org/> (member), PSB<http://www.plantbehavior.org/> (member), ESP<http://www.photobiology.eu/> (member) SEB<http://www.sebiology.org/> (member), BES<http://www.britishecologicalsociety.org/> (member), SPPS<http://www.spps.fi/> (member), SMS<http://www.metsatieteellinenseura.fi/english> (member), TUG<http://tug.org/> (member), FOAS<http://www.foastat.org/> (member).
+> ________________________________
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Sun Jun 30 18:56:58 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Sun, 30 Jun 2024 12:56:58 -0400
+Subject: [R-pkg-devel] R-devel non-API & extendr v0.7.0
+Message-ID: <CAL3ufUJJTq0eOSRsovt7F-jxXAAhJAOy=cLKicpOywnt-N-+mQ@mail.gmail.com>
+
+Hi folks,
+
+A new release of extendr v0.7.0 is now available.
+
+This release addresses the R-devel WARNings from non-API functions being
+used.
+This release also comes with breaking changes. We've written a brief
+migration guide
+which can be found at:
+
+htttps://extendr.github.io/blog/posts/2024-06-30-extendr-release-070
+
+We went through the packages with `rust` in the SystemRequirements field of
+the DESCRIPTION
+file found in the CRAN_package_db() and submitted PRs to update and migrate
+the version of extendr.
+
+If you have not received a PR from us and have a failing package check on
+CRAN, please
+reply here with a link to your repo and we will give it a look!
+
+Thanks,
+
+Josiah
+
+	[[alternative HTML version deleted]]
+
+
