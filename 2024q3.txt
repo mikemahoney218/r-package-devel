@@ -518,3 +518,804 @@ Achim
 >
 >
 
+From ||@t@ @end|ng |rom dewey@myzen@co@uk  Mon Jul  8 16:04:44 2024
+From: ||@t@ @end|ng |rom dewey@myzen@co@uk (Michael Dewey)
+Date: Mon, 8 Jul 2024 15:04:44 +0100
+Subject: [R-pkg-devel] NOTE about lack of prebuilt manual
+Message-ID: <d8c9018d-6225-ebd3-9fc5-254c64b20f5c@dewey.myzen.co.uk>
+
+Short version
+
+I have recently tried to update two of my CRAN packages and I am getting 
+the NOTE from R CMD check --as-cran
+
+Package has help file(s) containing install/render-stage \Sexpr{} 
+expressions but no prebuilt PDF manual.
+
+(It comes on one line in the check.log)
+
+What am I doing wrong?
+
+===================
+
+More details
+
+Both packages have lived successfuly on CRAN for some time but my recent 
+attempts to update lead to the NOTE shown above. I notice that the 
+version currently on CRAN do have in the tarball a directory called 
+build which amongst other thing does contain the package manual. However 
+when I build the updated versions the tarball still contains a build 
+directory but without the manual.
+
+I am using 4.4.1 under Windows 10. I open a command line and do 
+everything from there with R CMD, I do not use any helper package. The 
+help files do not explicitly contain any instance of \Sexpr{} but they 
+do contain macros. Both of them use mathjaxr and Rdpack and one also has 
+some macros written by me. They have been like that for some while. The 
+Rd files are hand-written, I do not use any package to generate 
+documentation.
+
+I notice that R CMD build has an option to turn off the manual but I do 
+not set that and there does not seem to be a turn on option. I have 
+looked at the NEWS for R4.4.0 and 4.4.1 but withou enlightenment. The 
+versions on CRAN were probably generated with R 4.3.3 judgin by the date 
+when I made them.
+
+I know it is only a NOTE but I would like to know why it is happening.
+
+I hope that is enough detail to be helpful but I can expand on any 
+unclear areas.
+
+-- 
+Michael
+
+
+From |kw@|mmo @end|ng |rom gm@||@com  Mon Jul  8 16:08:34 2024
+From: |kw@|mmo @end|ng |rom gm@||@com (Iris Simmons)
+Date: Mon, 8 Jul 2024 10:08:34 -0400
+Subject: [R-pkg-devel] NOTE about lack of prebuilt manual
+In-Reply-To: <d8c9018d-6225-ebd3-9fc5-254c64b20f5c@dewey.myzen.co.uk>
+References: <d8c9018d-6225-ebd3-9fc5-254c64b20f5c@dewey.myzen.co.uk>
+Message-ID: <CADNULg-t_C0F_MVSNJR0=R3qRZgPVenMo2s5-GACtmUA05cyng@mail.gmail.com>
+
+This is something I'd run into recently as well.
+
+The R devs changed the default from building the manual to not building the
+manual. Now if you want (or need) to build the manual, you should add
+
+BuildManual: TRUE
+
+to your DESCRIPTION.
+
+On Mon, Jul 8, 2024, 10:05 Michael Dewey <lists at dewey.myzen.co.uk> wrote:
+
+> Short version
+>
+> I have recently tried to update two of my CRAN packages and I am getting
+> the NOTE from R CMD check --as-cran
+>
+> Package has help file(s) containing install/render-stage \Sexpr{}
+> expressions but no prebuilt PDF manual.
+>
+> (It comes on one line in the check.log)
+>
+> What am I doing wrong?
+>
+> ===================
+>
+> More details
+>
+> Both packages have lived successfuly on CRAN for some time but my recent
+> attempts to update lead to the NOTE shown above. I notice that the
+> version currently on CRAN do have in the tarball a directory called
+> build which amongst other thing does contain the package manual. However
+> when I build the updated versions the tarball still contains a build
+> directory but without the manual.
+>
+> I am using 4.4.1 under Windows 10. I open a command line and do
+> everything from there with R CMD, I do not use any helper package. The
+> help files do not explicitly contain any instance of \Sexpr{} but they
+> do contain macros. Both of them use mathjaxr and Rdpack and one also has
+> some macros written by me. They have been like that for some while. The
+> Rd files are hand-written, I do not use any package to generate
+> documentation.
+>
+> I notice that R CMD build has an option to turn off the manual but I do
+> not set that and there does not seem to be a turn on option. I have
+> looked at the NEWS for R4.4.0 and 4.4.1 but withou enlightenment. The
+> versions on CRAN were probably generated with R 4.3.3 judgin by the date
+> when I made them.
+>
+> I know it is only a NOTE but I would like to know why it is happening.
+>
+> I hope that is enough detail to be helpful but I can expand on any
+> unclear areas.
+>
+> --
+> Michael
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From m@rk@p@dgh@m @end|ng |rom em@||@com  Mon Jul  8 16:24:50 2024
+From: m@rk@p@dgh@m @end|ng |rom em@||@com (Mark Padgham)
+Date: Mon, 8 Jul 2024 16:24:50 +0200
+Subject: [R-pkg-devel] cpp11 and "non-API calls to R"
+Message-ID: <b73ddb20-bc88-48aa-97a1-266e9db4d4da@email.com>
+
+Dear R-pkg-dev folk,
+
+The cpp11 package, which was developed yet is no longer maintained by
+Jim Hester, now triggers warnings on some CRAN pre-submit checks for
+"non-API calls to R" via "SETLENGTH", "SET_TRUELENGTH", and others. The
+relevant issue is https://github.com/r-lib/cpp11/issues/355, with a pull
+request to resolve at https://github.com/r-lib/cpp11/pull/358. Problem
+is the package is now largely inactive, with the PR hanging there for a
+month or so unattended. I presume this warning means I can not resubmit
+any package depending on cpp11 until this is resolved. But then there
+are currently 75 packages potentially affected by this which would then
+also be unable to be resubmitted. (Follow the links from the main GitHub
+issue for a glimpse of the scale of this problem.)
+
+Any suggestions? In particular, it would be helpful, in this arguably
+unusual and quite prominent case, to hear any views from CRAN folk as to
+whether everybody dependent on cpp11 will have to wait for resolution
+before they'll be able to resubmit? Alternatively, any indication from
+anybody in a position to opine on cpp11 status and future maintenance
+plans would be great!
+
+Thanks,
+
+Mark
+
+
+From bbo|ker @end|ng |rom gm@||@com  Mon Jul  8 16:37:15 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Mon, 8 Jul 2024 10:37:15 -0400
+Subject: [R-pkg-devel] cpp11 and "non-API calls to R"
+In-Reply-To: <b73ddb20-bc88-48aa-97a1-266e9db4d4da@email.com>
+References: <b73ddb20-bc88-48aa-97a1-266e9db4d4da@email.com>
+Message-ID: <ce18fa43-5d13-4b1c-8e00-e69275276bae@gmail.com>
+
+   Have you contacted the maintainer directly (i.e. by e-mail)?  (Yes, 
+they should be paying attention to Github, but trying another channel 
+never hurts.)
+
+   My personal experience is that I was succeeded in submitting a 
+package update to CRAN even though there were NOTEs of this sort (in 
+that case SET_TYPEOF) arising from an upstream package 
+<https://github.com/RcppCore/Rcpp/issues/1312>; I explained the issue in 
+my cover letter.
+
+   It may take a while to sort out all of the fallout from the 
+tightening of the API rules; I think the CRAN maintainers are aware of this.
+
+   cheers
+    Ben Bolker
+
+
+On 2024-07-08 10:24 a.m., Mark Padgham wrote:
+> Dear R-pkg-dev folk,
+> 
+> The cpp11 package, which was developed yet is no longer maintained by
+> Jim Hester, now triggers warnings on some CRAN pre-submit checks for
+> "non-API calls to R" via "SETLENGTH", "SET_TRUELENGTH", and others. The
+> relevant issue is https://github.com/r-lib/cpp11/issues/355, with a pull
+> request to resolve at https://github.com/r-lib/cpp11/pull/358. Problem
+> is the package is now largely inactive, with the PR hanging there for a
+> month or so unattended. I presume this warning means I can not resubmit
+> any package depending on cpp11 until this is resolved. But then there
+> are currently 75 packages potentially affected by this which would then
+> also be unable to be resubmitted. (Follow the links from the main GitHub
+> issue for a glimpse of the scale of this problem.)
+> 
+> Any suggestions? In particular, it would be helpful, in this arguably
+> unusual and quite prominent case, to hear any views from CRAN folk as to
+> whether everybody dependent on cpp11 will have to wait for resolution
+> before they'll be able to resubmit? Alternatively, any indication from
+> anybody in a position to opine on cpp11 status and future maintenance
+> plans would be great!
+> 
+> Thanks,
+> 
+> Mark
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+(Acting) Graduate chair, Mathematics & Statistics
+ > E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Mon Jul  8 16:39:11 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Mon, 8 Jul 2024 10:39:11 -0400
+Subject: [R-pkg-devel] cpp11 and "non-API calls to R"
+In-Reply-To: <b73ddb20-bc88-48aa-97a1-266e9db4d4da@email.com>
+References: <b73ddb20-bc88-48aa-97a1-266e9db4d4da@email.com>
+Message-ID: <CAL3ufUJt8=eGcb8cSibK2baBTQYgJ2sJm6m2gNs=Lb+Jr3=OcQ@mail.gmail.com>
+
+Hi Mark,
+
+As someone else affected by this issue, it is actually quite tough to
+resolve. This is because quite literally every other day, the list of what
+is and is not non-API is changing. It is particularly challenging since
+this is in R-devel and not any stable R release.
+
+If there were a stable list of non-API and a stable release of R that this
+is associated with it is my guess that the PR would?ve been merged by now.
+
+On Mon, Jul 8, 2024 at 10:25 Mark Padgham <mark.padgham at email.com> wrote:
+
+> Dear R-pkg-dev folk,
+>
+> The cpp11 package, which was developed yet is no longer maintained by
+> Jim Hester, now triggers warnings on some CRAN pre-submit checks for
+> "non-API calls to R" via "SETLENGTH", "SET_TRUELENGTH", and others. The
+> relevant issue is https://github.com/r-lib/cpp11/issues/355, with a pull
+> request to resolve at https://github.com/r-lib/cpp11/pull/358. Problem
+> is the package is now largely inactive, with the PR hanging there for a
+> month or so unattended. I presume this warning means I can not resubmit
+> any package depending on cpp11 until this is resolved. But then there
+> are currently 75 packages potentially affected by this which would then
+> also be unable to be resubmitted. (Follow the links from the main GitHub
+> issue for a glimpse of the scale of this problem.)
+>
+> Any suggestions? In particular, it would be helpful, in this arguably
+> unusual and quite prominent case, to hear any views from CRAN folk as to
+> whether everybody dependent on cpp11 will have to wait for resolution
+> before they'll be able to resubmit? Alternatively, any indication from
+> anybody in a position to opine on cpp11 status and future maintenance
+> plans would be great!
+>
+> Thanks,
+>
+> Mark
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Mon Jul  8 16:40:24 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Mon, 8 Jul 2024 16:40:24 +0200
+Subject: [R-pkg-devel] NOTE about lack of prebuilt manual
+In-Reply-To: <CADNULg-t_C0F_MVSNJR0=R3qRZgPVenMo2s5-GACtmUA05cyng@mail.gmail.com>
+References: <d8c9018d-6225-ebd3-9fc5-254c64b20f5c@dewey.myzen.co.uk>
+ <CADNULg-t_C0F_MVSNJR0=R3qRZgPVenMo2s5-GACtmUA05cyng@mail.gmail.com>
+Message-ID: <d1edd1b3-4c28-492d-bf30-877f5d024b8d@statistik.tu-dortmund.de>
+
+
+
+On 08.07.2024 16:08, Iris Simmons wrote:
+> This is something I'd run into recently as well.
+> 
+> The R devs changed the default from building the manual to not building the
+> manual. Now if you want (or need) to build the manual, you should add
+
+
+Well, not really, we still build manuals unless file(s) containing 
+install/render-stage \Sexpr{}  are present (as in this case).
+
+Best,
+Uwe Ligges
+
+
+
+> BuildManual: TRUE
+> 
+> to your DESCRIPTION.
+> 
+> On Mon, Jul 8, 2024, 10:05 Michael Dewey <lists at dewey.myzen.co.uk> wrote:
+> 
+>> Short version
+>>
+>> I have recently tried to update two of my CRAN packages and I am getting
+>> the NOTE from R CMD check --as-cran
+>>
+>> Package has help file(s) containing install/render-stage \Sexpr{}
+>> expressions but no prebuilt PDF manual.
+>>
+>> (It comes on one line in the check.log)
+>>
+>> What am I doing wrong?
+>>
+>> ===================
+>>
+>> More details
+>>
+>> Both packages have lived successfuly on CRAN for some time but my recent
+>> attempts to update lead to the NOTE shown above. I notice that the
+>> version currently on CRAN do have in the tarball a directory called
+>> build which amongst other thing does contain the package manual. However
+>> when I build the updated versions the tarball still contains a build
+>> directory but without the manual.
+>>
+>> I am using 4.4.1 under Windows 10. I open a command line and do
+>> everything from there with R CMD, I do not use any helper package. The
+>> help files do not explicitly contain any instance of \Sexpr{} but they
+>> do contain macros. Both of them use mathjaxr and Rdpack and one also has
+>> some macros written by me. They have been like that for some while. The
+>> Rd files are hand-written, I do not use any package to generate
+>> documentation.
+>>
+>> I notice that R CMD build has an option to turn off the manual but I do
+>> not set that and there does not seem to be a turn on option. I have
+>> looked at the NEWS for R4.4.0 and 4.4.1 but withou enlightenment. The
+>> versions on CRAN were probably generated with R 4.3.3 judgin by the date
+>> when I made them.
+>>
+>> I know it is only a NOTE but I would like to know why it is happening.
+>>
+>> I hope that is enough detail to be helpful but I can expand on any
+>> unclear areas.
+>>
+>> --
+>> Michael
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+From d@n|e|@c|@borne @end|ng |rom pnn|@gov  Tue Jul  9 00:46:32 2024
+From: d@n|e|@c|@borne @end|ng |rom pnn|@gov (Claborne, Daniel)
+Date: Mon, 8 Jul 2024 22:46:32 +0000
+Subject: [R-pkg-devel] Segfaults on R-devel
+Message-ID: <CO6PR09MB8597FE4D0E145AA6B5C61DF789DA2@CO6PR09MB8597.namprd09.prod.outlook.com>
+
+Seemingly starting with the most recent builds of R-devel, I?ve been getting segfaults related to a piece of cpp code that indexes a zero-size NumericVector.  Essentially the same as this dummy example:
+
+```
+library(Rcpp)
+
+sourceCpp(
+  code = '
+  #include<Rcpp.h>
+  using namespace Rcpp;
+
+  // [[Rcpp::export]]
+  NumericVector zeroindex() {
+    NumericVector zerosize(0);
+
+    Rcout << zerosize[0] << std::endl;
+
+    return zerosize;
+  }
+  '
+)
+
+zeroindex()
+```
+
+On R-release and on previous builds, this returns something like:
+
+```
+6.92674e-310
+numeric(0)
+```
+
+But on current R-devel containers:
+
+```
+
+ *** caught segfault ***
+
+address 0x1, cause 'memory not mapped'
+
+
+
+Traceback:
+
+ 1: .Call(<pointer: 0x7fa9369c7930>)
+
+ 2: zeroindex()
+
+
+
+Possible actions:
+
+1: abort (with core dump, if enabled)
+
+2: normal R exit
+
+3: exit R without saving workspace
+
+4: exit R saving workspace
+```
+
+It was easy enough to write a catch for the zero-size vector, however I?m wondering why the discrepancy between R-devel and previous versions?
+
+Best,
+-DMC
+
+	[[alternative HTML version deleted]]
+
+
+From bbo|ker @end|ng |rom gm@||@com  Tue Jul  9 00:59:51 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Mon, 8 Jul 2024 18:59:51 -0400
+Subject: [R-pkg-devel] Segfaults on R-devel
+In-Reply-To: <CO6PR09MB8597FE4D0E145AA6B5C61DF789DA2@CO6PR09MB8597.namprd09.prod.outlook.com>
+References: <CO6PR09MB8597FE4D0E145AA6B5C61DF789DA2@CO6PR09MB8597.namprd09.prod.outlook.com>
+Message-ID: <06aae608-16a0-4b26-af09-dfa7fe9fa9d4@gmail.com>
+
+   I'm pretty sure this is from this R-devel commit:
+
+https://github.com/r-devel/r-svn/commit/92c1d5de23c93576f55062e26d446feface07250
+
+  This turns on stricter boundary checking, specifically see 
+https://github.com/lme4/lme4/issues/794#issuecomment-2154948145
+
+   Arguably, accessing an element of a zero-length vector is at least 
+undefined behaviour, so you shouldn't be doing it ...
+
+
+
+On 2024-07-08 6:46 p.m., Claborne, Daniel via R-package-devel wrote:
+> Seemingly starting with the most recent builds of R-devel, I?ve been getting segfaults related to a piece of cpp code that indexes a zero-size NumericVector.  Essentially the same as this dummy example:
+> 
+> ```
+> library(Rcpp)
+> 
+> sourceCpp(
+>    code = '
+>    #include<Rcpp.h>
+>    using namespace Rcpp;
+> 
+>    // [[Rcpp::export]]
+>    NumericVector zeroindex() {
+>      NumericVector zerosize(0);
+> 
+>      Rcout << zerosize[0] << std::endl;
+> 
+>      return zerosize;
+>    }
+>    '
+> )
+> 
+> zeroindex()
+> ```
+> 
+> On R-release and on previous builds, this returns something like:
+> 
+> ```
+> 6.92674e-310
+> numeric(0)
+> ```
+> 
+> But on current R-devel containers:
+> 
+> ```
+> 
+>   *** caught segfault ***
+> 
+> address 0x1, cause 'memory not mapped'
+> 
+> 
+> 
+> Traceback:
+> 
+>   1: .Call(<pointer: 0x7fa9369c7930>)
+> 
+>   2: zeroindex()
+> 
+> 
+> 
+> Possible actions:
+> 
+> 1: abort (with core dump, if enabled)
+> 
+> 2: normal R exit
+> 
+> 3: exit R without saving workspace
+> 
+> 4: exit R saving workspace
+> ```
+> 
+> It was easy enough to write a catch for the zero-size vector, however I?m wondering why the discrepancy between R-devel and previous versions?
+> 
+> Best,
+> -DMC
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+(Acting) Graduate chair, Mathematics & Statistics
+ > E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
+From mhn@yem@cu@@t@t @end|ng |rom gm@||@com  Mon Jul  8 12:09:35 2024
+From: mhn@yem@cu@@t@t @end|ng |rom gm@||@com (Mahadi Hassan)
+Date: Mon, 8 Jul 2024 16:09:35 +0600
+Subject: [R-pkg-devel] Notes while a new R package submission
+Message-ID: <CAGdCjn4u-oHjk09F4737+uAUi+i52pq4k2LkVNWt5MVoTE2kmw@mail.gmail.com>
+
+Hello everyone
+I need your attention. I have developed a new R package and submitted it to
+CRAN. In return main i got two notes they are:
+
+* using log directory 'd:/RCompile/CRANincoming/R-devel/drglm.Rcheck'
+* using R Under development (unstable) (2024-07-05 r86875 ucrt)
+* using platform: x86_64-w64-mingw32
+* R was compiled by
+    gcc.exe (GCC) 13.2.0
+    GNU Fortran (GCC) 13.2.0
+* running under: Windows Server 2022 x64 (build 20348)
+* using session charset: UTF-8
+* checking for file 'drglm/DESCRIPTION' ... OK
+* checking extension type ... Package
+* this is package 'drglm' version '1.0.1'
+* package encoding: UTF-8
+* checking CRAN incoming feasibility ... NOTE
+Maintainer: 'MHNayem <mhnayem.cu.stat at outlook.com>'
+
+New submission
+* checking package namespace information ... OK
+* checking package dependencies ... OK
+* checking if this is a source package ... OK
+* checking if there is a namespace ... OK
+* checking for hidden files and directories ... OK
+* checking for portable file names ... OK
+* checking whether package 'drglm' can be installed ... OK
+* checking installed package size ... OK
+* checking package directory ... OK
+* checking for future file timestamps ... OK
+* checking 'build' directory ... OK
+* checking DESCRIPTION meta-information ... OK
+* checking top-level files ... OK
+* checking for left-over files ... OK
+* checking index information ... OK
+* checking package subdirectories ... OK
+* checking code files for non-ASCII characters ... OK
+* checking R files for syntax errors ... OK
+* checking whether the package can be loaded ... OK
+* checking whether the package can be loaded with stated dependencies ... OK
+* checking whether the package can be unloaded cleanly ... OK
+* checking whether the namespace can be loaded with stated dependencies ... OK
+* checking whether the namespace can be unloaded cleanly ... OK
+* checking loading without being on the library search path ... OK
+* checking use of S3 registration ... OK
+* checking dependencies in R code ... OK
+* checking S3 generic/method consistency ... OK
+* checking replacement functions ... OK
+* checking foreign function calls ... OK
+* checking R code for possible problems ... OK
+* checking Rd files ... OK
+* checking Rd metadata ... OK
+* checking Rd line widths ... OK
+* checking Rd cross-references ... OK
+* checking for missing documentation entries ... OK
+* checking for code/documentation mismatches ... OK
+* checking Rd \usage sections ... OK
+* checking Rd contents ... OK
+* checking for unstated dependencies in examples ... OK
+* checking installed files from 'inst/doc' ... OK
+* checking files in 'vignettes' ... OK
+* checking examples ... [257s] NOTE
+Examples with CPU (user + system) or elapsed time > 10s
+                user system elapsed
+drglm          93.50  14.34  107.82
+drglm.multinom 78.65  13.28   91.89
+big.drglm      26.61   1.75   28.36
+make.data      25.07   1.78   26.84
+* checking for unstated dependencies in 'tests' ... OK
+* checking tests ... OK
+  Running 'testthat.R'
+* checking for unstated dependencies in vignettes ... OK
+* checking package vignettes ... OK
+* checking re-building of vignette outputs ... [241s] OK
+* checking PDF version of manual ... [13s] OK
+* checking HTML version of manual ... OK
+* DONE
+Status: 2 NOTEs
+
+
+
+And my submission got cancelled automatically.  Can you tell me how to
+solve such notes and how can i resubmit it to CRAN?
+
+	[[alternative HTML version deleted]]
+
+
+From m@te|@te|em@n @end|ng |rom un||@ch  Mon Jul  8 17:12:24 2024
+From: m@te|@te|em@n @end|ng |rom un||@ch (Matei Teleman)
+Date: Mon, 8 Jul 2024 15:12:24 +0000
+Subject: [R-pkg-devel] Help for understanding CRAN rejection
+References: <9DE1C4C5-3A88-4F75-87CD-7A5CE0F7EAA7@unil.ch>
+Message-ID: <D21E7C8B-9BA7-4F31-8F43-9E9F654E5118@unil.ch>
+
+Hello everyone,
+
+I hope this email finds you well.
+
+I?m sorry to bother you, it?s the very first time I?m submitting a package to CRAN.
+
+Recently my submission got rejected with the following feedback:
+Non-FOSS package license (file LICENSE)
+
+   Suggests or Enhances not in mainstream repositories:
+     velocyto.R
+
+   Found the following (possibly) invalid URLs:
+     URL: https://cran.r-project.org/web/packages/Seurat/index.html
+       From: inst/doc/a_SuperCell.html
+       Status: 200
+       Message: OK
+       CRAN URL not in canonical form
+
+   The canonical URL of the CRAN page for a package is
+     https://CRAN.R-project.org/package=pkgname<https://cran.r-project.org/package=pkgname>
+
+
+   Size of tarball: 9076436 bytes
+
+
+Flavor: r-devel-linux-x86_64-debian-gcc, r-devel-windows-x86_64
+Check: package dependencies, Result: NOTE
+   Package suggested but not available for checking: ?velocyto.R'
+
+
+The license we?re using is the standard CC BY-NC-ND 4.0 and is listed among the accepted licenses for CRAN.
+
+I fixed the URL issue but how can I make CRAN accept the package ?
+
+Thank you advance for your time and your help !
+
+Have a nice day.
+
+Best Regards,
+
+Matei Teleman
+
+	[[alternative HTML version deleted]]
+
+
+From bbo|ker @end|ng |rom gm@||@com  Tue Jul  9 01:51:02 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Mon, 8 Jul 2024 19:51:02 -0400
+Subject: [R-pkg-devel] Notes while a new R package submission
+In-Reply-To: <CAGdCjn4u-oHjk09F4737+uAUi+i52pq4k2LkVNWt5MVoTE2kmw@mail.gmail.com>
+References: <CAGdCjn4u-oHjk09F4737+uAUi+i52pq4k2LkVNWt5MVoTE2kmw@mail.gmail.com>
+Message-ID: <979f65d6-9dea-4500-a447-483c0c49cd66@gmail.com>
+
+   The first NOTE is irrelevant.  The second NOTE says that you must 
+reduce the running time of your examples (so that the longest of them 
+takes <10 seconds on the *slowest* CRAN testing platform). This thread 
+might be useful: 
+https://stat.ethz.ch/pipermail/r-package-devel/2021q4/007521.html
+
+   cheers
+    Ben Bolker
+
+
+On 2024-07-08 6:09 a.m., Mahadi Hassan wrote:
+> Hello everyone
+> I need your attention. I have developed a new R package and submitted it to
+> CRAN. In return main i got two notes they are:
+> 
+> * using log directory 'd:/RCompile/CRANincoming/R-devel/drglm.Rcheck'
+> * using R Under development (unstable) (2024-07-05 r86875 ucrt)
+> * using platform: x86_64-w64-mingw32
+> * R was compiled by
+>      gcc.exe (GCC) 13.2.0
+>      GNU Fortran (GCC) 13.2.0
+> * running under: Windows Server 2022 x64 (build 20348)
+> * using session charset: UTF-8
+> * checking for file 'drglm/DESCRIPTION' ... OK
+> * checking extension type ... Package
+> * this is package 'drglm' version '1.0.1'
+> * package encoding: UTF-8
+> * checking CRAN incoming feasibility ... NOTE
+> Maintainer: 'MHNayem <mhnayem.cu.stat at outlook.com>'
+> 
+> New submission
+> * checking package namespace information ... OK
+> * checking package dependencies ... OK
+> * checking if this is a source package ... OK
+> * checking if there is a namespace ... OK
+> * checking for hidden files and directories ... OK
+> * checking for portable file names ... OK
+> * checking whether package 'drglm' can be installed ... OK
+> * checking installed package size ... OK
+> * checking package directory ... OK
+> * checking for future file timestamps ... OK
+> * checking 'build' directory ... OK
+> * checking DESCRIPTION meta-information ... OK
+> * checking top-level files ... OK
+> * checking for left-over files ... OK
+> * checking index information ... OK
+> * checking package subdirectories ... OK
+> * checking code files for non-ASCII characters ... OK
+> * checking R files for syntax errors ... OK
+> * checking whether the package can be loaded ... OK
+> * checking whether the package can be loaded with stated dependencies ... OK
+> * checking whether the package can be unloaded cleanly ... OK
+> * checking whether the namespace can be loaded with stated dependencies ... OK
+> * checking whether the namespace can be unloaded cleanly ... OK
+> * checking loading without being on the library search path ... OK
+> * checking use of S3 registration ... OK
+> * checking dependencies in R code ... OK
+> * checking S3 generic/method consistency ... OK
+> * checking replacement functions ... OK
+> * checking foreign function calls ... OK
+> * checking R code for possible problems ... OK
+> * checking Rd files ... OK
+> * checking Rd metadata ... OK
+> * checking Rd line widths ... OK
+> * checking Rd cross-references ... OK
+> * checking for missing documentation entries ... OK
+> * checking for code/documentation mismatches ... OK
+> * checking Rd \usage sections ... OK
+> * checking Rd contents ... OK
+> * checking for unstated dependencies in examples ... OK
+> * checking installed files from 'inst/doc' ... OK
+> * checking files in 'vignettes' ... OK
+> * checking examples ... [257s] NOTE
+> Examples with CPU (user + system) or elapsed time > 10s
+>                  user system elapsed
+> drglm          93.50  14.34  107.82
+> drglm.multinom 78.65  13.28   91.89
+> big.drglm      26.61   1.75   28.36
+> make.data      25.07   1.78   26.84
+> * checking for unstated dependencies in 'tests' ... OK
+> * checking tests ... OK
+>    Running 'testthat.R'
+> * checking for unstated dependencies in vignettes ... OK
+> * checking package vignettes ... OK
+> * checking re-building of vignette outputs ... [241s] OK
+> * checking PDF version of manual ... [13s] OK
+> * checking HTML version of manual ... OK
+> * DONE
+> Status: 2 NOTEs
+> 
+> 
+> 
+> And my submission got cancelled automatically.  Can you tell me how to
+> solve such notes and how can i resubmit it to CRAN?
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+(Acting) Graduate chair, Mathematics & Statistics
+ > E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
