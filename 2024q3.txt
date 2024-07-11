@@ -1728,3 +1728,54 @@ Ivan
 [*] https://github.com/GfellerLab/SuperCell
 
 
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Jul 10 14:54:30 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 10 Jul 2024 08:54:30 -0400
+Subject: [R-pkg-devel] =?utf-8?b?VXNlIG9mIOKAmFJfSW5wdXRIYW5kbGVyc+KAmQ==?=
+Message-ID: <1fad3e4c-9b05-47af-8687-bf34719b5c38@gmail.com>
+
+An update to the rgl package was rejected with this note:
+
+> * checking compiled code ... NOTE
+> File ?rgl/libs/rgl.so?:
+>   Found non-API call to R: ?R_InputHandlers?
+> 
+> Compiled code should not call non-API entry points in R.
+> 
+> See ?Writing portable packages? in the ?Writing R Extensions? manual,
+> and section ?Moving into C API compliance? for issues with the use of
+> non-API entry points.
+
+See 
+<https://win-builder.r-project.org/incoming_pretest/rgl_1.3.10_20240707_165632/Debian/00check.log> 
+for more info.
+
+`R_InputHandlers` isn't actually a function, it's a linked list of 
+structures holding input handlers.  rgl links into it to handle mouse 
+and keyboard interaction when it is displaying a window in X11.
+
+`R_InputHandlers` is declared in R in src/include/R_ext/eventloop.h, 
+where comments state
+
+> /*
+>    For use by alternative front-ends and packages which need to share
+>    the R event loop (on Unix-alikes).
+> 
+>    Not part of the API and subject to change without notice.
+> 
+>    NB: HAVE_SYS_SELECT_H should be checked and defined before this is
+>    included.
+>  */
+
+WRE has a discussion of the issue in 8.1.4, "meshing event loops".  It 
+refers to comments in src/unix/sys-std.c, but I'm not sure which comments.
+
+rgl references it from this code:
+
+https://github.com/dmurdoch/rgl/blob/fbedc326e291c3ec28a9ccac7d030f04b05edfa3/src/x11lib.cpp#L53-L72
+
+Can anyone tell me whether I can fix this?
+
+Duncan Murdoch
+
+
