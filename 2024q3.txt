@@ -1779,3 +1779,618 @@ Can anyone tell me whether I can fix this?
 Duncan Murdoch
 
 
+From mu@che|||j2 @end|ng |rom gm@||@com  Thu Jul 11 07:08:06 2024
+From: mu@che|||j2 @end|ng |rom gm@||@com (John Muschelli)
+Date: Thu, 11 Jul 2024 01:08:06 -0400
+Subject: [R-pkg-devel] Options "reset" when options(opts)
+Message-ID: <CAFsq6G_hyMMdTUJdrgmwRm8HuH_WdsQ7y_nrYLTKUmDsRsMqig@mail.gmail.com>
+
+When setting options in a function, I have always used the following:
+  opts <- options()
+  on.exit(options(opts), add = TRUE)
+and assumed it "reset" options to what they were prior to running the
+function.  But for some options that are set to NULL, it does not seem to
+reset them.  Specifically, I have found digits.secs to be set after this
+simple example below.  Is this expected behavior/documented?  Overall, this
+specific example (the one I encountered in the wild) is not that harmful,
+but I wanted to ask before I set a fix for this in our work
+
+noset = function() {
+  opts = options()
+  print(opts$digits.secs)
+  on.exit(options(opts))
+  options(digits.secs = 3)
+}
+getOption("digits.secs")
+#> NULL
+noset()
+#> NULL
+getOption("digits.secs")
+#> [1] 3
+
+
+John Muschelli, PhD
+Associate Research Professor
+Department of Biostatistics
+Johns Hopkins Bloomberg School of Public Health
+
+	[[alternative HTML version deleted]]
+
+
+From iuke-tier@ey m@iii@g oii uiow@@edu  Thu Jul 11 08:43:06 2024
+From: iuke-tier@ey m@iii@g oii uiow@@edu (iuke-tier@ey m@iii@g oii uiow@@edu)
+Date: Thu, 11 Jul 2024 01:43:06 -0500 (CDT)
+Subject: [R-pkg-devel] 
+ =?iso8859-7?q?=5BExternal=5D__Use_of_=A1R=5FInputH?=
+ =?iso8859-7?q?andlers=A2?=
+In-Reply-To: <1fad3e4c-9b05-47af-8687-bf34719b5c38@gmail.com>
+References: <1fad3e4c-9b05-47af-8687-bf34719b5c38@gmail.com>
+Message-ID: <feaa28db-bcc6-b8f4-4687-12934442dd31@uiowa.edu>
+
+On Wed, 10 Jul 2024, Duncan Murdoch wrote:
+
+> An update to the rgl package was rejected with this note:
+>
+>> * checking compiled code ... NOTE
+>> File ?rgl/libs/rgl.so?:
+>>   Found non-API call to R: ?R_InputHandlers?
+>> 
+>> Compiled code should not call non-API entry points in R.
+>> 
+>> See ?Writing portable packages? in the ?Writing R Extensions? manual,
+>> and section ?Moving into C API compliance? for issues with the use of
+>> non-API entry points.
+>
+> See 
+> <https://win-builder.r-project.org/incoming_pretest/rgl_1.3.10_20240707_165632/Debian/00check.log> 
+> for more info.
+>
+> `R_InputHandlers` isn't actually a function, it's a linked list of structures 
+> holding input handlers.  rgl links into it to handle mouse and keyboard 
+> interaction when it is displaying a window in X11.
+
+Ideally the code generating the NOTE should be revised since a few of
+the things checked for at that point are global variables, not entry
+points.
+
+Given the design of this interface this variable should be added to
+the embedding API and dropped from the check list. I have not dropped
+it from the check list in R-devel so you should no longer get this
+NOTE.
+
+Best,
+
+luke
+
+>
+> `R_InputHandlers` is declared in R in src/include/R_ext/eventloop.h, where 
+> comments state
+>
+>> /*
+>>    For use by alternative front-ends and packages which need to share
+>>    the R event loop (on Unix-alikes).
+>>
+>>    Not part of the API and subject to change without notice.
+>>
+>>    NB: HAVE_SYS_SELECT_H should be checked and defined before this is
+>>    included.
+>>  */
+>
+> WRE has a discussion of the issue in 8.1.4, "meshing event loops".  It refers 
+> to comments in src/unix/sys-std.c, but I'm not sure which comments.
+>
+> rgl references it from this code:
+>
+> https://github.com/dmurdoch/rgl/blob/fbedc326e291c3ec28a9ccac7d030f04b05edfa3/src/x11lib.cpp#L53-L72
+>
+> Can anyone tell me whether I can fix this?
+>
+> Duncan Murdoch
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+-- 
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa                  Phone:             319-335-3386
+Department of Statistics and        Fax:               319-335-3017
+    Actuarial Science
+241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu/
+
+From je||er|@ @end|ng |rom gm@||@com  Thu Jul 11 08:49:23 2024
+From: je||er|@ @end|ng |rom gm@||@com (Greg Jefferis)
+Date: Thu, 11 Jul 2024 07:49:23 +0100
+Subject: [R-pkg-devel] Options "reset" when options(opts)
+In-Reply-To: <CAFsq6G_hyMMdTUJdrgmwRm8HuH_WdsQ7y_nrYLTKUmDsRsMqig@mail.gmail.com>
+References: <CAFsq6G_hyMMdTUJdrgmwRm8HuH_WdsQ7y_nrYLTKUmDsRsMqig@mail.gmail.com>
+Message-ID: <46F58CE1-56A2-4540-AEBE-E297B2BF80DA@gmail.com>
+
+Dear John,
+
+You need to collect the return value when setting options. This will include an explicit NULL value for an option that was previously NULL. 
+
+Best,
+
+Greg Jefferis.
+
+options(digits.secs = NULL)
+
+noset2 = function() {
+  opts <- options(digits.secs = 3)
+  on.exit(options(opts))
+  print(opts)
+}
+
+> getOption("digits.secs")
+NULL
+ 
+> noset2()
+$digits.secs
+NULL
+
+> getOption("digits.secs")
+NULL
+
+Gregory Jefferis
+Division of Neurobiology
+MRC Laboratory of Molecular Biology
+Francis Crick Avenue
+Cambridge Biomedical Campus
+Cambridge, CB2 OQH, UK
+
+http://www2.mrc-lmb.cam.ac.uk/group-leaders/h-to-m/g-jefferis
+http://jefferislab.org
+https://www.zoo.cam.ac.uk/research/groups/connectomics
+
+
+> On 11 Jul 2024, at 06:08, John Muschelli <muschellij2 at gmail.com> wrote:
+> 
+> When setting options in a function, I have always used the following:
+>  opts <- options()
+>  on.exit(options(opts), add = TRUE)
+> and assumed it "reset" options to what they were prior to running the
+> function.  But for some options that are set to NULL, it does not seem to
+> reset them.  Specifically, I have found digits.secs to be set after this
+> simple example below.  Is this expected behavior/documented?  Overall, this
+> specific example (the one I encountered in the wild) is not that harmful,
+> but I wanted to ask before I set a fix for this in our work
+> 
+> noset = function() {
+>  opts = options()
+>  print(opts$digits.secs)
+>  on.exit(options(opts))
+>  options(digits.secs = 3)
+> }
+> getOption("digits.secs")
+> #> NULL
+> noset()
+> #> NULL
+> getOption("digits.secs")
+> #> [1] 3
+> 
+> 
+> John Muschelli, PhD
+> Associate Research Professor
+> Department of Biostatistics
+> Johns Hopkins Bloomberg School of Public Health
+> 
+> [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From d@v|dhughjone@ @end|ng |rom gm@||@com  Thu Jul 11 12:08:48 2024
+From: d@v|dhughjone@ @end|ng |rom gm@||@com (David Hugh-Jones)
+Date: Thu, 11 Jul 2024 11:08:48 +0100
+Subject: [R-pkg-devel] Options "reset" when options(opts)
+In-Reply-To: <46F58CE1-56A2-4540-AEBE-E297B2BF80DA@gmail.com>
+References: <CAFsq6G_hyMMdTUJdrgmwRm8HuH_WdsQ7y_nrYLTKUmDsRsMqig@mail.gmail.com>
+ <46F58CE1-56A2-4540-AEBE-E297B2BF80DA@gmail.com>
+Message-ID: <CAARY7kgG8H+nmDDCHfvqPUZyt=MANWQ4VXtcjAGojZZi=UkdSQ@mail.gmail.com>
+
+This surprised me, even though it shouldn?t have done. (My false internal
+model of the world was that oo <- options(); ? options(oo) would overwrite
+the entire options list with the old values.) I wonder if it would be worth
+pointing out explicitly in ?options.
+
+Writing: wyclif.substack.com
+Book: www.wyclifsdust.com
+
+
+On Thu, 11 Jul 2024 at 08:03, Greg Jefferis <jefferis at gmail.com> wrote:
+
+> Dear John,
+>
+> You need to collect the return value when setting options. This will
+> include an explicit NULL value for an option that was previously NULL.
+>
+> Best,
+>
+> Greg Jefferis.
+>
+> options(digits.secs = NULL)
+>
+> noset2 = function() {
+>   opts <- options(digits.secs = 3)
+>   on.exit(options(opts))
+>   print(opts)
+> }
+>
+> > getOption("digits.secs")
+> NULL
+>
+> > noset2()
+> $digits.secs
+> NULL
+>
+> > getOption("digits.secs")
+> NULL
+>
+> Gregory Jefferis
+> Division of Neurobiology
+> MRC Laboratory of Molecular Biology
+> Francis Crick Avenue
+> Cambridge Biomedical Campus
+> Cambridge, CB2 OQH, UK
+>
+> http://www2.mrc-lmb.cam.ac.uk/group-leaders/h-to-m/g-jefferis
+> http://jefferislab.org
+> https://www.zoo.cam.ac.uk/research/groups/connectomics
+>
+>
+> > On 11 Jul 2024, at 06:08, John Muschelli <muschellij2 at gmail.com> wrote:
+> >
+> > When setting options in a function, I have always used the following:
+> >  opts <- options()
+> >  on.exit(options(opts), add = TRUE)
+> > and assumed it "reset" options to what they were prior to running the
+> > function.  But for some options that are set to NULL, it does not seem to
+> > reset them.  Specifically, I have found digits.secs to be set after this
+> > simple example below.  Is this expected behavior/documented?  Overall,
+> this
+> > specific example (the one I encountered in the wild) is not that harmful,
+> > but I wanted to ask before I set a fix for this in our work
+> >
+> > noset = function() {
+> >  opts = options()
+> >  print(opts$digits.secs)
+> >  on.exit(options(opts))
+> >  options(digits.secs = 3)
+> > }
+> > getOption("digits.secs")
+> > #> NULL
+> > noset()
+> > #> NULL
+> > getOption("digits.secs")
+> > #> [1] 3
+> >
+> >
+> > John Muschelli, PhD
+> > Associate Research Professor
+> > Department of Biostatistics
+> > Johns Hopkins Bloomberg School of Public Health
+> >
+> > [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From ch@|n@@wt|ney @end|ng |rom gm@||@com  Thu Jul 11 16:22:49 2024
+From: ch@|n@@wt|ney @end|ng |rom gm@||@com (Chung-hong Chan)
+Date: Thu, 11 Jul 2024 16:22:49 +0200
+Subject: [R-pkg-devel] cpp11 and "non-API calls to R"
+In-Reply-To: <b73ddb20-bc88-48aa-97a1-266e9db4d4da@email.com>
+References: <b73ddb20-bc88-48aa-97a1-266e9db4d4da@email.com>
+Message-ID: <CAHfK2Mu+U0Yn_e5Cd8hQZ08iS-XBK-zcd2xPzRPVpASVQ2WSHQ@mail.gmail.com>
+
+Not from CRAN, also not in a position to opine on cpp11 status, but I
+wrote about it recently. My solution for readODS back then was to
+vendor cpp11 and remove the SET_LENGTH call manually, like . But back
+then CRAN might not know about this. I think it should be easier now.
+
+https://www.chainsawriot.com/postmannheim/2024/05/26/readods230.html
+
+On Mon, Jul 8, 2024 at 4:25?PM Mark Padgham <mark.padgham at email.com> wrote:
+>
+> Dear R-pkg-dev folk,
+>
+> The cpp11 package, which was developed yet is no longer maintained by
+> Jim Hester, now triggers warnings on some CRAN pre-submit checks for
+> "non-API calls to R" via "SETLENGTH", "SET_TRUELENGTH", and others. The
+> relevant issue is https://github.com/r-lib/cpp11/issues/355, with a pull
+> request to resolve at https://github.com/r-lib/cpp11/pull/358. Problem
+> is the package is now largely inactive, with the PR hanging there for a
+> month or so unattended. I presume this warning means I can not resubmit
+> any package depending on cpp11 until this is resolved. But then there
+> are currently 75 packages potentially affected by this which would then
+> also be unable to be resubmitted. (Follow the links from the main GitHub
+> issue for a glimpse of the scale of this problem.)
+>
+> Any suggestions? In particular, it would be helpful, in this arguably
+> unusual and quite prominent case, to hear any views from CRAN folk as to
+> whether everybody dependent on cpp11 will have to wait for resolution
+> before they'll be able to resubmit? Alternatively, any indication from
+> anybody in a position to opine on cpp11 status and future maintenance
+> plans would be great!
+>
+> Thanks,
+>
+> Mark
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From m@te|@te|em@n @end|ng |rom un||@ch  Thu Jul 11 16:50:47 2024
+From: m@te|@te|em@n @end|ng |rom un||@ch (Matei Teleman)
+Date: Thu, 11 Jul 2024 14:50:47 +0000
+Subject: [R-pkg-devel] Help for understanding CRAN rejection
+In-Reply-To: <20240709134505.2cd7a4f4@arachnoid>
+References: <9DE1C4C5-3A88-4F75-87CD-7A5CE0F7EAA7@unil.ch>
+ <D21E7C8B-9BA7-4F31-8F43-9E9F654E5118@unil.ch>
+ <20240709101133.395178d6@Tarkus>
+ <27503A31-8521-4872-8AF7-C1C9AD548AF2@unil.ch>
+ <20240709134505.2cd7a4f4@arachnoid>
+Message-ID: <F5BD2414-3FCC-4229-B5EA-DB8CFC412AAC@unil.ch>
+
+Dear Ivan,
+
+Thank you so much for your help.
+
+I followed your advices and I reduced the size of the example data, move one package from Import to Suggest.
+
+The type of the license is unfortunately not depending on me so I?ll try one last time with the CC license and the new improvements.
+
+Thank your again for your time.
+
+Have a nice day!
+
+Best regards,
+
+Matei
+
+
+> Le 9 juil. 2024 ? 12:45, Ivan Krylov <ikrylov at disroot.org> a ?crit :
+> 
+> (I am adding the mailing list back in Cc: because package licensing is
+> a complicated topic.)
+> 
+> ? Tue, 9 Jul 2024 09:25:14 +0000
+> Matei Teleman <matei.teleman at unil.ch> ?????:
+> 
+>> I?ve added ? ? SuperCell uses
+>> [velocyto.R](https://github.com/velocyto-team/velocyto.R) for RNA
+>> velocity. ? in the Description field. Is that enough or I need also
+>> to directly give the command line to install the package from GitHub ?
+> 
+> It looks like a link should be fine. Here are a few examples of CRAN
+> packages that have a non-CRAN/Bioconductor package in Suggests: without
+> setting up Additional_repositories:
+> 
+> https://CRAN.R-project.org/package=babelmixr2
+> https://CRAN.R-project.org/package=bandsfdp
+> https://cran.r-project.org/package=GCD
+> 
+> I'm sorry that I didn't note any of the following in my initial reply,
+> but what worries me about CC BY-NC-ND specifically is that out of 117
+> CRAN packages with a Creative Commons license and 18 of those that use
+> the non-FOSS "NonCommercial" clause, none use the "NoDerivatives"
+> clause. Your users would probably appreciate being able to install
+> binary builds of your package from CRAN. Does `R CMD INSTALL --build`
+> count as creating a derivative work, or is it "merely changing the
+> format"? Then again, CC BY-NC-ND _is_ mentioned in the list of CRAN
+> licenses, so it could work.
+> 
+> I found a rejected copy of your package in the archive subdirectory on
+> the CRAN FTP server and a GitHub repository [*] that seems to be
+> slightly outdated compared to the archived package. (It's best to link
+> to up-to-date package sources when seeking help with code.) I'm getting
+> an additional NOTE:
+> 
+>>> Imports includes 21 non-default packages.
+>>> Importing from so many packages makes the package vulnerable to any
+>>> of them becoming unavailable.  Move as many as possible to Suggests
+>>> and use conditionally.
+> 
+> Is there a way to make some of the currently required dependencies into
+> conditional dependencies? R CMD check --as-cran sets the limit to 20,
+> so moving just one package from Imports to Suggests will silence this
+> particular NOTE.
+> 
+> I see that most of your package size comes from the data subdirectory.
+> CRAN policy says: "Packages should be of the minimum necessary size.
+> <...> Neither data nor documentation should exceed 5MB. <...> Where a
+> large amount of data is required (even after compression),
+> consideration should be given to a separate data-only package which can
+> be updated only rarely (since older versions of packages are archived
+> in perpetuity)."
+> Is there a way to reduce the size of the data? It's ideal if there's
+> only enough data to demonstrate how an algorithm works in the
+> \examples{} section of your documentation and to exercise as much of
+> your code as feasible in your tests.
+> 
+> Finally, were there any recommendations in the rejection e-mail from
+> CRAN? Sometimes NOTEs are unavoidable, but we should strive to minimise
+> them anyway.
+> 
+> -- 
+> Best regards,
+> Ivan
+> 
+> [*] https://github.com/GfellerLab/SuperCell
+
+
+From vo|ody@ @end|ng |rom m|nd@pr|ng@com  Thu Jul 11 20:22:07 2024
+From: vo|ody@ @end|ng |rom m|nd@pr|ng@com (Vladimir Dergachev)
+Date: Thu, 11 Jul 2024 14:22:07 -0400 (EDT)
+Subject: [R-pkg-devel] Options "reset" when options(opts)
+In-Reply-To: <CAARY7kgG8H+nmDDCHfvqPUZyt=MANWQ4VXtcjAGojZZi=UkdSQ@mail.gmail.com>
+References: <CAFsq6G_hyMMdTUJdrgmwRm8HuH_WdsQ7y_nrYLTKUmDsRsMqig@mail.gmail.com>
+ <46F58CE1-56A2-4540-AEBE-E297B2BF80DA@gmail.com>
+ <CAARY7kgG8H+nmDDCHfvqPUZyt=MANWQ4VXtcjAGojZZi=UkdSQ@mail.gmail.com>
+Message-ID: <alpine.DEB.2.22.394.2407111415420.11778@iridium>
+
+
+
+On Thu, 11 Jul 2024, David Hugh-Jones wrote:
+
+> This surprised me, even though it shouldn?t have done. (My false internal
+> model of the world was that oo <- options(); ? options(oo) would overwrite
+> the entire options list with the old values.) I wonder if it would be worth
+> pointing out explicitly in ?options.
+
+Arguably, it would be nice to have a parameter like "reset", so 
+that one can call
+
+options(oo, reset=TRUE)
+
+and any options not explicitly passed by oo are set to NULL.
+
+This way there are two modes of operation - bulk setting of subset of 
+options with reset=FALSE, and restoring full options set with reset=TRUE.
+
+best
+
+Vladimir Dergachev
+
+>
+> Writing: wyclif.substack.com
+> Book: www.wyclifsdust.com
+>
+>
+> On Thu, 11 Jul 2024 at 08:03, Greg Jefferis <jefferis at gmail.com> wrote:
+>
+>> Dear John,
+>>
+>> You need to collect the return value when setting options. This will
+>> include an explicit NULL value for an option that was previously NULL.
+>>
+>> Best,
+>>
+>> Greg Jefferis.
+>>
+>> options(digits.secs = NULL)
+>>
+>> noset2 = function() {
+>>   opts <- options(digits.secs = 3)
+>>   on.exit(options(opts))
+>>   print(opts)
+>> }
+>>
+>>> getOption("digits.secs")
+>> NULL
+>>
+>>> noset2()
+>> $digits.secs
+>> NULL
+>>
+>>> getOption("digits.secs")
+>> NULL
+>>
+>> Gregory Jefferis
+>> Division of Neurobiology
+>> MRC Laboratory of Molecular Biology
+>> Francis Crick Avenue
+>> Cambridge Biomedical Campus
+>> Cambridge, CB2 OQH, UK
+>>
+>> http://www2.mrc-lmb.cam.ac.uk/group-leaders/h-to-m/g-jefferis
+>> http://jefferislab.org
+>> https://www.zoo.cam.ac.uk/research/groups/connectomics
+>>
+>>
+>>> On 11 Jul 2024, at 06:08, John Muschelli <muschellij2 at gmail.com> wrote:
+>>>
+>>> When setting options in a function, I have always used the following:
+>>>  opts <- options()
+>>>  on.exit(options(opts), add = TRUE)
+>>> and assumed it "reset" options to what they were prior to running the
+>>> function.  But for some options that are set to NULL, it does not seem to
+>>> reset them.  Specifically, I have found digits.secs to be set after this
+>>> simple example below.  Is this expected behavior/documented?  Overall,
+>> this
+>>> specific example (the one I encountered in the wild) is not that harmful,
+>>> but I wanted to ask before I set a fix for this in our work
+>>>
+>>> noset = function() {
+>>>  opts = options()
+>>>  print(opts$digits.secs)
+>>>  on.exit(options(opts))
+>>>  options(digits.secs = 3)
+>>> }
+>>> getOption("digits.secs")
+>>> #> NULL
+>>> noset()
+>>> #> NULL
+>>> getOption("digits.secs")
+>>> #> [1] 3
+>>>
+>>>
+>>> John Muschelli, PhD
+>>> Associate Research Professor
+>>> Department of Biostatistics
+>>> Johns Hopkins Bloomberg School of Public Health
+>>>
+>>> [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+From @@j5xsj9 m@iii@g oii @iiiy@@ddy@io  Thu Jul 11 22:58:53 2024
+From: @@j5xsj9 m@iii@g oii @iiiy@@ddy@io (@@j5xsj9 m@iii@g oii @iiiy@@ddy@io)
+Date: Thu, 11 Jul 2024 20:58:53 +0000
+Subject: [R-pkg-devel] Properly referencing copied code
+Message-ID: <674a7e3cebc4e094859594fcbfcdc289@nilly.addy.io>
+
+I'm trying to submit a package to CRAN that uses external C libs but properly crediting copyright holders and authors is the main issue holding up the submission and I've repeatedly failed to satisfy the requirements. I am having a lot of trouble understanding what/who I need to be listing in my DESCRIPTION file and how they should be listed.
+
+1. How does linking to external libs differ from providing the source of a library and linking against that? Do I need to provide references to lapack and blas if they aren't shipped with the package? What about math (lm)?
+
+2. What roles to supply to authors of external software? After my last submission, I got the note:
+> Has copyright holders of included software in a [ctb] role only
+
+From the CRAN Repository Policy file:
+>Where code is copied (or derived) from the work of others (including from R itself), care must be taken that any copyright/license statements are preserved and authorship is not misrepresented.
+>Preferably, an ?Authors at R? field would be used with ?ctb? roles for the authors of such code. Alternatively, the ?Author? field should list these authors as contributors.
+>
+>Where copyrights are held by an entity other than the package authors, this should preferably be indicated via ?cph? roles in the ?Authors at R? field, or using a ?Copyright? field (if necessary referring to an inst/COPYRIGHTS file).
+
+My interpretation of the CRAN policy is that the role 'cph' should be used only for "entities other than the package authors" and therefore authors should only get 'ctb'. Do I need to differentiate between authors with explicit copyrights `c('ctb', 'cph')` vs those who are authors but are not listed as copyright holders `c('ctb')` in the third party source? Or just give everyone both?
+
+3. One of my dependencies has a lot of copyright holders throughout the source. Most of these are for individual functions and cmake files that are not directly used by my package. What is the best way to handle this? Add as much of the unused parts of the third party package to the .Rbuildignore file as possible to filter out the unused parts? (Many copyrights are from parts of the package that are independent on the parts I used so for example ignore an unused vendor package seems reasonable but what about hand picking the main source files that are actually compiled to avoid copyrights?) Or list all of the authors/copyrights in the my DESCRIPTION file?
+
+4. Is there a better place to put all these authors? The author list has already gotten large and I still have many more to add. I've seen use of an `AUTHOR-list.md` in packages but I don't see this mentioned in official documentation. In the previous quotation from CRAN's policy document, it mentions the possible use of a `inst/COPYRIGHTS` file that is referenced in the DESCRIPTION. Is there an equivalent for authors? Is it preferred to just put everything in DESCRIPTION instead?
+
+- DRC
+	[[alternative HTML version deleted]]
+
+
