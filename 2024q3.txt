@@ -2635,3 +2635,142 @@ Tomas
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From |kry|ov @end|ng |rom d|@root@org  Mon Jul 15 11:11:48 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 15 Jul 2024 12:11:48 +0300
+Subject: [R-pkg-devel] Properly referencing copied code
+In-Reply-To: <de459413e13d404a61c1722ad3d19bd7@nilly.addy.io>
+References: <674a7e3cebc4e094859594fcbfcdc289@nilly.addy.io>
+ <20240712110741.5ba1a154@Tarkus>
+ <de459413e13d404a61c1722ad3d19bd7@nilly.addy.io>
+Message-ID: <20240715121148.2c43a6dc@arachnoid>
+
+? Fri, 12 Jul 2024 20:17:22 +0000
+DRC via R-package-devel <r-package-devel at r-project.org> ?????:
+
+> > Has copyright holders of included software in a [ctb] role only  
+> 
+> I think I'm being asked to add the cph role to essentially every
+> author in addition to [ctb]
+
+That's how I'm reading it too.
+
+> but that doesn't seem to be what the CRAN policy wants
+
+I agree that there does seem to be a conflict, with the policy only
+asking to use 'cph' for non-'aut' or 'ctb' copyright holders.
+
+> and I still don't know how to decide who gets both.
+
+Technically, the conflict can be resolved by noting that the CRAN
+policy doesn't _prohibit_ using 'cph' for 'aut' or 'ctb' co-authors.
+Since both your reviewer and help(person) ask for 'cph' for all
+copyright holders, it sounds like all co-authors who wrote any code
+should get an additional 'cph'.
+
+It would help if CRAN Policy also said that 'cph' should be used for
+all copyright holders.
+
+> Right now there are several people who have explicit copyright over
+> certain code so I would think just add cph to all those authors? Or
+> just give everyone cph who isn't a minor contributor?
+
+It shouldn't be too wrong to say that if someone wrote a nontrivial line
+of code you're including in your package, they are a copyright holder.
+
+This is an important cornerstone of "bazaar-style" development of free
+software: if many entities own copyright to parts of a computer
+program, no single entity has the right to re-license the whole under a
+non-free license. Contrast this with "cathedral-style" development
+where every contribution is either accompanied by a copyright transfer
+document or rewritten from scratch (e.g. SQLite): this lets the single
+owner re-license the code under whatever terms they prefer.
+
+Having said that, if you would like to follow the recommendations of
+Simon and Tomas and package some of the third-party code for MXE and
+macOS recipes, don't hesitate to ask.
+
+-- 
+Best regards,
+Ivan
+
+
+From @@j5xsj9 m@iii@g oii @iiiy@@ddy@io  Mon Jul 15 22:57:28 2024
+From: @@j5xsj9 m@iii@g oii @iiiy@@ddy@io (@@j5xsj9 m@iii@g oii @iiiy@@ddy@io)
+Date: Mon, 15 Jul 2024 20:57:28 +0000
+Subject: [R-pkg-devel] Properly referencing copied code
+In-Reply-To: <20240715121148.2c43a6dc@arachnoid>
+References: <674a7e3cebc4e094859594fcbfcdc289@nilly.addy.io>
+ <20240712110741.5ba1a154@Tarkus>
+ <de459413e13d404a61c1722ad3d19bd7@nilly.addy.io>
+ <20240715121148.2c43a6dc@arachnoid>
+Message-ID: <1e817973f6a86c498960f14ebe2be384@nilly.addy.io>
+
+Thank you everyone, I think this gives me everything I need to know and I have no problem spreading the copyright around.
+
+I'm not sure adding my dependencies to MXE is going to make sense here but open to being convinced otherwise. The package I am working on is wrapping functions from my own simple external C library. I wrote the C lib outside of the R package specifically so it would be possible to integrate the algorithm into multiple high level interfaces (i.e. python, matlab, in addition to R) otherwise the C would have been directly written into the R package. I don't see my lib as something anybody else is likely going to need to link against.
+
+This C lib does depend on igraph though, which is more likely to be useful. However, I don't think it's actually going to be straight forward to add to MXE given how much effort I have had to put into getting it to compile with R and I honestly would rather not be the one who needs to figure out how to do it right. I hope that is understandable given it's pretty clear I am out of my skill set as a biologist and that I am in the last few months of my PhD program and have already exceeded the time I can afford on this side project.
+
+There's a few problems that I think will make igraph difficult to package with MXE based on the challenges I have had with compiling on CRAN's build servers, assuming the environments are similar. 1. It was not possible for me to get igraph to compile correctly using cmake on CRAN builders due to other missing dependencies (including flex which I was previously told I have to pre-generate the resulting C files rather than depend on flex being available which prevents me from using cmake that calls flex itself). This means having to write new build logic instead of depending on the upstream cmake recipe, which is fragile and could break with an update. 2. There are some configuration options which are beneficial to choose based on the current project. Of particularly interest is that the igraph C lib has had to add a `USING_R` macro to modify the behavior in the lib based on whether it is used inside of `R` or not. Since MXE is not specific to R this requires a different build depending on where it's being used. 3. igraph is currently in the process of releasing 1.0.0 and the maintainers have noted there will be breaking changes. Given that it is not yet as mature as other commonly used dependencies, it is safer to use the pinned version shipped with my C lib than depending on a system wide installation.
+
+Even if there is a range of versions I can check for, I would think there would still be a need to ship an appropriate version of igraph with the R package (and therefore still have all the logic needed to build it) in cases where the system's available igraph version is not appropriate, igraph is not compiled in a thread safe manner, or igraph is not compiled for R (which it definitely wouldn't be anywhere not using MXE, i.e. on a Linux computer where `install.packages` will compile the package locally). As such I don't think it makes much sense to try to add it to MXE, especially before determining if there is demand for the lib in CRAN packages.
+
+?- DRC
+
+On Monday, July 15th, 2024 at 4:11 AM, Ivan Krylov 'ikrylov at disroot.org' wrote:
+
+> ? Fri, 12 Jul 2024 20:17:22 +0000
+> DRC via R-package-devel r-package-devel at r-project.org ?????:
+>
+> > > Has copyright holders of included software in a [ctb] role only
+> >
+> > I think I'm being asked to add the cph role to essentially every
+> > author in addition to [ctb]
+>
+>
+> That's how I'm reading it too.
+>
+> > but that doesn't seem to be what the CRAN policy wants
+>
+>
+> I agree that there does seem to be a conflict, with the policy only
+> asking to use 'cph' for non-'aut' or 'ctb' copyright holders.
+>
+> > and I still don't know how to decide who gets both.
+>
+>
+> Technically, the conflict can be resolved by noting that the CRAN
+> policy doesn't prohibit using 'cph' for 'aut' or 'ctb' co-authors.
+> Since both your reviewer and help(person) ask for 'cph' for all
+> copyright holders, it sounds like all co-authors who wrote any code
+> should get an additional 'cph'.
+>
+> It would help if CRAN Policy also said that 'cph' should be used for
+> all copyright holders.
+>
+> > Right now there are several people who have explicit copyright over
+> > certain code so I would think just add cph to all those authors? Or
+> > just give everyone cph who isn't a minor contributor?
+>
+>
+> It shouldn't be too wrong to say that if someone wrote a nontrivial line
+> of code you're including in your package, they are a copyright holder.
+>
+> This is an important cornerstone of "bazaar-style" development of free
+> software: if many entities own copyright to parts of a computer
+> program, no single entity has the right to re-license the whole under a
+> non-free license. Contrast this with "cathedral-style" development
+> where every contribution is either accompanied by a copyright transfer
+> document or rewritten from scratch (e.g. SQLite): this lets the single
+> owner re-license the code under whatever terms they prefer.
+>
+> Having said that, if you would like to follow the recommendations of
+> Simon and Tomas and package some of the third-party code for MXE and
+> macOS recipes, don't hesitate to ask.
+>
+> --
+> Best regards,
+> Ivan
+
+
