@@ -2774,3 +2774,105 @@ On Monday, July 15th, 2024 at 4:11 AM, Ivan Krylov 'ikrylov at disroot.org' wrot
 > Ivan
 
 
+From @|ber@onm|r@nd@ @end|ng |rom hotm@||@com  Wed Jul 17 02:18:17 2024
+From: @|ber@onm|r@nd@ @end|ng |rom hotm@||@com (Alberson Miranda)
+Date: Tue, 16 Jul 2024 21:18:17 -0300
+Subject: [R-pkg-devel] Disable parallelism on installation time
+Message-ID: <PH8PR11MB67531D61570D11D4E9319266B9A32@PH8PR11MB6753.namprd11.prod.outlook.com>
+
+Dear listeners,
+
+I'm having a hard time trying to figure out the following NOTE:
+
+|* checking whether package 'fio' can be installed... [202s/46s] NOTE 
+Installation took CPU time 4.4 times elapsed time |
+
+Uwe asked if there's code running in parallel by default and, yes, there 
+was: my code uses rayon (general parallelism) and faer (linear algebra, 
+with rayon feature on) Rust crates. So I did a little refactor and added 
+a method to allow the user to specify max threads. Then I started every 
+example, tests, vignette and readme by limiting threads to 1 to avoid 
+parallelism.
+
+Nonetheless, I still get the NOTE. Finally, out of despair, I've deleted 
+vignettes, tests, code on readme and enclosed all examples 
+with|\dontrun{}|but that didn't work either.
+
+So my question is, besides examples, tests, vignettes and readme,*what 
+parts of code runs during installation of a R package? Is parallelism 
+the only trigger for that NOTE or could it be something else?*
+
+Source code is here <https://github.com/albersonmiranda/fio> and there's 
+also a SO post with my failed attempts 
+<https://stackoverflow.com/questions/78751811/disable-parallelism-on-installation-time> 
+in detail.
+
+-- 
+Best,
+Alberson Miranda
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Wed Jul 17 10:21:27 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Wed, 17 Jul 2024 11:21:27 +0300
+Subject: [R-pkg-devel] Disable parallelism on installation time
+In-Reply-To: <PH8PR11MB67531D61570D11D4E9319266B9A32@PH8PR11MB6753.namprd11.prod.outlook.com>
+References: <PH8PR11MB67531D61570D11D4E9319266B9A32@PH8PR11MB6753.namprd11.prod.outlook.com>
+Message-ID: <20240717112127.56f3b80a@Tarkus>
+
+? Tue, 16 Jul 2024 21:18:17 -0300
+Alberson Miranda <albersonmiranda at hotmail.com> ?????:
+
+> besides examples, tests, vignettes and readme, what parts of code
+> runs during installation of a R package
+
+Neither. This is about `cargo build` compiling in parallel, not your
+package code computing in parallel. Giving the -j 2 flag to cargo
+should solve the problem:
+https://github.com/R-ArcGIS/arcgisgeocode/blob/8fbd93c3607363a9fef2d445711de647e5127566/src/Makevars#L5
+
+-- 
+Best regards,
+Ivan
+
+
+From ch@|n@@wt|ney @end|ng |rom gm@||@com  Wed Jul 17 22:29:25 2024
+From: ch@|n@@wt|ney @end|ng |rom gm@||@com (Chung-hong Chan)
+Date: Wed, 17 Jul 2024 22:29:25 +0200
+Subject: [R-pkg-devel] Disable parallelism on installation time
+In-Reply-To: <20240717112127.56f3b80a@Tarkus>
+References: <PH8PR11MB67531D61570D11D4E9319266B9A32@PH8PR11MB6753.namprd11.prod.outlook.com>
+ <20240717112127.56f3b80a@Tarkus>
+Message-ID: <CAHfK2MtoioDud_T_MK6-kjcybkvJ+1V7EaEf=61_1OxQnTt1VQ@mail.gmail.com>
+
+To add to this, I would like to point out that extendr actually has a
+guide on how to make an R package with Rust code CRAN compliance.
+
+https://github.com/extendr/rextendr/blob/main/vignettes/articles/cran-compliance.Rmd
+
+
+On Wed, Jul 17, 2024 at 10:21?AM Ivan Krylov via R-package-devel
+<r-package-devel at r-project.org> wrote:
+>
+> ? Tue, 16 Jul 2024 21:18:17 -0300
+> Alberson Miranda <albersonmiranda at hotmail.com> ?????:
+>
+> > besides examples, tests, vignettes and readme, what parts of code
+> > runs during installation of a R package
+>
+> Neither. This is about `cargo build` compiling in parallel, not your
+> package code computing in parallel. Giving the -j 2 flag to cargo
+> should solve the problem:
+> https://github.com/R-ArcGIS/arcgisgeocode/blob/8fbd93c3607363a9fef2d445711de647e5127566/src/Makevars#L5
+>
+> --
+> Best regards,
+> Ivan
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
