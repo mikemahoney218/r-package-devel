@@ -3884,3 +3884,1096 @@ wrote:
 	[[alternative HTML version deleted]]
 
 
+From vo|ody@ @end|ng |rom m|nd@pr|ng@com  Fri Jul 19 04:14:36 2024
+From: vo|ody@ @end|ng |rom m|nd@pr|ng@com (Vladimir Dergachev)
+Date: Thu, 18 Jul 2024 22:14:36 -0400 (EDT)
+Subject: [R-pkg-devel] How to get arbitrary precise inputs from R for an
+ Rcpp package?
+In-Reply-To: <CAO5FMCwG80c8ZRywt_=8XusfpsZOuc=fh=A4ek1KOV-X65i4dA@mail.gmail.com>
+References: <CAO5FMCwOm=0UmSAhJeqbTtg9PasHjNrmtGMQO2DAupEL1ewinQ@mail.gmail.com>
+ <26265.38743.665001.870966@rob.eddelbuettel.com>
+ <CAO5FMCyDgtQ0N9yN80VtLaW_7cWcgYiA3GiHm4F-hEdWd_duyQ@mail.gmail.com>
+ <531C6F01-064D-4647-9951-FB493959FE82@R-project.org>
+ <CAO5FMCwG80c8ZRywt_=8XusfpsZOuc=fh=A4ek1KOV-X65i4dA@mail.gmail.com>
+Message-ID: <alpine.DEB.2.22.394.2407182214170.11778@iridium>
+
+
+Do you need to run eigen() on an arbitrary matrix or symmetric one ?
+
+best
+
+Vladimir Dergachev
+
+On Fri, 19 Jul 2024, Khue Tran wrote:
+
+> Thank you Simon! This is very helpful! Regarding eigen, I found in the
+> Boost library the following example for arbitrary precision matrix solver:
+> https://github.com/boostorg/multiprecision/blob/develop/example/eigen_example.cpp.
+> I am not sure if the precision is fully preserved throughout the process,
+> but this example motivated me to try coding with the Boost library.
+>
+> Best,
+> Khue Tran
+>
+> On Fri, Jul 19, 2024 at 9:50?AM Simon Urbanek <simon.urbanek at r-project.org>
+> wrote:
+>
+>> Khue,
+>>
+>>
+>>> On 19/07/2024, at 11:32 AM, Khue Tran <tran3 at kenyon.edu> wrote:
+>>>
+>>> Thank you for the suggestion, Denes, Vladimir, and Dirk. I have indeed
+>>> looked into Rmpfr and while the package can interface GNU MPFR with R
+>>> smoothly, as of right now, it doesn't have all the functions I need (ie.
+>>> eigen for mpfr class) and when one input decimals, say 0.1 to mpfr(), the
+>>> precision is still limited by R's default double precision.
+>>>
+>>
+>>
+>> Don't use doubles, use decimal fractions:
+>>
+>>> Rmpfr::mpfr(gmp::as.bigq(1,10), 512)
+>> 1 'mpfr' number of precision  512   bits
+>> [1]
+>> 0.100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002
+>>
+>> As for eigen() - I'm not aware of an arbitrary precision solver, so I
+>> think the inputs are your least problem - most tools out there use LAPACK
+>> which doesn't support arbitrary precision so your input precision is likely
+>> irrelevant in this case.
+>>
+>> Cheers,
+>> Simon
+>>
+>>
+>>
+>>> Thank you for the note, Dirk. I will keep in mind to send any future
+>>> questions regarding Rcpp to the Rcpp-devel mailing list. I understand
+>> that
+>>> the type used in the Boost library for precision is not one of the types
+>>> supported by SEXP, so it will be more complicated to map between the cpp
+>>> codes and R. Given Rmpfr doesn't provide all necessary mpfr calculations
+>>> (and embarking on interfacing Eigen with Rmpfr is not a small task), does
+>>> taking input as strings seem like the best option for me to get precise
+>>> inputs?
+>>>
+>>> Sincerely,
+>>> Khue
+>>>
+>>> On Fri, Jul 19, 2024 at 8:29?AM Dirk Eddelbuettel <edd at debian.org>
+>> wrote:
+>>>
+>>>>
+>>>> Hi Khue,
+>>>>
+>>>> On 19 July 2024 at 06:29, Khue Tran wrote:
+>>>> | I am currently trying to get precise inputs by taking strings instead
+>> of
+>>>> | numbers then writing a function to decompose the string into a
+>> rational
+>>>> | with the denominator in the form of 10^(-n) where n is the number of
+>>>> | decimal places. I am not sure if this is the only way or if there is a
+>>>> | better method out there that I do not know of, so if you can think of
+>> a
+>>>> | general way to get precise inputs from users, it will be greatly
+>>>> | appreciated!
+>>>>
+>>>> That is one possible way. The constraint really is that the .Call()
+>>>> interface
+>>>> we use for all [1] extensions to R only knowns SEXP types which map to a
+>>>> small set of known types: double, int, string, bool, ...  The type used
+>> by
+>>>> the Boost library you are using is not among them, so you have to add
+>> code
+>>>> to
+>>>> map back and forth. Rcpp makes that easier; it is still far from
+>> automatic.
+>>>>
+>>>> R has packages such as Rmpfr interfacing GNU MPFR based on GMP. Maybe
+>> that
+>>>> is
+>>>> good enough?  Also note that Rcpp has a dedicated (low volume and
+>> friendly)
+>>>> mailing list where questions such as this one may be better suited.
+>>>>
+>>>> Cheers, Dirk
+>>>>
+>>>> [1] A slight generalisation. There are others but they are less common /
+>>>> not
+>>>> recommended.
+>>>>
+>>>> --
+>>>> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>>>>
+>>>
+>>>       [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>
+>>
+>>
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+From tr@n3 @end|ng |rom kenyon@edu  Fri Jul 19 04:37:34 2024
+From: tr@n3 @end|ng |rom kenyon@edu (Khue Tran)
+Date: Fri, 19 Jul 2024 12:37:34 +1000
+Subject: [R-pkg-devel] How to get arbitrary precise inputs from R for an
+ Rcpp package?
+In-Reply-To: <alpine.DEB.2.22.394.2407182214170.11778@iridium>
+References: <CAO5FMCwOm=0UmSAhJeqbTtg9PasHjNrmtGMQO2DAupEL1ewinQ@mail.gmail.com>
+ <26265.38743.665001.870966@rob.eddelbuettel.com>
+ <CAO5FMCyDgtQ0N9yN80VtLaW_7cWcgYiA3GiHm4F-hEdWd_duyQ@mail.gmail.com>
+ <531C6F01-064D-4647-9951-FB493959FE82@R-project.org>
+ <CAO5FMCwG80c8ZRywt_=8XusfpsZOuc=fh=A4ek1KOV-X65i4dA@mail.gmail.com>
+ <alpine.DEB.2.22.394.2407182214170.11778@iridium>
+Message-ID: <CAO5FMCytebCchErYfTwoRGqda+5GkkfGQpWbLDakFTeHHY8zeA@mail.gmail.com>
+
+I will need to run eigen() on a symmetric matrix, but I want to get
+arbitrary precise eigenvalues since we will need those eigenvalues for our
+further calculations. Does that make sense?
+
+Best,
+Khue Tran
+
+On Fri, Jul 19, 2024 at 12:14?PM Vladimir Dergachev <volodya at mindspring.com>
+wrote:
+
+>
+> Do you need to run eigen() on an arbitrary matrix or symmetric one ?
+>
+> best
+>
+> Vladimir Dergachev
+>
+> On Fri, 19 Jul 2024, Khue Tran wrote:
+>
+> > Thank you Simon! This is very helpful! Regarding eigen, I found in the
+> > Boost library the following example for arbitrary precision matrix
+> solver:
+> >
+> https://github.com/boostorg/multiprecision/blob/develop/example/eigen_example.cpp
+> .
+> > I am not sure if the precision is fully preserved throughout the process,
+> > but this example motivated me to try coding with the Boost library.
+> >
+> > Best,
+> > Khue Tran
+> >
+> > On Fri, Jul 19, 2024 at 9:50?AM Simon Urbanek <
+> simon.urbanek at r-project.org>
+> > wrote:
+> >
+> >> Khue,
+> >>
+> >>
+> >>> On 19/07/2024, at 11:32 AM, Khue Tran <tran3 at kenyon.edu> wrote:
+> >>>
+> >>> Thank you for the suggestion, Denes, Vladimir, and Dirk. I have indeed
+> >>> looked into Rmpfr and while the package can interface GNU MPFR with R
+> >>> smoothly, as of right now, it doesn't have all the functions I need
+> (ie.
+> >>> eigen for mpfr class) and when one input decimals, say 0.1 to mpfr(),
+> the
+> >>> precision is still limited by R's default double precision.
+> >>>
+> >>
+> >>
+> >> Don't use doubles, use decimal fractions:
+> >>
+> >>> Rmpfr::mpfr(gmp::as.bigq(1,10), 512)
+> >> 1 'mpfr' number of precision  512   bits
+> >> [1]
+> >>
+> 0.100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002
+> >>
+> >> As for eigen() - I'm not aware of an arbitrary precision solver, so I
+> >> think the inputs are your least problem - most tools out there use
+> LAPACK
+> >> which doesn't support arbitrary precision so your input precision is
+> likely
+> >> irrelevant in this case.
+> >>
+> >> Cheers,
+> >> Simon
+> >>
+> >>
+> >>
+> >>> Thank you for the note, Dirk. I will keep in mind to send any future
+> >>> questions regarding Rcpp to the Rcpp-devel mailing list. I understand
+> >> that
+> >>> the type used in the Boost library for precision is not one of the
+> types
+> >>> supported by SEXP, so it will be more complicated to map between the
+> cpp
+> >>> codes and R. Given Rmpfr doesn't provide all necessary mpfr
+> calculations
+> >>> (and embarking on interfacing Eigen with Rmpfr is not a small task),
+> does
+> >>> taking input as strings seem like the best option for me to get precise
+> >>> inputs?
+> >>>
+> >>> Sincerely,
+> >>> Khue
+> >>>
+> >>> On Fri, Jul 19, 2024 at 8:29?AM Dirk Eddelbuettel <edd at debian.org>
+> >> wrote:
+> >>>
+> >>>>
+> >>>> Hi Khue,
+> >>>>
+> >>>> On 19 July 2024 at 06:29, Khue Tran wrote:
+> >>>> | I am currently trying to get precise inputs by taking strings
+> instead
+> >> of
+> >>>> | numbers then writing a function to decompose the string into a
+> >> rational
+> >>>> | with the denominator in the form of 10^(-n) where n is the number of
+> >>>> | decimal places. I am not sure if this is the only way or if there
+> is a
+> >>>> | better method out there that I do not know of, so if you can think
+> of
+> >> a
+> >>>> | general way to get precise inputs from users, it will be greatly
+> >>>> | appreciated!
+> >>>>
+> >>>> That is one possible way. The constraint really is that the .Call()
+> >>>> interface
+> >>>> we use for all [1] extensions to R only knowns SEXP types which map
+> to a
+> >>>> small set of known types: double, int, string, bool, ...  The type
+> used
+> >> by
+> >>>> the Boost library you are using is not among them, so you have to add
+> >> code
+> >>>> to
+> >>>> map back and forth. Rcpp makes that easier; it is still far from
+> >> automatic.
+> >>>>
+> >>>> R has packages such as Rmpfr interfacing GNU MPFR based on GMP. Maybe
+> >> that
+> >>>> is
+> >>>> good enough?  Also note that Rcpp has a dedicated (low volume and
+> >> friendly)
+> >>>> mailing list where questions such as this one may be better suited.
+> >>>>
+> >>>> Cheers, Dirk
+> >>>>
+> >>>> [1] A slight generalisation. There are others but they are less
+> common /
+> >>>> not
+> >>>> recommended.
+> >>>>
+> >>>> --
+> >>>> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> >>>>
+> >>>
+> >>>       [[alternative HTML version deleted]]
+> >>>
+> >>> ______________________________________________
+> >>> R-package-devel at r-project.org mailing list
+> >>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >>>
+> >>
+> >>
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >
+
+	[[alternative HTML version deleted]]
+
+
+From vo|ody@ @end|ng |rom m|nd@pr|ng@com  Fri Jul 19 07:17:44 2024
+From: vo|ody@ @end|ng |rom m|nd@pr|ng@com (Vladimir Dergachev)
+Date: Fri, 19 Jul 2024 01:17:44 -0400 (EDT)
+Subject: [R-pkg-devel] How to get arbitrary precise inputs from R for an
+ Rcpp package?
+In-Reply-To: <CAO5FMCytebCchErYfTwoRGqda+5GkkfGQpWbLDakFTeHHY8zeA@mail.gmail.com>
+References: <CAO5FMCwOm=0UmSAhJeqbTtg9PasHjNrmtGMQO2DAupEL1ewinQ@mail.gmail.com>
+ <26265.38743.665001.870966@rob.eddelbuettel.com>
+ <CAO5FMCyDgtQ0N9yN80VtLaW_7cWcgYiA3GiHm4F-hEdWd_duyQ@mail.gmail.com>
+ <531C6F01-064D-4647-9951-FB493959FE82@R-project.org>
+ <CAO5FMCwG80c8ZRywt_=8XusfpsZOuc=fh=A4ek1KOV-X65i4dA@mail.gmail.com>
+ <alpine.DEB.2.22.394.2407182214170.11778@iridium>
+ <CAO5FMCytebCchErYfTwoRGqda+5GkkfGQpWbLDakFTeHHY8zeA@mail.gmail.com>
+Message-ID: <alpine.DEB.2.22.394.2407190111100.11778@iridium>
+
+
+
+On Fri, 19 Jul 2024, Khue Tran wrote:
+
+> I will need to run eigen() on a symmetric matrix, but I want to get arbitrary precise eigenvalues since we will need those eigenvalues for our further calculations. Does that make sense?
+
+For a symmetric matrix there is a nice algorithm that is simple to 
+implement and that converges fairly fast.
+
+What you do is find the largest in absolute value off-diagonal entry.
+
+The you construct 2x2 rotation matrix that zeros it: A --> R A R^-1, where 
+R is a rotation matrix. The rotation matrix has mostly 1's on the main 
+diagonal except for rows and columns of the large off-diagonal entry.
+
+Repeat the procedure until the off-diagonal entries are as small as you 
+want.
+
+Because you are picking the largest value every time the algorithm is 
+fairly stable.
+
+The only disadvantage is that this algorithm plays havoc with sparse 
+matrices by creating too many new non-zero entries, so for those you need 
+to use a different method.
+
+best
+
+Vladimir Dergachev
+
+> Best,
+> Khue Tran
+> 
+> On Fri, Jul 19, 2024 at 12:14?PM Vladimir Dergachev <volodya at mindspring.com> wrote:
+>
+>       Do you need to run eigen() on an arbitrary matrix or symmetric one ?
+>
+>       best
+>
+>       Vladimir Dergachev
+>
+>       On Fri, 19 Jul 2024, Khue Tran wrote:
+>
+>       > Thank you Simon! This is very helpful! Regarding eigen, I found in the
+>       > Boost library the following example for arbitrary precision matrix solver:
+>       > https://github.com/boostorg/multiprecision/blob/develop/example/eigen_example.cpp.
+>       > I am not sure if the precision is fully preserved throughout the process,
+>       > but this example motivated me to try coding with the Boost library.
+>       >
+>       > Best,
+>       > Khue Tran
+>       >
+>       > On Fri, Jul 19, 2024 at 9:50?AM Simon Urbanek <simon.urbanek at r-project.org>
+>       > wrote:
+>       >
+>       >> Khue,
+>       >>
+>       >>
+>       >>> On 19/07/2024, at 11:32 AM, Khue Tran <tran3 at kenyon.edu> wrote:
+>       >>>
+>       >>> Thank you for the suggestion, Denes, Vladimir, and Dirk. I have indeed
+>       >>> looked into Rmpfr and while the package can interface GNU MPFR with R
+>       >>> smoothly, as of right now, it doesn't have all the functions I need (ie.
+>       >>> eigen for mpfr class) and when one input decimals, say 0.1 to mpfr(), the
+>       >>> precision is still limited by R's default double precision.
+>       >>>
+>       >>
+>       >>
+>       >> Don't use doubles, use decimal fractions:
+>       >>
+>       >>> Rmpfr::mpfr(gmp::as.bigq(1,10), 512)
+>       >> 1 'mpfr' number of precision? 512? ?bits
+>       >> [1]
+>       >> 0.100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002
+>       >>
+>       >> As for eigen() - I'm not aware of an arbitrary precision solver, so I
+>       >> think the inputs are your least problem - most tools out there use LAPACK
+>       >> which doesn't support arbitrary precision so your input precision is likely
+>       >> irrelevant in this case.
+>       >>
+>       >> Cheers,
+>       >> Simon
+>       >>
+>       >>
+>       >>
+>       >>> Thank you for the note, Dirk. I will keep in mind to send any future
+>       >>> questions regarding Rcpp to the Rcpp-devel mailing list. I understand
+>       >> that
+>       >>> the type used in the Boost library for precision is not one of the types
+>       >>> supported by SEXP, so it will be more complicated to map between the cpp
+>       >>> codes and R. Given Rmpfr doesn't provide all necessary mpfr calculations
+>       >>> (and embarking on interfacing Eigen with Rmpfr is not a small task), does
+>       >>> taking input as strings seem like the best option for me to get precise
+>       >>> inputs?
+>       >>>
+>       >>> Sincerely,
+>       >>> Khue
+>       >>>
+>       >>> On Fri, Jul 19, 2024 at 8:29?AM Dirk Eddelbuettel <edd at debian.org>
+>       >> wrote:
+>       >>>
+>       >>>>
+>       >>>> Hi Khue,
+>       >>>>
+>       >>>> On 19 July 2024 at 06:29, Khue Tran wrote:
+>       >>>> | I am currently trying to get precise inputs by taking strings instead
+>       >> of
+>       >>>> | numbers then writing a function to decompose the string into a
+>       >> rational
+>       >>>> | with the denominator in the form of 10^(-n) where n is the number of
+>       >>>> | decimal places. I am not sure if this is the only way or if there is a
+>       >>>> | better method out there that I do not know of, so if you can think of
+>       >> a
+>       >>>> | general way to get precise inputs from users, it will be greatly
+>       >>>> | appreciated!
+>       >>>>
+>       >>>> That is one possible way. The constraint really is that the .Call()
+>       >>>> interface
+>       >>>> we use for all [1] extensions to R only knowns SEXP types which map to a
+>       >>>> small set of known types: double, int, string, bool, ...? The type used
+>       >> by
+>       >>>> the Boost library you are using is not among them, so you have to add
+>       >> code
+>       >>>> to
+>       >>>> map back and forth. Rcpp makes that easier; it is still far from
+>       >> automatic.
+>       >>>>
+>       >>>> R has packages such as Rmpfr interfacing GNU MPFR based on GMP. Maybe
+>       >> that
+>       >>>> is
+>       >>>> good enough?? Also note that Rcpp has a dedicated (low volume and
+>       >> friendly)
+>       >>>> mailing list where questions such as this one may be better suited.
+>       >>>>
+>       >>>> Cheers, Dirk
+>       >>>>
+>       >>>> [1] A slight generalisation. There are others but they are less common /
+>       >>>> not
+>       >>>> recommended.
+>       >>>>
+>       >>>> --
+>       >>>> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>       >>>>
+>       >>>
+>       >>>? ? ? ?[[alternative HTML version deleted]]
+>       >>>
+>       >>> ______________________________________________
+>       >>> R-package-devel at r-project.org mailing list
+>       >>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>       >>>
+>       >>
+>       >>
+>       >
+>       >? ? ? ?[[alternative HTML version deleted]]
+>       >
+>       > ______________________________________________
+>       > R-package-devel at r-project.org mailing list
+>       > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>       >
+> 
+> 
+>
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Fri Jul 19 10:18:27 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Fri, 19 Jul 2024 10:18:27 +0200
+Subject: [R-pkg-devel] Is winbuilder "offline"?
+In-Reply-To: <20240719104555.56372728@elderly-dell>
+References: <20240719104555.56372728@elderly-dell>
+Message-ID: <27902d41-bf5e-46c6-9c89-61c0837ececc@statistik.tu-dortmund.de>
+
+Not that I know, which queue do you mean?
+
+Best,
+Uwe
+
+On 19.07.2024 00:45, Rolf Turner wrote:
+> 
+> I submitted a package to winbuilder, yesterday.  Twice.  No response of
+> any sort.  Is the system down, for some reason?  Anyone know?  Ta.
+> 
+> cheers,
+> 
+> Rolf Turner
+> 
+
+From m@rc_@chw@rtz @end|ng |rom me@com  Fri Jul 19 16:49:31 2024
+From: m@rc_@chw@rtz @end|ng |rom me@com (Marc Schwartz)
+Date: Fri, 19 Jul 2024 10:49:31 -0400
+Subject: [R-pkg-devel] RTools 4.x Perl Incompatibility with WriteXLS CRAN
+ Package
+Message-ID: <16CE0E19-EA42-40EA-90CF-D733375FC203@me.com>
+
+Hi All,
+
+I recently became aware of what appears to be some kind of incompatibility between the Perl distribution that is included in the RTools 4.4 distribution and my WriteXLS package on CRAN, running R 4.4.1. As far as I can tell, since the vast majority of the users of my package, which requires Perl, are running standard Perl installations, that is native OS, Strawberry Perl or Active State Perl, this appears to be something of a unique issue. 
+
+It is not clear to me what the root cause of the problem is, and whether it is the RTools Perl binary itself and/or any of the other related components that are included in RTools, if this is specific to RTools, or may be an upstream issue from MSYS2. Thus, before I think about going down the rabbit hole, I am wondering if anyone has any intuitive guidance on this issue.
+
+I was also a bit confused by this, as my aging memory recalled that the old Vanilla Perl had been removed from RTools many years ago circa R 2.x.y, so presume that there was motivation to reintroduce Perl in recent versions of RTools.
+
+I have been able to largely replicate the problem on my MacBook Pro, running a Windows 11 VM under Parallels on macOS 14.5, and confirmed a workaround using a current Strawberry Perl installation for Windows on the same system. 
+
+The initial report was from a user running Windows 10 on a native Intel based PC, with R 4.4.1 and RTools 4.4 installed, and they reported the following error:
+
+> WriteXLS::WriteXLS(iris, "test.xlsx", verbose=T)
+Creating Temporary Directory for CSV Files:  C:\Users\Kleinbub\AppData\Local\Temp\RtmpuO4911/WriteXLS 
+
+Creating CSV File: 1.csv
+Creating SheetNames.txt
+
+perl: warning: Setting locale failed.
+perl: warning: Please check that your locale settings:
+	LC_ALL = (unset),
+	LANG = "en"
+    are supported and installed on your system.
+perl: warning: Falling back to the standard locale ("C").
+. No such file or directory\Kleinbub\AppData\Local\Temp\RtmpuO4911/WriteXLS/1.csv
+Creating Excel File: C:\Users\Kleinbub\Documents\test.xlsx
+
+Reading: C:\Users\Kleinbub\AppData\Local\Temp\RtmpuO4911/WriteXLS/1.csv
+The Perl script 'WriteXLSX.pl' failed to run successfully.
+Cleaning Up Temporary Files and Directory
+
+
+The basic workflow steps are that my R code wrapper function writes a CSV file containing the 'iris' dataframe into a temporary directory, my Perl script then reads in and parses that CSV file. and creates the Excel file using the relevant Perl packages included. The 'verbose = TRUE' setting outputs some additional diagnostic messages.
+
+Note above that there are some warnings regarding locale settings from Perl, which I could not replicate on my Windows VM, albeit I can replicate the key error and failure of the Perl script as indicated.
+
+If I run the same test code on my Windows 11 VM system, I get the following, including the initial testing function, which points to Perl in RTools:
+
+> testPerl()
+A system perl installation found in C:\rtools44\usr\bin\perl.exe
+
+The perl modules included with WriteXLS are located in C:/Users/marcschwartz/AppData/Local/R/win-library/4.4/WriteXLS/Perl
+
+All required Perl modules were found.
+
+> WriteXLS(iris, "test.xlsx")
+ERROR: cannot open C:\Users\MARCSC~1\AppData\Local\Temp\RtmpmKwGGX/WriteXLS/1.csv
+. No such file or directory
+The Perl script 'WriteXLSX.pl' failed to run successfully.
+
+
+Note that I do not get the locale warnings, and this does not appear to be a permissions issue, but the Perl script still fails after indicating the inability to find the CSV file in the temporary directory.
+
+With a Strawberry Perl installation in place, and explicitly pointing WriteXLS() to that Perl binary, I get a successful creation of the Excel file:
+
+> WriteXLS(iris, "test.xlsx", perl = "C:\\Strawberry\\perl\\bin\\perl")
+> 
+> WriteXLS(iris, "test.xlsx", perl = "C:/Strawberry/perl/bin/perl")
+>
+
+
+Thus, I am confused as to the source of the incompatibility, and may be missing some nuances regarding the Perl binary and related components in RTools.
+
+Any thoughts/pointers would be appreciated. 
+
+Thank you,
+
+Marc Schwartz
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Jul 19 17:18:24 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 19 Jul 2024 18:18:24 +0300
+Subject: [R-pkg-devel] 
+ RTools 4.x Perl Incompatibility with WriteXLS CRAN Package
+In-Reply-To: <16CE0E19-EA42-40EA-90CF-D733375FC203@me.com>
+References: <16CE0E19-EA42-40EA-90CF-D733375FC203@me.com>
+Message-ID: <20240719181824.2d9bfb08@arachnoid>
+
+Dear Marc Schwartz,
+
+? Fri, 19 Jul 2024 10:49:31 -0400
+Marc Schwartz <marc_schwartz at me.com> ?????:
+
+> . No such file or
+> directory\Kleinbub\AppData\Local\Temp\RtmpuO4911/WriteXLS/1.csv
+
+This looks like an extra carriage return has messed up the output.
+By debugging WriteXLS and running the command line manually with perl
+-d, I can confirm this:
+
+main::(C:/Users/redacted/AppData/Local/R/win-library/4.5/WriteXLS/Perl/WriteXLS.pl:135):
+135:    my @FileNames = "";
+  DB<3>
+main::(C:/Users/redacted/AppData/Local/R/win-library/4.5/WriteXLS/Perl/WriteXLS.pl:136):
+136:    open (DFHANDLE, $Encode, "$CSVPath/FileNames.txt") || die
+        "ERROR: cannot open $CSVPath/FileNames.txt. $!\n";
+  DB<3>
+main::(C:/Users/redacted/AppData/Local/R/win-library/4.5/WriteXLS/Perl/WriteXLS.pl:137):
+137:    @FileNames = <DFHANDLE>;
+  DB<3>
+main::(C:/Users/redacted/AppData/Local/R/win-library/4.5/WriteXLS/Perl/WriteXLS.pl:138):
+138:    close DFHANDLE;
+  DB<3> x \@FileNames
+0  ARRAY(0xa005e3c08)
+   0  "C:\\rtools44\\tmp\\Rtmpg9BxFb/WriteXLS/1.csv\cM\cJ"
+  DB<4> n
+main::(C:/Users/redacted/AppData/Local/R/win-library/4.5/WriteXLS/Perl/WriteXLS.pl:141):
+141:    chomp(@FileNames);
+  DB<4> n
+main::(C:/Users/redacted/AppData/Local/R/win-library/4.5/WriteXLS/Perl/WriteXLS.pl:302):
+302:    foreach my $FileName (@FileNames) {
+  DB<4> x \@FileNames
+0  ARRAY(0xa005e3c08)
+   0  "C:\\rtools44\\tmp\\Rtmpg9BxFb/WriteXLS/1.csv\cM"
+
+Since the R code always uses a text-mode connection with WriteLines,
+it always results in CR-LF line endings on Windows. The difference must
+be in the default PerlIO layers applied by Strawberry Perl by default.
+MSYS is based on Cygwin, which does its best to pretend to be an
+Unix-like environment, so it's reasonable for an MSYS build of Perl to
+default to LF line endings. But that means special-casing the MSYS
+build of Perl:
+
+  DB<5> x $Encode
+0  '<:encoding(utf8)'
+  DB<6> x $^O
+0  'msys'
+
+...and adding $Encode .= ":crlf" if $^O eq 'msys'; somewhere.
+
+-- 
+Best regards,
+Ivan
+
+
+From m@rc_@chw@rtz @end|ng |rom me@com  Fri Jul 19 18:06:02 2024
+From: m@rc_@chw@rtz @end|ng |rom me@com (Marc Schwartz)
+Date: Fri, 19 Jul 2024 12:06:02 -0400
+Subject: [R-pkg-devel] 
+ RTools 4.x Perl Incompatibility with WriteXLS CRAN Package
+In-Reply-To: <20240719181824.2d9bfb08@arachnoid>
+References: <16CE0E19-EA42-40EA-90CF-D733375FC203@me.com>
+ <20240719181824.2d9bfb08@arachnoid>
+Message-ID: <4468F3A0-9EDE-4D6F-B104-03176D0EE614@me.com>
+
+Hi Ivan,
+
+Thanks kindly for your expedient reply and pointer to the LF/CRLF issue. Not sure that I would have found that issue so quickly, so was hoping for some intuition here, as you have provided.
+
+Thanks!
+
+Regards,
+
+Marc
+
+
+?-----Original Message-----
+From: Ivan Krylov <ikrylov at disroot.org <mailto:ikrylov at disroot.org>>
+Date: Friday, July 19, 2024 at 11:18 AM
+To: Marc Schwartz <marc_schwartz at me.com <mailto:marc_schwartz at me.com>>
+Cc: <r-package-devel at r-project.org <mailto:r-package-devel at r-project.org>>
+Subject: Re: [R-pkg-devel] RTools 4.x Perl Incompatibility with WriteXLS CRAN Package
+
+
+Dear Marc Schwartz,
+
+
+? Fri, 19 Jul 2024 10:49:31 -0400
+Marc Schwartz <marc_schwartz at me.com <mailto:marc_schwartz at me.com>> ?????:
+
+
+> . No such file or
+> directory\Kleinbub\AppData\Local\Temp\RtmpuO4911/WriteXLS/1.csv
+
+
+This looks like an extra carriage return has messed up the output.
+By debugging WriteXLS and running the command line manually with perl
+-d, I can confirm this:
+
+
+main::(C:/Users/redacted/AppData/Local/R/win-library/4.5/WriteXLS/Perl/WriteXLS.pl:135):
+135: my @FileNames = "";
+DB<3>
+main::(C:/Users/redacted/AppData/Local/R/win-library/4.5/WriteXLS/Perl/WriteXLS.pl:136):
+136: open (DFHANDLE, $Encode, "$CSVPath/FileNames.txt") || die
+"ERROR: cannot open $CSVPath/FileNames.txt. $!\n";
+DB<3>
+main::(C:/Users/redacted/AppData/Local/R/win-library/4.5/WriteXLS/Perl/WriteXLS.pl:137):
+137: @FileNames = <DFHANDLE>;
+DB<3>
+main::(C:/Users/redacted/AppData/Local/R/win-library/4.5/WriteXLS/Perl/WriteXLS.pl:138):
+138: close DFHANDLE;
+DB<3> x \@FileNames
+0 ARRAY(0xa005e3c08)
+0 "C:\\rtools44\\tmp\\Rtmpg9BxFb/WriteXLS/1.csv\cM\cJ"
+DB<4> n
+main::(C:/Users/redacted/AppData/Local/R/win-library/4.5/WriteXLS/Perl/WriteXLS.pl:141):
+141: chomp(@FileNames);
+DB<4> n
+main::(C:/Users/redacted/AppData/Local/R/win-library/4.5/WriteXLS/Perl/WriteXLS.pl:302):
+302: foreach my $FileName (@FileNames) {
+DB<4> x \@FileNames
+0 ARRAY(0xa005e3c08)
+0 "C:\\rtools44\\tmp\\Rtmpg9BxFb/WriteXLS/1.csv\cM"
+
+
+Since the R code always uses a text-mode connection with WriteLines,
+it always results in CR-LF line endings on Windows. The difference must
+be in the default PerlIO layers applied by Strawberry Perl by default.
+MSYS is based on Cygwin, which does its best to pretend to be an
+Unix-like environment, so it's reasonable for an MSYS build of Perl to
+default to LF line endings. But that means special-casing the MSYS
+build of Perl:
+
+
+DB<5> x $Encode
+0 '<:encoding(utf8)'
+DB<6> x $^O
+0 'msys'
+
+
+...and adding $Encode .= ":crlf" if $^O eq 'msys'; somewhere.
+
+
+-- 
+Best regards,
+Ivan
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Fri Jul 19 18:37:38 2024
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Fri, 19 Jul 2024 18:37:38 +0200
+Subject: [R-pkg-devel] How to get arbitrary precise inputs from R for an
+ Rcpp package?
+In-Reply-To: <CAO5FMCyDgtQ0N9yN80VtLaW_7cWcgYiA3GiHm4F-hEdWd_duyQ@mail.gmail.com>
+References: <CAO5FMCwOm=0UmSAhJeqbTtg9PasHjNrmtGMQO2DAupEL1ewinQ@mail.gmail.com>
+ <26265.38743.665001.870966@rob.eddelbuettel.com>
+ <CAO5FMCyDgtQ0N9yN80VtLaW_7cWcgYiA3GiHm4F-hEdWd_duyQ@mail.gmail.com>
+Message-ID: <26266.38482.694054.230749@stat.math.ethz.ch>
+
+>>>>> Khue Tran 
+>>>>>     on Fri, 19 Jul 2024 09:32:14 +1000 writes:
+
+    > Thank you for the suggestion, Denes, Vladimir, and Dirk. I have indeed
+    > looked into Rmpfr and while the package can interface GNU MPFR with R
+    > smoothly, as of right now, it doesn't have all the functions I need (ie.
+    > eigen for mpfr class) and when one input decimals, say 0.1 to mpfr(), the
+    > precision is still limited by R's default double precision.
+
+Well, it depends *how* you input 0.1:
+the double precision representation of 0.1 is *NOT* the same as
+mathematically 1/10 and it cannot be.
+
+What you really want is either
+
+mpfr(0.1, 100) # 100 as an example ... to get a more precise
+	       # version of the '0.1' (double prec).
+
+## *or*, e.g.,
+
+1 / mpfr(10, 100) # which is a more accurate approximation to
+                  # the mathematical fraction 1/10
+
+## if you really want that, I'd also recommend truly exact fractions
+
+require(gmp)
+as.bigq(1, 10) # or equivalently
+
+1 / as.bigz(10) # which automatically makes an exact fraction
+
+    > Thank you for the note, Dirk. I will keep in mind to send any future
+    > questions regarding Rcpp to the Rcpp-devel mailing list. I understand that
+    > the type used in the Boost library for precision is not one of the types
+    > supported by SEXP, so it will be more complicated to map between the cpp
+    > codes and R. Given Rmpfr doesn't provide all necessary mpfr calculations
+    > (and embarking on interfacing Eigen with Rmpfr is not a small task), does
+    > taking input as strings seem like the best option for me to get precise
+    > inputs?
+
+almost surely (that's also what you can do in Rmpfr)..
+
+Martin
+
+
+    > Sincerely,
+    > Khue
+
+    > On Fri, Jul 19, 2024 at 8:29?AM Dirk Eddelbuettel <edd at debian.org> wrote:
+
+    >> 
+    >> Hi Khue,
+    >> 
+    >> On 19 July 2024 at 06:29, Khue Tran wrote:
+    >> | I am currently trying to get precise inputs by taking strings instead of
+    >> | numbers then writing a function to decompose the string into a rational
+    >> | with the denominator in the form of 10^(-n) where n is the number of
+    >> | decimal places. I am not sure if this is the only way or if there is a
+    >> | better method out there that I do not know of, so if you can think of a
+    >> | general way to get precise inputs from users, it will be greatly
+    >> | appreciated!
+    >> 
+    >> That is one possible way. The constraint really is that the .Call()
+    >> interface
+    >> we use for all [1] extensions to R only knowns SEXP types which map to a
+    >> small set of known types: double, int, string, bool, ...  The type used by
+    >> the Boost library you are using is not among them, so you have to add code
+    >> to
+    >> map back and forth. Rcpp makes that easier; it is still far from automatic.
+    >> 
+    >> R has packages such as Rmpfr interfacing GNU MPFR based on GMP. Maybe that
+    >> is
+    >> good enough?  Also note that Rcpp has a dedicated (low volume and friendly)
+    >> mailing list where questions such as this one may be better suited.
+    >> 
+    >> Cheers, Dirk
+    >> 
+    >> [1] A slight generalisation. There are others but they are less common /
+    >> not
+    >> recommended.
+    >> 
+    >> --
+    >> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+    >> 
+
+    > [[alternative HTML version deleted]]
+
+    > ______________________________________________
+    > R-package-devel at r-project.org mailing list
+    > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Jul 19 18:52:43 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 19 Jul 2024 12:52:43 -0400
+Subject: [R-pkg-devel] How to get arbitrary precise inputs from R for an
+ Rcpp package?
+In-Reply-To: <26266.38482.694054.230749@stat.math.ethz.ch>
+References: <CAO5FMCwOm=0UmSAhJeqbTtg9PasHjNrmtGMQO2DAupEL1ewinQ@mail.gmail.com>
+ <26265.38743.665001.870966@rob.eddelbuettel.com>
+ <CAO5FMCyDgtQ0N9yN80VtLaW_7cWcgYiA3GiHm4F-hEdWd_duyQ@mail.gmail.com>
+ <26266.38482.694054.230749@stat.math.ethz.ch>
+Message-ID: <d9f83e1b-d74e-4943-842f-d0ff090a90dc@gmail.com>
+
+On 2024-07-19 12:37 p.m., Martin Maechler wrote:
+>>>>>> Khue Tran
+>>>>>>      on Fri, 19 Jul 2024 09:32:14 +1000 writes:
+> 
+>      > Thank you for the suggestion, Denes, Vladimir, and Dirk. I have indeed
+>      > looked into Rmpfr and while the package can interface GNU MPFR with R
+>      > smoothly, as of right now, it doesn't have all the functions I need (ie.
+>      > eigen for mpfr class) and when one input decimals, say 0.1 to mpfr(), the
+>      > precision is still limited by R's default double precision.
+> 
+> Well, it depends *how* you input 0.1:
+> the double precision representation of 0.1 is *NOT* the same as
+> mathematically 1/10 and it cannot be.
+> 
+> What you really want is either
+> 
+> mpfr(0.1, 100) # 100 as an example ... to get a more precise
+> 	       # version of the '0.1' (double prec).
+> 
+> ## *or*, e.g.,
+> 
+> 1 / mpfr(10, 100) # which is a more accurate approximation to
+>                    # the mathematical fraction 1/10
+
+It seems like mpfr("0.1", 100) works pretty well.  I'd assume it does 
+the parsing, rather than parse 0.1 to the closest double, and convert that.
+
+Duncan Murdoch
+
+
+> 
+> ## if you really want that, I'd also recommend truly exact fractions
+> 
+> require(gmp)
+> as.bigq(1, 10) # or equivalently
+> 
+> 1 / as.bigz(10) # which automatically makes an exact fraction
+> 
+>      > Thank you for the note, Dirk. I will keep in mind to send any future
+>      > questions regarding Rcpp to the Rcpp-devel mailing list. I understand that
+>      > the type used in the Boost library for precision is not one of the types
+>      > supported by SEXP, so it will be more complicated to map between the cpp
+>      > codes and R. Given Rmpfr doesn't provide all necessary mpfr calculations
+>      > (and embarking on interfacing Eigen with Rmpfr is not a small task), does
+>      > taking input as strings seem like the best option for me to get precise
+>      > inputs?
+> 
+> almost surely (that's also what you can do in Rmpfr)..
+> 
+> Martin
+> 
+> 
+>      > Sincerely,
+>      > Khue
+> 
+>      > On Fri, Jul 19, 2024 at 8:29?AM Dirk Eddelbuettel <edd at debian.org> wrote:
+> 
+>      >>
+>      >> Hi Khue,
+>      >>
+>      >> On 19 July 2024 at 06:29, Khue Tran wrote:
+>      >> | I am currently trying to get precise inputs by taking strings instead of
+>      >> | numbers then writing a function to decompose the string into a rational
+>      >> | with the denominator in the form of 10^(-n) where n is the number of
+>      >> | decimal places. I am not sure if this is the only way or if there is a
+>      >> | better method out there that I do not know of, so if you can think of a
+>      >> | general way to get precise inputs from users, it will be greatly
+>      >> | appreciated!
+>      >>
+>      >> That is one possible way. The constraint really is that the .Call()
+>      >> interface
+>      >> we use for all [1] extensions to R only knowns SEXP types which map to a
+>      >> small set of known types: double, int, string, bool, ...  The type used by
+>      >> the Boost library you are using is not among them, so you have to add code
+>      >> to
+>      >> map back and forth. Rcpp makes that easier; it is still far from automatic.
+>      >>
+>      >> R has packages such as Rmpfr interfacing GNU MPFR based on GMP. Maybe that
+>      >> is
+>      >> good enough?  Also note that Rcpp has a dedicated (low volume and friendly)
+>      >> mailing list where questions such as this one may be better suited.
+>      >>
+>      >> Cheers, Dirk
+>      >>
+>      >> [1] A slight generalisation. There are others but they are less common /
+>      >> not
+>      >> recommended.
+>      >>
+>      >> --
+>      >> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>      >>
+> 
+>      > [[alternative HTML version deleted]]
+> 
+>      > ______________________________________________
+>      > R-package-devel at r-project.org mailing list
+>      > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Jul 19 20:40:20 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 19 Jul 2024 14:40:20 -0400
+Subject: [R-pkg-devel] How to get arbitrary precise inputs from R for an
+ Rcpp package?
+In-Reply-To: <CAO5FMCwOm=0UmSAhJeqbTtg9PasHjNrmtGMQO2DAupEL1ewinQ@mail.gmail.com>
+References: <CAO5FMCwOm=0UmSAhJeqbTtg9PasHjNrmtGMQO2DAupEL1ewinQ@mail.gmail.com>
+Message-ID: <ea0d9f72-3a21-41a7-ac0e-1263b41691bb@gmail.com>
+
+Just for your info:
+
+ > exp(mpfr("0.1", 152))
+1 'mpfr' number of precision  152   bits
+[1] 1.1051709180756476248117078264902466682245471948
+
+So it looks like your approach of parsing the numbers yourself makes sense.
+
+You can find the R parser here: 
+https://github.com/wch/r-source/blob/b64422334a8269535718efd9a1f969c94b103056/src/main/gram.y#L2577-L2705
+
+I don't know how much of that you want to replicate, but I suppose 
+handling the weird cases (e.g. 0x1p1) the way R does will make it easier 
+for your users.
+
+Duncan Murdoch
+
+On 2024-07-18 4:29 p.m., Khue Tran wrote:
+> Hi,
+> 
+> I am trying to create an Rcpp package that involves arbitrary precise
+> calculations. The function to calculate e^x below with 100 digits precision
+> works well with integers, but for decimals, since the input is a double,
+> the result differs a lot from the arbitrary precise result I got on
+> Wolfram.
+> 
+> I understand the results are different since 0.1 cannot be represented
+> precisely in binary with limited bits. It is possible to enter 1 then 10
+> and get the multiprecision division of these two integers to attain a more
+> precise 0.1 in C++, but this method won't work on a large scale. Thus, I am
+> looking for a general solution to get more precise inputs?
+> 
+> The dummy example is as follows:
+> 
+> library(Rcpp)
+> 
+> sourceCpp(code = '
+> #include <boost/multiprecision/cpp_dec_float.hpp>
+> #include <boost/math/special_functions/expm1.hpp>
+> 
+> // [[Rcpp::depends(BH)]]
+> // [[Rcpp::export]]
+> std::string calculateExp100(double x) {
+>    boost::multiprecision::cpp_dec_float_100 bx = x;
+>    boost::multiprecision::cpp_dec_float_100 expx = exp(bx);
+>    return expx.str(50);
+> }
+> ')
+> 
+> [1] represents the R output and [W] for Wolfram results
+> 
+> calculateExp100(1) # Agrees with Wolfram answer all the way to the last
+> digit
+> [1] "2.7182818284590452353602874713526624977572470937"
+> [W] 2.7182818284590452353602874713526624977572470936999595749669676277...
+> 
+> calculateExp100(0.1) # Differs pretty significantly from Wolfram's answer
+> [1] "1.1051709180756476309466388234587796577416634163742"
+> [W] 1.1051709180756476248117078264902466682245471947375187187928632894...
+> 
+> I am currently trying to get precise inputs by taking strings instead of
+> numbers then writing a function to decompose the string into a rational
+> with the denominator in the form of 10^(-n) where n is the number of
+> decimal places. I am not sure if this is the only way or if there is a
+> better method out there that I do not know of, so if you can think of a
+> general way to get precise inputs from users, it will be greatly
+> appreciated!
+> 
+> Thank you!
+> Best,
+> Khue Tran
+>
+
+
+From ro||turner @end|ng |rom po@teo@net  Sat Jul 20 01:52:55 2024
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Fri, 19 Jul 2024 23:52:55 +0000
+Subject: [R-pkg-devel] Is winbuilder "offline"?
+In-Reply-To: <27902d41-bf5e-46c6-9c89-61c0837ececc@statistik.tu-dortmund.de>
+References: <20240719104555.56372728@elderly-dell>
+ <27902d41-bf5e-46c6-9c89-61c0837ececc@statistik.tu-dortmund.de>
+Message-ID: <20240720115255.3ba90495@elderly-dell>
+
+
+On Fri, 19 Jul 2024 10:18:27 +0200
+Uwe Ligges <ligges at statistik.tu-dortmund.de> wrote:
+
+> Not that I know, which queue do you mean?
+
+Apologies for my ignorance but I don't understand the question.  I did
+not choose a "queue".  I simply (as I have always done in the past)
+pointed my browser at https://win-builder.r-project.org/ .
+
+I then clicked on "upload page" which took me
+to https://win-builder.r-project.org/upload.aspx .  I then clicked on
+"Browse" under "R-release", chose the file to upload
+(kanova_0.1-4.tar.gz) and clicked on "Upload File".   There were no
+indications of any problems.  I waited for an email from winbuilder,
+but this never came.
+
+What am I missing?
+
+cheers,
+
+Rolf
+
+P.S. Is "R-release" the queue in question?
+
+R.
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+
