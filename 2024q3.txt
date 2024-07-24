@@ -5387,3 +5387,125 @@ wrote:
 	[[alternative HTML version deleted]]
 
 
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Tue Jul 23 18:19:59 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Tue, 23 Jul 2024 12:19:59 -0400
+Subject: [R-pkg-devel] MSRV on Fedora
+Message-ID: <CAL3ufU+th=_fS4Wkh7FDSfK_V1d_8KaRjZj4HC_1RoUw55WU6Q@mail.gmail.com>
+
+Hi all!
+
+I have 2 errors related to minimum supported rust version (MSRV) on fedora
+https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-fedora-clang/rsgeo-00install.html
+that I do not know how to resolve.
+
+The package {rsgeo} has a dependency on the rust crate geo which itself has
+a dependency on geographiclib-rs which has an MSRV of 1.70 whereas the CRAN
+fedora machines are 1.69.
+
+As such, I cannot manage the MSRV of the package's dependencies.
+
+As an alternative, can I indicate in my DESCRIPTION that the package is not
+supported on Fedora so that CRAN machines do not attempt to build it? I
+would be a-okay saying if you're using fedora you have to build from
+source.
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Jul 23 20:39:49 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 23 Jul 2024 14:39:49 -0400
+Subject: [R-pkg-devel] MSRV on Fedora
+In-Reply-To: <CAL3ufU+th=_fS4Wkh7FDSfK_V1d_8KaRjZj4HC_1RoUw55WU6Q@mail.gmail.com>
+References: <CAL3ufU+th=_fS4Wkh7FDSfK_V1d_8KaRjZj4HC_1RoUw55WU6Q@mail.gmail.com>
+Message-ID: <168b8263-1744-4462-bb97-ff1e93f5b5c8@gmail.com>
+
+I think saying that Fedora is not supported is the wrong solution, 
+unless you know that Rust version 1.70 will never be supported on 
+Fedora.  Isn't the appropriate solution to document the MSRV in the 
+SystemRequirements field of your DESCRIPTION file?
+
+When you submit, point out that you have done this in your submission 
+comments.  I don't think a Fedora failure will cause a submission to be 
+automatically rejected, but the CRAN reviewers may want to know if you 
+have dealt with the error, and you should explain that this is what 
+you've done.
+
+Duncan Murdoch
+
+
+
+On 2024-07-23 12:19 p.m., Josiah Parry wrote:
+> Hi all!
+> 
+> I have 2 errors related to minimum supported rust version (MSRV) on fedora
+> https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-fedora-clang/rsgeo-00install.html
+> that I do not know how to resolve.
+> 
+> The package {rsgeo} has a dependency on the rust crate geo which itself has
+> a dependency on geographiclib-rs which has an MSRV of 1.70 whereas the CRAN
+> fedora machines are 1.69.
+> 
+> As such, I cannot manage the MSRV of the package's dependencies.
+> 
+> As an alternative, can I indicate in my DESCRIPTION that the package is not
+> supported on Fedora so that CRAN machines do not attempt to build it? I
+> would be a-okay saying if you're using fedora you have to build from
+> source.
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From yut@n|@|n| @end|ng |rom gm@||@com  Wed Jul 24 01:26:24 2024
+From: yut@n|@|n| @end|ng |rom gm@||@com (Hiroaki Yutani)
+Date: Wed, 24 Jul 2024 08:26:24 +0900
+Subject: [R-pkg-devel] MSRV on Fedora
+In-Reply-To: <CAL3ufU+th=_fS4Wkh7FDSfK_V1d_8KaRjZj4HC_1RoUw55WU6Q@mail.gmail.com>
+References: <CAL3ufU+th=_fS4Wkh7FDSfK_V1d_8KaRjZj4HC_1RoUw55WU6Q@mail.gmail.com>
+Message-ID: <CALyqOb8Yen-hwBYofJZ_RZWG_tdUhg8v13+9rmdc28ZTOwcKQA@mail.gmail.com>
+
+> As such, I cannot manage the MSRV of the package's dependencies.
+
+It seems the reason for geographiclib-rs's MSRV is just that it uses
+std::sync::OnceLock. Maybe a possible workaround is to fork the repo and
+replace it with the once_cell crate? You should be able to override the
+dependency by [patch.crates-io] section.
+
+Best,
+Yutani
+
+2024?7?24?(?) 1:20 Josiah Parry <josiah.parry at gmail.com>:
+
+> Hi all!
+>
+> I have 2 errors related to minimum supported rust version (MSRV) on fedora
+>
+> https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-fedora-clang/rsgeo-00install.html
+> that I do not know how to resolve.
+>
+> The package {rsgeo} has a dependency on the rust crate geo which itself has
+> a dependency on geographiclib-rs which has an MSRV of 1.70 whereas the CRAN
+> fedora machines are 1.69.
+>
+> As such, I cannot manage the MSRV of the package's dependencies.
+>
+> As an alternative, can I indicate in my DESCRIPTION that the package is not
+> supported on Fedora so that CRAN machines do not attempt to build it? I
+> would be a-okay saying if you're using fedora you have to build from
+> source.
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
