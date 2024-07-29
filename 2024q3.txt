@@ -5509,3 +5509,348 @@ Yutani
 	[[alternative HTML version deleted]]
 
 
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Sun Jul 28 19:48:21 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Sun, 28 Jul 2024 13:48:21 -0400
+Subject: [R-pkg-devel] R CMD BATCH plot output
+Message-ID: <CAL3ufUKUvOPQGcqXj9vFJHpDF_zP1uLtr=7Jjr6DESoKu=vqgA@mail.gmail.com>
+
+Hey folks! I am working with R CMD BATCH and providing a providing a
+logfile output e.g.
+
+R CMD BATCH main.R 2024-07-28.log
+
+This creates the desired log file with the contents of stdout and stderr.
+
+However, if plots are generated in the process, the plots are stored in
+Rplots.pdf.
+
+Is there a way via command line arguments to change the name of the pdf
+output.
+
+There might be multiple runs of this script and it would be ideal to store
+the plot output independently.
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sun Jul 28 21:44:41 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sun, 28 Jul 2024 15:44:41 -0400
+Subject: [R-pkg-devel] R CMD BATCH plot output
+In-Reply-To: <CAL3ufUKUvOPQGcqXj9vFJHpDF_zP1uLtr=7Jjr6DESoKu=vqgA@mail.gmail.com>
+References: <CAL3ufUKUvOPQGcqXj9vFJHpDF_zP1uLtr=7Jjr6DESoKu=vqgA@mail.gmail.com>
+Message-ID: <e7a6d116-86d5-4ba4-b620-7f27f607ce44@gmail.com>
+
+On 2024-07-28 1:48 p.m., Josiah Parry wrote:
+> Hey folks! I am working with R CMD BATCH and providing a providing a
+> logfile output e.g.
+> 
+> R CMD BATCH main.R 2024-07-28.log
+> 
+> This creates the desired log file with the contents of stdout and stderr.
+> 
+> However, if plots are generated in the process, the plots are stored in
+> Rplots.pdf.
+> 
+> Is there a way via command line arguments to change the name of the pdf
+> output.
+> 
+> There might be multiple runs of this script and it would be ideal to store
+> the plot output independently.
+
+That's the default filename if you open a PDF device.  Open it 
+explicitly and you can specify any file you like.
+
+That is,
+
+   plot(rnorm(100))
+
+will call dev.new() which in a non-interactive session calls pdf().  If 
+you specify
+
+   dev.new(file = "something.pdf")
+   plot(rnorm(100))
+
+the "file" argument will be ignored in an interactive session, but will 
+be used in a non-interactive one.
+
+Duncan Murdoch
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Sun Jul 28 22:05:10 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Sun, 28 Jul 2024 16:05:10 -0400
+Subject: [R-pkg-devel] R CMD BATCH plot output
+In-Reply-To: <e7a6d116-86d5-4ba4-b620-7f27f607ce44@gmail.com>
+References: <CAL3ufUKUvOPQGcqXj9vFJHpDF_zP1uLtr=7Jjr6DESoKu=vqgA@mail.gmail.com>
+ <e7a6d116-86d5-4ba4-b620-7f27f607ce44@gmail.com>
+Message-ID: <CAL3ufU+LANOhv_V7S4OWUbFunjkB6OH4VUYmDWf143cPov6L9Q@mail.gmail.com>
+
+Thanks, Duncan!
+
+Is there a way to override this using the command line arguments?
+
+I'd like to be able to have a generalizable way to address this without
+having to modify R source code.
+
+My understanding is that when there is a plot output, R CMD BATCH uses the
+PDF device which is a fair default.
+
+However, there is not any use of `dev.new()` or `pdf()` called anywhere in
+the code.
+
+On Sun, Jul 28, 2024 at 3:44?PM Duncan Murdoch <murdoch.duncan at gmail.com>
+wrote:
+
+> On 2024-07-28 1:48 p.m., Josiah Parry wrote:
+> > Hey folks! I am working with R CMD BATCH and providing a providing a
+> > logfile output e.g.
+> >
+> > R CMD BATCH main.R 2024-07-28.log
+> >
+> > This creates the desired log file with the contents of stdout and stderr.
+> >
+> > However, if plots are generated in the process, the plots are stored in
+> > Rplots.pdf.
+> >
+> > Is there a way via command line arguments to change the name of the pdf
+> > output.
+> >
+> > There might be multiple runs of this script and it would be ideal to
+> store
+> > the plot output independently.
+>
+> That's the default filename if you open a PDF device.  Open it
+> explicitly and you can specify any file you like.
+>
+> That is,
+>
+>    plot(rnorm(100))
+>
+> will call dev.new() which in a non-interactive session calls pdf().  If
+> you specify
+>
+>    dev.new(file = "something.pdf")
+>    plot(rnorm(100))
+>
+> the "file" argument will be ignored in an interactive session, but will
+> be used in a non-interactive one.
+>
+> Duncan Murdoch
+>
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From bbo|ker @end|ng |rom gm@||@com  Sun Jul 28 22:14:58 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Sun, 28 Jul 2024 16:14:58 -0400
+Subject: [R-pkg-devel] R CMD BATCH plot output
+In-Reply-To: <CAL3ufU+LANOhv_V7S4OWUbFunjkB6OH4VUYmDWf143cPov6L9Q@mail.gmail.com>
+References: <CAL3ufUKUvOPQGcqXj9vFJHpDF_zP1uLtr=7Jjr6DESoKu=vqgA@mail.gmail.com>
+ <e7a6d116-86d5-4ba4-b620-7f27f607ce44@gmail.com>
+ <CAL3ufU+LANOhv_V7S4OWUbFunjkB6OH4VUYmDWf143cPov6L9Q@mail.gmail.com>
+Message-ID: <CABghstRRusWAjFjMhrZtVCeD24v7ppgKZ=0NFo7-9mruh5PohA@mail.gmail.com>
+
+Dirk Eddelbuettel would tell you to use his 'little r' script instead,
+though not sure if it has this particular flexibility. You could wrap R CMD
+BATCH in your own script that moved Rplots.pdf where you wanted it ...
+
+On Sun, Jul 28, 2024, 4:05 PM Josiah Parry <josiah.parry at gmail.com> wrote:
+
+> Thanks, Duncan!
+>
+> Is there a way to override this using the command line arguments?
+>
+> I'd like to be able to have a generalizable way to address this without
+> having to modify R source code.
+>
+> My understanding is that when there is a plot output, R CMD BATCH uses the
+> PDF device which is a fair default.
+>
+> However, there is not any use of `dev.new()` or `pdf()` called anywhere in
+> the code.
+>
+> On Sun, Jul 28, 2024 at 3:44?PM Duncan Murdoch <murdoch.duncan at gmail.com>
+> wrote:
+>
+> > On 2024-07-28 1:48 p.m., Josiah Parry wrote:
+> > > Hey folks! I am working with R CMD BATCH and providing a providing a
+> > > logfile output e.g.
+> > >
+> > > R CMD BATCH main.R 2024-07-28.log
+> > >
+> > > This creates the desired log file with the contents of stdout and
+> stderr.
+> > >
+> > > However, if plots are generated in the process, the plots are stored in
+> > > Rplots.pdf.
+> > >
+> > > Is there a way via command line arguments to change the name of the pdf
+> > > output.
+> > >
+> > > There might be multiple runs of this script and it would be ideal to
+> > store
+> > > the plot output independently.
+> >
+> > That's the default filename if you open a PDF device.  Open it
+> > explicitly and you can specify any file you like.
+> >
+> > That is,
+> >
+> >    plot(rnorm(100))
+> >
+> > will call dev.new() which in a non-interactive session calls pdf().  If
+> > you specify
+> >
+> >    dev.new(file = "something.pdf")
+> >    plot(rnorm(100))
+> >
+> > the "file" argument will be ignored in an interactive session, but will
+> > be used in a non-interactive one.
+> >
+> > Duncan Murdoch
+> >
+> >
+> >
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sun Jul 28 22:15:21 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sun, 28 Jul 2024 16:15:21 -0400
+Subject: [R-pkg-devel] R CMD BATCH plot output
+In-Reply-To: <CAL3ufU+LANOhv_V7S4OWUbFunjkB6OH4VUYmDWf143cPov6L9Q@mail.gmail.com>
+References: <CAL3ufUKUvOPQGcqXj9vFJHpDF_zP1uLtr=7Jjr6DESoKu=vqgA@mail.gmail.com>
+ <e7a6d116-86d5-4ba4-b620-7f27f607ce44@gmail.com>
+ <CAL3ufU+LANOhv_V7S4OWUbFunjkB6OH4VUYmDWf143cPov6L9Q@mail.gmail.com>
+Message-ID: <0ee31808-cbb1-4277-9bcd-d4a82018a4d7@gmail.com>
+
+On 2024-07-28 4:05 p.m., Josiah Parry wrote:
+> Thanks, Duncan!
+> 
+> Is there a way to override this using the command line arguments?
+
+I assume you could do that using commandArgs() in the dev.new() call, 
+but I don't use BATCH.
+> 
+> I'd like to be able to have a generalizable way to address this without 
+> having to modify R source code.
+
+Take a look at the source to dev.new().  It tries various things, maybe 
+one of those will suit you.
+> 
+> My understanding is that when there is a plot output, R CMD BATCH uses 
+> the PDF device which is a fair default.
+> 
+> However, there is not any use of `dev.new()` or `pdf()` called anywhere 
+> in the code.
+
+Not explicitly, but if you try to call a plot function with no device 
+active, the graphics system will call dev.new().
+
+Duncan Murdoch
+
+> 
+> On Sun, Jul 28, 2024 at 3:44?PM Duncan Murdoch <murdoch.duncan at gmail.com 
+> <mailto:murdoch.duncan at gmail.com>> wrote:
+> 
+>     On 2024-07-28 1:48 p.m., Josiah Parry wrote:
+>      > Hey folks! I am working with R CMD BATCH and providing a providing a
+>      > logfile output e.g.
+>      >
+>      > R CMD BATCH main.R 2024-07-28.log
+>      >
+>      > This creates the desired log file with the contents of stdout and
+>     stderr.
+>      >
+>      > However, if plots are generated in the process, the plots are
+>     stored in
+>      > Rplots.pdf.
+>      >
+>      > Is there a way via command line arguments to change the name of
+>     the pdf
+>      > output.
+>      >
+>      > There might be multiple runs of this script and it would be ideal
+>     to store
+>      > the plot output independently.
+> 
+>     That's the default filename if you open a PDF device.? Open it
+>     explicitly and you can specify any file you like.
+> 
+>     That is,
+> 
+>      ? ?plot(rnorm(100))
+> 
+>     will call dev.new() which in a non-interactive session calls pdf().? If
+>     you specify
+> 
+>      ? ?dev.new(file = "something.pdf")
+>      ? ?plot(rnorm(100))
+> 
+>     the "file" argument will be ignored in an interactive session, but will
+>     be used in a non-interactive one.
+> 
+>     Duncan Murdoch
+> 
+>
+
+
+From edd @end|ng |rom deb|@n@org  Sun Jul 28 22:27:33 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Sun, 28 Jul 2024 15:27:33 -0500
+Subject: [R-pkg-devel] R CMD BATCH plot output
+In-Reply-To: <e7a6d116-86d5-4ba4-b620-7f27f607ce44@gmail.com>
+References: <CAL3ufUKUvOPQGcqXj9vFJHpDF_zP1uLtr=7Jjr6DESoKu=vqgA@mail.gmail.com>
+ <e7a6d116-86d5-4ba4-b620-7f27f607ce44@gmail.com>
+Message-ID: <26278.43445.370820.622202@rob.eddelbuettel.com>
+
+
+On 28 July 2024 at 15:44, Duncan Murdoch wrote:
+| On 2024-07-28 1:48 p.m., Josiah Parry wrote:
+| > However, if plots are generated in the process, the plots are stored in
+| > Rplots.pdf.
+| > 
+| > Is there a way via command line arguments to change the name of the pdf
+| > output.
+| > 
+| > There might be multiple runs of this script and it would be ideal to store
+| > the plot output independently.
+| 
+| That's the default filename if you open a PDF device.  Open it
+
+It's the default (and fallback) device and filename you fail to specify
+something else. Ie 'Rscript -e "plot(1:10)"' will create it too.
+
+My preferred alternative is to wrap call to plot() with actual device create
+(something like 'if (!interactive()) pdf(my_filename, 8. 6)' with a
+corresponding 'if (!interactive()) dev.off()' to ensure the file finalised
+and close.
+
+If we cannot (or do not want to) modify the given main.R, I would suggest
+something along the lines of
+
+  Rscript -e 'pdf(myfilenamevar); source("main.R"); dev.off()' | tee 2024-07-28.log
+
+and Bob's your uncle now in terms of how you spec the filename.
+
+In short, I would let go of `R CMD BATCH` if it does not do what you want.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
