@@ -5854,3 +5854,122 @@ Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From |kry|ov @end|ng |rom d|@root@org  Mon Jul 29 12:02:27 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 29 Jul 2024 13:02:27 +0300
+Subject: [R-pkg-devel] R CMD BATCH plot output
+In-Reply-To: <26278.43445.370820.622202@rob.eddelbuettel.com>
+References: <CAL3ufUKUvOPQGcqXj9vFJHpDF_zP1uLtr=7Jjr6DESoKu=vqgA@mail.gmail.com>
+ <e7a6d116-86d5-4ba4-b620-7f27f607ce44@gmail.com>
+ <26278.43445.370820.622202@rob.eddelbuettel.com>
+Message-ID: <20240729130227.0548223b@arachnoid>
+
+On Sun, 28 Jul 2024 15:27:33 -0500
+Dirk Eddelbuettel <edd at debian.org> wrote:
+
+> If we cannot (or do not want to) modify the given main.R, I would
+> suggest something along the lines of
+> 
+>   Rscript -e 'pdf(myfilenamevar); source("main.R"); dev.off()' | tee
+> 2024-07-28.log
+
+Perhaps even options(device = \(file = myfilenamevar, ...) pdf(file =
+file, ...)) so that every plot would get the same treatment, though
+that requires re-implementing the dev.new() logic to guess an available
+file name. You can even misuse R_PROFILE_USER to inject the code into
+the R CMD BATCH session:
+
+# myplots.R:
+local({
+	cmdline <- commandArgs(FALSE)
+	srcfile <- cmdline[[which(cmdline == '-f')[[1]] + 1]]
+	plotfile <- sub('(\\.R)?$', '', srcfile)
+	options(device = \(file, ...) {
+		i <- 1
+		if (missing(file)) repeat {
+			file <- sprintf('%s_%03d.pdf', plotfile, i)
+			if (!file.exists(file)) break
+			i <- i+1
+		}
+		pdf(file = file, ...)
+	})
+})
+
+# example.R:
+plot(1:100 / 10, sin(1:100 / 10))
+dev.off()
+plot(1:100 / 10, cos(1:100 / 10))
+
+R_PROFILE_USER=myplots.R R CMD BATCH example.R
+# produces example.Rout, example_001.pdf, example_002.pdf
+
+-- 
+Best regards,
+Ivan
+
+
+From edd @end|ng |rom deb|@n@org  Tue Jul 30 00:18:25 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Mon, 29 Jul 2024 17:18:25 -0500
+Subject: [R-pkg-devel] R CMD BATCH plot output
+In-Reply-To: <20240729130227.0548223b@arachnoid>
+References: <CAL3ufUKUvOPQGcqXj9vFJHpDF_zP1uLtr=7Jjr6DESoKu=vqgA@mail.gmail.com>
+ <e7a6d116-86d5-4ba4-b620-7f27f607ce44@gmail.com>
+ <26278.43445.370820.622202@rob.eddelbuettel.com>
+ <20240729130227.0548223b@arachnoid>
+Message-ID: <26280.5425.179338.59618@rob.eddelbuettel.com>
+
+
+On 29 July 2024 at 13:02, Ivan Krylov wrote:
+| On Sun, 28 Jul 2024 15:27:33 -0500
+| Dirk Eddelbuettel <edd at debian.org> wrote:
+| 
+| > If we cannot (or do not want to) modify the given main.R, I would
+| > suggest something along the lines of
+| > 
+| >   Rscript -e 'pdf(myfilenamevar); source("main.R"); dev.off()' | tee
+| > 2024-07-28.log
+| 
+| Perhaps even options(device = \(file = myfilenamevar, ...) pdf(file =
+| file, ...)) so that every plot would get the same treatment, though
+| that requires re-implementing the dev.new() logic to guess an available
+| file name. You can even misuse R_PROFILE_USER to inject the code into
+| the R CMD BATCH session:
+| 
+| # myplots.R:
+| local({
+| 	cmdline <- commandArgs(FALSE)
+| 	srcfile <- cmdline[[which(cmdline == '-f')[[1]] + 1]]
+| 	plotfile <- sub('(\\.R)?$', '', srcfile)
+| 	options(device = \(file, ...) {
+| 		i <- 1
+| 		if (missing(file)) repeat {
+| 			file <- sprintf('%s_%03d.pdf', plotfile, i)
+| 			if (!file.exists(file)) break
+| 			i <- i+1
+| 		}
+| 		pdf(file = file, ...)
+| 	})
+| })
+| 
+| # example.R:
+| plot(1:100 / 10, sin(1:100 / 10))
+| dev.off()
+| plot(1:100 / 10, cos(1:100 / 10))
+| 
+| R_PROFILE_USER=myplots.R R CMD BATCH example.R
+| # produces example.Rout, example_001.pdf, example_002.pdf
+
+Impressive. A very creative way to inject a modification into the (to my
+taste overly restrictive) setup provided by R CMD BATCH.
+
+Personally I would much rather script something cleaner with r or Rscript but
+we all have our preferences.
+
+Dirk
+
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
