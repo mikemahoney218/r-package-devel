@@ -6006,3 +6006,368 @@ although on different platforms.
     Ben Bolker
 
 
+From |kry|ov @end|ng |rom d|@root@org  Fri Aug  2 09:39:00 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 2 Aug 2024 10:39:00 +0300
+Subject: [R-pkg-devel] LaTeX errors under MacOS on CRAN
+In-Reply-To: <ec2448ff-ffda-447c-9d69-645c6901b2ec@gmail.com>
+References: <ec2448ff-ffda-447c-9d69-645c6901b2ec@gmail.com>
+Message-ID: <20240802103900.34ffff11@Tarkus>
+
+? Thu, 1 Aug 2024 10:53:56 -0400
+Ben Bolker <bbolker at gmail.com> ?????:
+
+>    ! Undefined control sequence.
+>    l.176 \hlkwd{library}\hldef
+>                               {(}\hlsng{"glmmTMB"}\hldef{)}
+
+Very strange.
+
+This may be related to https://github.com/yihui/knitr/issues/2345
+(no diagnosis) and possibly https://github.com/yihui/knitr/pull/2341
+(where some of the highlight commands have been renamed).
+
+It would be interesting to see the resulting *.tex file: somehow,
+\hlkwd is defined, but \hldef isn't.
+
+Looking at the code, knitr should be generating all these definitions
+in styler_assistant_latex, called from theme_to_header_latex. This one
+is either called from theme_to_header (thus from knit_theme$get(name)),
+or at installation time, converting inst/themes/default.css (which
+should have both hlkwd and hldef set).
+
+Since you aren't setting any knitr highlighting themes or
+opts_knit$set('header'), you should be getting both \hlkwd and \hldef
+defined from themes/default.css via knitr::render_latex. Is there a way
+to inadvertently set the 'header' knitr option?
+
+-- 
+Best regards,
+Ivan
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Fri Aug  2 12:12:03 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Fri, 2 Aug 2024 12:12:03 +0200
+Subject: [R-pkg-devel] LaTeX errors under MacOS on CRAN
+In-Reply-To: <20240802103900.34ffff11@Tarkus>
+References: <ec2448ff-ffda-447c-9d69-645c6901b2ec@gmail.com>
+ <20240802103900.34ffff11@Tarkus>
+Message-ID: <d03b50d3-879a-492e-a2d7-1c1644e7b285@statistik.tu-dortmund.de>
+
+A vague recollections tells me this happened when the set of packages 
+was not fully updated.
+
+Best,
+Uwe LIgges
+
+
+
+
+On 02.08.2024 09:39, Ivan Krylov via R-package-devel wrote:
+> ? Thu, 1 Aug 2024 10:53:56 -0400
+> Ben Bolker <bbolker at gmail.com> ?????:
+> 
+>>     ! Undefined control sequence.
+>>     l.176 \hlkwd{library}\hldef
+>>                                {(}\hlsng{"glmmTMB"}\hldef{)}
+> 
+> Very strange.
+> 
+> This may be related to https://github.com/yihui/knitr/issues/2345
+> (no diagnosis) and possibly https://github.com/yihui/knitr/pull/2341
+> (where some of the highlight commands have been renamed).
+> 
+> It would be interesting to see the resulting *.tex file: somehow,
+> \hlkwd is defined, but \hldef isn't.
+> 
+> Looking at the code, knitr should be generating all these definitions
+> in styler_assistant_latex, called from theme_to_header_latex. This one
+> is either called from theme_to_header (thus from knit_theme$get(name)),
+> or at installation time, converting inst/themes/default.css (which
+> should have both hlkwd and hldef set).
+> 
+> Since you aren't setting any knitr highlighting themes or
+> opts_knit$set('header'), you should be getting both \hlkwd and \hldef
+> defined from themes/default.css via knitr::render_latex. Is there a way
+> to inadvertently set the 'header' knitr option?
+> 
+
+From ro||turner @end|ng |rom po@teo@net  Fri Aug  2 13:10:59 2024
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Fri,  2 Aug 2024 11:10:59 +0000
+Subject: [R-pkg-devel] rhub (version 2) baulking at building a vignette.
+Message-ID: <20240802231059.0447ed2e@elderly-dell>
+
+
+Some time back, in the mists of memory, I got advice (on this list, I'm
+pretty sure) about building vignettes.  The advice was to the effect
+that if the vignette was actually just a *.tex file, one could (after
+putting in some preparatory code, in the form of comments, before the
+documentclass command) pre-process the file (with pdflatex)
+and the build would use the *.pdf file that was created, without any
+processing being required.
+
+Being a Bear of Very Little Brain (and understanding almost nothing of
+the underlying intricacies) I simply followed instructions. It seemed
+to work, I was able to build and install the package containing the
+vignette in question.
+
+Now I want to build a Windoze binary of the package.  Trying to do this
+with rhub led to a failure.  The build process seemed to ignore the
+pre-processed *.pdf file, tried to create it, and complained that
+pdflatex was not available.
+
+I raised an "issue" about this on rhub:
+
+   https://github.com/r-hub/rhub/issues/629
+
+I got a response from the redoubtable G?bor Cs?rdi saying that
+when he tried a local build of my package, the build command threw
+effectively the same error as did rhub.  So there's "something about my
+system" that is different.  What could it be?
+
+I have attached my session info in a *.txt file, to avoid cluttering the
+email window too much.
+
+If anyone should wish to experiment, they can clone the package in
+question (I think!) by executing: 
+
+git clone https://github.com/rolfTurner/kanova.git
+
+Can anyone give me some avuncular advice as to how:
+
+(a) to get rhub_check() to use the pre-compiled file testStat.pdf, or
+(b) to make pdflatex available to rhub_check()
+(c) to do something else that will permit me to build a Windoze binary
+     using rhub?
+
+Grateful for any tips.
+
+cheers,
+
+Rolf Turner
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+-------------- next part --------------
+An embedded and charset-unspecified text was scrubbed...
+Name: sessionInfo.txt
+URL: <https://stat.ethz.ch/pipermail/r-package-devel/attachments/20240802/3c051ce6/attachment.txt>
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Aug  2 15:12:34 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 2 Aug 2024 16:12:34 +0300
+Subject: [R-pkg-devel] rhub (version 2) baulking at building a vignette.
+In-Reply-To: <20240802231059.0447ed2e@elderly-dell>
+References: <20240802231059.0447ed2e@elderly-dell>
+Message-ID: <20240802161234.6386eed1@arachnoid>
+
+? Fri,  2 Aug 2024 11:10:59 +0000
+Rolf Turner <rolfturner at posteo.net> ?????:
+
+> The advice was to the effect that if the vignette was actually just a
+> *.tex file, one could (after putting in some preparatory code, in the
+> form of comments, before the documentclass command) pre-process the
+> file (with pdflatex) and the build would use the *.pdf file that was
+> created, without any processing being required.
+
+I think that you are looking for the "asis" vignette engine from the
+R.rsp package:
+https://cran.r-project.org/package=R.rsp/vignettes/R_packages-Static_PDF_and_HTML_vignettes.pdf
+
+> Now I want to build a Windoze binary of the package.
+
+If the vignette uses LaTeX packages unavailable on the computer (rhub2
+virtual machine) running R CMD build or R CMD check, that would indeed
+not work. Not sure about CRAN.
+
+Since your package doesn't seem to contain any native code, wouldn't
+the Windows users be satisfied with a source package? Unless running R
+CMD build --no-build-vignettes, it will include the PDF file.
+
+-- 
+Best regards,
+Ivan
+
+
+From @hu|@|@cheung @end|ng |rom gm@||@com  Fri Aug  2 16:35:20 2024
+From: @hu|@|@cheung @end|ng |rom gm@||@com (Shu Fai Cheung)
+Date: Fri, 2 Aug 2024 22:35:20 +0800
+Subject: [R-pkg-devel] A function in one of my package is now a method in
+ base R
+Message-ID: <CAPVJd2UmGLh-NvdZd=ipSePFAVQjQe2-W=yi1Py+oE8wsbGUJw@mail.gmail.com>
+
+Hi All,
+
+I have a function (not a method), sort_by(), in one of my packages. A
+new method with the same name was introduced in the recent versions of
+R (4.4.0 or 4.4.1, I forgot which one), resulting in potential
+conflict in users' code.
+
+Certainly, users can simply use pkg_name::function_name() to solve the
+conflict. However, I would like to be consistent with base R and so I
+am thinking about converting my function to a method for the class for
+which my function is intended to work on (e.g, est_table).
+
+However, my function has arguments different from those in the base R sort_by():
+
+Base R:
+
+sort_by(x, y, ...)
+
+My function:
+
+sort_by(
+  object,
+  by = c("op", "lhs", "rhs"),
+  op_priority = c("=~", "~", "~~", ":=", "~1", "|", "~*~"),
+  number_rows = TRUE
+)
+
+If I write the function sort_by.est_table(), I would need to match the
+argument names of the base R sort_by(). However, I think it is a bad
+idea to rename the arguments in my function and it will break existing
+code.
+
+Any suggestions on how I should proceed? Is keeping my function as-is
+a better option? Name conflict is not unusual across packages and so
+users need to learn how to solve this problem anyway. Nevertheless, if
+possible, I would like to solve the conflict internally such that
+users do not need to do anything.
+
+Regards,
+Shu Fai Cheung
+
+
+From edd @end|ng |rom deb|@n@org  Fri Aug  2 17:57:48 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 2 Aug 2024 10:57:48 -0500
+Subject: [R-pkg-devel] rhub (version 2) baulking at building a vignette.
+In-Reply-To: <20240802161234.6386eed1@arachnoid>
+References: <20240802231059.0447ed2e@elderly-dell>
+ <20240802161234.6386eed1@arachnoid>
+Message-ID: <26285.508.100632.582973@rob.eddelbuettel.com>
+
+
+On 2 August 2024 at 16:12, Ivan Krylov via R-package-devel wrote:
+| ? Fri,  2 Aug 2024 11:10:59 +0000
+| Rolf Turner <rolfturner at posteo.net> ?????:
+| 
+| > The advice was to the effect that if the vignette was actually just a
+| > *.tex file, one could (after putting in some preparatory code, in the
+| > form of comments, before the documentclass command) pre-process the
+| > file (with pdflatex) and the build would use the *.pdf file that was
+| > created, without any processing being required.
+| 
+| I think that you are looking for the "asis" vignette engine from the
+
+Or the zero-dependency approach by Mark van der Loo of embedding a whole
+(pre-made pdf) in a five-line Rnw sweave file described in 
+  https://www.r-bloggers.com/2019/01/add-a-static-pdf-vignette-to-an-r-package/
+
+So no real pdf processing requirement (besides the minimal include), so no
+random failing over a .sty or font one uses suddenly missing on another machine.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Aug  2 20:43:20 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 2 Aug 2024 14:43:20 -0400
+Subject: [R-pkg-devel] 
+ A function in one of my package is now a method in base R
+In-Reply-To: <CAPVJd2UmGLh-NvdZd=ipSePFAVQjQe2-W=yi1Py+oE8wsbGUJw@mail.gmail.com>
+References: <CAPVJd2UmGLh-NvdZd=ipSePFAVQjQe2-W=yi1Py+oE8wsbGUJw@mail.gmail.com>
+Message-ID: <f21dd671-259d-4c83-a770-8f2bcea8245a@gmail.com>
+
+On 2024-08-02 10:35 a.m., Shu Fai Cheung wrote:
+> Hi All,
+> 
+> I have a function (not a method), sort_by(), in one of my packages. A
+> new method with the same name was introduced in the recent versions of
+> R (4.4.0 or 4.4.1, I forgot which one), resulting in potential
+> conflict in users' code.
+> 
+> Certainly, users can simply use pkg_name::function_name() to solve the
+> conflict. However, I would like to be consistent with base R and so I
+> am thinking about converting my function to a method for the class for
+> which my function is intended to work on (e.g, est_table).
+> 
+> However, my function has arguments different from those in the base R sort_by():
+> 
+> Base R:
+> 
+> sort_by(x, y, ...)
+> 
+> My function:
+> 
+> sort_by(
+>    object,
+>    by = c("op", "lhs", "rhs"),
+>    op_priority = c("=~", "~", "~~", ":=", "~1", "|", "~*~"),
+>    number_rows = TRUE
+> )
+> 
+> If I write the function sort_by.est_table(), I would need to match the
+> argument names of the base R sort_by(). However, I think it is a bad
+> idea to rename the arguments in my function and it will break existing
+> code.
+> 
+> Any suggestions on how I should proceed? Is keeping my function as-is
+> a better option? Name conflict is not unusual across packages and so
+> users need to learn how to solve this problem anyway. Nevertheless, if
+> possible, I would like to solve the conflict internally such that
+> users do not need to do anything.
+
+I think it's impossible to avoid some inconvenience to your users.
+
+Here's what I'd suggest:
+
+- Create a method for base::sort_by(), as you suggested you could.  Use 
+the generic's variable names for compatibility, but also add your extra 
+variable names as additional arguments, e.g.
+
+  sort_by.est_table <- function(x, y, object,
+    by = c("op", "lhs", "rhs"),
+    op_priority = c("=~", "~", "~~", ":=", "~1", "|", "~*~"),
+    number_rows = TRUE, ...) {
+
+   # This test seems unlikely:  how would we have dispatch here if we 
+specified object explicitly?
+
+   if (!missing(object) {
+     if (!missing(x))
+       stop("both x and object specified!")
+     x <- object
+   }
+
+   # This one is more likely to do something:
+
+   if (!missing(by)) {
+     if (!missing(y))
+       stop("both y and by specified!")
+     y <- by
+   }
+
+   # Now proceed using x and y
+
+   ...
+}
+
+- Create a separate function, e.g. sort_by_old() which is exactly 
+compatible with your old sort_by().  For users where the above doesn't 
+just work, they can switch to sort_by_old().
+
+Duncan Murdoch
+
+
