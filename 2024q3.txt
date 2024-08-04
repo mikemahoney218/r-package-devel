@@ -6371,3 +6371,625 @@ just work, they can switch to sort_by_old().
 Duncan Murdoch
 
 
+From ro||turner @end|ng |rom po@teo@net  Sat Aug  3 11:17:27 2024
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Sat,  3 Aug 2024 09:17:27 +0000
+Subject: [R-pkg-devel] rhub (version 2) baulking at building a vignette.
+In-Reply-To: <20240802161234.6386eed1@arachnoid>
+References: <20240802231059.0447ed2e@elderly-dell>
+ <20240802161234.6386eed1@arachnoid>
+Message-ID: <20240803211727.5f2b86b8@elderly-dell>
+
+
+Thanks to Ivan Krylov and Dirk Eddelbuettel who came to my rescue.
+
+At first I thought that Dirk's suggestion ("the zero-dependency
+approach" due to Mark van der Loo) was exactly what I needed.  But this
+turned out not to work; rhub_check() still failed with a complaint
+about needing pdflatex.
+
+Ivan's suggestion (the "asis" vignette from the R.rsp package) does
+work.  This turns out to be easy enough to implement, but it has taken
+me all day to get everything to run properly.  The difficulties were not
+due to any characteristics of the "asis" approach, but rather to the
+(to me) fussy, delicate, awkward, and counter-intuitive nature of rhub.
+It kept finding new and innovative ways to frustrate me. ?? However I
+finally won out.
+
+I won't try to describe what I eventually did/had to do.  It is too
+tortuous a tale of trial and error, with too many rhub "Gotchas!"
+which I have difficulty reconstructing and to which I often cannot
+remember the solutions.  I've got the solutions in place, and am just
+crossing my fingers that I won't have to do it all over again.
+
+Ivan Krylov <ikrylov at disroot.org> wrote:
+
+<SNIP>
+
+> Since your package doesn't seem to contain any native code, wouldn't
+> the Windows users be satisfied with a source package? Unless running R
+> CMD build --no-build-vignettes, it will include the PDF file.
+
+Since I don't (ever) use Windoze myself, I have no feeling for what it
+(and its users) will or will not tolerate.  Nor have I any way to test
+out ideas.  So I prefer to go with building Windoze binaries, via rhub
+or winbuilder.  (Using each as a back-up for the other.)  Now that I
+know how (???) to do this, it's not too bad.
+
+Thanks again to Ivan and Dirk.
+
+cheers,
+
+Rolf
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+
+From deep@y@n@@@rk@r @end|ng |rom gm@||@com  Sat Aug  3 13:13:20 2024
+From: deep@y@n@@@rk@r @end|ng |rom gm@||@com (Deepayan Sarkar)
+Date: Sat, 3 Aug 2024 16:43:20 +0530
+Subject: [R-pkg-devel] 
+ A function in one of my package is now a method in base R
+In-Reply-To: <f21dd671-259d-4c83-a770-8f2bcea8245a@gmail.com>
+References: <CAPVJd2UmGLh-NvdZd=ipSePFAVQjQe2-W=yi1Py+oE8wsbGUJw@mail.gmail.com>
+ <f21dd671-259d-4c83-a770-8f2bcea8245a@gmail.com>
+Message-ID: <CADfFDC7FPCSuk4Ohe9CDyj0k0_+NoX1JFh7kAT+1274OF1aMkA@mail.gmail.com>
+
+I haven't thought about this carefully, but shouldn't this mostly work?
+
+  sort_by.est_table <- function(x, y = c("op", "lhs", "rhs"),
+    object = x,
+    by = y,
+    op_priority = c("=~", "~", "~~", ":=", "~1", "|", "~*~"),
+    number_rows = TRUE, ...) {
+
+<code unchanged>
+
+}
+
+-Deepayan
+
+On Sat, 3 Aug 2024 at 00:13, Duncan Murdoch <murdoch.duncan at gmail.com>
+wrote:
+
+> On 2024-08-02 10:35 a.m., Shu Fai Cheung wrote:
+> > Hi All,
+> >
+> > I have a function (not a method), sort_by(), in one of my packages. A
+> > new method with the same name was introduced in the recent versions of
+> > R (4.4.0 or 4.4.1, I forgot which one), resulting in potential
+> > conflict in users' code.
+> >
+> > Certainly, users can simply use pkg_name::function_name() to solve the
+> > conflict. However, I would like to be consistent with base R and so I
+> > am thinking about converting my function to a method for the class for
+> > which my function is intended to work on (e.g, est_table).
+> >
+> > However, my function has arguments different from those in the base R
+> sort_by():
+> >
+> > Base R:
+> >
+> > sort_by(x, y, ...)
+> >
+> > My function:
+> >
+> > sort_by(
+> >    object,
+> >    by = c("op", "lhs", "rhs"),
+> >    op_priority = c("=~", "~", "~~", ":=", "~1", "|", "~*~"),
+> >    number_rows = TRUE
+> > )
+> >
+> > If I write the function sort_by.est_table(), I would need to match the
+> > argument names of the base R sort_by(). However, I think it is a bad
+> > idea to rename the arguments in my function and it will break existing
+> > code.
+> >
+> > Any suggestions on how I should proceed? Is keeping my function as-is
+> > a better option? Name conflict is not unusual across packages and so
+> > users need to learn how to solve this problem anyway. Nevertheless, if
+> > possible, I would like to solve the conflict internally such that
+> > users do not need to do anything.
+>
+> I think it's impossible to avoid some inconvenience to your users.
+>
+> Here's what I'd suggest:
+>
+> - Create a method for base::sort_by(), as you suggested you could.  Use
+> the generic's variable names for compatibility, but also add your extra
+> variable names as additional arguments, e.g.
+>
+>   sort_by.est_table <- function(x, y, object,
+>     by = c("op", "lhs", "rhs"),
+>     op_priority = c("=~", "~", "~~", ":=", "~1", "|", "~*~"),
+>     number_rows = TRUE, ...) {
+>
+>    # This test seems unlikely:  how would we have dispatch here if we
+> specified object explicitly?
+>
+>    if (!missing(object) {
+>      if (!missing(x))
+>        stop("both x and object specified!")
+>      x <- object
+>    }
+>
+>    # This one is more likely to do something:
+>
+>    if (!missing(by)) {
+>      if (!missing(y))
+>        stop("both y and by specified!")
+>      y <- by
+>    }
+>
+>    # Now proceed using x and y
+>
+>    ...
+> }
+>
+> - Create a separate function, e.g. sort_by_old() which is exactly
+> compatible with your old sort_by().  For users where the above doesn't
+> just work, they can switch to sort_by_old().
+>
+> Duncan Murdoch
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @hu|@|@cheung @end|ng |rom gm@||@com  Sat Aug  3 13:32:04 2024
+From: @hu|@|@cheung @end|ng |rom gm@||@com (Shu Fai Cheung)
+Date: Sat, 3 Aug 2024 19:32:04 +0800
+Subject: [R-pkg-devel] 
+ A function in one of my package is now a method in base R
+In-Reply-To: <CADfFDC7FPCSuk4Ohe9CDyj0k0_+NoX1JFh7kAT+1274OF1aMkA@mail.gmail.com>
+References: <CAPVJd2UmGLh-NvdZd=ipSePFAVQjQe2-W=yi1Py+oE8wsbGUJw@mail.gmail.com>
+ <f21dd671-259d-4c83-a770-8f2bcea8245a@gmail.com>
+ <CADfFDC7FPCSuk4Ohe9CDyj0k0_+NoX1JFh7kAT+1274OF1aMkA@mail.gmail.com>
+Message-ID: <CAPVJd2VLiXV3xXMiHjgKN4YE0N6wg0Zq0kUEdhTeKY2iuWSwLA@mail.gmail.com>
+
+Thanks a lot for both suggestions! I haven't thought about these
+approaches, They may solve my problem without breaking existing code.
+I may just keep the original arguments for backward compatibility.
+Coincidentally, "object" and "by" have the same meanings as "x" and
+"y" in base::sort_by() and so the matching makes sense.
+
+Regards,
+Shu Fai Cheung
+
+On Sat, Aug 3, 2024 at 7:13?PM Deepayan Sarkar
+<deepayan.sarkar at gmail.com> wrote:
+>
+> I haven't thought about this carefully, but shouldn't this mostly work?
+>
+>   sort_by.est_table <- function(x, y = c("op", "lhs", "rhs"),
+>     object = x,
+>     by = y,
+>     op_priority = c("=~", "~", "~~", ":=", "~1", "|", "~*~"),
+>     number_rows = TRUE, ...) {
+>
+> <code unchanged>
+>
+> }
+>
+> -Deepayan
+>
+> On Sat, 3 Aug 2024 at 00:13, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>>
+>> On 2024-08-02 10:35 a.m., Shu Fai Cheung wrote:
+>> > Hi All,
+>> >
+>> > I have a function (not a method), sort_by(), in one of my packages. A
+>> > new method with the same name was introduced in the recent versions of
+>> > R (4.4.0 or 4.4.1, I forgot which one), resulting in potential
+>> > conflict in users' code.
+>> >
+>> > Certainly, users can simply use pkg_name::function_name() to solve the
+>> > conflict. However, I would like to be consistent with base R and so I
+>> > am thinking about converting my function to a method for the class for
+>> > which my function is intended to work on (e.g, est_table).
+>> >
+>> > However, my function has arguments different from those in the base R sort_by():
+>> >
+>> > Base R:
+>> >
+>> > sort_by(x, y, ...)
+>> >
+>> > My function:
+>> >
+>> > sort_by(
+>> >    object,
+>> >    by = c("op", "lhs", "rhs"),
+>> >    op_priority = c("=~", "~", "~~", ":=", "~1", "|", "~*~"),
+>> >    number_rows = TRUE
+>> > )
+>> >
+>> > If I write the function sort_by.est_table(), I would need to match the
+>> > argument names of the base R sort_by(). However, I think it is a bad
+>> > idea to rename the arguments in my function and it will break existing
+>> > code.
+>> >
+>> > Any suggestions on how I should proceed? Is keeping my function as-is
+>> > a better option? Name conflict is not unusual across packages and so
+>> > users need to learn how to solve this problem anyway. Nevertheless, if
+>> > possible, I would like to solve the conflict internally such that
+>> > users do not need to do anything.
+>>
+>> I think it's impossible to avoid some inconvenience to your users.
+>>
+>> Here's what I'd suggest:
+>>
+>> - Create a method for base::sort_by(), as you suggested you could.  Use
+>> the generic's variable names for compatibility, but also add your extra
+>> variable names as additional arguments, e.g.
+>>
+>>   sort_by.est_table <- function(x, y, object,
+>>     by = c("op", "lhs", "rhs"),
+>>     op_priority = c("=~", "~", "~~", ":=", "~1", "|", "~*~"),
+>>     number_rows = TRUE, ...) {
+>>
+>>    # This test seems unlikely:  how would we have dispatch here if we
+>> specified object explicitly?
+>>
+>>    if (!missing(object) {
+>>      if (!missing(x))
+>>        stop("both x and object specified!")
+>>      x <- object
+>>    }
+>>
+>>    # This one is more likely to do something:
+>>
+>>    if (!missing(by)) {
+>>      if (!missing(y))
+>>        stop("both y and by specified!")
+>>      y <- by
+>>    }
+>>
+>>    # Now proceed using x and y
+>>
+>>    ...
+>> }
+>>
+>> - Create a separate function, e.g. sort_by_old() which is exactly
+>> compatible with your old sort_by().  For users where the above doesn't
+>> just work, they can switch to sort_by_old().
+>>
+>> Duncan Murdoch
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From ke||ey @end|ng |rom d@|@c@  Sat Aug  3 15:12:39 2024
+From: ke||ey @end|ng |rom d@|@c@ (Daniel Kelley)
+Date: Sat, 3 Aug 2024 13:12:39 +0000
+Subject: [R-pkg-devel] rhub (old and new) balks at building ncdf4 package
+Message-ID: <1AB7C7BF-71C1-40D7-B4D4-4E0AFB6BE043@dal.ca>
+
+I have a package, named 'oce' (developed at www.github.com/dankelley/oce and available through CRAN for over a decade) that uses 'ncdf4' to read some file types.  When I do test builds on the win and mac builders, all is fine.  When I do it with rhub, though, I get an error that ncdf4 cannot be built from source.
+
+I think it's been this way for quite a while, perhaps months  Should I be doing something when I invoke rhub (locally or on github) to tell it to use a prebuild ncdf4 package?
+
+Thanks in advance for any advice.
+
+Dan E. Kelley
+Professor, Department of Oceanography
+Dalhousie University
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Aug  3 15:29:21 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 3 Aug 2024 09:29:21 -0400
+Subject: [R-pkg-devel] 
+ A function in one of my package is now a method in base R
+In-Reply-To: <CADfFDC7FPCSuk4Ohe9CDyj0k0_+NoX1JFh7kAT+1274OF1aMkA@mail.gmail.com>
+References: <CAPVJd2UmGLh-NvdZd=ipSePFAVQjQe2-W=yi1Py+oE8wsbGUJw@mail.gmail.com>
+ <f21dd671-259d-4c83-a770-8f2bcea8245a@gmail.com>
+ <CADfFDC7FPCSuk4Ohe9CDyj0k0_+NoX1JFh7kAT+1274OF1aMkA@mail.gmail.com>
+Message-ID: <02d1fb9b-ff55-4df7-bf7f-8571e14a0799@gmail.com>
+
+The problem with that is a call like
+
+   sort_by( object = foo, by = bar )
+
+wouldn't be dispatched to the est_table method when foo is an est_table 
+object, it would give a "argument 'x' is missing" kind of error.  It 
+would be fine for
+
+  sort_by( foo, bar )
+
+but would also mess up on
+
+  sort_by( foo, bar, priority )
+
+Duncan Murdoch
+
+On 2024-08-03 7:13 a.m., Deepayan Sarkar wrote:
+> I haven't thought about this carefully, but shouldn't this mostly work?
+> 
+>  ? sort_by.est_table <- function(x, y = c("op", "lhs", "rhs"),
+>  ? ? object = x,
+>  ? ? by = y,
+>  ? ? op_priority = c("=~", "~", "~~", ":=", "~1", "|", "~*~"),
+>  ? ? number_rows = TRUE, ...) 
+> 
+> <code unchanged>
+> 
+> }
+> 
+> -Deepayan
+> 
+> On Sat, 3 Aug 2024 at 00:13, Duncan Murdoch <murdoch.duncan at gmail.com 
+> <mailto:murdoch.duncan at gmail.com>> wrote:
+> 
+>     On 2024-08-02 10:35 a.m., Shu Fai Cheung wrote:
+>      > Hi All,
+>      >
+>      > I have a function (not a method), sort_by(), in one of my packages. A
+>      > new method with the same name was introduced in the recent
+>     versions of
+>      > R (4.4.0 or 4.4.1, I forgot which one), resulting in potential
+>      > conflict in users' code.
+>      >
+>      > Certainly, users can simply use pkg_name::function_name() to
+>     solve the
+>      > conflict. However, I would like to be consistent with base R and so I
+>      > am thinking about converting my function to a method for the
+>     class for
+>      > which my function is intended to work on (e.g, est_table).
+>      >
+>      > However, my function has arguments different from those in the
+>     base R sort_by():
+>      >
+>      > Base R:
+>      >
+>      > sort_by(x, y, ...)
+>      >
+>      > My function:
+>      >
+>      > sort_by(
+>      >? ? object,
+>      >? ? by = c("op", "lhs", "rhs"),
+>      >? ? op_priority = c("=~", "~", "~~", ":=", "~1", "|", "~*~"),
+>      >? ? number_rows = TRUE
+>      > )
+>      >
+>      > If I write the function sort_by.est_table(), I would need to
+>     match the
+>      > argument names of the base R sort_by(). However, I think it is a bad
+>      > idea to rename the arguments in my function and it will break
+>     existing
+>      > code.
+>      >
+>      > Any suggestions on how I should proceed? Is keeping my function as-is
+>      > a better option? Name conflict is not unusual across packages and so
+>      > users need to learn how to solve this problem anyway.
+>     Nevertheless, if
+>      > possible, I would like to solve the conflict internally such that
+>      > users do not need to do anything.
+> 
+>     I think it's impossible to avoid some inconvenience to your users.
+> 
+>     Here's what I'd suggest:
+> 
+>     - Create a method for base::sort_by(), as you suggested you could.? Use
+>     the generic's variable names for compatibility, but also add your extra
+>     variable names as additional arguments, e.g.
+> 
+>      ? sort_by.est_table <- function(x, y, object,
+>      ? ? by = c("op", "lhs", "rhs"),
+>      ? ? op_priority = c("=~", "~", "~~", ":=", "~1", "|", "~*~"),
+>      ? ? number_rows = TRUE, ...) {
+> 
+>      ? ?# This test seems unlikely:? how would we have dispatch here if we
+>     specified object explicitly?
+> 
+>      ? ?if (!missing(object) {
+>      ? ? ?if (!missing(x))
+>      ? ? ? ?stop("both x and object specified!")
+>      ? ? ?x <- object
+>      ? ?}
+> 
+>      ? ?# This one is more likely to do something:
+> 
+>      ? ?if (!missing(by)) {
+>      ? ? ?if (!missing(y))
+>      ? ? ? ?stop("both y and by specified!")
+>      ? ? ?y <- by
+>      ? ?}
+> 
+>      ? ?# Now proceed using x and y
+> 
+>      ? ?...
+>     }
+> 
+>     - Create a separate function, e.g. sort_by_old() which is exactly
+>     compatible with your old sort_by().? For users where the above doesn't
+>     just work, they can switch to sort_by_old().
+> 
+>     Duncan Murdoch
+> 
+>     ______________________________________________
+>     R-package-devel at r-project.org <mailto:R-package-devel at r-project.org>
+>     mailing list
+>     https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>     <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+>
+
+
+From georg|@bo@hn@kov @end|ng |rom m@nche@ter@@c@uk  Sat Aug  3 23:36:41 2024
+From: georg|@bo@hn@kov @end|ng |rom m@nche@ter@@c@uk (Georgi Boshnakov)
+Date: Sat, 3 Aug 2024 21:36:41 +0000
+Subject: [R-pkg-devel] 
+ A function in one of my package is now a method in base R
+In-Reply-To: <f21dd671-259d-4c83-a770-8f2bcea8245a@gmail.com>
+References: <CAPVJd2UmGLh-NvdZd=ipSePFAVQjQe2-W=yi1Py+oE8wsbGUJw@mail.gmail.com>
+ <f21dd671-259d-4c83-a770-8f2bcea8245a@gmail.com>
+Message-ID: <LO0P265MB63257B789E022815E6140F1AAEBC2@LO0P265MB6325.GBRP265.PROD.OUTLOOK.COM>
+
+Since the main problem is that in base-R's function your 'object' is called  'x',  you could consider issuing an intermediate version of the package, where you strongly advise users not to name the first argument and to always name the remaining arguments. Also, make sure that your examples follow this advice.
+
+If the function is used by package authors, you could send them emails, telling them exactly what to change.
+
+After a year or so you could make the method following Duncan's advice.
+
+Since sort_by is in package 'base', packages that use your package will no longer need to import sort_by from your package. There are some further subtleties here that could be discussed if packages that import explicitly sort_by from your package exist.
+
+
+Georgi Boshnakov
+
+
+
+Sent from Outlook for Android<https://aka.ms/AAb9ysg>
+
+________________________________
+From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Duncan Murdoch <murdoch.duncan at gmail.com>
+Sent: Friday, August 2, 2024 7:43:46 pm
+To: Shu Fai Cheung <shufai.cheung at gmail.com>; r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel]  A function in one of my package is now a method in base R
+
+On 2024-08-02 10:35 a.m., Shu Fai Cheung wrote:
+> Hi All,
+>
+> I have a function (not a method), sort_by(), in one of my packages. A
+> new method with the same name was introduced in the recent versions of
+> R (4.4.0 or 4.4.1, I forgot which one), resulting in potential
+> conflict in users' code.
+>
+> Certainly, users can simply use pkg_name::function_name() to solve the
+> conflict. However, I would like to be consistent with base R and so I
+> am thinking about converting my function to a method for the class for
+> which my function is intended to work on (e.g, est_table).
+>
+> However, my function has arguments different from those in the base R sort_by():
+>
+> Base R:
+>
+> sort_by(x, y, ...)
+>
+> My function:
+>
+> sort_by(
+>    object,
+>    by = c("op", "lhs", "rhs"),
+>    op_priority = c("=~", "~", "~~", ":=", "~1", "|", "~*~"),
+>    number_rows = TRUE
+> )
+>
+> If I write the function sort_by.est_table(), I would need to match the
+> argument names of the base R sort_by(). However, I think it is a bad
+> idea to rename the arguments in my function and it will break existing
+> code.
+>
+> Any suggestions on how I should proceed? Is keeping my function as-is
+> a better option? Name conflict is not unusual across packages and so
+> users need to learn how to solve this problem anyway. Nevertheless, if
+> possible, I would like to solve the conflict internally such that
+> users do not need to do anything.
+
+I think it's impossible to avoid some inconvenience to your users.
+
+Here's what I'd suggest:
+
+- Create a method for base::sort_by(), as you suggested you could.  Use
+the generic's variable names for compatibility, but also add your extra
+variable names as additional arguments, e.g.
+
+  sort_by.est_table <- function(x, y, object,
+    by = c("op", "lhs", "rhs"),
+    op_priority = c("=~", "~", "~~", ":=", "~1", "|", "~*~"),
+    number_rows = TRUE, ...) {
+
+   # This test seems unlikely:  how would we have dispatch here if we
+specified object explicitly?
+
+   if (!missing(object) {
+     if (!missing(x))
+       stop("both x and object specified!")
+     x <- object
+   }
+
+   # This one is more likely to do something:
+
+   if (!missing(by)) {
+     if (!missing(y))
+       stop("both y and by specified!")
+     y <- by
+   }
+
+   # Now proceed using x and y
+
+   ...
+}
+
+- Create a separate function, e.g. sort_by_old() which is exactly
+compatible with your old sort_by().  For users where the above doesn't
+just work, they can switch to sort_by_old().
+
+Duncan Murdoch
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!PDiH4ENfjr2_Jw!DMhcKnV6t06-gQP_syUMUckB9X-q2dwf-t0gwHnslUVystLyIK742SL2XYMJ-ugEvVxGfGLffUOBLR_lXvVhbltAha5tPmWPr6cdoQ$ [stat[.]ethz[.]ch]
+
+
+	[[alternative HTML version deleted]]
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Sun Aug  4 02:55:03 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Sun, 4 Aug 2024 12:55:03 +1200
+Subject: [R-pkg-devel] LaTeX errors under MacOS on CRAN
+In-Reply-To: <ec2448ff-ffda-447c-9d69-645c6901b2ec@gmail.com>
+References: <ec2448ff-ffda-447c-9d69-645c6901b2ec@gmail.com>
+Message-ID: <08527BC4-655F-40D2-A906-60D818A261B8@R-project.org>
+
+Ben,
+
+if I recall there were a couple regressions in knitr that broke things, but since this is only a WARNING it means the check has not been automatically repeated after knitr update (ERRORs are re-tried nightly). I can kick off things manually which is likely to remove the WARNING.
+
+Cheers,
+Simon
+
+
+> On 2/08/2024, at 2:53 AM, Ben Bolker <bbolker at gmail.com> wrote:
+> 
+>  I note that on r-release-macos-x86_64, glmmTMB is getting warnings like this:
+> 
+> Error: processing vignette 'glmmTMB.Rnw' failed with diagnostics:
+>  Running 'texi2dvi' on 'glmmTMB.tex' failed.
+>  LaTeX errors:
+>  ! Undefined control sequence.
+>  l.176 \hlkwd{library}\hldef
+>                             {(}\hlsng{"glmmTMB"}\hldef{)}
+>  ?
+>  ! Emergency stop.
+>  ! Emergency stop.
+>  l.176
+> 
+> <https://cran.r-project.org/web/checks/check_results_glmmTMB.html>
+> 
+>  (I see similar but not identical problems with <https://cran.r-project.org/web/checks/check_results_robustbase.html>, although on different platforms.
+> 
+>  Has anyone seen this/does anyone have ideas for troubleshooting? (Haven't checked on the r-hub platforms yet ...)
+> 
+>  cheers
+>   Ben Bolker
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
