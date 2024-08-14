@@ -7010,3 +7010,115 @@ I'm not familar with fortran but the warning message is: "Found the following fi
 	[[alternative HTML version deleted]]
 
 
+From |kry|ov @end|ng |rom d|@root@org  Tue Aug 13 10:08:14 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 13 Aug 2024 11:08:14 +0300
+Subject: [R-pkg-devel] Build process generated non-portable files
+In-Reply-To: <3f8d2aec95fb552733dc236aa611130e@nilly.addy.io>
+References: <3f8d2aec95fb552733dc236aa611130e@nilly.addy.io>
+Message-ID: <20240813110814.21a43010@Tarkus>
+
+? Mon, 12 Aug 2024 18:24:30 +0000
+David via R-package-devel <r-package-devel at r-project.org> ?????:
+
+> in the intel environment (provided by rhub), the intel fortran
+> compiler generates intermediary files from *.f -> *__genmod.f90. The
+> R check then complains that the genmod files are not portable. I
+> include removal of the files in my cleanup file so the files do not
+> exist in the original package source or in the final source tarball
+> but it seems the portable files check is done after compilation but
+> before cleanup.
+> 
+> - Is there a way to get around this complaint?
+
+Include the first 'all' target in your Makevars, make it depend on the
+package shared library, and make it remove genmod files in the recipe:
+
+all: $(SHLIB)
+	-rm -f arpack/*genmod.f90
+
+A similar trick is mentioned in
+<https://cran.r-project.org/doc/manuals/r-devel/R-exts.html#Using-Makevars>.
+
+> - Should this complaint be here in the first place?
+
+Perhaps not. If you manage to find an option for the ifx compiler that
+disables creation of these files (a brief Web search says they are for
+only the user to read, but most results are from early 2010's), post it
+here. This may be a good argument to make this option recommended for R.
+
+> Shouldn't the portable files check only be performed on the shipped
+> source code?
+
+False negatives are possible too, in case the installation stage
+(configure and/or make) performs a lot of preprocessing, or unpacks
+extra sources. You could be right; I don't have statistics to back
+either option as less wasteful of effort.
+
+-- 
+Best regards,
+Ivan
+
+
+From j|@c@@hu|@m@n @end|ng |rom gm@||@com  Tue Aug 13 10:17:40 2024
+From: j|@c@@hu|@m@n @end|ng |rom gm@||@com (Jisca Huisman)
+Date: Tue, 13 Aug 2024 10:17:40 +0200
+Subject: [R-pkg-devel] Build process generated non-portable files
+In-Reply-To: <20240813110814.21a43010@Tarkus>
+References: <3f8d2aec95fb552733dc236aa611130e@nilly.addy.io>
+ <20240813110814.21a43010@Tarkus>
+Message-ID: <1581c0ce-a066-4436-9c46-2b170ef3ea8f@gmail.com>
+
+> I'm not familar with fortran but the warning message is: "Found the following files with non-portbale usage of KIND:." In "Writing R Extensions/Writing portable packages/Portable Fortran code" it mentions the use of REAL(KIND=8)? types are not portable since compilers can map values to different types (and these declarations are in the f90 files), but the compiler called the preprocessing of the files so it should be correct for this specific compiler.
+
+This might actually be the main problem. As it says, REAL(KIND=8) does 
+not have a consistent defintion, but the most common definition is 
+double the precision of a default REAL (commonly KIND=8). So, replacing 
+all 'REAL(KIND=8)' by 'DOUBLE PRECISION' in declarations should (might) 
+solve the error message. Alternatively, you could use 
+selected_real_kind(), see 
+https://fortranwiki.org/fortran/show/Real+precision .
+
+Best,
+
+Jisca
+
+
+
+On Tue, 13/08/2024 10:08, Ivan Krylov via R-package-devel wrote:
+> ? Mon, 12 Aug 2024 18:24:30 +0000
+> David via R-package-devel <r-package-devel at r-project.org> ?????:
+>
+>> in the intel environment (provided by rhub), the intel fortran
+>> compiler generates intermediary files from *.f -> *__genmod.f90. The
+>> R check then complains that the genmod files are not portable. I
+>> include removal of the files in my cleanup file so the files do not
+>> exist in the original package source or in the final source tarball
+>> but it seems the portable files check is done after compilation but
+>> before cleanup.
+>>
+>> - Is there a way to get around this complaint?
+> Include the first 'all' target in your Makevars, make it depend on the
+> package shared library, and make it remove genmod files in the recipe:
+>
+> all: $(SHLIB)
+> 	-rm -f arpack/*genmod.f90
+>
+> A similar trick is mentioned in
+> <https://cran.r-project.org/doc/manuals/r-devel/R-exts.html#Using-Makevars>.
+>
+>> - Should this complaint be here in the first place?
+> Perhaps not. If you manage to find an option for the ifx compiler that
+> disables creation of these files (a brief Web search says they are for
+> only the user to read, but most results are from early 2010's), post it
+> here. This may be a good argument to make this option recommended for R.
+>
+>> Shouldn't the portable files check only be performed on the shipped
+>> source code?
+> False negatives are possible too, in case the installation stage
+> (configure and/or make) performs a lot of preprocessing, or unpacks
+> extra sources. You could be right; I don't have statistics to back
+> either option as less wasteful of effort.
+>
+
+
