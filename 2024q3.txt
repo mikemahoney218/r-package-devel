@@ -7122,3 +7122,79 @@ On Tue, 13/08/2024 10:08, Ivan Krylov via R-package-devel wrote:
 >
 
 
+From @@j5xsj9 m@iii@g oii @iiiy@@ddy@io  Thu Aug 15 20:58:39 2024
+From: @@j5xsj9 m@iii@g oii @iiiy@@ddy@io (@@j5xsj9 m@iii@g oii @iiiy@@ddy@io)
+Date: Thu, 15 Aug 2024 18:58:39 +0000
+Subject: [R-pkg-devel] Build process generated non-portable files
+In-Reply-To: <20240813110814.21a43010@Tarkus>
+References: <3f8d2aec95fb552733dc236aa611130e@nilly.addy.io>
+ <20240813110814.21a43010@Tarkus>
+Message-ID: <5301b8e64edc0ce9e85e272a60cd5535@nilly.addy.io>
+
+This seems like it should work. Unfortunately my rhub github actions is failing to get past the setup deps step which has been occuring inconsistently in the past but right now it's consistently failing to build deps so I can't confirm it work. I was also unable to successfully build R using intel compilers, even when using Rhubs container as template.
+
+> Include the first 'all' target in your Makevars
+
+I was really trying to avoid explicitly creating a target in makevars but this is simple enough.
+
+In case anyone else comes across this, the genmod files end up in `src` even if the original source files are under a subdirectory so the recipe ends up being:
+
+> -rm -f *genmod.f90
+
+> If you manage to find an option for the ifx compiler that disables creation of these files
+
+I installed intel compilers and checked the `ifx` man page. Could not find an option for turning off generation of the genmod files.
+
+> a brief Web search says they are for only the user to read, but most results are from early 2010's
+
+Yeah I checked one of the files again and it does say that it's generated only for reference.
+
+?- David R. Connell
+
+On Tuesday, August 13th, 2024 at 3:08 AM, Ivan Krylov 'ikrylov at disroot.org' wrote:
+
+> ? Mon, 12 Aug 2024 18:24:30 +0000
+> David via R-package-devel r-package-devel at r-project.org ?????:
+> 
+> > in the intel environment (provided by rhub), the intel fortran
+> > compiler generates intermediary files from *.f -> *__genmod.f90. The
+> > R check then complains that the genmod files are not portable. I
+> > include removal of the files in my cleanup file so the files do not
+> > exist in the original package source or in the final source tarball
+> > but it seems the portable files check is done after compilation but
+> > before cleanup.
+> > 
+> > - Is there a way to get around this complaint?
+> 
+> 
+> Include the first 'all' target in your Makevars, make it depend on the
+> package shared library, and make it remove genmod files in the recipe:
+> 
+> all: $(SHLIB)
+> -rm -f arpack/*genmod.f90
+> 
+> A similar trick is mentioned in
+> https://cran.r-project.org/doc/manuals/r-devel/R-exts.html#Using-Makevars.
+> 
+> > - Should this complaint be here in the first place?
+> 
+> 
+> Perhaps not. If you manage to find an option for the ifx compiler that
+> disables creation of these files (a brief Web search says they are for
+> only the user to read, but most results are from early 2010's), post it
+> here. This may be a good argument to make this option recommended for R.
+> 
+> > Shouldn't the portable files check only be performed on the shipped
+> > source code?
+> 
+> 
+> False negatives are possible too, in case the installation stage
+> (configure and/or make) performs a lot of preprocessing, or unpacks
+> extra sources. You could be right; I don't have statistics to back
+> either option as less wasteful of effort.
+> 
+> --
+> Best regards,
+> Ivan
+
+
