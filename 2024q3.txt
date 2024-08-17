@@ -7198,3 +7198,284 @@ On Tuesday, August 13th, 2024 at 3:08 AM, Ivan Krylov 'ikrylov at disroot.org' w
 > Ivan
 
 
+From |kry|ov @end|ng |rom d|@root@org  Fri Aug 16 14:58:41 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 16 Aug 2024 15:58:41 +0300
+Subject: [R-pkg-devel] Build process generated non-portable files
+In-Reply-To: <94db9a3e5dcb79a6629143e1752a2816@nilly.addy.io>
+References: <3f8d2aec95fb552733dc236aa611130e@nilly.addy.io>
+ <20240813110814.21a43010@Tarkus>
+ <94db9a3e5dcb79a6629143e1752a2816@nilly.addy.io>
+Message-ID: <20240816155841.456cfd2f@arachnoid>
+
+? Thu, 15 Aug 2024 18:58:41 +0000
+anj5xsj9 at nilly.addy.io ?????:
+
+> This seems like it should work. Unfortunately my rhub github actions
+> is failing to get past the setup deps step which has been occuring
+> inconsistently in the past but right now it's consistently failing to
+> build deps so I can't confirm it work.
+
+This may be worth reporting to the rhub developers. The error is really
+strange. It looks like the package at
+https://github.com/cran/igraph/releases/download/2.0.3/igraph_2.0.3_b1_R4.5_x86_64-pc-linux-gnu-fedora-38.tar.gz
+(referenced from https://github.com/r-hub/repos) has a binary
+dependency on OpenBLAS:
+
+$ readelf -d igraph/libs/igraph.so | grep openblas
+0x0000000000000001 (NEEDED) Shared library: [libopenblasp.so.0]
+
+...but that's either not noted or not installed correctly.
+
+> I was also unable to successfully build R using intel compilers, even
+> when using Rhubs container as template.
+
+If you'd like to dig deeper, feel free to ask here with details.
+ 
+> In case anyone else comes across this, the genmod files end up in
+> `src` even if the original source files are under a subdirectory so
+> the recipe ends up being:
+> 
+> > -rm -f *genmod.f90  
+
+Thank you for letting us know!
+ 
+> I installed intel compilers and checked the `ifx` man page. Could not
+> find an option for turning off generation of the genmod files.
+
+I experimented with the "ghcr.io/r-hub/containers/intel:latest"
+container and was able to find out that the option -[no]gen-interfaces
+controls the generation of *__genmod* files:
+
+/opt/intel/oneapi/compiler/latest/bin/ifx -O3 -fp-model precise \
+ -warn all,noexternals -c -o arpack/dgetv0.o arpack/dgetv0.f; \
+ ls *genmod*
+#  ...
+# dgetv0__genmod.f90  dgetv0__genmod.mod
+rm -vf *genmod*
+# removed 'dgetv0__genmod.f90'
+# removed 'dgetv0__genmod.mod'
+/opt/intel/oneapi/compiler/latest/bin/ifx -nogen-interfaces -O3 \
+ -fp-model precise -warn all,noexternals -c -o arpack/dgetv0.o \
+ arpack/dgetv0.f; \
+ ls *genmod*
+#  ...
+# ls: cannot access '*genmod*': No such file or directory
+
+This option is already used as part of the "Intel" additional checks
+performed by Prof. Brian D. Ripley, so the *__genmod.* files should not
+be a problem on CRAN:
+https://svn.r-project.org/R-dev-web/trunk/CRAN/QA/BDR/gannet/Intel/config.site
+
+-- 
+Best regards,
+Ivan
+
+
+From kev|n@r@coombe@ @end|ng |rom gm@||@com  Fri Aug 16 19:25:36 2024
+From: kev|n@r@coombe@ @end|ng |rom gm@||@com (Kevin R. Coombes)
+Date: Fri, 16 Aug 2024 13:25:36 -0400
+Subject: [R-pkg-devel] Inherited methods
+Message-ID: <afbd9900-31ac-4a9b-996a-2d27417c5c7f@gmail.com>
+
+Hi,
+
+I seem to have gotten myself confused about inheritance of S4 classes 
+and the dispatch of inherited methods.
+
+The core situation is that
+
+  * The graphics package already defines the function "hist"
+  * My package A creates an S4 generic "hist", using the existing
+    function as the default method.
+  * Package A also defines a class B with its own implementation of the
+    method "hist". It exports both the generic method and the class B
+    specific method.
+  * Now I create a new package C. In that package, I define a new class
+    D that inherits from class B. The implementation of "hist" for class
+    B should do everything I want for class D, so I don't want to have
+    to re-implement it.
+
+My question: what do I have to do to enable users of package D to call 
+"hist(B)" and have it work without complaint? After many go-rounds of 
+changing the code, changing the NAMESPACE, and running "R CMD check" 
+approximately an infinite number of times, I now have
+
+NAMESPACE:
+importMethodFrom("A", "hist")
+exportMethod("hist")
+
+R SCRIPT:
+setClass("D", slots = c(some_extra_stuff), contains = "B")
+
+setMethod("hist", "D", function(x, ...) {
+ ? callNextMethod(x, ...)
+ ? invisible(x)
+})
+
+Do I really need all that? Why do I even need *any* of it? Shouldn't I 
+be able to leave out the implementation that just says "callNextMethod" 
+and have the standard dispatch figure out what to call? Why does it want 
+to call the default function if it knows there is a B-method? (And it 
+must know it, since callNextMethod knows it.)
+
+Confused,
+ ?? Kevin
+
+	[[alternative HTML version deleted]]
+
+
+From kev|n@r@coombe@ @end|ng |rom gm@||@com  Fri Aug 16 19:32:57 2024
+From: kev|n@r@coombe@ @end|ng |rom gm@||@com (Kevin R. Coombes)
+Date: Fri, 16 Aug 2024 13:32:57 -0400
+Subject: [R-pkg-devel] R CMD check options
+Message-ID: <52ea54f5-2a6a-4a6b-bb5d-2309f8c86f1f@gmail.com>
+
+Hi,
+
+I maintain a bunch of packages on CRAN. When updating packages, I often 
+find two sort of NOTES on some of the platforms that CRAN checks that 
+don't show up on my stupid Windows (I know that's redundant; you don't 
+have to tell me) machine at home. The two most common issues are
+
+  * spelling (especially in the DESCRIPTION file), and
+  * links in the documentation with missing package anchors.
+
+How do I enable these checks so that when I run "R CMD check --as-cran" 
+it actually does behave like those CRAN machines do, so I can find and 
+fix the issues before submitting the package?
+
+Thanks,
+ ? Kevin
+
+
+	[[alternative HTML version deleted]]
+
+
+From @@j5xsj9 m@iii@g oii @iiiy@@ddy@io  Fri Aug 16 20:53:49 2024
+From: @@j5xsj9 m@iii@g oii @iiiy@@ddy@io (@@j5xsj9 m@iii@g oii @iiiy@@ddy@io)
+Date: Fri, 16 Aug 2024 18:53:49 +0000
+Subject: [R-pkg-devel] Build process generated non-portable files
+In-Reply-To: <20240816155841.456cfd2f@arachnoid>
+References: <3f8d2aec95fb552733dc236aa611130e@nilly.addy.io>
+ <20240813110814.21a43010@Tarkus>
+ <94db9a3e5dcb79a6629143e1752a2816@nilly.addy.io>
+ <20240816155841.456cfd2f@arachnoid>
+Message-ID: <17411dc6e7509077db21c3a0dfcb1020@nilly.addy.io>
+
+I locally ran the rhub intel docker and that was much easier to set up. So I can now confirm the change to Makevars does work.
+
+> I experimented with the "ghcr.io/r-hub/containers/intel:latest" container and was able to find out that the option -[no]gen-interfaces controls the generation of __genmod files:
+
+You are right. I temporarily removed the changes to Makevar and added the `-nogen-interfaces` flag to FFLAGS and that also prevented the warning. I can open an issue at rhub and suggest adding that as a default for the intel compilers.
+
+> This may be worth reporting to the rhub developers. The error is really strange. It looks like the package at https://github.com/cran/igraph/releases/download/2.0.3/igraph_2.0.3_b1_R4.5_x86_64-pc-linux-gnu-fedora-38.tar.gz
+
+The strange thing is the intel container on github actions has succeeded in the past but now is consistently failing to build `targets`:
+
+> ? Failed to build targets 1.7.1 (2.1s)
+> Error: 
+> ! error in pak subprocess
+> Caused by error in `stop_task_build(state, worker)`:
+> ! Failed to build source package targets.
+> Full installation output:
+> * installing *source* package ?targets? ...
+> ** package ?targets? successfully unpacked and MD5 sums checked
+> staged installation is only possible with locking
+> ** using non-staged installation
+> ** R
+> ** inst
+> ** byte-compile and prepare package for lazy loading
+> Error in dyn.load(file, DLLpath = DLLpath, ...) : 
+>   unable to load shared object '/github/home/R/x86_64-pc-linux-gnu-library/4.5/igraph/libs/igraph.so':
+>   libopenblasp.so.0: cannot open shared object file: No such file or directory
+> Calls: <Anonymous> ... asNamespace -> loadNamespace -> library.dynam -> dyn.load
+> Execution halted
+> ERROR: lazy loading failed for package ?targets?
+> * removing ?/tmp/RtmpLpWRX0/pkg-lib3c3299c227c/targets?
+
+Which is related to the igraph issue you mentioned. Checking the packages installed in a previous successful intel action, targets was not listed. I don't know why it's being installed now but not previously, I haven't changed dependencies.
+
+In the past other packages have failed to build and not only on the intel container see "https://github.com/SpeakEasy-2/speakeasyR/actions/runs/10202337528/job/28226219457" where several containers failed at the setup-deps step. There is overlap in which package fails (i.e. protGenerics and sparseArray fail in multiple containers but succeed in others while in one container ExperimentHub fails). It seems the only packages failing are from Bioconductor. Assume this is a bioconductor or pak issue.
+
+The issue with igraph is interesting though since I do use the igraph package for some examples and inside the intel container, R CMD build has no problem running igraph. Inspecting the resulting tarball shows the html version of my vignette contains results that depends on running igraph code and my test using igraph succeeds with R CMD check. Yet when I run R inside the container and try to load the igraph library or run code via `igraph::` I get an error
+
+> > igraph::sample_pref(10)
+> Error in dyn.load(file, DLLpath = DLLpath, ...) :
+>  unable to load shared object '/root/R/x86_64-pc-linux-gnu-library/4.5/igraph/libs/igraph.so':
+>  libopenblasp.so.0: cannot open shared object file: No such file or directory
+
+I.e. the same error with building targets. I can raise an issue on rigraph as well.
+
+?- David R. Connell
+
+On Friday, August 16th, 2024 at 7:58 AM, Ivan Krylov 'ikrylov at disroot.org' wrote:
+
+> ? Thu, 15 Aug 2024 18:58:41 +0000
+> anj5xsj9 at nilly.addy.io ?????:
+> 
+> > This seems like it should work. Unfortunately my rhub github actions
+> > is failing to get past the setup deps step which has been occuring
+> > inconsistently in the past but right now it's consistently failing to
+> > build deps so I can't confirm it work.
+> 
+> 
+> This may be worth reporting to the rhub developers. The error is really
+> strange. It looks like the package at
+> https://github.com/cran/igraph/releases/download/2.0.3/igraph_2.0.3_b1_R4.5_x86_64-pc-linux-gnu-fedora-38.tar.gz
+> (referenced from https://github.com/r-hub/repos) has a binary
+> dependency on OpenBLAS:
+> 
+> $ readelf -d igraph/libs/igraph.so | grep openblas
+> 0x0000000000000001 (NEEDED) Shared library: [libopenblasp.so.0]
+> 
+> ...but that's either not noted or not installed correctly.
+> 
+> > I was also unable to successfully build R using intel compilers, even
+> > when using Rhubs container as template.
+> 
+> 
+> If you'd like to dig deeper, feel free to ask here with details.
+> 
+> > In case anyone else comes across this, the genmod files end up in
+> > `src` even if the original source files are under a subdirectory so
+> > the recipe ends up being:
+> > 
+> > > -rm -f *genmod.f90
+> 
+> 
+> Thank you for letting us know!
+> 
+> > I installed intel compilers and checked the `ifx` man page. Could not
+> > find an option for turning off generation of the genmod files.
+> 
+> 
+> I experimented with the "ghcr.io/r-hub/containers/intel:latest"
+> container and was able to find out that the option -[no]gen-interfaces
+> controls the generation of __genmod files:
+> 
+> /opt/intel/oneapi/compiler/latest/bin/ifx -O3 -fp-model precise \
+> -warn all,noexternals -c -o arpack/dgetv0.o arpack/dgetv0.f; \
+> ls genmod
+> # ...
+> # dgetv0__genmod.f90 dgetv0__genmod.mod
+> rm -vf genmod
+> # removed 'dgetv0__genmod.f90'
+> # removed 'dgetv0__genmod.mod'
+> /opt/intel/oneapi/compiler/latest/bin/ifx -nogen-interfaces -O3 \
+> -fp-model precise -warn all,noexternals -c -o arpack/dgetv0.o \
+> arpack/dgetv0.f; \
+> ls genmod
+> # ...
+> # ls: cannot access 'genmod': No such file or directory
+> 
+> This option is already used as part of the "Intel" additional checks
+> performed by Prof. Brian D. Ripley, so the __genmod. files should not
+> be a problem on CRAN:
+> https://svn.r-project.org/R-dev-web/trunk/CRAN/QA/BDR/gannet/Intel/config.site
+> 
+> --
+> Best regards,
+> Ivan
+
+
