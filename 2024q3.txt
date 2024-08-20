@@ -7884,3 +7884,175 @@ On 8/17/2024 9:24 AM, Ivan Krylov wrote:
 >
 
 
+From edd @end|ng |rom deb|@n@org  Mon Aug 19 14:54:22 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Mon, 19 Aug 2024 07:54:22 -0500
+Subject: [R-pkg-devel] ORCID ID finder via tools::CRAN_package_db() ?
+Message-ID: <26307.16510.300799.974636@rob.eddelbuettel.com>
+
+
+Has anybody written a quick helper function that extracts the Authors at R field
+from tools::CRAN_package_db() and 'stems' it into 'Name, Firstname, ORCID'
+which one could use to look up ORCID IDs at CRAN? The lookup at orcid.org
+sometimes gives us 'private entries' that make it harder / impossible to
+confirm a match. Having a normalised matrix or data.frame (or ...) would also
+make it easier to generate Authors at R.
+
+Cheers, Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From th|erry@onke||nx @end|ng |rom |nbo@be  Mon Aug 19 15:15:22 2024
+From: th|erry@onke||nx @end|ng |rom |nbo@be (Thierry Onkelinx)
+Date: Mon, 19 Aug 2024 15:15:22 +0200
+Subject: [R-pkg-devel] ORCID ID finder via tools::CRAN_package_db() ?
+In-Reply-To: <26307.16510.300799.974636@rob.eddelbuettel.com>
+References: <26307.16510.300799.974636@rob.eddelbuettel.com>
+Message-ID: <CAJuCY5ycWMGu9RpVknkuwWLHKjsiBe+J1cQxwoF=B+MT-vc29g@mail.gmail.com>
+
+Dear Dirk,
+
+Maybe checklist:::author2df() might be useful. It is an unexported function
+from my checklist package. It converts a person() object to a dataframe.
+https://github.com/inbo/checklist/blob/5649985b58693acb88337873ae14a7d5bc018d96/R/store_authors.R#L38
+
+df <- tools::CRAN_package_db()
+lapply(
+  df$`Authors at R`[df$Package  %in% c("git2rdata", "qrcode")],
+  function(x) {
+    parse(text = x) |>
+      eval() |>
+      vapply(checklist:::author2df, vector(mode = "list", 1)) |>
+      do.call(what = rbind)
+  }
+)
+
+[[1]]
+    given       family                       email               orcid
+affiliation usage
+1 Thierry     Onkelinx    thierry.onkelinx at inbo.be 0000-0001-8804-4216
+       <NA>     1
+2  Floris Vanderhaeghe floris.vanderhaeghe at inbo.be 0000-0002-6378-6229
+       <NA>     1
+3   Peter       Desmet        peter.desmet at inbo.be 0000-0002-8442-8025
+       <NA>     1
+4     Els     Lommelen        els.lommelen at inbo.be 0000-0002-3481-5684
+       <NA>     1
+
+[[2]]
+    given   family                 email               orcid affiliation usage
+1 Thierry Onkelinx qrcode at muscardinus.be 0000-0001-8804-4216        <NA>     1
+2  Victor      Teh   victorteh at gmail.com
+
+
+ir. Thierry Onkelinx
+Statisticus / Statistician
+
+Vlaamse Overheid / Government of Flanders
+INSTITUUT VOOR NATUUR- EN BOSONDERZOEK / RESEARCH INSTITUTE FOR NATURE AND
+FOREST
+Team Biometrie & Kwaliteitszorg / Team Biometrics & Quality Assurance
+thierry.onkelinx at inbo.be
+Havenlaan 88 bus 73, 1000 Brussel
+*Postadres:* Koning Albert II-laan 15 bus 186, 1210 Brussel
+*Poststukken die naar dit adres worden gestuurd, worden ingescand en
+digitaal aan de geadresseerde bezorgd. Zo kan de Vlaamse overheid haar
+dossiers volledig digitaal behandelen. Poststukken met de vermelding
+?vertrouwelijk? worden niet ingescand, maar ongeopend aan de geadresseerde
+bezorgd.*
+www.inbo.be
+
+///////////////////////////////////////////////////////////////////////////////////////////
+To call in the statistician after the experiment is done may be no more
+than asking him to perform a post-mortem examination: he may be able to say
+what the experiment died of. ~ Sir Ronald Aylmer Fisher
+The plural of anecdote is not data. ~ Roger Brinner
+The combination of some data and an aching desire for an answer does not
+ensure that a reasonable answer can be extracted from a given body of data.
+~ John Tukey
+///////////////////////////////////////////////////////////////////////////////////////////
+
+<https://www.inbo.be>
+
+
+Op ma 19 aug 2024 om 14:54 schreef Dirk Eddelbuettel <edd at debian.org>:
+
+>
+> Has anybody written a quick helper function that extracts the Authors at R
+> field
+> from tools::CRAN_package_db() and 'stems' it into 'Name, Firstname, ORCID'
+> which one could use to look up ORCID IDs at CRAN? The lookup at orcid.org
+> sometimes gives us 'private entries' that make it harder / impossible to
+> confirm a match. Having a normalised matrix or data.frame (or ...) would
+> also
+> make it easier to generate Authors at R.
+>
+> Cheers, Dirk
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Mon Aug 19 15:39:04 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Mon, 19 Aug 2024 08:39:04 -0500
+Subject: [R-pkg-devel] ORCID ID finder via tools::CRAN_package_db() ?
+In-Reply-To: <CAJuCY5ycWMGu9RpVknkuwWLHKjsiBe+J1cQxwoF=B+MT-vc29g@mail.gmail.com>
+References: <26307.16510.300799.974636@rob.eddelbuettel.com>
+ <CAJuCY5ycWMGu9RpVknkuwWLHKjsiBe+J1cQxwoF=B+MT-vc29g@mail.gmail.com>
+Message-ID: <26307.19192.825552.550821@rob.eddelbuettel.com>
+
+
+On 19 August 2024 at 15:15, Thierry Onkelinx wrote:
+| Maybe checklist:::author2df() might be useful. It is an unexported function
+| from my checklist package. It converts a person() object to a dataframe.
+| https://github.com/inbo/checklist/blob/5649985b58693acb88337873ae14a7d5bc018d96
+| /R/store_authors.R#L38
+| 
+| df <- tools::CRAN_package_db()
+| lapply(
+| ? df$`Authors at R`[df$Package ?%in% c("git2rdata", "qrcode")],
+| ? function(x) {
+| ? ? parse(text = x) |>
+| ? ? ? eval() |>
+| ? ? ? vapply(checklist:::author2df, vector(mode = "list", 1)) |>
+| ? ? ? do.call(what = rbind)
+| ? }
+| )
+| 
+| 
+| [[1]]
+|     given       family                       email               orcid affiliation usage
+| 1 Thierry     Onkelinx    thierry.onkelinx at inbo.be 0000-0001-8804-4216        <NA>     1
+| 2  Floris Vanderhaeghe floris.vanderhaeghe at inbo.be 0000-0002-6378-6229        <NA>     1
+| 3   Peter       Desmet        peter.desmet at inbo.be 0000-0002-8442-8025        <NA>     1
+| 4     Els     Lommelen        els.lommelen at inbo.be 0000-0002-3481-5684        <NA>     1
+| 
+| [[2]]
+|     given   family                 email               orcid affiliation usage
+| 1 Thierry Onkelinx qrcode at muscardinus.be 0000-0001-8804-4216        <NA>     1
+| 2  Victor      Teh   victorteh at gmail.com  
+
+That's a very nice start, thank you. (Will also look more closely at
+checklist.)  It needs an `na.omit()` or alike, and even with that `rbind`
+barked a few entries in (i = 19 if you select the full vector right now).
+
+But definitely something to play with and possibly build upon. Thanks!  (And
+the IDs of Floris and you were two of the ones I 'manually' added to a
+DESCRIPTION file ;-)
+
+Best,  Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
