@@ -9682,3 +9682,96 @@ Best
 > dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From j|ox @end|ng |rom mcm@@ter@c@  Mon Sep  2 17:34:09 2024
+From: j|ox @end|ng |rom mcm@@ter@c@ (John Fox)
+Date: Mon, 2 Sep 2024 11:34:09 -0400
+Subject: [R-pkg-devel] unregistered S3 methods in a package
+Message-ID: <b9db0b2d-b863-4367-8e39-00f6a8c60f96@mcmaster.ca>
+
+Dear R-package-devel list members,
+
+I want to introduce several unregistered S3 methods into the cv package 
+(code at <https://github.com/gmonette/cv>). These methods have the form
+
+	coef.merMod <- function(object, ...) lme4::fixef(object)
+
+The object is to mask, e.g., lme4:::coef.merMod(), which returns BLUPs 
+rather than fixed effects, internally in the cv package but *not* to 
+mask the lme4 version of the method for users of the cv package -- that 
+could wreak havoc with their work. Doing this substantially simplifies 
+some of the code in the cv package.
+
+My question: Is it legitimate to define a method in a package for 
+internal use without registering it?
+
+This approach appears to work fine, and R CMD check doesn't complain, 
+although Roxygen does complain that the method isn't "exported" 
+(actually, isn't registered).
+
+Any advice or relevant information would be appreciated.
+
+Thank you,
+  John
+-- 
+John Fox, Professor Emeritus
+McMaster University
+Hamilton, Ontario, Canada
+web: https://www.john-fox.ca/
+--
+
+
+From j|ox @end|ng |rom mcm@@ter@c@  Mon Sep  2 20:57:58 2024
+From: j|ox @end|ng |rom mcm@@ter@c@ (John Fox)
+Date: Mon, 2 Sep 2024 14:57:58 -0400
+Subject: [R-pkg-devel] unregistered S3 methods in a package
+In-Reply-To: <b9db0b2d-b863-4367-8e39-00f6a8c60f96@mcmaster.ca>
+References: <b9db0b2d-b863-4367-8e39-00f6a8c60f96@mcmaster.ca>
+Message-ID: <4aa634d6-01e1-4cb3-8119-35ccdec32ef9@mcmaster.ca>
+
+As it turned out, I was able to avoid redefining coef.merMod(), etc., by 
+making a simple modification to the cv package.
+
+I'm still curious about whether it's OK to have unregistered S3 methods 
+for internal use in a package even though that's no longer necessary for 
+the cv package.
+
+On 2024-09-02 11:34 a.m., John Fox wrote:
+> Caution: External email.
+> 
+> 
+> Dear R-package-devel list members,
+> 
+> I want to introduce several unregistered S3 methods into the cv package
+> (code at <https://github.com/gmonette/cv>). These methods have the form
+> 
+>  ?????? coef.merMod <- function(object, ...) lme4::fixef(object)
+> 
+> The object is to mask, e.g., lme4:::coef.merMod(), which returns BLUPs
+> rather than fixed effects, internally in the cv package but *not* to
+> mask the lme4 version of the method for users of the cv package -- that
+> could wreak havoc with their work. Doing this substantially simplifies
+> some of the code in the cv package.
+> 
+> My question: Is it legitimate to define a method in a package for
+> internal use without registering it?
+> 
+> This approach appears to work fine, and R CMD check doesn't complain,
+> although Roxygen does complain that the method isn't "exported"
+> (actually, isn't registered).
+> 
+> Any advice or relevant information would be appreciated.
+> 
+> Thank you,
+>  ?John
+> -- 
+> John Fox, Professor Emeritus
+> McMaster University
+> Hamilton, Ontario, Canada
+> web: https://www.john-fox.ca/
+> -- 
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
