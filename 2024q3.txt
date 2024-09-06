@@ -10018,3 +10018,326 @@ On 2024-09-04 5:12 p.m., Jeff Newmiller wrote:
 > Sent from my phone. Please excuse my brevity.
 
 
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Thu Sep  5 08:47:06 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Thu, 5 Sep 2024 08:47:06 +0200
+Subject: [R-pkg-devel] unregistered S3 methods in a package
+In-Reply-To: <1e4f4cfc-85ef-4220-947e-f080e56c70f5@mcmaster.ca>
+References: <b9db0b2d-b863-4367-8e39-00f6a8c60f96@mcmaster.ca>
+ <4aa634d6-01e1-4cb3-8119-35ccdec32ef9@mcmaster.ca>
+ <CALK03d3aHJDTLQK7OoVWV=1721cM8k2fRxFGctyXupBxxf=xVQ@mail.gmail.com>
+ <F143B615-962D-4EB3-8D39-77C8A479E447@dcn.davis.ca.us>
+ <1e4f4cfc-85ef-4220-947e-f080e56c70f5@mcmaster.ca>
+Message-ID: <d7cdb549-9dd0-4c10-a558-02d2c2cfe2e7@statistik.tu-dortmund.de>
+
+Dear John,
+
+the question is not really easy to answer, but there is a nice summary 
+Kurt pointed me to: The code of checkS3methods() includes the following 
+comments with the last paragraph containing the short answer to your 
+question:
+
+     ## Check S3 generics and methods consistency.
+
+     ## Unfortunately, what is an S3 method is not clear.
+     ## These days, S3 methods for a generic GEN are found
+     ## A. via GEN.CLS lookup from the callenv to its topenv;
+     ## B. the S3 registry;
+     ## C. GEN.CLS lookup from the parent of the topenv to baseenv,
+     ##    skipping everything on the search path between globalenv and
+     ##    baseenv.
+     ## Thus if "package code" calls GEN, we first look in the package
+     ## namespace itself, then in the registry, and then in the package
+     ## imports and .BaseNamespaceEnv (and globalenv and baseenv again).
+     ##
+     ## Clearly, everything registered via S3method() should be an S3
+     ## method.  Interestingly, we seem to have some registrations for
+     ## non-generics, such as grDevices::axis().  These are "harmless"
+     ## but likely not "as intended", and hence inconsistencies are not
+     ## ignored.
+     ##
+     ## If the package namespace has a function named GEN.CLS, it is used
+     ## as an S3 method for an S3 generic named GEN (and hence "is an S3
+     ## method") only if the package code actually calls GEN (see A
+     ## above).  So one could argue that we should not be looking at all
+     ## GEN.CLS matches with GEN a generic in the package itself, its
+     ## imports or base, but restrict to only the ones where the package
+     ## code calls GEN.  Doable, but not straightforward (calls could be
+     ## PKG::GEN) and possibly quite time consuming.  For generics from
+     ## the package itself or its imports, not restricting should not
+     ## make a difference (why define or import when not calling?), but
+     ## for generics from base it may: hence we filter out the mismatches
+     ## for base GEN not called in the package.
+     ##
+     ## If a package provides an S3 generic GEN, there is no need to
+     ## register GEN.CLS functions for "internal use" (see above).
+     ## However, if GEN is exported then likely all GEN.CLS functions
+     ## should be registered as S3 methods.
+
+
+Best wishes,
+Uwe
+
+
+On 05.09.2024 00:10, John Fox wrote:
+> Thanks Toby and Jeff for chiming in on this.
+> 
+> Jeff: I already read Kurt Hornik's post on "S3 Method Lookup" and quite 
+> a few other sources.
+> 
+> The main point is that failing to register the methods works in that the 
+> methods are nevertheless invoked internally by functions in the package 
+> but don't shadow versions of the methods registered by other package 
+> externally (e.g., at the command prompt), which was the effect that I 
+> wanted. Moreover, as I said, R CMD check (unlike roxygen) didn't complain.
+> 
+> As I mentioned, this is now moot for the cv package, but I'm still 
+> interested in the answer, as, apparently, is Toby.
+> 
+> Best,
+>  ?John
+> 
+> On 2024-09-04 5:12 p.m., Jeff Newmiller wrote:
+>> Caution: External email.
+>>
+>>
+>> I have been reluctant to pipe up on this because I am no expert on the 
+>> dark corners of the S3 dispatch mechanism, but I think unregistered S3 
+>> methods in packages are verboten. Perhaps [1] will shed some light?
+>>
+>> [1] https://blog.r-project.org/2019/08/19/s3-method-lookup/
+>>
+>> On September 4, 2024 11:21:22 AM PDT, Toby Hocking <tdhock5 at gmail.com> 
+>> wrote:
+>>> I got this warning too, so I filed an issue to ask
+>>> https://github.com/r-lib/roxygen2/issues/1654
+>>>
+>>> On Mon, Sep 2, 2024 at 2:58?PM John Fox <jfox at mcmaster.ca> wrote:
+>>>>
+>>>> As it turned out, I was able to avoid redefining coef.merMod(), 
+>>>> etc., by
+>>>> making a simple modification to the cv package.
+>>>>
+>>>> I'm still curious about whether it's OK to have unregistered S3 methods
+>>>> for internal use in a package even though that's no longer necessary 
+>>>> for
+>>>> the cv package.
+>>>>
+>>>> On 2024-09-02 11:34 a.m., John Fox wrote:
+>>>>> Caution: External email.
+>>>>>
+>>>>>
+>>>>> Dear R-package-devel list members,
+>>>>>
+>>>>> I want to introduce several unregistered S3 methods into the cv 
+>>>>> package
+>>>>> (code at <https://github.com/gmonette/cv>). These methods have the 
+>>>>> form
+>>>>>
+>>>>> ???????? coef.merMod <- function(object, ...) lme4::fixef(object)
+>>>>>
+>>>>> The object is to mask, e.g., lme4:::coef.merMod(), which returns BLUPs
+>>>>> rather than fixed effects, internally in the cv package but *not* to
+>>>>> mask the lme4 version of the method for users of the cv package -- 
+>>>>> that
+>>>>> could wreak havoc with their work. Doing this substantially simplifies
+>>>>> some of the code in the cv package.
+>>>>>
+>>>>> My question: Is it legitimate to define a method in a package for
+>>>>> internal use without registering it?
+>>>>>
+>>>>> This approach appears to work fine, and R CMD check doesn't complain,
+>>>>> although Roxygen does complain that the method isn't "exported"
+>>>>> (actually, isn't registered).
+>>>>>
+>>>>> Any advice or relevant information would be appreciated.
+>>>>>
+>>>>> Thank you,
+>>>>> ?? John
+>>>>> -- 
+>>>>> John Fox, Professor Emeritus
+>>>>> McMaster University
+>>>>> Hamilton, Ontario, Canada
+>>>>> web: https://www.john-fox.ca/
+>>>>> -- 
+>>>>>
+>>>>> ______________________________________________
+>>>>> R-package-devel at r-project.org mailing list
+>>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>>
+>>>> ______________________________________________
+>>>> R-package-devel at r-project.org mailing list
+>>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>> -- 
+>> Sent from my phone. Please excuse my brevity.
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Thu Sep  5 09:44:52 2024
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Thu, 5 Sep 2024 09:44:52 +0200
+Subject: [R-pkg-devel] unregistered S3 methods in a package
+In-Reply-To: <d7cdb549-9dd0-4c10-a558-02d2c2cfe2e7@statistik.tu-dortmund.de>
+References: <b9db0b2d-b863-4367-8e39-00f6a8c60f96@mcmaster.ca>
+ <4aa634d6-01e1-4cb3-8119-35ccdec32ef9@mcmaster.ca>
+ <CALK03d3aHJDTLQK7OoVWV=1721cM8k2fRxFGctyXupBxxf=xVQ@mail.gmail.com>
+ <F143B615-962D-4EB3-8D39-77C8A479E447@dcn.davis.ca.us>
+ <1e4f4cfc-85ef-4220-947e-f080e56c70f5@mcmaster.ca>
+ <d7cdb549-9dd0-4c10-a558-02d2c2cfe2e7@statistik.tu-dortmund.de>
+Message-ID: <26329.24948.135486.590205@stat.math.ethz.ch>
+
+>>>>> Uwe Ligges 
+>>>>>     on Thu, 5 Sep 2024 08:47:06 +0200 writes:
+
+    > Dear John,
+    > the question is not really easy to answer, but there is a nice summary 
+    > Kurt pointed me to: The code of checkS3methods() includes the following 
+    > comments with the last paragraph containing the short answer to your 
+    > question:
+
+    > ## Check S3 generics and methods consistency.
+
+    > ## Unfortunately, what is an S3 method is not clear.
+    > ## These days, S3 methods for a generic GEN are found
+    > ## A. via GEN.CLS lookup from the callenv to its topenv;
+    > ## B. the S3 registry;
+    > ## C. GEN.CLS lookup from the parent of the topenv to baseenv,
+    > ##    skipping everything on the search path between globalenv and
+    > ##    baseenv.
+    > ## Thus if "package code" calls GEN, we first look in the package
+    > ## namespace itself, then in the registry, and then in the package
+    > ## imports and .BaseNamespaceEnv (and globalenv and baseenv again).
+    > ##
+    > ## Clearly, everything registered via S3method() should be an S3
+    > ## method.  Interestingly, we seem to have some registrations for
+    > ## non-generics, such as grDevices::axis().  These are "harmless"
+    > ## but likely not "as intended", and hence inconsistencies are not
+    > ## ignored.
+    > ##
+    > ## If the package namespace has a function named GEN.CLS, it is used
+    > ## as an S3 method for an S3 generic named GEN (and hence "is an S3
+    > ## method") only if the package code actually calls GEN (see A
+    > ## above).  So one could argue that we should not be looking at all
+    > ## GEN.CLS matches with GEN a generic in the package itself, its
+    > ## imports or base, but restrict to only the ones where the package
+    > ## code calls GEN.  Doable, but not straightforward (calls could be
+    > ## PKG::GEN) and possibly quite time consuming.  For generics from
+    > ## the package itself or its imports, not restricting should not
+    > ## make a difference (why define or import when not calling?), but
+    > ## for generics from base it may: hence we filter out the mismatches
+    > ## for base GEN not called in the package.
+    > ##
+    > ## If a package provides an S3 generic GEN, there is no need to
+    > ## register GEN.CLS functions for "internal use" (see above).
+    > ## However, if GEN is exported then likely all GEN.CLS functions
+    > ## should be registered as S3 methods.
+
+    > Best wishes,
+    > Uwe
+
+Excellent!  Thank you, Uwe, for digging this out.
+
+I'd also had answered to John Fox (even more strongly)
+that it *must* remain to be allowed to define "private"
+S3 methods in a package in all cases:
+- for a generic from the package (where the generic would also
+  not be exported)
+- for a generic from another package (which is imported)
+  or base (which need not and cannot be imported).
+
+Note that the same is possible with S4 and (AFAIK, untested)
+with S7.  {which people should really try using more ... }
+
+Martin
+
+
+
+    > On 05.09.2024 00:10, John Fox wrote:
+    >> Thanks Toby and Jeff for chiming in on this.
+    >> 
+    >> Jeff: I already read Kurt Hornik's post on "S3 Method Lookup" and quite 
+    >> a few other sources.
+    >> 
+    >> The main point is that failing to register the methods works in that the 
+    >> methods are nevertheless invoked internally by functions in the package 
+    >> but don't shadow versions of the methods registered by other package 
+    >> externally (e.g., at the command prompt), which was the effect that I 
+    >> wanted. Moreover, as I said, R CMD check (unlike roxygen) didn't complain.
+    >> 
+    >> As I mentioned, this is now moot for the cv package, but I'm still 
+    >> interested in the answer, as, apparently, is Toby.
+    >> 
+    >> Best,
+    >> ?John
+    >> 
+    >> On 2024-09-04 5:12 p.m., Jeff Newmiller wrote:
+    >>> Caution: External email.
+    >>> 
+    >>> 
+    >>> I have been reluctant to pipe up on this because I am no expert on the 
+    >>> dark corners of the S3 dispatch mechanism, but I think unregistered S3 
+    >>> methods in packages are verboten. Perhaps [1] will shed some light?
+    >>> 
+    >>> [1] https://blog.r-project.org/2019/08/19/s3-method-lookup/
+    >>> 
+    >>> On September 4, 2024 11:21:22 AM PDT, Toby Hocking <tdhock5 at gmail.com> 
+    >>> wrote:
+    >>>> I got this warning too, so I filed an issue to ask
+    >>>> https://github.com/r-lib/roxygen2/issues/1654
+    >>>> 
+    >>>> On Mon, Sep 2, 2024 at 2:58?PM John Fox <jfox at mcmaster.ca> wrote:
+    >>>>> 
+    >>>>> As it turned out, I was able to avoid redefining coef.merMod(), 
+    >>>>> etc., by
+    >>>>> making a simple modification to the cv package.
+    >>>>> 
+    >>>>> I'm still curious about whether it's OK to have unregistered S3 methods
+    >>>>> for internal use in a package even though that's no longer necessary 
+    >>>>> for
+    >>>>> the cv package.
+    >>>>> 
+    >>>>> On 2024-09-02 11:34 a.m., John Fox wrote:
+>>>>> Caution: External email.
+    >>>>>> 
+    >>>>>> 
+>>>>> Dear R-package-devel list members,
+    >>>>>> 
+>>>>> I want to introduce several unregistered S3 methods into the cv 
+>>>>> package
+>>>>> (code at <https://github.com/gmonette/cv>). These methods have the 
+>>>>> form
+    >>>>>> 
+>>>>> ???????? coef.merMod <- function(object, ...) lme4::fixef(object)
+    >>>>>> 
+>>>>> The object is to mask, e.g., lme4:::coef.merMod(), which returns BLUPs
+>>>>> rather than fixed effects, internally in the cv package but *not* to
+>>>>> mask the lme4 version of the method for users of the cv package -- 
+>>>>> that
+>>>>> could wreak havoc with their work. Doing this substantially simplifies
+>>>>> some of the code in the cv package.
+    >>>>>> 
+>>>>> My question: Is it legitimate to define a method in a package for
+>>>>> internal use without registering it?
+    >>>>>> 
+>>>>> This approach appears to work fine, and R CMD check doesn't complain,
+>>>>> although Roxygen does complain that the method isn't "exported"
+>>>>> (actually, isn't registered).
+    >>>>>> 
+>>>>> Any advice or relevant information would be appreciated.
+    >>>>>> 
+>>>>> Thank you,
+>>>>> ?? John
+>>>>> -- 
+>>>>> John Fox, Professor Emeritus
+>>>>> McMaster University
+>>>>> Hamilton, Ontario, Canada
+>>>>> web: https://www.john-fox.ca/
+
+
