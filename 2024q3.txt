@@ -10341,3 +10341,594 @@ Martin
 >>>>> web: https://www.john-fox.ca/
 
 
+From t@eyongp @end|ng |rom @ndrew@cmu@edu  Thu Sep  5 22:40:00 2024
+From: t@eyongp @end|ng |rom @ndrew@cmu@edu (Taeyong Park)
+Date: Thu, 5 Sep 2024 23:40:00 +0300
+Subject: [R-pkg-devel] Error in creating virtual environment on Debian
+ machines
+Message-ID: <CA+xzKwwxqL=cazuECCaiWBsdRNire2k+WJ9_BsgweRSez3idwQ@mail.gmail.com>
+
+Hello,
+
+I am trying to create a virtual environment in the zzz.r file of my
+package, and my package is currently passing on Windows and failing on
+Debian with 1 ERROR.
+
+
+This is the ERROR:
+
+* installing *source* package ?PytrendsLongitudinalR? ...
+** using staged installation
+** R
+** inst
+** byte-compile and prepare package for lazy loading
+** help
+*** installing help indices
+** building package indices
+** installing vignettes
+** testing if installed package can be loaded from temporary location
+Using Python: /usr/bin/python3.12
+Creating virtual environment '/home/hornik/.virtualenvs/pytrends-in-r-new' ...
++ /usr/bin/python3.12 -m venv /home/hornik/.virtualenvs/pytrends-in-r-new
+The virtual environment was not created successfully because ensurepip is not
+available.  On Debian/Ubuntu systems, you need to install the python3-venv
+package using the following command.
+
+    apt install python3.12-venv
+
+You may need to use sudo with that command.  After installing the python3-venv
+package, recreate your virtual environment.
+
+Failing command: /home/hornik/.virtualenvs/pytrends-in-r-new/bin/python3.12
+
+FAILED
+Error: package or namespace load failed for ?PytrendsLongitudinalR?:
+ .onLoad failed in loadNamespace() for 'PytrendsLongitudinalR', details:
+  call: NULL
+  error: Error creating virtual environment
+'/home/hornik/.virtualenvs/pytrends-in-r-new' [error code 1]
+Error: loading failed
+Execution halted
+ERROR: loading failed
+* removing ?/srv/hornik/tmp/CRAN_pretest/PytrendsLongitudinalR.Rcheck/PytrendsLongitudinalR?
+
+and this is the onLoad function of my zzz.r file:
+
+
+.onLoad <- function(libname, pkgname) {
+
+
+  # Define paths
+  venv_path <- file.path(Sys.getenv("HOME"), ".virtualenvs",
+"pytrends-in-r-new")
+  python_path <- file.path(venv_path, "bin", "python")
+
+  # Ensure 'virtualenv' is installed
+  if (!reticulate::py_module_available("virtualenv")) {
+    reticulate::py_install("virtualenv")
+  }
+
+
+  # Check if the virtual environment exists
+  if (!reticulate::virtualenv_exists(venv_path)) {
+    # If it doesn't exist, attempt to create it
+    tryCatch({
+      reticulate::virtualenv_create(envname = venv_path, python =
+python_path, force = TRUE, module =
+getOption("reticulate.virtualenv.module"))
+    }, error = function(e) {
+      # Fallback: install Python and create the virtual environment
+      reticulate::virtualenv_create(envname = venv_path, force = TRUE,
+module = getOption("reticulate.virtualenv.module"))
+    })
+  }
+
+  # Use the virtual environment for reticulate operations
+  reticulate::use_virtualenv(venv_path, required = TRUE)
+
+  # Install packages if not already installed
+  packages_to_install <- c("pandas", "requests", "pytrends", "rich")
+  for (package in packages_to_install) {
+    if (!reticulate::py_module_available(package)) {
+      reticulate::py_install(package, envname = "pytrends-in-r-new")
+    }
+  }
+
+
+  TrendReq <<- reticulate::import("pytrends.request", delay_load =
+TRUE)$TrendReq
+  ResponseError <<- reticulate::import("pytrends.exceptions",
+delay_load = TRUE)$ResponseError
+  pd <<- reticulate::import("pandas", delay_load = TRUE)
+  os <<- reticulate::import("os", delay_load = TRUE)
+  glob <<- reticulate::import("glob", delay_load = TRUE)
+  json <<- reticulate::import("json", delay_load = TRUE)
+  requests <<- reticulate::import("requests", delay_load = TRUE)
+  dt <<- reticulate::import("datetime", delay_load = TRUE)
+  relativedelta <<- reticulate::import("dateutil.relativedelta",
+delay_load = TRUE)
+  time <<- reticulate::import("time", delay_load = TRUE)
+  logging <<- reticulate::import("logging", delay_load = TRUE)
+  console <<- reticulate::import("rich.console", delay_load = TRUE)$Console
+  RichHandler <<- reticulate::import("rich.logging", delay_load =
+TRUE)$RichHandler
+  math <<- reticulate::import("math", delay_load = TRUE)
+  platform <<- reticulate::import("platform", delay_load = TRUE)
+
+  # Configure logging
+  configure_logging()
+}
+
+How do I ensure that the virtual environment is created properly on
+Debian systems?  I tried the instructions in the error message but
+still got the error.
+
+Thank you in advance for your help!
+
+
+Best,
+
+Taeyong
+
+
+
+
+*Taeyong Park, Ph.D.*
+*Assistant Teaching Professor of Statistics*
+*Director, Statistical Consulting Center*
+*Carnegie Mellon University Qatar*
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Sep  6 12:45:03 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 6 Sep 2024 13:45:03 +0300
+Subject: [R-pkg-devel] Error in creating virtual environment on Debian
+ machines
+In-Reply-To: <CA+xzKwwxqL=cazuECCaiWBsdRNire2k+WJ9_BsgweRSez3idwQ@mail.gmail.com>
+References: <CA+xzKwwxqL=cazuECCaiWBsdRNire2k+WJ9_BsgweRSez3idwQ@mail.gmail.com>
+Message-ID: <20240906134503.2ff1f2da@arachnoid>
+
+Hello Taeyong and welcome to R-package-devel!
+
+? Thu, 5 Sep 2024 23:40:00 +0300
+Taeyong Park <taeyongp at andrew.cmu.edu> ?????:
+
+>   # Define paths
+>   venv_path <- file.path(Sys.getenv("HOME"), ".virtualenvs",
+> "pytrends-in-r-new")
+>   python_path <- file.path(venv_path, "bin", "python")
+
+Please don't require placing the virtual environments under
+~/.virtualenvs. 'reticulate' will use this path as a default if you only
+provide the name of the virtual environment, but will also let the user
+configure virtualenv_root() using environment variables.
+
+>   TrendReq <<- reticulate::import("pytrends.request", delay_load =
+> TRUE)$TrendReq
+>   ResponseError <<- reticulate::import("pytrends.exceptions",
+> delay_load = TRUE)$ResponseError
+
+I'm afraid this defeats the purpose of 'delay_load' by immediately
+accessing the module object and forcing 'reticulate' to load it.
+
+I understand the desire to get everything working automatically right
+when the package is loaded, but Python dependency management is a
+complex topic and not all of it is safe to perform from .onLoad. In
+particular, if .onLoad fails, you don't get to let the user call
+PytrendsLongitudinalR::install_pytrends() because the namespace will
+not be available. Try following the guidance in the 'reticulate'
+vignettes [1]:
+
+1. In .onLoad, only express a soft preference for a named virtual
+environment and create but do not access lazy-load Python module
+objects:
+
+.onLoad <- function(libname, pkgname) {
+ use_virtualenv("pytrends-in-r-new", required = FALSE)
+ pytrends.request <<- reticulate::import("pytrends.request", delay_load
+= TRUE)
+ pd <<- reticulate::import("pandas", delay_load = TRUE)
+ # and so on
+}
+
+2. Move all the installation work into a separate function:
+
+install_pytrends <- function(envname = "pytrends-in-r-new", ...)
+ # the vignette suggests wiping the "pytrends-in-r-new" venv here,
+ # just in case
+ py_install(
+  c("pandas", "requests", "pytrends", "rich"),
+  envname = envname, ...
+ )
+
+3. In tests and examples, wrap all uses of Python in checks for
+py_module_available(...). In regular code, you can suggest running
+install_pytrends(), but don't run it for the user. _Automatically_
+installing additional software, whether Python modules or Python
+itself, is prohibited by the CRAN policy [2]:
+
+>> Packages should not write in the user?s home filespace <...> nor
+>> anywhere else on the file system apart from the R session?s
+>> temporary directory (or during installation in the location pointed
+>> to by TMPDIR: and such usage should be cleaned up). <...>
+>> Limited exceptions may be allowed in interactive sessions if the
+>> package obtains confirmation from the user.
+
+Admittedly, this complicates the tests and the examples for your
+package with boilerplate. I see that 'tensorflow', for example, wraps
+all its examples in \dontrun{}, but it's an exceptional package. A few
+other packages that depend on 'reticulate' that I've just taken a look
+at do wrap their examples in checks for the Python packages being
+available.
+
+-- 
+Best regards,
+Ivan
+
+[1]
+https://cran.r-project.org/package=reticulate/vignettes/package.html
+https://cran.r-project.org/package=reticulate/vignettes/python_dependencies.html
+
+[2]
+https://cran.r-project.org/web/packages/policies.html
+
+
+From @|gbert @end|ng |rom w|w|@hu-ber||n@de  Fri Sep  6 14:43:31 2024
+From: @|gbert @end|ng |rom w|w|@hu-ber||n@de (Sigbert Klinke)
+Date: Fri, 6 Sep 2024 14:43:31 +0200
+Subject: [R-pkg-devel] devtools::build() and Authors@R
+Message-ID: <70311e44-7477-4e05-9956-cb7e9e5be549@wiwi.hu-berlin.de>
+
+Hi,
+
+upon resubmitting my package to CRAN, I received the following note:
+
+
+
+Author field differs from that derived from Authors at R
+
+
+
+Author: 'Sigbert Klinke [aut, cre] 
+(https://orcid.org/0000-0003-3337-1863), Jekaterina Zukovska [ctb] 
+(https://orcid.org/0000-0002-7753-9210)'
+
+Authors at R: 'Sigbert Klinke [aut, cre] (ORCID: 
+https://orcid.org/0000-0003-3337-1863), Jekaterina Zukovska [ctb] 
+(ORCID: https://orcid.org/0000-0002-7753-9210)'
+
+Since my DESCRIPTION file only includes the Authors at R field, I was 
+initially confused.
+
+
+
+However, after inspecting the *.tgz file generated with 
+devtools::build(), I found that both fields (Author and Authors at R) were 
+indeed present in the DESCRIPTION file inside the *.tgz. This was also 
+the case with older *.tgz files, but CRAN hadn?t flagged it before.
+
+
+
+As a workaround, I replaced Authors at R with separate Author and 
+Maintainer fields.
+
+
+
+Do you have any other suggestions on how to resolve this?
+
+Thanks Sigbert
+
+-- 
+https://hu.berlin/sk
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Fri Sep  6 14:47:37 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Fri, 6 Sep 2024 14:47:37 +0200
+Subject: [R-pkg-devel] devtools::build() and Authors@R
+In-Reply-To: <70311e44-7477-4e05-9956-cb7e9e5be549@wiwi.hu-berlin.de>
+References: <70311e44-7477-4e05-9956-cb7e9e5be549@wiwi.hu-berlin.de>
+Message-ID: <99e84273-d74d-4bb5-8fc3-49a12fd928d9@statistik.tu-dortmund.de>
+
+
+
+On 06.09.2024 14:43, Sigbert Klinke wrote:
+> Hi,
+> 
+> upon resubmitting my package to CRAN, I received the following note:
+> 
+> 
+> 
+> Author field differs from that derived from Authors at R
+> 
+> 
+> 
+> Author: 'Sigbert Klinke [aut, cre] 
+> (https://orcid.org/0000-0003-3337-1863), Jekaterina Zukovska [ctb] 
+> (https://orcid.org/0000-0002-7753-9210)'
+> 
+> Authors at R: 'Sigbert Klinke [aut, cre] (ORCID: 
+> https://orcid.org/0000-0003-3337-1863), Jekaterina Zukovska [ctb] 
+> (ORCID: https://orcid.org/0000-0002-7753-9210)'
+> 
+> Since my DESCRIPTION file only includes the Authors at R field, I was 
+> initially confused.
+> 
+> 
+> 
+> However, after inspecting the *.tgz file generated with 
+> devtools::build(), I found that both fields (Author and Authors at R) were 
+> indeed present in the DESCRIPTION file inside the *.tgz. This was also 
+> the case with older *.tgz files, but CRAN hadn?t flagged it before.
+> 
+> 
+> 
+> As a workaround, I replaced Authors at R with separate Author and 
+> Maintainer fields.
+> 
+> 
+> 
+> Do you have any other suggestions on how to resolve this?
+
+Ignore for now:
+This is from a very recent change in R-devel and should not have been 
+flagged by the checks, now fixed.
+The idea is to allow for more than only ORCID and hence give labels to 
+these ids. This is now done automatically when the Author field is 
+generated from Authors at R by R CMD build, and unfortunately got flagged 
+by our checks that use a very recent version of R-devel from last night.
+
+In short: Simply submit again, the note will be gone.
+
+Best,
+Uwe Ligges
+
+
+
+
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Fri Sep  6 14:49:21 2024
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Fri, 6 Sep 2024 14:49:21 +0200
+Subject: [R-pkg-devel] devtools::build() and Authors@R
+In-Reply-To: <70311e44-7477-4e05-9956-cb7e9e5be549@wiwi.hu-berlin.de>
+References: <70311e44-7477-4e05-9956-cb7e9e5be549@wiwi.hu-berlin.de>
+Message-ID: <26330.64081.194155.832151@stat.math.ethz.ch>
+
+>>>>> Sigbert Klinke 
+>>>>>     on Fri, 6 Sep 2024 14:43:31 +0200 writes:
+
+    > Hi,
+    > upon resubmitting my package to CRAN, I received the following note:
+
+
+
+    > Author field differs from that derived from Authors at R
+
+
+
+    > Author: 'Sigbert Klinke [aut, cre] 
+    > (https://orcid.org/0000-0003-3337-1863), Jekaterina Zukovska [ctb] 
+    > (https://orcid.org/0000-0002-7753-9210)'
+
+    > Authors at R: 'Sigbert Klinke [aut, cre] (ORCID: 
+    > https://orcid.org/0000-0003-3337-1863), Jekaterina Zukovska [ctb] 
+    > (ORCID: https://orcid.org/0000-0002-7753-9210)'
+
+    > Since my DESCRIPTION file only includes the Authors at R field, I was 
+    > initially confused.
+
+
+
+    > However, after inspecting the *.tgz file generated with 
+    > devtools::build(), I found that both fields (Author and Authors at R) were 
+    > indeed present in the DESCRIPTION file inside the *.tgz. This was also 
+    > the case with older *.tgz files, but CRAN hadn?t flagged it before.
+
+
+
+    > As a workaround, I replaced Authors at R with separate Author and 
+    > Maintainer fields.
+
+
+
+    > Do you have any other suggestions on how to resolve this?
+
+Well, that's definitely easy to answer:
+
+Follow *the* reference, the 'R Extensions' manual,
+and use   R CMD build ...
+
+
+    > Thanks Sigbert
+
+    > -- 
+    > https://hu.berlin/sk
+
+    > ______________________________________________
+    > R-package-devel at r-project.org mailing list
+    > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From j|ox @end|ng |rom mcm@@ter@c@  Fri Sep  6 19:17:06 2024
+From: j|ox @end|ng |rom mcm@@ter@c@ (John Fox)
+Date: Fri, 6 Sep 2024 13:17:06 -0400
+Subject: [R-pkg-devel] unregistered S3 methods in a package
+In-Reply-To: <26329.24948.135486.590205@stat.math.ethz.ch>
+References: <b9db0b2d-b863-4367-8e39-00f6a8c60f96@mcmaster.ca>
+ <4aa634d6-01e1-4cb3-8119-35ccdec32ef9@mcmaster.ca>
+ <CALK03d3aHJDTLQK7OoVWV=1721cM8k2fRxFGctyXupBxxf=xVQ@mail.gmail.com>
+ <F143B615-962D-4EB3-8D39-77C8A479E447@dcn.davis.ca.us>
+ <1e4f4cfc-85ef-4220-947e-f080e56c70f5@mcmaster.ca>
+ <d7cdb549-9dd0-4c10-a558-02d2c2cfe2e7@statistik.tu-dortmund.de>
+ <26329.24948.135486.590205@stat.math.ethz.ch>
+Message-ID: <e28337bb-cb3e-4a97-b1ce-bfe58baea2a1@mcmaster.ca>
+
+Thank you Uwe and Martin for clarifying this issue.
+
+The last paragraph of the comments that Kurt pointed out refers to a 
+generic function defined in a package; in my case, the generic is 
+coef(), which is in the stats package not in the cv package, and the 
+question concerned methods for coef() (previously) defined in the cv 
+package and not registered. But the comments as a whole do cover that 
+case as well.
+
+Best,
+  John
+
+
+On 2024-09-05 3:44 a.m., Martin Maechler wrote:
+> Caution: External email.
+> 
+> 
+>>>>>> Uwe Ligges
+>>>>>>      on Thu, 5 Sep 2024 08:47:06 +0200 writes:
+> 
+>      > Dear John,
+>      > the question is not really easy to answer, but there is a nice summary
+>      > Kurt pointed me to: The code of checkS3methods() includes the following
+>      > comments with the last paragraph containing the short answer to your
+>      > question:
+> 
+>      > ## Check S3 generics and methods consistency.
+> 
+>      > ## Unfortunately, what is an S3 method is not clear.
+>      > ## These days, S3 methods for a generic GEN are found
+>      > ## A. via GEN.CLS lookup from the callenv to its topenv;
+>      > ## B. the S3 registry;
+>      > ## C. GEN.CLS lookup from the parent of the topenv to baseenv,
+>      > ##    skipping everything on the search path between globalenv and
+>      > ##    baseenv.
+>      > ## Thus if "package code" calls GEN, we first look in the package
+>      > ## namespace itself, then in the registry, and then in the package
+>      > ## imports and .BaseNamespaceEnv (and globalenv and baseenv again).
+>      > ##
+>      > ## Clearly, everything registered via S3method() should be an S3
+>      > ## method.  Interestingly, we seem to have some registrations for
+>      > ## non-generics, such as grDevices::axis().  These are "harmless"
+>      > ## but likely not "as intended", and hence inconsistencies are not
+>      > ## ignored.
+>      > ##
+>      > ## If the package namespace has a function named GEN.CLS, it is used
+>      > ## as an S3 method for an S3 generic named GEN (and hence "is an S3
+>      > ## method") only if the package code actually calls GEN (see A
+>      > ## above).  So one could argue that we should not be looking at all
+>      > ## GEN.CLS matches with GEN a generic in the package itself, its
+>      > ## imports or base, but restrict to only the ones where the package
+>      > ## code calls GEN.  Doable, but not straightforward (calls could be
+>      > ## PKG::GEN) and possibly quite time consuming.  For generics from
+>      > ## the package itself or its imports, not restricting should not
+>      > ## make a difference (why define or import when not calling?), but
+>      > ## for generics from base it may: hence we filter out the mismatches
+>      > ## for base GEN not called in the package.
+>      > ##
+>      > ## If a package provides an S3 generic GEN, there is no need to
+>      > ## register GEN.CLS functions for "internal use" (see above).
+>      > ## However, if GEN is exported then likely all GEN.CLS functions
+>      > ## should be registered as S3 methods.
+> 
+>      > Best wishes,
+>      > Uwe
+> 
+> Excellent!  Thank you, Uwe, for digging this out.
+> 
+> I'd also had answered to John Fox (even more strongly)
+> that it *must* remain to be allowed to define "private"
+> S3 methods in a package in all cases:
+> - for a generic from the package (where the generic would also
+>    not be exported)
+> - for a generic from another package (which is imported)
+>    or base (which need not and cannot be imported).
+> 
+> Note that the same is possible with S4 and (AFAIK, untested)
+> with S7.  {which people should really try using more ... }
+> 
+> Martin
+> 
+> 
+> 
+>      > On 05.09.2024 00:10, John Fox wrote:
+>      >> Thanks Toby and Jeff for chiming in on this.
+>      >>
+>      >> Jeff: I already read Kurt Hornik's post on "S3 Method Lookup" and quite
+>      >> a few other sources.
+>      >>
+>      >> The main point is that failing to register the methods works in that the
+>      >> methods are nevertheless invoked internally by functions in the package
+>      >> but don't shadow versions of the methods registered by other package
+>      >> externally (e.g., at the command prompt), which was the effect that I
+>      >> wanted. Moreover, as I said, R CMD check (unlike roxygen) didn't complain.
+>      >>
+>      >> As I mentioned, this is now moot for the cv package, but I'm still
+>      >> interested in the answer, as, apparently, is Toby.
+>      >>
+>      >> Best,
+>      >>  John
+>      >>
+>      >> On 2024-09-04 5:12 p.m., Jeff Newmiller wrote:
+>      >>> Caution: External email.
+>      >>>
+>      >>>
+>      >>> I have been reluctant to pipe up on this because I am no expert on the
+>      >>> dark corners of the S3 dispatch mechanism, but I think unregistered S3
+>      >>> methods in packages are verboten. Perhaps [1] will shed some light?
+>      >>>
+>      >>> [1] https://blog.r-project.org/2019/08/19/s3-method-lookup/
+>      >>>
+>      >>> On September 4, 2024 11:21:22 AM PDT, Toby Hocking <tdhock5 at gmail.com>
+>      >>> wrote:
+>      >>>> I got this warning too, so I filed an issue to ask
+>      >>>> https://github.com/r-lib/roxygen2/issues/1654
+>      >>>>
+>      >>>> On Mon, Sep 2, 2024 at 2:58?PM John Fox <jfox at mcmaster.ca> wrote:
+>      >>>>>
+>      >>>>> As it turned out, I was able to avoid redefining coef.merMod(),
+>      >>>>> etc., by
+>      >>>>> making a simple modification to the cv package.
+>      >>>>>
+>      >>>>> I'm still curious about whether it's OK to have unregistered S3 methods
+>      >>>>> for internal use in a package even though that's no longer necessary
+>      >>>>> for
+>      >>>>> the cv package.
+>      >>>>>
+>      >>>>> On 2024-09-02 11:34 a.m., John Fox wrote:
+>>>>>> Caution: External email.
+>      >>>>>>
+>      >>>>>>
+>>>>>> Dear R-package-devel list members,
+>      >>>>>>
+>>>>>> I want to introduce several unregistered S3 methods into the cv
+>>>>>> package
+>>>>>> (code at <https://github.com/gmonette/cv>). These methods have the
+>>>>>> form
+>      >>>>>>
+>>>>>>           coef.merMod <- function(object, ...) lme4::fixef(object)
+>      >>>>>>
+>>>>>> The object is to mask, e.g., lme4:::coef.merMod(), which returns BLUPs
+>>>>>> rather than fixed effects, internally in the cv package but *not* to
+>>>>>> mask the lme4 version of the method for users of the cv package --
+>>>>>> that
+>>>>>> could wreak havoc with their work. Doing this substantially simplifies
+>>>>>> some of the code in the cv package.
+>      >>>>>>
+>>>>>> My question: Is it legitimate to define a method in a package for
+>>>>>> internal use without registering it?
+>      >>>>>>
+>>>>>> This approach appears to work fine, and R CMD check doesn't complain,
+>>>>>> although Roxygen does complain that the method isn't "exported"
+>>>>>> (actually, isn't registered).
+>      >>>>>>
+>>>>>> Any advice or relevant information would be appreciated.
+>      >>>>>>
+>>>>>> Thank you,
+>>>>>>     John
+>>>>>> --
+>>>>>> John Fox, Professor Emeritus
+>>>>>> McMaster University
+>>>>>> Hamilton, Ontario, Canada
+>>>>>> web: https://www.john-fox.ca/
+
+
