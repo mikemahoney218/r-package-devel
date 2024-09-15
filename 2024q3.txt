@@ -11004,3 +11004,73 @@ Iago-lito
 	[[alternative HTML version deleted]]
 
 
+From |kry|ov @end|ng |rom d|@root@org  Sat Sep 14 11:27:07 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sat, 14 Sep 2024 12:27:07 +0300
+Subject: [R-pkg-devel] 
+ Justification and status of the 100-bytes path length limit.
+In-Reply-To: <ff1bda57-3603-448a-8947-6725669297dc@umontpellier.fr>
+References: <ff1bda57-3603-448a-8947-6725669297dc@umontpellier.fr>
+Message-ID: <20240914122707.082493e8@trisector>
+
+? Fri, 13 Sep 2024 15:00:06 +0200
+Iago Bonnici <iago.bonnici at umontpellier.fr> ?????:
+
+>  ??? - Is the 100-bytes paths limitation only supposed to ensure 
+> compatilbility with pre-POSIX.1-1998 `tar` files?
+
+There are also the Windows systems. While support for paths longer than
+260 characters appeared in Windows 10 build 1607 and exists in modern
+versions of R [*], it's not enabled by default on many current systems:
+
+d <- tempfile(); dir.create(d); setwd(d); d
+"C:\\Users\\[SNIP]\\AppData\\Local\\Temp\\3\\RtmpodtJLb\\file3fec5fce5feb"
+
+(path <- paste(
+ sample(
+  c('/', letters, LETTERS),
+  256, TRUE,
+  c(.05, rep((1-.05)/52, 52))
+ ),
+ collapse = ''
+))
+
+"nJpmTZvEleQsFrgjFzvaNRVHGzSIIgERElnFRRmVKpoZkBkfGJlUpnnPaWYhpELTCQ/djTwBiKCvuG/gEjjnRjisLG/sjfayxYXQCycnU/Uu/xcPhMUCwtFOlttgP/OfWKDZJSjmXgAvIyCVCQmIeUXjvGmntEiSqlUqzZOGQRASSMjUHUN/mdTFWuOlIxy/flbyKhKQnjFEIZrowuswFBWLmMmJNHOfRZLeLtDbOlpR/IdycTiIblkYQS/MYawp"
+
+
+(dir.create(path, recursive = TRUE))
+
+# [1] FALSE
+# Warning message:
+# In dir.create(path, recursive = TRUE) :
+#   cannot create dir
+'nJpmTZvEleQsFrgjFzvaNRVHGzSIIgERElnFRRmVKpoZkBkfGJlUpnnPaWYhpELTCQ\djTwBiKCvuG\gEjjnRjisLG\sjfayxYXQCycnU\Uu\xcPhMUCwtFOlttgP\OfWKDZJSjmXgAvIyCVCQmIeUXjvGmntEiSqlUqzZOGQRASSMjUHUN\mdTFWuOlIxy',
+reason 'No such file or directory'
+
+sessionInfo()
+# R version 4.3.2 (2023-10-31 ucrt)
+# Platform: x86_64-w64-mingw32/x64 (64-bit)
+# Running under: Windows Server 2022 x64 (build 20348)
+
+As a test, I have prepared a source package with an exactly 256-byte
+maximal path length:
+
+untar('foo_1.0.tar.gz', list = TRUE) |> nchar() |> max()
+# [1] 256
+
+I was not able to install it with the internal untar() ("ERROR:
+extracted multiple files from ?foo_1.0.tar.gz?" -- it seems to have
+extracted both the long path from the GNU extension and the "dummy"
+path stored in the 100-octet 'name' field), but it did work with the
+R_INSTALL_TAR='tar' environment variable on Linux. On Windows, it
+failed to extract the tarball in a manner similar to the first
+experiment when the total path length exceeded 260.
+
+-- 
+Best regards,
+Ivan
+
+[*]
+https://blog.r-project.org/2023/03/07/path-length-limit-on-windows/index.html
+
+
