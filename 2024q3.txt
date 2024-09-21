@@ -11074,3 +11074,294 @@ Ivan
 https://blog.r-project.org/2023/03/07/path-length-limit-on-windows/index.html
 
 
+From gb @end|ng |rom eh@r@@e  Fri Sep 20 13:44:44 2024
+From: gb @end|ng |rom eh@r@@e (=?UTF-8?Q?G=C3=B6ran_Brostr=C3=B6m?=)
+Date: Fri, 20 Sep 2024 13:44:44 +0200
+Subject: [R-pkg-devel] flang-new-18 complains: incompatiple object shapes
+Message-ID: <0dbc84e3-47c9-46da-85b0-425203e2d213@ehar.se>
+
+More specifically: I submitted a new version of eha to CRAN, but:
+"... does not pass the incoming checks automatically,..."
+
+I found warnings in
+
+https://win-builder.r-project.org/incoming_pretest/eha_2.11.5_20240919_123016/Debian/00install.out
+-----
+/getsums.f:65:16: warning: Reference to the procedure 'daxpy' has an 
+implicit interface that is distinct from another reference: incompatible 
+dummy argument #5: incompatible dummy data object shapes
+                  call daxpy(j2, tmp2, zma, 1, szz(index), 1)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+./getsums.f:51:10: previous reference to 'daxpy'
+            call daxpy(k, epy, zma, 1, sz, 1)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+--------
+The arguments 'szz(index)' and 'sz' are compared and found to be 
+'incompatible'. szz and sz are both double vectors, szz is the upper 
+triangle of a symmetric covariance matrix, stored as a vector of length 
+n * (n + 1) / 2 (space saving, this is F77 code written some 40 years ago).
+
+This is the point of view of a compiler called 'flang-new-18' (Debian). 
+However, gfortran and myself disagree, and I am interested in hearing a 
+suggestion of what measures I should take.
+
+It is of course easy (but tedious) to cut the Gordian knot by explicitly 
+writing out the loops that defines 'daxpy', but is it necessary?
+
+Thanks, G?ran
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Sep 20 14:07:10 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 20 Sep 2024 15:07:10 +0300
+Subject: [R-pkg-devel] 
+ flang-new-18 complains: incompatiple object shapes
+In-Reply-To: <0dbc84e3-47c9-46da-85b0-425203e2d213@ehar.se>
+References: <0dbc84e3-47c9-46da-85b0-425203e2d213@ehar.se>
+Message-ID: <20240920150710.0ef39219@arachnoid>
+
+? Fri, 20 Sep 2024 13:44:44 +0200
+G?ran Brostr?m <gb at ehar.se> ?????:
+
+> It is of course easy (but tedious) to cut the Gordian knot by
+> explicitly writing out the loops that defines 'daxpy', but is it
+> necessary?
+
+Definitely not. I think that flang will be satisfied if you provide an
+explicit interface for DAXPY. Do you need help testing your code with
+this compiler?
+
+-- 
+Best regards,
+Ivan
+
+
+From gb @end|ng |rom eh@r@@e  Fri Sep 20 14:41:31 2024
+From: gb @end|ng |rom eh@r@@e (=?UTF-8?Q?G=C3=B6ran_Brostr=C3=B6m?=)
+Date: Fri, 20 Sep 2024 14:41:31 +0200
+Subject: [R-pkg-devel] 
+ flang-new-18 complains: incompatiple object shapes
+In-Reply-To: <20240920150710.0ef39219@arachnoid>
+References: <0dbc84e3-47c9-46da-85b0-425203e2d213@ehar.se>
+ <20240920150710.0ef39219@arachnoid>
+Message-ID: <83dd8bae-9769-4d43-8eaa-0cdb04824fd2@ehar.se>
+
+Thanks for the reply, Ivan. I think that 'problem solved': I just 
+received a message from Uwe saying that the rejection was a mistake.
+
+Best, G?ran
+
+Den 2024-09-20 kl. 14:07, skrev Ivan Krylov:
+> ? Fri, 20 Sep 2024 13:44:44 +0200
+> G?ran Brostr?m <gb at ehar.se> ?????:
+> 
+>> It is of course easy (but tedious) to cut the Gordian knot by
+>> explicitly writing out the loops that defines 'daxpy', but is it
+>> necessary?
+> 
+> Definitely not. I think that flang will be satisfied if you provide an
+> explicit interface for DAXPY. Do you need help testing your code with
+> this compiler?
+>
+
+
+From H@|j|@ng133 @end|ng |rom out|ook@com  Fri Sep 20 10:46:08 2024
+From: H@|j|@ng133 @end|ng |rom out|ook@com (=?gb2312?B?x9gguqO9rQ==?=)
+Date: Fri, 20 Sep 2024 08:46:08 +0000
+Subject: [R-pkg-devel] Why all OK but fail to the incoming checks
+ automatically ?
+Message-ID: <SY0P300MB011233DFA65883A9398B3E21E66C2@SY0P300MB0112.AUSP300.PROD.OUTLOOK.COM>
+
+Hi All,
+
+
+I encountered an issue when submitting my R package: the incoming checks did not report any errors, warnings, or notes, but the submission still did not pass the incoming checks. Here is the email I received from ligges at statistik.tu-dortmund.de:
+
+
+Dear maintainer,
+
+package Qval_1.0.0.tar.gz does not pass the incoming checks automatically, please see the following pre-tests:
+Windows: <https://win-builder.r-project.org/incoming_pretest/Qval_1.0.0_20240920_094543/Windows/00check.log>
+Status: OK
+Debian: <https://win-builder.r-project.org/incoming_pretest/Qval_1.0.0_20240920_094543/Debian/00check.log>
+Status: OK
+
+Last released version's CRAN status: OK: 13
+See: <https://CRAN.R-project.org/web/checks/check_results_Qval.html<https://cran.r-project.org/web/checks/check_results_Qval.html>>
+
+CRAN Web: <https://cran.r-project.org/package=Qval>
+
+Please fix all problems and resubmit a fixed version via the webform.
+If you are not sure how to fix the problems shown, please ask for help on the R-package-devel mailing list:
+<https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+If you are fairly certain the rejection is a false positive, please reply-all to this message and explain.
+
+More details are given in the directory:
+<https://win-builder.r-project.org/incoming_pretest/Qval_1.0.0_20240920_094543/>
+The files will be removed after roughly 7 days.
+
+No strong reverse dependencies to be checked.
+
+Best regards,
+CRAN teams' auto-check service
+
+And in the "00details.log" file, it only shows:
+
+Flavor: r-devel-linux-x86_64-debian-gcc, r-devel-windows-x86_64
+Check: * , Result: OK
+
+This is really confusing to me. Does anyone know why this happened? Thank you for your help!
+
+Best regards,
+Haijiang Qin
+
+	[[alternative HTML version deleted]]
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Fri Sep 20 15:58:22 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Fri, 20 Sep 2024 15:58:22 +0200
+Subject: [R-pkg-devel] Why all OK but fail to the incoming checks
+ automatically ?
+In-Reply-To: <SY0P300MB011233DFA65883A9398B3E21E66C2@SY0P300MB0112.AUSP300.PROD.OUTLOOK.COM>
+References: <SY0P300MB011233DFA65883A9398B3E21E66C2@SY0P300MB0112.AUSP300.PROD.OUTLOOK.COM>
+Message-ID: <b01de8dc-4f37-40cf-a34b-013b00fe9d10@statistik.tu-dortmund.de>
+
+A recent issue on CRAN, we are working on fixing it.
+
+Best,
+Uwe Ligges
+
+
+
+On 20.09.2024 10:46, ? ?? wrote:
+> Hi All,
+> 
+> 
+> I encountered an issue when submitting my R package: the incoming checks did not report any errors, warnings, or notes, but the submission still did not pass the incoming checks. Here is the email I received from ligges at statistik.tu-dortmund.de:
+> 
+> 
+> Dear maintainer,
+> 
+> package Qval_1.0.0.tar.gz does not pass the incoming checks automatically, please see the following pre-tests:
+> Windows: <https://win-builder.r-project.org/incoming_pretest/Qval_1.0.0_20240920_094543/Windows/00check.log>
+> Status: OK
+> Debian: <https://win-builder.r-project.org/incoming_pretest/Qval_1.0.0_20240920_094543/Debian/00check.log>
+> Status: OK
+> 
+> Last released version's CRAN status: OK: 13
+> See: <https://CRAN.R-project.org/web/checks/check_results_Qval.html<https://cran.r-project.org/web/checks/check_results_Qval.html>>
+> 
+> CRAN Web: <https://cran.r-project.org/package=Qval>
+> 
+> Please fix all problems and resubmit a fixed version via the webform.
+> If you are not sure how to fix the problems shown, please ask for help on the R-package-devel mailing list:
+> <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+> If you are fairly certain the rejection is a false positive, please reply-all to this message and explain.
+> 
+> More details are given in the directory:
+> <https://win-builder.r-project.org/incoming_pretest/Qval_1.0.0_20240920_094543/>
+> The files will be removed after roughly 7 days.
+> 
+> No strong reverse dependencies to be checked.
+> 
+> Best regards,
+> CRAN teams' auto-check service
+> 
+> And in the "00details.log" file, it only shows:
+> 
+> Flavor: r-devel-linux-x86_64-debian-gcc, r-devel-windows-x86_64
+> Check: * , Result: OK
+> 
+> This is really confusing to me. Does anyone know why this happened? Thank you for your help!
+> 
+> Best regards,
+> Haijiang Qin
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+From H@|j|@ng133 @end|ng |rom out|ook@com  Fri Sep 20 16:04:27 2024
+From: H@|j|@ng133 @end|ng |rom out|ook@com (=?gb2312?B?x9gguqO9rQ==?=)
+Date: Fri, 20 Sep 2024 14:04:27 +0000
+Subject: [R-pkg-devel] =?gb2312?b?u9i4tDogIFdoeSBhbGwgT0sgYnV0IGZhaWwg?=
+ =?gb2312?b?dG8gdGhlIGluY29taW5nIGNoZWNrcyBhdXRvbWF0aWNhbGx5ID8=?=
+In-Reply-To: <b01de8dc-4f37-40cf-a34b-013b00fe9d10@statistik.tu-dortmund.de>
+References: <SY0P300MB011233DFA65883A9398B3E21E66C2@SY0P300MB0112.AUSP300.PROD.OUTLOOK.COM>
+ <b01de8dc-4f37-40cf-a34b-013b00fe9d10@statistik.tu-dortmund.de>
+Message-ID: <SY8P300MB0104A2FB130C30C1B847BF3EE66C2@SY8P300MB0104.AUSP300.PROD.OUTLOOK.COM>
+
+Okay, I understand now. Thank you very much for response!
+
+Best,
+Haijiang Qin
+
+________________________________
+??????: Uwe Ligges
+?????: 2024 ?? 9 ?? 20 ?? ?????? 21:58
+?????: ?? ????; r-package-devel at r-project.org
+????: Re: [R-pkg-devel] Why all OK but fail to the incoming checks automatically ?
+
+A recent issue on CRAN, we are working on fixing it.
+
+Best,
+Uwe Ligges
+
+
+
+On 20.09.2024 10:46, ?? ???? wrote:
+> Hi All,
+>
+>
+> I encountered an issue when submitting my R package: the incoming checks did not report any errors, warnings, or notes, but the submission still did not pass the incoming checks. Here is the email I received from ligges at statistik.tu-dortmund.de:
+>
+>
+> Dear maintainer,
+>
+> package Qval_1.0.0.tar.gz does not pass the incoming checks automatically, please see the following pre-tests:
+> Windows: <https://win-builder.r-project.org/incoming_pretest/Qval_1.0.0_20240920_094543/Windows/00check.log>
+> Status: OK
+> Debian: <https://win-builder.r-project.org/incoming_pretest/Qval_1.0.0_20240920_094543/Debian/00check.log>
+> Status: OK
+>
+> Last released version's CRAN status: OK: 13
+> See: <https://CRAN.R-project.org/web/checks/check_results_Qval.html<https://cran.r-project.org/web/checks/check_results_Qval.html>>
+>
+> CRAN Web: <https://cran.r-project.org/package=Qval>
+>
+> Please fix all problems and resubmit a fixed version via the webform.
+> If you are not sure how to fix the problems shown, please ask for help on the R-package-devel mailing list:
+> <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+> If you are fairly certain the rejection is a false positive, please reply-all to this message and explain.
+>
+> More details are given in the directory:
+> <https://win-builder.r-project.org/incoming_pretest/Qval_1.0.0_20240920_094543/>
+> The files will be removed after roughly 7 days.
+>
+> No strong reverse dependencies to be checked.
+>
+> Best regards,
+> CRAN teams' auto-check service
+>
+> And in the "00details.log" file, it only shows:
+>
+> Flavor: r-devel-linux-x86_64-debian-gcc, r-devel-windows-x86_64
+> Check: * , Result: OK
+>
+> This is really confusing to me. Does anyone know why this happened? Thank you for your help!
+>
+> Best regards,
+> Haijiang Qin
+>
+>        [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+	[[alternative HTML version deleted]]
+
+
