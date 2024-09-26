@@ -12076,3 +12076,442 @@ Director, School of Computational Science and Engineering
 working hours.
 
 
+From murr@y@e||ord @end|ng |rom ot@go@@c@nz  Wed Sep 25 07:13:31 2024
+From: murr@y@e||ord @end|ng |rom ot@go@@c@nz (Murray Efford)
+Date: Wed, 25 Sep 2024 05:13:31 +0000
+Subject: [R-pkg-devel] Deprecating apparent S3 method, changing name
+Message-ID: <SY4PR01MB56581D25A3BD15AC4CB3F882AC692@SY4PR01MB5658.ausprd01.prod.outlook.com>
+
+A package of mine on CRAN has some old function names (not S3 methods) that include "." (e.g., "esa.plot"). In a new version I want to simultaneously
+1. rename these functions to e.g. "esaPlot"
+2. export a new S3 generic with the base name (e.g. "esa") and methods for different model types (e.g. "esa.secr").
+
+When I deprecate the old functions (by exporting a shell function that calls .Deprecated and the new function), I get a package check note for e.g. esa.plot
+"* checking S3 generic/method consistency ... NOTE
+Apparent methods for exported generics not registered: etc."
+
+This is understandable, but how can I avoid it while properly deprecating the old functions? I seem to remember a recent question like this, but I'm sorry I cannot find it.
+
+Murray
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Wed Sep 25 18:21:20 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Wed, 25 Sep 2024 19:21:20 +0300
+Subject: [R-pkg-devel] 
+ help with CRAN failures (broom.mixed, rstan-related)
+In-Reply-To: <04133be5-5a50-4c6f-ab92-ee52295a3f46@gmail.com>
+References: <05cbb1cb-5574-42de-bf24-c1518818fa3b@gmail.com>
+ <20240924181404.24038cb7@arachnoid>
+ <04133be5-5a50-4c6f-ab92-ee52295a3f46@gmail.com>
+Message-ID: <20240925192120.366c020c@arachnoid>
+
+Hmm, so it's *not* a machine-specific problem after all [1,2] and can
+now be reproduced on a regular R-devel build on Debian Sid. I'm sorry
+for jumping to conclusions.
+
+Why would Rcpp::loadModule() (called from rstan's .onLoad) end up trying
+to apply a non-function, but only when being called from
+broom.mixed/tests/testthat/test-alltibbles.R, and only on the first
+attempt? (A repeated source() will run to completion without signalling
+any errors.)
+
+>> Error: package or namespace load failed for 'rstan' in
+>> .doLoadActions(where, attach):
+>> error in load action .__A__.1 for package rstan:
+>> Rcpp::loadModule(module = "class_model_base", what = TRUE, env = ns,:
+>> Unable to load module "class_model_base": attempt to apply
+>> non-function
+>> Error in .requirePackage(package) : unable to load required package
+>> 'rstan'
+
+The underlying error is in Rcpp::Module('class_model_base', mustStart =
+TRUE, where = <namespace:rstan>):
+
+>> simpleError in METHOD$info(""): attempt to apply non-function
+
+This call originates in Rcpp:::method_wrapper:
+
+Browse[3]> METHOD$info
+NULL
+Browse[3]> str(METHOD)
+Prototypical reference class 'C++OverloadedMethods' [package "Rcpp"]
+Browse[3]> unclass(METHOD) # print(METHOD) fails due do $info
+<S4 Type Object>
+attr(,".xData")
+<environment: 0x5596b8ef1530>
+Browse[3]> ls(METHOD at .xData, all = TRUE)
+ [1] ".->class_pointer" ".->const"         ".->docstrings"    ".->nargs"
+ [5] ".->pointer"       ".->signatures"    ".->size"          ".->void"
+ [9] ".refClassDef"     ".self"            "class_pointer"    "const"
+[13] "docstrings"       "nargs"            "pointer"        "signatures"
+[17] "size"             "void"
+
+Why would an object of reference class 'C++OverloadedMethods' suddenly
+lose its $info method? This doesn't look like anything printed when I
+trace(Rcpp:::method_wrapper, quote(print(METHOD))) and then load
+'rstan' in a fresh R session.
+
+-- 
+Best regards,
+Ivan
+
+[1]
+https://cran.r-project.org/web/checks/check_results_broom.mixed.html
+
+[2]
+https://www.stats.ox.ac.uk/pub/bdr/donttest/broom.mixed.out
+
+
+From bbo|ker @end|ng |rom gm@||@com  Wed Sep 25 18:28:25 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Wed, 25 Sep 2024 12:28:25 -0400
+Subject: [R-pkg-devel] 
+ help with CRAN failures (broom.mixed, rstan-related)
+In-Reply-To: <20240925192120.366c020c@arachnoid>
+References: <05cbb1cb-5574-42de-bf24-c1518818fa3b@gmail.com>
+ <20240924181404.24038cb7@arachnoid>
+ <04133be5-5a50-4c6f-ab92-ee52295a3f46@gmail.com>
+ <20240925192120.366c020c@arachnoid>
+Message-ID: <25a8da11-9adb-45cb-9858-53fe406a9251@gmail.com>
+
+
+
+On 9/25/24 12:21, Ivan Krylov wrote:
+> Hmm, so it's *not* a machine-specific problem after all [1,2] and can
+> now be reproduced on a regular R-devel build on Debian Sid. I'm sorry
+> for jumping to conclusions.
+
+   No need to apologize, you've gotten 1000x farther than I  would have 
+on my own.
+
+   What is your current estimate of the probability that this is 
+something that I've done wrong vs. exposing something wonky elsewhere 
+(i.e. at the level of testthat, brms, rstan, Rcpp, R-devel, ...) ?
+
+   I will try to find time and energy to
+
+* see if there are any other packages downstream of brms that are 
+encountering testing problems on Fedora;
+* set up my own more-minimal example/figure out how to reproduce in a 
+Docker container
+
+   I have a few weeks to sort this out. If absolutely necessary I can 
+use the ugly solution of skipping those tests on CRAN ...
+
+   cheers
+     Ben
+
+> 
+> Why would Rcpp::loadModule() (called from rstan's .onLoad) end up trying
+> to apply a non-function, but only when being called from
+> broom.mixed/tests/testthat/test-alltibbles.R, and only on the first
+> attempt? (A repeated source() will run to completion without signalling
+> any errors.)
+> 
+>>> Error: package or namespace load failed for 'rstan' in
+>>> .doLoadActions(where, attach):
+>>> error in load action .__A__.1 for package rstan:
+>>> Rcpp::loadModule(module = "class_model_base", what = TRUE, env = ns,:
+>>> Unable to load module "class_model_base": attempt to apply
+>>> non-function
+>>> Error in .requirePackage(package) : unable to load required package
+>>> 'rstan'
+> 
+> The underlying error is in Rcpp::Module('class_model_base', mustStart =
+> TRUE, where = <namespace:rstan>):
+> 
+>>> simpleError in METHOD$info(""): attempt to apply non-function
+> 
+> This call originates in Rcpp:::method_wrapper:
+> 
+> Browse[3]> METHOD$info
+> NULL
+> Browse[3]> str(METHOD)
+> Prototypical reference class 'C++OverloadedMethods' [package "Rcpp"]
+> Browse[3]> unclass(METHOD) # print(METHOD) fails due do $info
+> <S4 Type Object>
+> attr(,".xData")
+> <environment: 0x5596b8ef1530>
+> Browse[3]> ls(METHOD at .xData, all = TRUE)
+>   [1] ".->class_pointer" ".->const"         ".->docstrings"    ".->nargs"
+>   [5] ".->pointer"       ".->signatures"    ".->size"          ".->void"
+>   [9] ".refClassDef"     ".self"            "class_pointer"    "const"
+> [13] "docstrings"       "nargs"            "pointer"        "signatures"
+> [17] "size"             "void"
+> 
+> Why would an object of reference class 'C++OverloadedMethods' suddenly
+> lose its $info method? This doesn't look like anything printed when I
+> trace(Rcpp:::method_wrapper, quote(print(METHOD))) and then load
+> 'rstan' in a fresh R session.
+> 
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+* E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
+From |kry|ov @end|ng |rom d|@root@org  Wed Sep 25 22:22:43 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Wed, 25 Sep 2024 23:22:43 +0300
+Subject: [R-pkg-devel] 
+ help with CRAN failures (broom.mixed, rstan-related)
+In-Reply-To: <25a8da11-9adb-45cb-9858-53fe406a9251@gmail.com>
+References: <05cbb1cb-5574-42de-bf24-c1518818fa3b@gmail.com>
+ <20240924181404.24038cb7@arachnoid>
+ <04133be5-5a50-4c6f-ab92-ee52295a3f46@gmail.com>
+ <20240925192120.366c020c@arachnoid>
+ <25a8da11-9adb-45cb-9858-53fe406a9251@gmail.com>
+Message-ID: <20240925232243.5159cd2a@Tarkus>
+
+? Wed, 25 Sep 2024 12:28:25 -0400
+Ben Bolker <bbolker at gmail.com> ?????:
+
+>    What is your current estimate of the probability that this is 
+> something that I've done wrong vs. exposing something wonky elsewhere 
+> (i.e. at the level of testthat, brms, rstan, Rcpp, R-devel, ...) ?
+
+I didn't have a good answer (the most recently updated package should
+be the one to suspect, right?), but stopping the investigation now
+would be akin to closing a murder mystery in the middle of the last
+chapter. Here's what I've been able to find out:
+
+When running library(testthat); debugonce(Rcpp::loadModule);
+source('tests/testthat/test-alltibbles.R'), by the time we reach
+Rcpp:::loadModule, the reference classes don't come out right. A simple
+new('C++OverloadedMethods') returns an object that doesn't have a $show
+or $info method. A similar problem happens for 'envRefClass', from
+which 'C++OverloadedMethods' inherits: printing it will fail due to a
+missing $show() method.
+
+The problem is not in the class definition or object contents. I don't
+see differences between serialised class definitions. Reloading a
+serialized object from a "broken" R session into a fresh R session makes
+it work normally.
+
+The first difference I was able to notice was in how the $ operator
+works for the reference semantics objects. In both cases,
+.Primitive('$') -> do_subset3 eventually calls DispatchOrEval(). In a
+healthy R session, the test [*] for IS_S4_OBJECT(x) &&
+R_has_methods(op) succeeds. In a "broken" R session it fails because
+R_has_methods(op) is FALSE.
+
+That's because allowPrimitiveMethods had been set to FALSE.
+
+Judging by the traceback, brms::variables(object) ->
+variables.brmsfit(object) -> dimnames(x$fit) needs to resolve the S4
+'dimnames' method for class 'stanfit'. At this point
+methods:::.findInheritedMethods temporarily disables S4 methods for
+primitives. The comment says it's done "to avoid infinite recursion,
+and somewhat for speed". Unfortunately, later the 'rstan' namespace
+needs to be loaded, and 'rstan' calls Rcpp functions that use reference
+classes, which break without S4 dispatch for `$`.
+
+As far as endings go, this one is rather like Murder on the Orient
+Express. Even understanding what happened doesn't point towards the
+"right" fix. Josiah's suggestion should have helped by loading the
+namespace at a safer time.
+
+-- 
+Best regards,
+Ivan
+
+[*]
+https://github.com/r-devel/r-svn/blob/776045d4601ed3ac7b8041e94c665bbfe9709191/src/main/eval.c#L4152
+
+
+From bbo|ker @end|ng |rom gm@||@com  Wed Sep 25 22:57:55 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Wed, 25 Sep 2024 16:57:55 -0400
+Subject: [R-pkg-devel] 
+ help with CRAN failures (broom.mixed, rstan-related)
+In-Reply-To: <20240925232243.5159cd2a@Tarkus>
+References: <05cbb1cb-5574-42de-bf24-c1518818fa3b@gmail.com>
+ <20240924181404.24038cb7@arachnoid>
+ <04133be5-5a50-4c6f-ab92-ee52295a3f46@gmail.com>
+ <20240925192120.366c020c@arachnoid>
+ <25a8da11-9adb-45cb-9858-53fe406a9251@gmail.com>
+ <20240925232243.5159cd2a@Tarkus>
+Message-ID: <1cd9eec4-5e44-4461-95ff-141dfa675c29@gmail.com>
+
+   Yikes.  Next question, is this (in your opinion) worth escalating to 
+r-devel ?
+
+   I can definitely implement something where I require() rstan up 
+front, (which should be harmless if it's really not available but will 
+fix issues that brms is having?) ... that might resolve the symptoms 
+cleanly in the absence of a definitive diagnosis ...
+
+https://github.com/bbolker/broom.mixed/commit/4096d00cf8cb6dd6798079859dfce56ea870b636
+
+   ... now all I have to do is get a testing framework up and running so 
+I can see if it helps ...
+
+On 2024-09-25 4:22 p.m., Ivan Krylov wrote:
+> ? Wed, 25 Sep 2024 12:28:25 -0400
+> Ben Bolker <bbolker at gmail.com> ?????:
+> 
+>>     What is your current estimate of the probability that this is
+>> something that I've done wrong vs. exposing something wonky elsewhere
+>> (i.e. at the level of testthat, brms, rstan, Rcpp, R-devel, ...) ?
+> 
+> I didn't have a good answer (the most recently updated package should
+> be the one to suspect, right?), but stopping the investigation now
+> would be akin to closing a murder mystery in the middle of the last
+> chapter. Here's what I've been able to find out:
+> 
+> When running library(testthat); debugonce(Rcpp::loadModule);
+> source('tests/testthat/test-alltibbles.R'), by the time we reach
+> Rcpp:::loadModule, the reference classes don't come out right. A simple
+> new('C++OverloadedMethods') returns an object that doesn't have a $show
+> or $info method. A similar problem happens for 'envRefClass', from
+> which 'C++OverloadedMethods' inherits: printing it will fail due to a
+> missing $show() method.
+> 
+> The problem is not in the class definition or object contents. I don't
+> see differences between serialised class definitions. Reloading a
+> serialized object from a "broken" R session into a fresh R session makes
+> it work normally.
+> 
+> The first difference I was able to notice was in how the $ operator
+> works for the reference semantics objects. In both cases,
+> .Primitive('$') -> do_subset3 eventually calls DispatchOrEval(). In a
+> healthy R session, the test [*] for IS_S4_OBJECT(x) &&
+> R_has_methods(op) succeeds. In a "broken" R session it fails because
+> R_has_methods(op) is FALSE.
+> 
+> That's because allowPrimitiveMethods had been set to FALSE.
+> 
+> Judging by the traceback, brms::variables(object) ->
+> variables.brmsfit(object) -> dimnames(x$fit) needs to resolve the S4
+> 'dimnames' method for class 'stanfit'. At this point
+> methods:::.findInheritedMethods temporarily disables S4 methods for
+> primitives. The comment says it's done "to avoid infinite recursion,
+> and somewhat for speed". Unfortunately, later the 'rstan' namespace
+> needs to be loaded, and 'rstan' calls Rcpp functions that use reference
+> classes, which break without S4 dispatch for `$`.
+> 
+> As far as endings go, this one is rather like Murder on the Orient
+> Express. Even understanding what happened doesn't point towards the
+> "right" fix. Josiah's suggestion should have helped by loading the
+> namespace at a safer time.
+> 
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+ > E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
+From p@u|@buerkner @end|ng |rom gm@||@com  Wed Sep 25 23:13:13 2024
+From: p@u|@buerkner @end|ng |rom gm@||@com (Paul Buerkner)
+Date: Wed, 25 Sep 2024 23:13:13 +0200
+Subject: [R-pkg-devel] 
+ help with CRAN failures (broom.mixed, rstan-related)
+In-Reply-To: <1cd9eec4-5e44-4461-95ff-141dfa675c29@gmail.com>
+References: <05cbb1cb-5574-42de-bf24-c1518818fa3b@gmail.com>
+ <20240924181404.24038cb7@arachnoid>
+ <04133be5-5a50-4c6f-ab92-ee52295a3f46@gmail.com>
+ <20240925192120.366c020c@arachnoid>
+ <25a8da11-9adb-45cb-9858-53fe406a9251@gmail.com>
+ <20240925232243.5159cd2a@Tarkus>
+ <1cd9eec4-5e44-4461-95ff-141dfa675c29@gmail.com>
+Message-ID: <CAGoSky85hoFzhT+d_hU1zUhP6cqqUfZYBqA0jq-DHR4Fg0fpXQ@mail.gmail.com>
+
+Please let me know if I can be of any help. I kind of "caused" this issue
+by submitting the new version of brms to CRAN.
+Of course, the issue is not really in brms but somehow deeper as your
+investigations shows. Would it help if brms
+extracted variables names from rstan objects somehow differently than via
+dimnames(stanfit)?
+
+Paul
+
+Am Mi., 25. Sept. 2024 um 22:58 Uhr schrieb Ben Bolker <bbolker at gmail.com>:
+
+>    Yikes.  Next question, is this (in your opinion) worth escalating to
+> r-devel ?
+>
+>    I can definitely implement something where I require() rstan up
+> front, (which should be harmless if it's really not available but will
+> fix issues that brms is having?) ... that might resolve the symptoms
+> cleanly in the absence of a definitive diagnosis ...
+>
+>
+> https://github.com/bbolker/broom.mixed/commit/4096d00cf8cb6dd6798079859dfce56ea870b636
+>
+>    ... now all I have to do is get a testing framework up and running so
+> I can see if it helps ...
+>
+> On 2024-09-25 4:22 p.m., Ivan Krylov wrote:
+> > ? Wed, 25 Sep 2024 12:28:25 -0400
+> > Ben Bolker <bbolker at gmail.com> ?????:
+> >
+> >>     What is your current estimate of the probability that this is
+> >> something that I've done wrong vs. exposing something wonky elsewhere
+> >> (i.e. at the level of testthat, brms, rstan, Rcpp, R-devel, ...) ?
+> >
+> > I didn't have a good answer (the most recently updated package should
+> > be the one to suspect, right?), but stopping the investigation now
+> > would be akin to closing a murder mystery in the middle of the last
+> > chapter. Here's what I've been able to find out:
+> >
+> > When running library(testthat); debugonce(Rcpp::loadModule);
+> > source('tests/testthat/test-alltibbles.R'), by the time we reach
+> > Rcpp:::loadModule, the reference classes don't come out right. A simple
+> > new('C++OverloadedMethods') returns an object that doesn't have a $show
+> > or $info method. A similar problem happens for 'envRefClass', from
+> > which 'C++OverloadedMethods' inherits: printing it will fail due to a
+> > missing $show() method.
+> >
+> > The problem is not in the class definition or object contents. I don't
+> > see differences between serialised class definitions. Reloading a
+> > serialized object from a "broken" R session into a fresh R session makes
+> > it work normally.
+> >
+> > The first difference I was able to notice was in how the $ operator
+> > works for the reference semantics objects. In both cases,
+> > .Primitive('$') -> do_subset3 eventually calls DispatchOrEval(). In a
+> > healthy R session, the test [*] for IS_S4_OBJECT(x) &&
+> > R_has_methods(op) succeeds. In a "broken" R session it fails because
+> > R_has_methods(op) is FALSE.
+> >
+> > That's because allowPrimitiveMethods had been set to FALSE.
+> >
+> > Judging by the traceback, brms::variables(object) ->
+> > variables.brmsfit(object) -> dimnames(x$fit) needs to resolve the S4
+> > 'dimnames' method for class 'stanfit'. At this point
+> > methods:::.findInheritedMethods temporarily disables S4 methods for
+> > primitives. The comment says it's done "to avoid infinite recursion,
+> > and somewhat for speed". Unfortunately, later the 'rstan' namespace
+> > needs to be loaded, and 'rstan' calls Rcpp functions that use reference
+> > classes, which break without S4 dispatch for `$`.
+> >
+> > As far as endings go, this one is rather like Murder on the Orient
+> > Express. Even understanding what happened doesn't point towards the
+> > "right" fix. Josiah's suggestion should have helped by loading the
+> > namespace at a safer time.
+> >
+>
+> --
+> Dr. Benjamin Bolker
+> Professor, Mathematics & Statistics and Biology, McMaster University
+> Director, School of Computational Science and Engineering
+>  > E-mail is sent at my convenience; I don't expect replies outside of
+> working hours.
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
