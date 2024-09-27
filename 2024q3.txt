@@ -12515,3 +12515,245 @@ Am Mi., 25. Sept. 2024 um 22:58 Uhr schrieb Ben Bolker <bbolker at gmail.com>:
 	[[alternative HTML version deleted]]
 
 
+From |kry|ov @end|ng |rom d|@root@org  Thu Sep 26 13:22:02 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 26 Sep 2024 14:22:02 +0300
+Subject: [R-pkg-devel] 
+ help with CRAN failures (broom.mixed, rstan-related)
+In-Reply-To: <1cd9eec4-5e44-4461-95ff-141dfa675c29@gmail.com>
+References: <05cbb1cb-5574-42de-bf24-c1518818fa3b@gmail.com>
+ <20240924181404.24038cb7@arachnoid>
+ <04133be5-5a50-4c6f-ab92-ee52295a3f46@gmail.com>
+ <20240925192120.366c020c@arachnoid>
+ <25a8da11-9adb-45cb-9858-53fe406a9251@gmail.com>
+ <20240925232243.5159cd2a@Tarkus>
+ <1cd9eec4-5e44-4461-95ff-141dfa675c29@gmail.com>
+Message-ID: <20240926142202.6f98fad2@arachnoid>
+
+? Wed, 25 Sep 2024 16:57:55 -0400
+Ben Bolker <bbolker at gmail.com> ?????:
+
+> Next question, is this (in your opinion) worth escalating to 
+> r-devel ?
+
+I think so, yes. Hopefully there will be a way to temporarily re-enable
+the S4 dispatch for primitive operators in methods:::.requirePackage
+(that lives in R/RClassUtils.R as ..requirePackage) around the call to
+require(). This has existed since r50609 (2009) and seems to be causing
+problems only now!
+
+-- 
+Best regards,
+Ivan
+
+
+From @te|@nML @end|ng |rom co||oc@t|on@@de  Thu Sep 26 13:32:02 2024
+From: @te|@nML @end|ng |rom co||oc@t|on@@de (Stephanie Evert)
+Date: Thu, 26 Sep 2024 13:32:02 +0200
+Subject: [R-pkg-devel] 
+ help with CRAN failures (broom.mixed, rstan-related)
+In-Reply-To: <20240925232243.5159cd2a@Tarkus>
+References: <05cbb1cb-5574-42de-bf24-c1518818fa3b@gmail.com>
+ <20240924181404.24038cb7@arachnoid>
+ <04133be5-5a50-4c6f-ab92-ee52295a3f46@gmail.com>
+ <20240925192120.366c020c@arachnoid>
+ <25a8da11-9adb-45cb-9858-53fe406a9251@gmail.com>
+ <20240925232243.5159cd2a@Tarkus>
+Message-ID: <E0F8C01B-5730-4446-9D41-EC621C30F2F6@collocations.de>
+
+May be a completely red herring, but I've recently had what might be a similar issue with reference classes, which kept me pulling my hair for a few hours (when method calls that used to work suddenly stopped doing so, unless called manually first).
+
+IIRC, the culprit was a method obj$basis() being called from another method that happened to have an argument also named 'basis'. Slightly shortened code:
+
+GMA$methods(
+  similarity = function (other, basis=FALSE) {
+    A <- basis()
+    B <- other$basis()
+    gma.similarity(A, B, basis=basis)
+  })
+
+When calling basis() on the object itself (unlike other$basis() in the next line), symbol lookup would find the argument 'basis' and then complain about trying to call a non-function.  Apparently, methods are initially invisible to symbol lookup in reference classes, so it couldn't find a symbol 'basis' of type function.
+
+Once the basis() method has been called for this specific object by some other code, it's registered and becomes visible to symbol lookup, so the call from similarity() works (with the argument 'basis' ignored because it is not a function). 
+
+Best,
+Stephanie
+
+
+
+> On 25 Sep 2024, at 22:22, Ivan Krylov via R-package-devel <r-package-devel at r-project.org> wrote:
+> 
+> ? Wed, 25 Sep 2024 12:28:25 -0400
+> Ben Bolker <bbolker at gmail.com> ?????:
+> 
+>>   What is your current estimate of the probability that this is 
+>> something that I've done wrong vs. exposing something wonky elsewhere 
+>> (i.e. at the level of testthat, brms, rstan, Rcpp, R-devel, ...) ?
+> 
+> I didn't have a good answer (the most recently updated package should
+> be the one to suspect, right?), but stopping the investigation now
+> would be akin to closing a murder mystery in the middle of the last
+> chapter. Here's what I've been able to find out:
+> 
+> When running library(testthat); debugonce(Rcpp::loadModule);
+> source('tests/testthat/test-alltibbles.R'), by the time we reach
+> Rcpp:::loadModule, the reference classes don't come out right. A simple
+> new('C++OverloadedMethods') returns an object that doesn't have a $show
+> or $info method. A similar problem happens for 'envRefClass', from
+> which 'C++OverloadedMethods' inherits: printing it will fail due to a
+> missing $show() method.
+> 
+> The problem is not in the class definition or object contents. I don't
+> see differences between serialised class definitions. Reloading a
+> serialized object from a "broken" R session into a fresh R session makes
+> it work normally.
+> 
+> The first difference I was able to notice was in how the $ operator
+> works for the reference semantics objects. In both cases,
+> .Primitive('$') -> do_subset3 eventually calls DispatchOrEval(). In a
+> healthy R session, the test [*] for IS_S4_OBJECT(x) &&
+> R_has_methods(op) succeeds. In a "broken" R session it fails because
+> R_has_methods(op) is FALSE.
+> 
+> That's because allowPrimitiveMethods had been set to FALSE.
+> 
+> Judging by the traceback, brms::variables(object) ->
+> variables.brmsfit(object) -> dimnames(x$fit) needs to resolve the S4
+> 'dimnames' method for class 'stanfit'. At this point
+> methods:::.findInheritedMethods temporarily disables S4 methods for
+> primitives. The comment says it's done "to avoid infinite recursion,
+> and somewhat for speed". Unfortunately, later the 'rstan' namespace
+> needs to be loaded, and 'rstan' calls Rcpp functions that use reference
+> classes, which break without S4 dispatch for `$`.
+> 
+> As far as endings go, this one is rather like Murder on the Orient
+> Express. Even understanding what happened doesn't point towards the
+> "right" fix. Josiah's suggestion should have helped by loading the
+> namespace at a safer time.
+> 
+> -- 
+> Best regards,
+> Ivan
+> 
+> [*]
+> https://github.com/r-devel/r-svn/blob/776045d4601ed3ac7b8041e94c665bbfe9709191/src/main/eval.c#L4152
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From |kry|ov @end|ng |rom d|@root@org  Thu Sep 26 22:48:42 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 26 Sep 2024 23:48:42 +0300
+Subject: [R-pkg-devel] Deprecating apparent S3 method, changing name
+In-Reply-To: <SY4PR01MB56581D25A3BD15AC4CB3F882AC692@SY4PR01MB5658.ausprd01.prod.outlook.com>
+References: <SY4PR01MB56581D25A3BD15AC4CB3F882AC692@SY4PR01MB5658.ausprd01.prod.outlook.com>
+Message-ID: <20240926234842.286fed70@Tarkus>
+
+? Wed, 25 Sep 2024 05:13:31 +0000
+Murray Efford via R-package-devel <r-package-devel at r-project.org> ?????:
+
+> When I deprecate the old functions (by exporting a shell function
+> that calls .Deprecated and the new function), I get a package check
+> note for e.g. esa.plot "* checking S3 generic/method consistency ...
+> NOTE Apparent methods for exported generics not registered: etc."
+> 
+> This is understandable, but how can I avoid it while properly
+> deprecating the old functions?
+
+R CMD check has a hard-coded list of functions that should not be
+considered S3 methods, in tools:::nonS3methods(). All other functions
+that start with the name of an exported generic followed by a dot will
+be considered unregistered S3 methods.
+
+Theoretically speaking, if there was a place in your package where you
+called the esa() generic with a user-supplied object, esa.plot() would
+be a reachable S3 method, because the user would be able to construct
+structure(list(), class = 'plot') and give it to your package code to
+call esa(plot_object) and have it dispatched to esa.plot(). (Which
+wouldn't be useful to the user, but that's how S3 works.)
+
+I'm afraid that the NOTE is unavoidable in a package that has both an
+esa() generic and an esa.plot() non-method function. Perhaps it could
+be explained in the submission comment? (Especially since esa.plot()
+currently seems unreachable as an S3 method to normal users of the
+package.)
+
+I wonder if it's possible to set aside a "please don't consider me for
+S3 dispatch" bit in the CLOSXP objects. Then package authors would be
+able to set it on their unfortunately named functions, R CMD check
+would look it up before considering them to be unexported methods, and
+the function findFunWithBaseEnvAfterGlobalEnv() that's responsible for
+looking up non-registered S3 methods during UseMethod() would skip over
+such closures.
+
+-- 
+Best regards,
+Ivan
+
+
+From murr@y@e||ord @end|ng |rom ot@go@@c@nz  Thu Sep 26 23:48:19 2024
+From: murr@y@e||ord @end|ng |rom ot@go@@c@nz (Murray Efford)
+Date: Thu, 26 Sep 2024 21:48:19 +0000
+Subject: [R-pkg-devel] Deprecating apparent S3 method, changing name
+In-Reply-To: <20240926234842.286fed70@Tarkus>
+References: <SY4PR01MB56581D25A3BD15AC4CB3F882AC692@SY4PR01MB5658.ausprd01.prod.outlook.com>
+ <20240926234842.286fed70@Tarkus>
+Message-ID: <SY4PR01MB56580A1C36102B5DB3462AE4AC6A2@SY4PR01MB5658.ausprd01.prod.outlook.com>
+
+Thanks for your excellent exposition of the problem, Ivan. The set-aside option would be attractive in the long term and make it easier to fix historical errors like mine. Presumably there is also a downside to creating a safe space for badly named functions.
+
+I am tossing up between (i) appealing to CRAN to allow the submission through with NOTEs until it feels safe to remove the functions with misleading names altogether, and (ii) removing them now and warning users about the new names in an  onLoad message.
+Murray
+________________________________
+From: Ivan Krylov <ikrylov at disroot.org>
+Sent: Friday, 27 September 2024 08:48
+To: Murray Efford via R-package-devel <r-package-devel at r-project.org>
+Cc: Murray Efford <murray.efford at otago.ac.nz>
+Subject: Re: [R-pkg-devel] Deprecating apparent S3 method, changing name
+
+? Wed, 25 Sep 2024 05:13:31 +0000
+Murray Efford via R-package-devel <r-package-devel at r-project.org> ?????:
+
+> When I deprecate the old functions (by exporting a shell function
+> that calls .Deprecated and the new function), I get a package check
+> note for e.g. esa.plot "* checking S3 generic/method consistency ...
+> NOTE Apparent methods for exported generics not registered: etc."
+>
+> This is understandable, but how can I avoid it while properly
+> deprecating the old functions?
+
+R CMD check has a hard-coded list of functions that should not be
+considered S3 methods, in tools:::nonS3methods(). All other functions
+that start with the name of an exported generic followed by a dot will
+be considered unregistered S3 methods.
+
+Theoretically speaking, if there was a place in your package where you
+called the esa() generic with a user-supplied object, esa.plot() would
+be a reachable S3 method, because the user would be able to construct
+structure(list(), class = 'plot') and give it to your package code to
+call esa(plot_object) and have it dispatched to esa.plot(). (Which
+wouldn't be useful to the user, but that's how S3 works.)
+
+I'm afraid that the NOTE is unavoidable in a package that has both an
+esa() generic and an esa.plot() non-method function. Perhaps it could
+be explained in the submission comment? (Especially since esa.plot()
+currently seems unreachable as an S3 method to normal users of the
+package.)
+
+I wonder if it's possible to set aside a "please don't consider me for
+S3 dispatch" bit in the CLOSXP objects. Then package authors would be
+able to set it on their unfortunately named functions, R CMD check
+would look it up before considering them to be unexported methods, and
+the function findFunWithBaseEnvAfterGlobalEnv() that's responsible for
+looking up non-registered S3 methods during UseMethod() would skip over
+such closures.
+
+--
+Best regards,
+Ivan
+
+	[[alternative HTML version deleted]]
+
+
