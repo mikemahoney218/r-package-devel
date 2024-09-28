@@ -12757,3 +12757,336 @@ Ivan
 	[[alternative HTML version deleted]]
 
 
+From john@br@d|ey@c|@rke @end|ng |rom gm@||@com  Thu Sep 26 12:04:42 2024
+From: john@br@d|ey@c|@rke @end|ng |rom gm@||@com (John Clarke)
+Date: Thu, 26 Sep 2024 12:04:42 +0200
+Subject: [R-pkg-devel] R-extension requirement about third-party random
+ number generators (RNG)
+Message-ID: <CAE6tirzQqULA_AB1HY1pxDx5dKvWLf2CBpoPyMJeFcF6b8X3tQ@mail.gmail.com>
+
+Hi folks,
+
+Reference from the manual:
+
+   -
+
+   Nor should the C++11 random number library be used nor any other
+   third-party random number generators such as those in GSL.?
+
+
+I am working at wrapping an existing statistical model with RCPP so it can
+be used in R. The model is written in C++ and uses the well-known Mersenne
+Twister RNG C++ class. We instantiate 4 instances of the RNG to keep the
+random variates independent.
+
+I understand from the r-release manual
+<https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Writing-portable-packages-1>
+that
+we should not use third-party RNGs and rather use R's interfaces to R's
+internal random number generator. If this is a correct reading of the
+requirement for an R package/extension, it will add quite a bit of
+complexity to the wrapper because we'll have to probably pass in references
+to something like *rstream* objects to ensure the streams/substreams remain
+independent. I fear that it may also might negatively affect performance of
+the model because (if I understand correctly) we need to maintain the state
+of a single RNG engine and due to the nature of our model, we don't
+pre-generate all the RNGs but rather generate just a few before switching
+to another stream. This would mean get/setting the RNG state with every
+single draw unless substantial changes were made to batch generate the
+numbers a priori.
+
+Before we tackle this problem, I want to confirm that it is indeed
+forbidden to use the Mersenne Twister C++ class in a RCPP R package if we
+want to publish it on CRAN. Then, if it is a requirement, and assuming I
+want to use the *rstream* RNG package, how can I instantiate an rstream
+object in C++? I've succeeded at instantiating it in R and passing it
+through, but this isn't ideal because it breaks encapsulation/ease-of-use
+for the user.
+
+Thanks,
+
+-John
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Fri Sep 27 16:19:24 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 27 Sep 2024 09:19:24 -0500
+Subject: [R-pkg-devel] R-extension requirement about third-party random
+ number generators (RNG)
+In-Reply-To: <CAE6tirzQqULA_AB1HY1pxDx5dKvWLf2CBpoPyMJeFcF6b8X3tQ@mail.gmail.com>
+References: <CAE6tirzQqULA_AB1HY1pxDx5dKvWLf2CBpoPyMJeFcF6b8X3tQ@mail.gmail.com>
+Message-ID: <26358.48876.191859.675293@rob.eddelbuettel.com>
+
+
+Hi John,
+
+I think you are reading the text too literally. The intent of WRE is to
+ensure that standard use of a RNG in an extension package uses the RNGs that
+come with R (which includes an updated mersenne twister algorithm) so that
+users are not "surprised".  It explicitly mentions the problem of multiple
+seeding.  An example of how this can be done is in RcppArmadillo: a long time
+ago we worked out a scheme were in the R use case the RNG is 'dropped in' so
+that Armadillo code uses randu(5) you get what runif(5) in R would give you
+(given the same seed from R).
+
+On the other hand, when you know what you do and properly (locally)
+instantiate another PRNG for local use you can. For quick checks I often use
+a query at github in the 'cran' organisation mirroring the CRAN repos. For
+example the following shows where std::mt19937 is used in C++ to deploy the
+Mersenne Twister. So as you can see, when done carefully it is in fact
+allowed.
+
+   https://github.com/search?q=org%3Acran%20mt19937&type=code
+
+Hope this helps, and allow me to mention that there is also the rcpp-devel
+for more Rcpp-specific questions.
+
+Cheers, Dirk
+
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From john@br@d|ey@c|@rke @end|ng |rom gm@||@com  Fri Sep 27 16:58:19 2024
+From: john@br@d|ey@c|@rke @end|ng |rom gm@||@com (John Clarke)
+Date: Fri, 27 Sep 2024 16:58:19 +0200
+Subject: [R-pkg-devel] R-extension requirement about third-party random
+ number generators (RNG)
+In-Reply-To: <26358.48876.191859.675293@rob.eddelbuettel.com>
+References: <CAE6tirzQqULA_AB1HY1pxDx5dKvWLf2CBpoPyMJeFcF6b8X3tQ@mail.gmail.com>
+ <26358.48876.191859.675293@rob.eddelbuettel.com>
+Message-ID: <CAE6tiryYesRoiEB6fccPjjhS5JhWtL=AVdbgFLokLO6WOY1-0A@mail.gmail.com>
+
+Hi Dirk,
+
+Thanks very much for your thoughtful reply. This is a relief for me as my
+'solution' for replacing the existing RNG in my C++ was convoluted and I
+couldn't see the advantage in doing so. Thank you for the search tip --
+that is really helpful and I did not know that there was this kind of
+mirroring. Thanks also for the mention of the rcpp-devel -- I think I will
+use that instead next time.
+
+One point of contention though -- I think the Writing R-Extensions page
+could be more explicit in this regard and perhaps suggest times/examples
+when it is OK to include an existing (3rd party) RNG and when it is not.
+
+I also think that it would be helpful if R offered a way to instantiate
+multiple instances of its internal RNG manager out of the box -- the RNG
+state management strategy appears almost 'magical' to me especially
+inside RCPP. It is possible, I just don't understand how to use it.
+
+Best,
+
+-John
+
+On Fri, Sep 27, 2024 at 4:19?PM Dirk Eddelbuettel <edd at debian.org> wrote:
+
+>
+> Hi John,
+>
+> I think you are reading the text too literally. The intent of WRE is to
+> ensure that standard use of a RNG in an extension package uses the RNGs
+> that
+> come with R (which includes an updated mersenne twister algorithm) so that
+> users are not "surprised".  It explicitly mentions the problem of multiple
+> seeding.  An example of how this can be done is in RcppArmadillo: a long
+> time
+> ago we worked out a scheme were in the R use case the RNG is 'dropped in'
+> so
+> that Armadillo code uses randu(5) you get what runif(5) in R would give you
+> (given the same seed from R).
+>
+> On the other hand, when you know what you do and properly (locally)
+> instantiate another PRNG for local use you can. For quick checks I often
+> use
+> a query at github in the 'cran' organisation mirroring the CRAN repos. For
+> example the following shows where std::mt19937 is used in C++ to deploy the
+> Mersenne Twister. So as you can see, when done carefully it is in fact
+> allowed.
+>
+>    https://github.com/search?q=org%3Acran%20mt19937&type=code
+>
+> Hope this helps, and allow me to mention that there is also the rcpp-devel
+> for more Rcpp-specific questions.
+>
+> Cheers, Dirk
+>
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Fri Sep 27 17:16:59 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 27 Sep 2024 10:16:59 -0500
+Subject: [R-pkg-devel] R-extension requirement about third-party random
+ number generators (RNG)
+In-Reply-To: <CAE6tiryYesRoiEB6fccPjjhS5JhWtL=AVdbgFLokLO6WOY1-0A@mail.gmail.com>
+References: <CAE6tirzQqULA_AB1HY1pxDx5dKvWLf2CBpoPyMJeFcF6b8X3tQ@mail.gmail.com>
+ <26358.48876.191859.675293@rob.eddelbuettel.com>
+ <CAE6tiryYesRoiEB6fccPjjhS5JhWtL=AVdbgFLokLO6WOY1-0A@mail.gmail.com>
+Message-ID: <26358.52331.462645.134599@rob.eddelbuettel.com>
+
+
+On 27 September 2024 at 16:58, John Clarke wrote:
+| [...] -- the RNG state management strategy appears almost 'magical' to me
+| especially inside?RCPP. It is possible, I just don't understand how to use it.
+
+See Section 6.3 of WRE: The pair of GetRNGstate() and PutRNGstate() is all
+there is in terms of an interface, and all we call (and old-school macros
+ensure it ends in the generated glue code Rcpp produces for you). Pretty much
+everything else around RNGSs is (quite) opaque (as Section 6.3 states) and
+Rcpp does not go there.
+
+Cheers,  Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From k@@perd@n|e|h@n@en @end|ng |rom gm@||@com  Fri Sep 27 17:22:19 2024
+From: k@@perd@n|e|h@n@en @end|ng |rom gm@||@com (Kasper Daniel Hansen)
+Date: Fri, 27 Sep 2024 11:22:19 -0400
+Subject: [R-pkg-devel] R-extension requirement about third-party random
+ number generators (RNG)
+In-Reply-To: <26358.52331.462645.134599@rob.eddelbuettel.com>
+References: <CAE6tirzQqULA_AB1HY1pxDx5dKvWLf2CBpoPyMJeFcF6b8X3tQ@mail.gmail.com>
+ <26358.48876.191859.675293@rob.eddelbuettel.com>
+ <CAE6tiryYesRoiEB6fccPjjhS5JhWtL=AVdbgFLokLO6WOY1-0A@mail.gmail.com>
+ <26358.52331.462645.134599@rob.eddelbuettel.com>
+Message-ID: <CAC2h7uujS-0nt7rtKz=VbTE_HOUhXaeyDwdr3DtXMir7a1rE0g@mail.gmail.com>
+
+John,
+
+Your post does not have many details but why do you think that
+instantiating 4 instances of the Mersenne Twister will keep the streams
+independent? It is possible to get independent streams, but it will need
+more work.
+
+Best,
+Kasper
+
+On Fri, Sep 27, 2024 at 11:17?AM Dirk Eddelbuettel <edd at debian.org> wrote:
+
+>
+> On 27 September 2024 at 16:58, John Clarke wrote:
+> | [...] -- the RNG state management strategy appears almost 'magical' to me
+> | especially inside RCPP. It is possible, I just don't understand how to
+> use it.
+>
+> See Section 6.3 of WRE: The pair of GetRNGstate() and PutRNGstate() is all
+> there is in terms of an interface, and all we call (and old-school macros
+> ensure it ends in the generated glue code Rcpp produces for you). Pretty
+> much
+> everything else around RNGSs is (quite) opaque (as Section 6.3 states) and
+> Rcpp does not go there.
+>
+> Cheers,  Dirk
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+-- 
+Best,
+Kasper
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Fri Sep 27 17:25:12 2024
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Fri, 27 Sep 2024 08:25:12 -0700
+Subject: [R-pkg-devel] R-extension requirement about third-party random
+ number generators (RNG)
+In-Reply-To: <CAE6tiryYesRoiEB6fccPjjhS5JhWtL=AVdbgFLokLO6WOY1-0A@mail.gmail.com>
+References: <CAE6tirzQqULA_AB1HY1pxDx5dKvWLf2CBpoPyMJeFcF6b8X3tQ@mail.gmail.com>
+ <26358.48876.191859.675293@rob.eddelbuettel.com>
+ <CAE6tiryYesRoiEB6fccPjjhS5JhWtL=AVdbgFLokLO6WOY1-0A@mail.gmail.com>
+Message-ID: <DC5A7CFC-2DC9-40AB-BC40-3CBB04CE3E5F@dcn.davis.ca.us>
+
+You mention that you did not like putting the rstream in the user API but there is nothing forcing you to have the user call your cpp function directly... there are lots of packages that use R glue functions as the API.
+
+I have not dug into Dirk's code, but having the native R seed management is IMO a major plus for following WRE literally rather than merely echoing similar behavior in a specific run from the same starting point.
+
+On September 27, 2024 7:58:19 AM PDT, John Clarke <john.bradley.clarke at gmail.com> wrote:
+>Hi Dirk,
+>
+>Thanks very much for your thoughtful reply. This is a relief for me as my
+>'solution' for replacing the existing RNG in my C++ was convoluted and I
+>couldn't see the advantage in doing so. Thank you for the search tip --
+>that is really helpful and I did not know that there was this kind of
+>mirroring. Thanks also for the mention of the rcpp-devel -- I think I will
+>use that instead next time.
+>
+>One point of contention though -- I think the Writing R-Extensions page
+>could be more explicit in this regard and perhaps suggest times/examples
+>when it is OK to include an existing (3rd party) RNG and when it is not.
+>
+>I also think that it would be helpful if R offered a way to instantiate
+>multiple instances of its internal RNG manager out of the box -- the RNG
+>state management strategy appears almost 'magical' to me especially
+>inside RCPP. It is possible, I just don't understand how to use it.
+>
+>Best,
+>
+>-John
+>
+>On Fri, Sep 27, 2024 at 4:19?PM Dirk Eddelbuettel <edd at debian.org> wrote:
+>
+>>
+>> Hi John,
+>>
+>> I think you are reading the text too literally. The intent of WRE is to
+>> ensure that standard use of a RNG in an extension package uses the RNGs
+>> that
+>> come with R (which includes an updated mersenne twister algorithm) so that
+>> users are not "surprised".  It explicitly mentions the problem of multiple
+>> seeding.  An example of how this can be done is in RcppArmadillo: a long
+>> time
+>> ago we worked out a scheme were in the R use case the RNG is 'dropped in'
+>> so
+>> that Armadillo code uses randu(5) you get what runif(5) in R would give you
+>> (given the same seed from R).
+>>
+>> On the other hand, when you know what you do and properly (locally)
+>> instantiate another PRNG for local use you can. For quick checks I often
+>> use
+>> a query at github in the 'cran' organisation mirroring the CRAN repos. For
+>> example the following shows where std::mt19937 is used in C++ to deploy the
+>> Mersenne Twister. So as you can see, when done carefully it is in fact
+>> allowed.
+>>
+>>    https://github.com/search?q=org%3Acran%20mt19937&type=code
+>>
+>> Hope this helps, and allow me to mention that there is also the rcpp-devel
+>> for more Rcpp-specific questions.
+>>
+>> Cheers, Dirk
+>>
+>>
+>> --
+>> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>>
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-package-devel at r-project.org mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
