@@ -13090,3 +13090,230 @@ On September 27, 2024 7:58:19 AM PDT, John Clarke <john.bradley.clarke at gmail.
 Sent from my phone. Please excuse my brevity.
 
 
+From rhe|p @end|ng |rom eoo@@dd@@n|  Sun Sep 29 13:46:32 2024
+From: rhe|p @end|ng |rom eoo@@dd@@n| (Jan van der Laan)
+Date: Sun, 29 Sep 2024 13:46:32 +0200
+Subject: [R-pkg-devel] Deprecating apparent S3 method, changing name
+In-Reply-To: <SY4PR01MB56581D25A3BD15AC4CB3F882AC692@SY4PR01MB5658.ausprd01.prod.outlook.com>
+References: <SY4PR01MB56581D25A3BD15AC4CB3F882AC692@SY4PR01MB5658.ausprd01.prod.outlook.com>
+Message-ID: <1b146078-c41c-4e09-9457-12eeadf3b6c5@eoos.dds.nl>
+
+Hmm, the following doesn't seem to trigger warnings or notes in `R CMD 
+check --as-cran` (R 4.4.1; linux)
+
+esa <- function(x) { 
+  
+
+   UseMethod("esa") 
+  
+
+} 
+  
+
+  
+  
+
+esa.plot <- function(y) { 
+  
+
+   .Deprecated("esaPlot") 
+  
+
+   esaPlot(y) 
+  
+
+} 
+  
+
+  
+  
+
+esaPlot <- function(y) { 
+  
+
+   message("esaPlot") 
+  
+
+} 
+  
+
+  
+  
+
+esa.numeric <- function(x) { 
+  
+
+   message("esa.numeric") 
+  
+
+} 
+  
+
+
+
+With NAMESPACE:
+  
+  
+
+S3method(esa, numeric) 
+  
+
+export(esa) 
+  
+
+export(esa.plot) 
+  
+
+export(esaPlot)
+
+Am I doing something different than you are?
+
+Jan
+
+
+On 9/25/24 07:13, Murray Efford via R-package-devel wrote:
+> A package of mine on CRAN has some old function names (not S3 methods) that include "." (e.g., "esa.plot"). In a new version I want to simultaneously
+> 1. rename these functions to e.g. "esaPlot"
+> 2. export a new S3 generic with the base name (e.g. "esa") and methods for different model types (e.g. "esa.secr").
+> 
+> When I deprecate the old functions (by exporting a shell function that calls .Deprecated and the new function), I get a package check note for e.g. esa.plot
+> "* checking S3 generic/method consistency ... NOTE
+> Apparent methods for exported generics not registered: etc."
+> 
+> This is understandable, but how can I avoid it while properly deprecating the old functions? I seem to remember a recent question like this, but I'm sorry I cannot find it.
+> 
+> Murray
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From murr@y@e||ord @end|ng |rom ot@go@@c@nz  Sun Sep 29 18:20:14 2024
+From: murr@y@e||ord @end|ng |rom ot@go@@c@nz (Murray Efford)
+Date: Sun, 29 Sep 2024 16:20:14 +0000
+Subject: [R-pkg-devel] Deprecating apparent S3 method, changing name
+In-Reply-To: <1b146078-c41c-4e09-9457-12eeadf3b6c5@eoos.dds.nl>
+References: <SY4PR01MB56581D25A3BD15AC4CB3F882AC692@SY4PR01MB5658.ausprd01.prod.outlook.com>
+ <1b146078-c41c-4e09-9457-12eeadf3b6c5@eoos.dds.nl>
+Message-ID: <SYBPR01MB5664EA5184FC17CCB1E4F52DAC752@SYBPR01MB5664.ausprd01.prod.outlook.com>
+
+Check results vary. With win-builder both R-release (R 4.4.1) and R-devel I get
+
+* checking S3 generic/method consistency ... NOTE
+Apparent methods for exported generics not registered:
+  esa.plot
+See section 'Registering S3 methods' in the 'Writing R Extensions'
+manual.
+
+But there's no such Note on mac-builder R 4.4.0 or my own R CMD check --as-cran on Windows with R 4.3.2, nor apparently on R 4.4.1 linux.
+
+Thanks for checking, but I think I do have a problem.
+Murray
+________________________________
+From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Jan van der Laan <rhelp at eoos.dds.nl>
+Sent: Monday, 30 September 2024 00:46
+To: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Deprecating apparent S3 method, changing name
+
+Hmm, the following doesn't seem to trigger warnings or notes in `R CMD
+check --as-cran` (R 4.4.1; linux)
+
+esa <- function(x) {
+
+
+   UseMethod("esa")
+
+
+}
+
+
+
+
+
+esa.plot <- function(y) {
+
+
+   .Deprecated("esaPlot")
+
+
+   esaPlot(y)
+
+
+}
+
+
+
+
+
+esaPlot <- function(y) {
+
+
+   message("esaPlot")
+
+
+}
+
+
+
+
+
+esa.numeric <- function(x) {
+
+
+   message("esa.numeric")
+
+
+}
+
+
+
+
+With NAMESPACE:
+
+
+
+S3method(esa, numeric)
+
+
+export(esa)
+
+
+export(esa.plot)
+
+
+export(esaPlot)
+
+Am I doing something different than you are?
+
+Jan
+
+
+On 9/25/24 07:13, Murray Efford via R-package-devel wrote:
+> A package of mine on CRAN has some old function names (not S3 methods) that include "." (e.g., "esa.plot"). In a new version I want to simultaneously
+> 1. rename these functions to e.g. "esaPlot"
+> 2. export a new S3 generic with the base name (e.g. "esa") and methods for different model types (e.g. "esa.secr").
+>
+> When I deprecate the old functions (by exporting a shell function that calls .Deprecated and the new function), I get a package check note for e.g. esa.plot
+> "* checking S3 generic/method consistency ... NOTE
+> Apparent methods for exported generics not registered: etc."
+>
+> This is understandable, but how can I avoid it while properly deprecating the old functions? I seem to remember a recent question like this, but I'm sorry I cannot find it.
+>
+> Murray
+>
+>        [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-package-devel&data=05%7C02%7Cmurray.efford%40otago.ac.nz%7Ce0eaedee90af46dc200e08dce07c68f8%7C0225efc578fe4928b1579ef24809e9ba%7C0%7C0%7C638632072195001025%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C&sdata=G%2BO6NtGHVy9xvfu2yPGy%2BBKbnOrC6hNxFXTVxLxu3wQ%3D&reserved=0<https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://apc01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-package-devel&data=05%7C02%7Cmurray.efford%40otago.ac.nz%7Ce0eaedee90af46dc200e08dce07c68f8%7C0225efc578fe4928b1579ef24809e9ba%7C0%7C0%7C638632072195023045%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C&sdata=6hIjTj6E2HF8TGGwDb1JkVIjibztEgf10dSaxvvc8sg%3D&reserved=0<https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+
+	[[alternative HTML version deleted]]
+
+
