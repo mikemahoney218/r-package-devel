@@ -527,3 +527,242 @@ wrote:
 	[[alternative HTML version deleted]]
 
 
+From |kry|ov @end|ng |rom d|@root@org  Thu Oct 10 10:30:18 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 10 Oct 2024 11:30:18 +0300
+Subject: [R-pkg-devel] Help with 2 NOTES
+In-Reply-To: <em79af66bf-7e90-400c-88a2-733409da284a@d22f2075.com>
+References: <em79af66bf-7e90-400c-88a2-733409da284a@d22f2075.com>
+Message-ID: <20241010113018.079bb0c9@Tarkus>
+
+Dear Jaime Salvador,
+
+Welcome to R-package-devel!
+
+? Wed, 9 Oct 2024 20:42:24 +0000
+Jaime Salvador <jaime.salvador at ideasybits.com> ?????:
+
+> New submission
+
+This one is expected for new packages.
+
+> Possibly misspelled words in DESCRIPTION:
+>   DICX (12:67)
+>   RXDB (12:59)
+>   Redatam (2:34, 12:40)
+
+Wrap the abbreviations and software names into 'single quotes':
+https://contributor.r-project.org/cran-cookbook/description_issues.html#formatting-software-names.
+Some of the acronyms may need to be explained in the submission
+comments in the CRAN web form.
+
+I see you've tried to put the acronyms into the WORDLIST, but I think
+the interface for spell-checking the package is different (see
+?'aspell-utils') and involves saving vectors of words into .rds files
+in .aspell and describing them in .aspell/defaults.R.
+
+(If anything reads WORDLIST, why doesn't grep -r WORDLIST src on the R
+source code show anything?)
+
+> * checking for detritus in the temp directory ... NOTE
+> 
+> Found the following files/directories:
+>   ?redatam?
+
+Some code from your package that ran during R CMD check (it's usually
+examples or tests) created the file named "redatam" in the temporary
+directory and didn't remove it afterwards. I'm not seeing any R code do
+this, so it must be something in the libredengine DLL. Can you make it
+remove its temporary files during _redatam_redatam_destroy()?
+
+There are more serious problems not flagged by R CMD check.
+
+Your code downloads a binary DLL during the configuration stage. What
+is the license under which it is shipped? Will it work on macOS? CRAN
+policy recommends including sources or downloading (and compiling on
+the fly) a fixed version rather than the latest one, although I know
+of exceptions for some open-source libraries.
+
+Almost all your examples are wrapped in \dontrun{}. Generally, this is
+only allowed for code that absolutely has no chance of running as
+written, for example, due to a missing API key:
+https://contributor.r-project.org/cran-cookbook/general_issues.html#structuring-of-examples
+
+Your NAMESPACE contains a lot of extraneous stuff. You intend for the
+user to call functions redatam.open(), redatam.query(), and so on, but
+roxygen2 misinterpreted those as S3 methods and registered them for the
+S3 generic redatam, which doesn't do anything and isn't properly
+documented. It's best to get rid of the S3 generic and only export the
+functions by name (e.g. export(redatam.open, redatam.query)) instead of
+resorting to exportPattern("^[[:alpha:]]+"). Maybe it's best to just
+avoid dots in the function names altogether, lest something else
+misinterprets them as S3 methods.
+
+Your "Description:" field says "you need R (>=4.0)", which is better
+expressed as a separate field, "Depends: R (>= 4.0)".
+
+-- 
+Best regards,
+Ivan
+
+
+From j@|me@@@|v@dor @end|ng |rom |de@@yb|t@@com  Thu Oct 10 15:10:39 2024
+From: j@|me@@@|v@dor @end|ng |rom |de@@yb|t@@com (Jaime Salvador)
+Date: Thu, 10 Oct 2024 13:10:39 +0000
+Subject: [R-pkg-devel] Help with 2 NOTES
+In-Reply-To: <20241010113018.079bb0c9@Tarkus>
+References: <em79af66bf-7e90-400c-88a2-733409da284a@d22f2075.com>
+ <20241010113018.079bb0c9@Tarkus>
+Message-ID: <em629f01a5-d4de-4ffd-9986-b3808e6cec1f@7660d48a.com>
+
+Hi Ivan,
+
+Thanks for you reply, I appreciate your help.
+
+Actually, with your help, I fixex the issues :
+
+
+  *   I enclose between single quotes Redata, RXDB and DICX
+  *   I fixed the version of binaries downloaded, for example redatamx-core-linux-20241010.zip
+  *   The binary DLL/so library generate a LOG file in temp/redatam directory, so I remove the directory in .onUnload
+  *   The \dontrun in examples. To run the examples, we need a database, the package doesn't include a sample database, so the code can't be run. I remove \dontrun in functions that can run without a database (for example redatam_version)
+  *   All the exported functions, now have the name redatam_XXX (where XXX is open, close, etc.)
+
+Regarding to the DLL downloading during the configurarion, REDATAM is not an open source software (the source code is controlled by CELADE-CEPAL), but the binary is freely  distributed, you can get a copy from https://redatam.org/es/aplicaciones (Redatam X version)
+
+Thanks
+
+
+-------------------------------------
+Jaime Salvador
+| Ideas&Bits
+| mobile: +593 0987285748
+| email: jaime.salvador at ideasybits.com<mailto:jaime.salvador at ideasybits.com>
+| site: www.ideasybits.com<https://urldefense.com/v3/__http:/www.ideasybits.com__;!!C3eXzRIY6Mw!YcjWo_ljX1Mppy0kki8QDmz6mHQIrU1XSABeGK31GmB50zdsNenbNNyRCZvpmI0lgbWo$>
+
+
+
+------ Mensaje original ------
+De "Ivan Krylov" <ikrylov at disroot.org<mailto:ikrylov at disroot.org>>
+Para "Jaime Salvador" <jaime.salvador at ideasybits.com<mailto:jaime.salvador at ideasybits.com>>
+Cc "r-package-devel at r-project.org" <r-package-devel at r-project.org<mailto:r-package-devel at r-project.org>>
+Fecha 10/10/2024 3:30:18
+Asunto Re: [R-pkg-devel] Help with 2 NOTES
+
+Dear Jaime Salvador,
+
+Welcome to R-package-devel!
+
+? Wed, 9 Oct 2024 20:42:24 +0000
+Jaime Salvador <jaime.salvador at ideasybits.com<mailto:jaime.salvador at ideasybits.com>> ?????:
+
+New submission
+
+This one is expected for new packages.
+
+Possibly misspelled words in DESCRIPTION:
+DICX (12:67)
+RXDB (12:59)
+Redatam (2:34, 12:40)
+
+Wrap the abbreviations and software names into 'single quotes':
+https://contributor.r-project.org/cran-cookbook/description_issues.html#formatting-software-names.
+Some of the acronyms may need to be explained in the submission
+comments in the CRAN web form.
+
+I see you've tried to put the acronyms into the WORDLIST, but I think
+the interface for spell-checking the package is different (see
+?'aspell-utils') and involves saving vectors of words into .rds files
+in .aspell and describing them in .aspell/defaults.R.
+
+(If anything reads WORDLIST, why doesn't grep -r WORDLIST src on the R
+source code show anything?)
+
+* checking for detritus in the temp directory ... NOTE
+
+Found the following files/directories:
+?redatam?
+
+Some code from your package that ran during R CMD check (it's usually
+examples or tests) created the file named "redatam" in the temporary
+directory and didn't remove it afterwards. I'm not seeing any R code do
+this, so it must be something in the libredengine DLL. Can you make it
+remove its temporary files during _redatam_redatam_destroy()?
+
+There are more serious problems not flagged by R CMD check.
+
+Your code downloads a binary DLL during the configuration stage. What
+is the license under which it is shipped? Will it work on macOS? CRAN
+policy recommends including sources or downloading (and compiling on
+the fly) a fixed version rather than the latest one, although I know
+of exceptions for some open-source libraries.
+
+Almost all your examples are wrapped in \dontrun{}. Generally, this is
+only allowed for code that absolutely has no chance of running as
+written, for example, due to a missing API key:
+https://contributor.r-project.org/cran-cookbook/general_issues.html#structuring-of-examples
+
+Your NAMESPACE contains a lot of extraneous stuff. You intend for the
+user to call functions redatam.open(), redatam.query(), and so on, but
+roxygen2 misinterpreted those as S3 methods and registered them for the
+S3 generic redatam, which doesn't do anything and isn't properly
+documented. It's best to get rid of the S3 generic and only export the
+functions by name (e.g. export(redatam.open, redatam.query)) instead of
+resorting to exportPattern("^[[:alpha:]]+"). Maybe it's best to just
+avoid dots in the function names altogether, lest something else
+misinterprets them as S3 methods.
+
+Your "Description:" field says "you need R (>=4.0)", which is better
+expressed as a separate field, "Depends: R (>= 4.0)".
+
+--
+Best regards,
+Ivan
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Thu Oct 10 15:29:17 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 10 Oct 2024 16:29:17 +0300
+Subject: [R-pkg-devel] Help with 2 NOTES
+In-Reply-To: <em629f01a5-d4de-4ffd-9986-b3808e6cec1f@7660d48a.com>
+References: <em79af66bf-7e90-400c-88a2-733409da284a@d22f2075.com>
+ <20241010113018.079bb0c9@Tarkus>
+ <em629f01a5-d4de-4ffd-9986-b3808e6cec1f@7660d48a.com>
+Message-ID: <20241010162917.214ee9af@arachnoid>
+
+? Thu, 10 Oct 2024 13:10:39 +0000
+Jaime Salvador <jaime.salvador at ideasybits.com> ?????:
+
+>   *   The \dontrun in examples. To run the examples, we need a
+> database, the package doesn't include a sample database, so the code
+> can't be run. I remove \dontrun in functions that can run without a
+> database (for example redatam_version)
+
+That makes perfect sense. Can you provide a small example database as
+part of the package? It's best to exercise as much of the code of
+package as reasonably possible in tests and examples. If not, leaving
+\dontrun{} in is indeed the right choice.
+
+> Regarding to the DLL downloading during the configurarion, REDATAM is
+> not an open source software (the source code is controlled by
+> CELADE-CEPAL), but the binary is freely  distributed, you can get a
+> copy from https://redatam.org/es/aplicaciones (Redatam X version)
+
+Thank you for clarifying that. It may help to follow the example of the
+'Rblpapi' package <https://CRAN.R-project.org/package=Rblpapi> in
+specifying the license covering the package as a whole. In particular,
+you need to ensure that CRAN has the right to redistribute Redatam DLLs
+as part of the binary packages they compile. I'm not seeing a license
+covering the downloads at https://redatam.org/es/aplicaciones or
+https://redatam.org/en/software.
+
+Good luck! For best results next time you have a question, please
+provide a link to the latest version of the package source code.
+
+-- 
+Best regards,
+Ivan
+
+
