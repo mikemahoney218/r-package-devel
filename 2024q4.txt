@@ -766,3 +766,358 @@ Best regards,
 Ivan
 
 
+From d@v|d_j_z|mmerm@nn @end|ng |rom hotm@||@com  Wed Oct 16 19:38:27 2024
+From: d@v|d_j_z|mmerm@nn @end|ng |rom hotm@||@com (D Z)
+Date: Wed, 16 Oct 2024 17:38:27 +0000
+Subject: [R-pkg-devel] Installation took CPU time elapsed time for
+ rust-based package
+Message-ID: <PAVPR03MB101039EE8E46028FAFFD96737D3452@PAVPR03MB10103.eurprd03.prod.outlook.com>
+
+Hi all,
+I have a new package that I submitted to CRAN, that uses rust (for reference, it's called rtiktoken and can be found here: https://github.com/DavZim/rtiktoken).
+The submission failed as 1-2 NOTEs were found, most importantly: Installation took CPU time 7.2 times elapsed time.
+
+In both my Makevars and Makevars.win files, I specify to use 2 cores for cargo build on CRAN machines (see below or here https://github.com/DavZim/rtiktoken/blob/master/src/Makevars#L21C2-L25C4) but I still get the NOTE. Furthermore, I only get this on Debian but not on Windows.
+
+if [ -n "$_R_CHECK_LIMIT_CORES" ]; then \
+? export BUILDFLAGS="-j 2 --offline"; \
+else \
+?export BUILDFLAGS="--offline"; \
+fi
+...
+cargo build ${BUILDFLAGS} --lib --release --manifest-path=./rust/Cargo.toml --target-dir $(TARGET_DIR)
+
+The check results are here
+
+  *
+Windows: https://win-builder.r-project.org/incoming_pretest/rtiktoken_0.0.3_20241016_135446/Windows/00check.log (1 NOTE about misspelled words and a URL not being available)
+  *
+Debian:https://win-builder.r-project.org/incoming_pretest/rtiktoken_0.0.3_20241016_135446/Debian/00check.log (2 NOTEs: installation time and misspelled words)
+
+Now I am wondering if there is anything that I can do about this NOTE or if I should ignore it.
+I did not find any reference to this in the "Using Rust in CRAN Packages" nor in other CRAN packages that use rust (eg gifski, string2path, arcpbf), but I might have missed something.
+
+I found also the CARGO_BUILD_JOBS flag for rust (https://doc.rust-lang.org/cargo/reference/environment-variables.html) but as I can't reproduce the error locally (or on other GitHub Actions runners), I don't want to trial-and-test-it on CRAN servers.
+
+Thanks, any help is appreciated!
+David
+
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Wed Oct 16 20:50:29 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Wed, 16 Oct 2024 21:50:29 +0300
+Subject: [R-pkg-devel] Installation took CPU time elapsed time for
+ rust-based package
+In-Reply-To: <PAVPR03MB101039EE8E46028FAFFD96737D3452@PAVPR03MB10103.eurprd03.prod.outlook.com>
+References: <PAVPR03MB101039EE8E46028FAFFD96737D3452@PAVPR03MB10103.eurprd03.prod.outlook.com>
+Message-ID: <20241016215029.3694e8d0@Tarkus>
+
+? Wed, 16 Oct 2024 17:38:27 +0000
+D Z <david_j_zimmermann at hotmail.com> ?????:
+
+> if [ -n "$_R_CHECK_LIMIT_CORES" ]; then \
+> ? export BUILDFLAGS="-j 2 --offline"; \
+
+This environment variable is spelled with an extra underscore:
+https://cran.r-project.org/doc/manuals/r-devel/R-ints.html#index-_005fR_005fCHECK_005fLIMIT_005fCORES_005f
+
+At least one of Josiah's packages instead relies on the user setting
+the NOT_CRAN environment variable:
+https://github.com/extendr/b64/blob/67ff753f71676870e3b04657909050ae10ec2145/src/Makevars#L10-L28
+
+> Now I am wondering if there is anything that I can do about this NOTE
+> or if I should ignore it.
+> I did not find any reference to this in the "Using Rust in CRAN
+> Packages"
+
+"Not taking more than two parallel processes or threads during the CRAN
+check" is a more general requirement for all packages, regardless of
+whether they use Rust. A package that uses cmake -GNinja without
+limiting the number of compiler processes or gives the -j$(nproc)
+argument to a Make subprocess would have received this NOTE as well.
+
+-- 
+Best regards,
+Ivan
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Wed Oct 16 21:30:54 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Wed, 16 Oct 2024 12:30:54 -0700
+Subject: [R-pkg-devel] Installation took CPU time elapsed time for
+ rust-based package
+In-Reply-To: <20241016215029.3694e8d0@Tarkus>
+References: <PAVPR03MB101039EE8E46028FAFFD96737D3452@PAVPR03MB10103.eurprd03.prod.outlook.com>
+ <20241016215029.3694e8d0@Tarkus>
+Message-ID: <CAL3ufUK9VLDvZVHGzHFzwzPfXzdDnqnSmniqrv9DtmXtO4KBWA@mail.gmail.com>
+
+Thanks, Ivan! Yes, I would use the NOT_CRAN flag. But in the case of that
+package, the CRAN_FLAGS are not set dynamically.
+It would be a welcome PR to rextendr if anyone more comfortable with Make
+would like to. The current
+template Makevars is at
+https://github.com/extendr/rextendr/blob/main/inst/templates/cran/Makevars.
+
+David, it looks like you went about crafting your CRAN-compliance by
+hand?hats off! If you want to be a little more
+hands off in the future, you can check out the development version of
+{rextendr} https://extendr.github.io/rextendr/dev/reference/cran.html
+which provides Makevars and configure scripts that are CRAN compatible.
+
+The general workflow for a new package would be something like:
+
+usethis::create_package()
+rextendr::use_extendr()
+rextendr::use_cran_defaults()
+rextendr::use_msrv("1.69") # or whatever MSRV you have
+rextendr::vendor_pkgs()
+
+If you, or anyone else for that matter, have additional questions, I
+recommend joining the
+extendr discord at https://discord.gg/Mt4Kauus.
+
+For more "formal" questions a GitHub discussion or issue is also welcome
+https://github.com/extendr/extendr/discussions
+
+
+On Wed, Oct 16, 2024 at 11:50?AM Ivan Krylov via R-package-devel <
+r-package-devel at r-project.org> wrote:
+
+> ? Wed, 16 Oct 2024 17:38:27 +0000
+> D Z <david_j_zimmermann at hotmail.com> ?????:
+>
+> > if [ -n "$_R_CHECK_LIMIT_CORES" ]; then \
+> >  export BUILDFLAGS="-j 2 --offline"; \
+>
+> This environment variable is spelled with an extra underscore:
+>
+> https://cran.r-project.org/doc/manuals/r-devel/R-ints.html#index-_005fR_005fCHECK_005fLIMIT_005fCORES_005f
+>
+> At least one of Josiah's packages instead relies on the user setting
+> the NOT_CRAN environment variable:
+>
+> https://github.com/extendr/b64/blob/67ff753f71676870e3b04657909050ae10ec2145/src/Makevars#L10-L28
+>
+> > Now I am wondering if there is anything that I can do about this NOTE
+> > or if I should ignore it.
+> > I did not find any reference to this in the "Using Rust in CRAN
+> > Packages"
+>
+> "Not taking more than two parallel processes or threads during the CRAN
+> check" is a more general requirement for all packages, regardless of
+> whether they use Rust. A package that uses cmake -GNinja without
+> limiting the number of compiler processes or gives the -j$(nproc)
+> argument to a Make subprocess would have received this NOTE as well.
+>
+> --
+> Best regards,
+> Ivan
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From m|ch@e|@m@hony @end|ng |rom c@nt@b@net  Wed Oct 16 22:04:54 2024
+From: m|ch@e|@m@hony @end|ng |rom c@nt@b@net (Michael Mahony)
+Date: Wed, 16 Oct 2024 20:04:54 +0000
+Subject: [R-pkg-devel] Installation error when submitting package to CRAN
+Message-ID: <da2d74d2d92ee1231f083ff304f25d97@cantab.net>
+
+
+
+Apologies in advance for not providing a reproducible example, but I am 
+unsure how to reproduce the below error, as it did not occur on my 
+machine.
+
+I recently submitted a package to CRAN, after which I received an 
+automated email from ligges at statistik.tu-dortmund.de, saying my package 
+had failed the automated checks. I was advised to ask for help on this 
+mailing list if I did not know how to resolve the error.
+
+Details of the automated checks are provided here: 
+https://win-builder.r-project.org/incoming_pretest/hhmR_0.0.1_20241015_235116/
+
+Essentially, when trying to install the package for Windows, the 
+following error was produced.
+
+```
+* installing *source* package 'hhmR' ...
+** using staged installation
+** R
+** data
+*** moving datasets to lazyload DB
+** inst
+** byte-compile and prepare package for lazy loading
+Error in loadNamespace(j <- i[[1L]], c(lib.loc, .libPaths()), 
+versionCheck = vI[[j]]) :
+   there is no package called 'farver'
+Calls: <Anonymous> ... loadNamespace -> withRestarts -> withOneRestart 
+-> doWithOneRestart
+Execution halted
+ERROR: lazy loading failed for package 'hhmR'
+* removing 'd:/RCompile/CRANincoming/R-devel/lib/hhmR'
+```
+
+This error has never occurred before when testing the package using 
+`devtools` or `rhub`. I imagine I probably need to add `library(farver)` 
+somewhere in my package, but am unsure where.
+
+If anyone has any advice about how to resolve this issue I would be very 
+greatful.
+
+Thank you in advance,
+
+Michael
+	[[alternative HTML version deleted]]
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Thu Oct 17 02:00:43 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Thu, 17 Oct 2024 13:00:43 +1300
+Subject: [R-pkg-devel] 
+ Installation error when submitting package to CRAN
+In-Reply-To: <da2d74d2d92ee1231f083ff304f25d97@cantab.net>
+References: <da2d74d2d92ee1231f083ff304f25d97@cantab.net>
+Message-ID: <D894D9F4-EF5F-4465-82A8-B55D96898232@R-project.org>
+
+See the error - that looks like a temporary issue. I'd contact CRAN or resubmit.
+
+Cheers,
+Simon
+
+
+
+> On Oct 17, 2024, at 09:04, Michael Mahony <michael.mahony at cantab.net> wrote:
+> 
+> 
+> 
+> Apologies in advance for not providing a reproducible example, but I am 
+> unsure how to reproduce the below error, as it did not occur on my 
+> machine.
+> 
+> I recently submitted a package to CRAN, after which I received an 
+> automated email from ligges at statistik.tu-dortmund.de, saying my package 
+> had failed the automated checks. I was advised to ask for help on this 
+> mailing list if I did not know how to resolve the error.
+> 
+> Details of the automated checks are provided here: 
+> https://win-builder.r-project.org/incoming_pretest/hhmR_0.0.1_20241015_235116/
+> 
+> Essentially, when trying to install the package for Windows, the 
+> following error was produced.
+> 
+> ```
+> * installing *source* package 'hhmR' ...
+> ** using staged installation
+> ** R
+> ** data
+> *** moving datasets to lazyload DB
+> ** inst
+> ** byte-compile and prepare package for lazy loading
+> Error in loadNamespace(j <- i[[1L]], c(lib.loc, .libPaths()), 
+> versionCheck = vI[[j]]) :
+>   there is no package called 'farver'
+> Calls: <Anonymous> ... loadNamespace -> withRestarts -> withOneRestart 
+> -> doWithOneRestart
+> Execution halted
+> ERROR: lazy loading failed for package 'hhmR'
+> * removing 'd:/RCompile/CRANincoming/R-devel/lib/hhmR'
+> ```
+> 
+> This error has never occurred before when testing the package using 
+> `devtools` or `rhub`. I imagine I probably need to add `library(farver)` 
+> somewhere in my package, but am unsure where.
+> 
+> If anyone has any advice about how to resolve this issue I would be very 
+> greatful.
+> 
+> Thank you in advance,
+> 
+> Michael
+> [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Thu Oct 17 02:46:52 2024
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Wed, 16 Oct 2024 17:46:52 -0700
+Subject: [R-pkg-devel] 
+ Installation error when submitting package to CRAN
+In-Reply-To: <da2d74d2d92ee1231f083ff304f25d97@cantab.net>
+References: <da2d74d2d92ee1231f083ff304f25d97@cantab.net>
+Message-ID: <A2D47FF5-6AFA-4A1C-8C36-57B44EDA31F5@dcn.davis.ca.us>
+
+You should not use "library(anything)" in a package. You should rely on the Imports: field in the DESCRIPTION file along with importFrom() in your NAMESPACE file, or the Suggests: field in the DESCRIPTION file and if (requireNamespace("anypackage"))  {anypackage::somefun} else {# avoid using anypackage}. See WRE 1.1.3.1.
+
+But in this particular case this might be a temporary glitch on the CRAN server.
+
+On October 16, 2024 1:04:54 PM PDT, Michael Mahony <michael.mahony at cantab.net> wrote:
+>
+>
+>Apologies in advance for not providing a reproducible example, but I am 
+>unsure how to reproduce the below error, as it did not occur on my 
+>machine.
+>
+>I recently submitted a package to CRAN, after which I received an 
+>automated email from ligges at statistik.tu-dortmund.de, saying my package 
+>had failed the automated checks. I was advised to ask for help on this 
+>mailing list if I did not know how to resolve the error.
+>
+>Details of the automated checks are provided here: 
+>https://win-builder.r-project.org/incoming_pretest/hhmR_0.0.1_20241015_235116/
+>
+>Essentially, when trying to install the package for Windows, the 
+>following error was produced.
+>
+>```
+>* installing *source* package 'hhmR' ...
+>** using staged installation
+>** R
+>** data
+>*** moving datasets to lazyload DB
+>** inst
+>** byte-compile and prepare package for lazy loading
+>Error in loadNamespace(j <- i[[1L]], c(lib.loc, .libPaths()), 
+>versionCheck = vI[[j]]) :
+>   there is no package called 'farver'
+>Calls: <Anonymous> ... loadNamespace -> withRestarts -> withOneRestart 
+>-> doWithOneRestart
+>Execution halted
+>ERROR: lazy loading failed for package 'hhmR'
+>* removing 'd:/RCompile/CRANincoming/R-devel/lib/hhmR'
+>```
+>
+>This error has never occurred before when testing the package using 
+>`devtools` or `rhub`. I imagine I probably need to add `library(farver)` 
+>somewhere in my package, but am unsure where.
+>
+>If anyone has any advice about how to resolve this issue I would be very 
+>greatful.
+>
+>Thank you in advance,
+>
+>Michael
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-package-devel at r-project.org mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
