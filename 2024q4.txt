@@ -1121,3 +1121,173 @@ On October 16, 2024 1:04:54 PM PDT, Michael Mahony <michael.mahony at cantab.net
 Sent from my phone. Please excuse my brevity.
 
 
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Thu Oct 17 10:33:33 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Thu, 17 Oct 2024 10:33:33 +0200
+Subject: [R-pkg-devel] 
+ Installation error when submitting package to CRAN
+In-Reply-To: <A2D47FF5-6AFA-4A1C-8C36-57B44EDA31F5@dcn.davis.ca.us>
+References: <da2d74d2d92ee1231f083ff304f25d97@cantab.net>
+ <A2D47FF5-6AFA-4A1C-8C36-57B44EDA31F5@dcn.davis.ca.us>
+Message-ID: <e9240ba7-4447-41a3-bc97-7350bcdd78ca@statistik.tu-dortmund.de>
+
+1. I looked, and farver is not declared in your DESCRIPTION file as any 
+dependency. Is it used by another package you depend on?
+
+
+2. We also see:
+
+Flavor: r-devel-linux-x86_64-debian-gcc
+Check: DESCRIPTION meta-information, Result: NOTE
+   License stub is invalid DCF.
+
+and
+
+   License components with restrictions and base license permitting such:
+     MIT + file LICENSE
+   File 'LICENSE':
+     MIT License
+
+     Copyright (c) 2024 sgmmahon
+
+     Permission is ....
+
+Please only ship the CRAN template for the MIT license.
+
+3. In the Description field you have
+"... (e.g. `dendextend`) ..."
+Please use straight rather than directed quotes.
+
+Please fix and resubmit.
+
+Best,
+Uwe Ligges
+
+
+
+
+
+
+On 17.10.2024 02:46, Jeff Newmiller via R-package-devel wrote:
+> You should not use "library(anything)" in a package. You should rely on the Imports: field in the DESCRIPTION file along with importFrom() in your NAMESPACE file, or the Suggests: field in the DESCRIPTION file and if (requireNamespace("anypackage"))  {anypackage::somefun} else {# avoid using anypackage}. See WRE 1.1.3.1.
+> 
+> But in this particular case this might be a temporary glitch on the CRAN server.
+> 
+> On October 16, 2024 1:04:54 PM PDT, Michael Mahony <michael.mahony at cantab.net> wrote:
+>>
+>>
+>> Apologies in advance for not providing a reproducible example, but I am
+>> unsure how to reproduce the below error, as it did not occur on my
+>> machine.
+>>
+>> I recently submitted a package to CRAN, after which I received an
+>> automated email from ligges at statistik.tu-dortmund.de, saying my package
+>> had failed the automated checks. I was advised to ask for help on this
+>> mailing list if I did not know how to resolve the error.
+>>
+>> Details of the automated checks are provided here:
+>> https://win-builder.r-project.org/incoming_pretest/hhmR_0.0.1_20241015_235116/
+>>
+>> Essentially, when trying to install the package for Windows, the
+>> following error was produced.
+>>
+>> ```
+>> * installing *source* package 'hhmR' ...
+>> ** using staged installation
+>> ** R
+>> ** data
+>> *** moving datasets to lazyload DB
+>> ** inst
+>> ** byte-compile and prepare package for lazy loading
+>> Error in loadNamespace(j <- i[[1L]], c(lib.loc, .libPaths()),
+>> versionCheck = vI[[j]]) :
+>>    there is no package called 'farver'
+>> Calls: <Anonymous> ... loadNamespace -> withRestarts -> withOneRestart
+>> -> doWithOneRestart
+>> Execution halted
+>> ERROR: lazy loading failed for package 'hhmR'
+>> * removing 'd:/RCompile/CRANincoming/R-devel/lib/hhmR'
+>> ```
+>>
+>> This error has never occurred before when testing the package using
+>> `devtools` or `rhub`. I imagine I probably need to add `library(farver)`
+>> somewhere in my package, but am unsure where.
+>>
+>> If anyone has any advice about how to resolve this issue I would be very
+>> greatful.
+>>
+>> Thank you in advance,
+>>
+>> Michael
+>> 	[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+From |kry|ov @end|ng |rom d|@root@org  Thu Oct 17 10:52:46 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 17 Oct 2024 11:52:46 +0300
+Subject: [R-pkg-devel] 
+ Installation error when submitting package to CRAN
+In-Reply-To: <e9240ba7-4447-41a3-bc97-7350bcdd78ca@statistik.tu-dortmund.de>
+References: <da2d74d2d92ee1231f083ff304f25d97@cantab.net>
+ <A2D47FF5-6AFA-4A1C-8C36-57B44EDA31F5@dcn.davis.ca.us>
+ <e9240ba7-4447-41a3-bc97-7350bcdd78ca@statistik.tu-dortmund.de>
+Message-ID: <20241017115246.210db267@Tarkus>
+
+On Thu, 17 Oct 2024 10:33:33 +0200
+Uwe Ligges <ligges at statistik.tu-dortmund.de> wrote:
+
+> I looked, and farver is not declared in your DESCRIPTION file as any 
+> dependency. Is it used by another package you depend on?
+
+It's a transitive dependency via hhmR's Imports: patchwork, which in
+turn Imports: farver.
+
+> Please only ship the CRAN template for the MIT license.
+
+Michael: for more information, see RShowDoc("MIT") and
+<https://contributor.r-project.org/cran-cookbook/description_issues.html#license-files>.
+
+-- 
+Best regards,
+Ivan
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Thu Oct 17 10:55:25 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Thu, 17 Oct 2024 10:55:25 +0200
+Subject: [R-pkg-devel] 
+ Installation error when submitting package to CRAN
+In-Reply-To: <20241017115246.210db267@Tarkus>
+References: <da2d74d2d92ee1231f083ff304f25d97@cantab.net>
+ <A2D47FF5-6AFA-4A1C-8C36-57B44EDA31F5@dcn.davis.ca.us>
+ <e9240ba7-4447-41a3-bc97-7350bcdd78ca@statistik.tu-dortmund.de>
+ <20241017115246.210db267@Tarkus>
+Message-ID: <f34fe95d-6898-45b2-af89-e0055fae7215@statistik.tu-dortmund.de>
+
+Indeed, thank you, Ivan.
+Then it was a temporary hicc up on the build server and should work for 
+the resubmission of the fixed package.
+
+Best,
+Uwe
+
+On 17.10.2024 10:52, Ivan Krylov wrote:
+> On Thu, 17 Oct 2024 10:33:33 +0200
+> Uwe Ligges <ligges at statistik.tu-dortmund.de> wrote:
+> 
+>> I looked, and farver is not declared in your DESCRIPTION file as any
+>> dependency. Is it used by another package you depend on?
+> 
+> It's a transitive dependency via hhmR's Imports: patchwork, which in
+> turn Imports: farver.
+> 
+>> Please only ship the CRAN template for the MIT license.
+> 
+> Michael: for more information, see RShowDoc("MIT") and
+> <https://contributor.r-project.org/cran-cookbook/description_issues.html#license-files>.
+> 
+
