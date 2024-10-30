@@ -1665,3 +1665,367 @@ On 2024-10-27 7:48 a.m., Gianmarco Alberti wrote:
 >
 
 
+From |kry|ov @end|ng |rom d|@root@org  Mon Oct 28 12:42:53 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 28 Oct 2024 14:42:53 +0300
+Subject: [R-pkg-devel] 
+ *** caught segfault *** address (nil), cause 'unknown'
+In-Reply-To: <CACSk52-bmXQzSBXwp+Q2jvK0ucw=_-XAt1iw3HVV=+-9PwGPRQ@mail.gmail.com>
+References: <CACSk52-bmXQzSBXwp+Q2jvK0ucw=_-XAt1iw3HVV=+-9PwGPRQ@mail.gmail.com>
+Message-ID: <20241028144253.6e3c3988@arachnoid>
+
+? Sat, 26 Oct 2024 12:18:07 -0400
+j?r?my Gelb <gelbjeremy22 at gmail.com> ?????:
+
+>  *** caught segfault ***
+> address (nil), cause 'unknown'
+> 
+> It seems that the error is happening when loading a c++ module of my
+> package
+> 
+> Traceback:
+>  1: Module(module, mustStart = TRUE, where = env)
+>  2: doTryCatch(return(expr), name, parentenv, handler)
+>  3: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+>  4: tryCatchList(expr, classes, parentenv, handlers)
+>  5: tryCatch(Module(module, mustStart = TRUE, where = env), error =
+> function(e) e)
+>  6: loadModule(module = "spatial_index_cpp", what = TRUE, env = ns,
+>  loadNow = TRUE)
+> 
+> 
+> It is rather strange because I have not edited this module since the
+> last version and the package is installing correctly on other
+> platforms
+
+Perplexing. The method that usually works - starting a fresh Debian
+trixie/sid virtual machine, installing clang-19 and R
+build-dependencies, compiling R from source (with OR without
+CXXFLAGS=-stdlib=libc++), installing fresh dependencies from CRAN
+source packages and running R CMD check --as-cran - did not reproduce
+the null pointer dereference and the crash.
+
+The compiler versions did not exactly match (current Debian testing has
+newer clang-19 than 19.1.0 that had compiled R or 19.1.1 that compiled
+your package), but that looks very minor.
+
+Although there was no crash on Windows, the Windows compilation log is
+full of warnings about potential null pointer dereference:
+
+https://win-builder.r-project.org/incoming_pretest/spNetwork_0.4.4.4_20241026_034629/Windows/00install.out
+
+../inst/i/b/concept/detail/general.hpp:50:47: warning: 'this' pointer is null [-Wnonnull]
+   50 |     static void failed() { ((Model*)0)->~Model(); }
+      |                            ~~~~~~~~~~~~~~~~~~~^~
+../inst/i/b/concept/usage.hpp:20:5: note: in a call to non-static member function 'boost::concepts::usage_requirements<Model>::~usage_requirements() [with Model = boost::geometry::concepts::Box<boost::geometry::model::box<boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> > >]'
+   20 |     ~usage_requirements() { ((Model*)0)->~Model(); }
+      |     ^
+
+I see that, for example,
+boost::geometry::concepts::Box<boost::geometry::model::box>::dimension_checker::apply()
+creates a null pointer boost::geometry::model::box * b = 0 and then
+calls geometry::set<...>(*b, geometry::get<...>(*b)). This _could_ be a
+red herring, but class boost::geometry::model::box has member
+variables. Could a previous version of the clang-19 compiler have
+failed to elide member variable access in this call for some reason?
+(According to the standard, having a null `this` pointer is always
+undefined behaviour, so the compiler would not be exactly wrong to make
+the application crash if this code is ever reached.)
+
+-- 
+Best regards,
+Ivan
+
+
+From jo@h@m@u|r|ch @end|ng |rom gm@||@com  Mon Oct 28 16:41:07 2024
+From: jo@h@m@u|r|ch @end|ng |rom gm@||@com (Joshua Ulrich)
+Date: Mon, 28 Oct 2024 10:41:07 -0500
+Subject: [R-pkg-devel] DESCRIPTION file corrections for accepted package
+In-Reply-To: <49f94200-e26a-4d4d-9934-988b5ec82269@gmail.com>
+References: <CAMQoV_oo3ry2ZAsLDRMRASM9LE9ciOOy8a9W-Ykj9269gh=Bgg@mail.gmail.com>
+ <142292b0-f4e2-4a96-b77e-a337d287606a@gmail.com>
+ <CAMQoV_qqOx8AGcosji0QrvV2Vc-nnXE0cC5xZjkrssCLC+K6pA@mail.gmail.com>
+ <49f94200-e26a-4d4d-9934-988b5ec82269@gmail.com>
+Message-ID: <CAPPM_gS21xVZ7Fyh+xwQ3nGjUx4KdQyp7MF9hQR1t8ea0hhkwA@mail.gmail.com>
+
+`R CMD check` uses the `package_version()` function to check that the
+submitted package version is > the version on CRAN. You can use it to
+check Duncan's hypothesis:
+
+R$ # current update with 3-part version
+R$ package_version("1.1.1") > package_version("1.1")
+[1] TRUE
+R$ # next update with only a 2-part version
+R$ package_version("1.2") > package_version("1.1.1")
+[1] TRUE
+
+
+On Sun, Oct 27, 2024 at 8:16?AM Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>
+> I don't think R will enforce a 3 part version just because you used it
+> once.  You might have other reasons to try to maintain versioning
+> consistency.
+>
+> Duncan Murdoch
+>
+> On 2024-10-27 7:48 a.m., Gianmarco Alberti wrote:
+> > Dear Duncan,
+> >
+> > Thank you for the straightforward guidance.
+> >
+> > My initial query stemmed from a concern about versioning consistency - I
+> > thought that once using three digits (1.1.1), I would need to maintain
+> > that format (e.g., 1.2.0) in future updates. Your suggestion clarified
+> > that I can use 1.1.1 for these formatting changes and still use 1.2 for
+> > future substantial updates.
+> >
+> > Best regards,
+> >
+> > Gm
+> >
+> >
+> > Il giorno dom 27 ott 2024 alle ore 11:49 Duncan Murdoch
+> > <murdoch.duncan at gmail.com <mailto:murdoch.duncan at gmail.com>> ha scritto:
+> >
+> >     On 2024-10-27 6:03 a.m., Gianmarco Alberti wrote:
+> >      > Dear R Package Developers,
+> >      > I am seeking guidance regarding a situation with my package
+> >     'chisquare'
+> >      > (version 1.1) on CRAN.
+> >      >
+> >      > Current situation:
+> >      >
+> >      > 1. The package was submitted and (automatically) accepted to CRAN
+> >     (version
+> >      > 1.1) after thorough local testing and complete devtools checks
+> >      > (check_win_oldrelease(), check_win_release(), check_win_devel())
+> >      >
+> >      > 2. After acceptance, I received a request to make formatting
+> >     changes to the
+> >      > DESCRIPTION file by November 2, 2024:
+> >      > -Remove version specifications for graphics and stats in Imports
+> >      > -Update R version dependency format from R (>= 4.0.0) to R (>= 4.0)
+> >      >
+> >      > 3. Upon attempting to submit these formatting changes, I received
+> >     a warning
+> >      > about "Insufficient package version (submitted: 1.1, existing:
+> >     1.1)". I am
+> >      > well aware that this warning typically indicates the need to
+> >     increment the
+> >      > version number for new submissions of existing packages, as per CRAN
+> >      > policies.
+> >      >
+> >      > This creates a procedural challenge:
+> >      > -I need to make the requested DESCRIPTION file changes to retain
+> >     the package
+> >      > -The changes are purely formatting-related, not functional (all
+> >     checks pass)
+> >      > -I cannot submit without changing the version number
+> >      > -However, incrementing the version number seems disproportionate for
+> >      > formatting changes.
+> >      >
+> >      > I would greatly appreciate guidance on the proper way to handle this
+> >      > situation.
+> >      > What is the recommended approach for submitting DESCRIPTION file
+> >     formatting
+> >      > corrections for an already-accepted package, given that
+> >     incrementing the
+> >      > version number might seem a bit disproportionate?
+> >      >
+> >      > Thank you for your time and assistance.
+> >
+> >     The simplest thing is to just update the version.  Use 1.1.1 if you
+> >     don't want to go to 1.2.
+> >
+> >     Duncan Murdoch
+> >
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+
+-- 
+Joshua Ulrich  |  about.me/joshuaulrich
+FOSS Trading  |  www.fosstrading.com
+
+
+From georg|@bo@hn@kov @end|ng |rom m@nche@ter@@c@uk  Mon Oct 28 17:56:17 2024
+From: georg|@bo@hn@kov @end|ng |rom m@nche@ter@@c@uk (Georgi Boshnakov)
+Date: Mon, 28 Oct 2024 16:56:17 +0000
+Subject: [R-pkg-devel] DESCRIPTION file corrections for accepted package
+In-Reply-To: <CAPPM_gS21xVZ7Fyh+xwQ3nGjUx4KdQyp7MF9hQR1t8ea0hhkwA@mail.gmail.com>
+References: <CAMQoV_oo3ry2ZAsLDRMRASM9LE9ciOOy8a9W-Ykj9269gh=Bgg@mail.gmail.com>
+ <142292b0-f4e2-4a96-b77e-a337d287606a@gmail.com>
+ <CAMQoV_qqOx8AGcosji0QrvV2Vc-nnXE0cC5xZjkrssCLC+K6pA@mail.gmail.com>
+ <49f94200-e26a-4d4d-9934-988b5ec82269@gmail.com>
+ <CAPPM_gS21xVZ7Fyh+xwQ3nGjUx4KdQyp7MF9hQR1t8ea0hhkwA@mail.gmail.com>
+Message-ID: <LO0P265MB6325B421A9C4EE0D7E3999ADAE4A2@LO0P265MB6325.GBRP265.PROD.OUTLOOK.COM>
+
+Also, v1.1 = v1.1.0:
+
+>  package_version("1.1.0") > package_version("1.1")
+[1] FALSE
+>  package_version("1.1.0") == package_version("1.1")
+[1] TRUE
+
+If you adopt the 2-digit versions but decide to keep the possibility for 3-letter ones for minor fixes (bugs; fixing CRAN NOTES, minor bugs etc.), always use the four-digit development versions, e.g. 1.1.0.9000 after release of 1.1, to keep the possibility for 1.2 or 1.1.1 for the following release.
+
+Georgi Boshnakov
+
+________________________________________
+From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Joshua Ulrich <josh.m.ulrich at gmail.com>
+Sent: 28 October 2024 15:41
+To: Duncan Murdoch
+Cc: R Package Development
+Subject: Re: [R-pkg-devel] DESCRIPTION file corrections for accepted package
+
+`R CMD check` uses the `package_version()` function to check that the submitted package version is > the version on CRAN. You can use it to check Duncan's hypothesis: R$ # current update with 3-part version R$ package_version("1.?1.?1") >
+ZjQcmQRYFpfptBannerStart
+This Message Is From a New External Sender
+You have not previously corresponded with this sender. Please exercise caution when opening links or attachments included in this message.
+
+ZjQcmQRYFpfptBannerEnd
+
+`R CMD check` uses the `package_version()` function to check that the
+submitted package version is > the version on CRAN. You can use it to
+check Duncan's hypothesis:
+
+R$ # current update with 3-part version
+R$ package_version("1.1.1") > package_version("1.1")
+[1] TRUE
+R$ # next update with only a 2-part version
+R$ package_version("1.2") > package_version("1.1.1")
+[1] TRUE
+
+
+On Sun, Oct 27, 2024 at 8:16?AM Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>
+> I don't think R will enforce a 3 part version just because you used it
+> once.  You might have other reasons to try to maintain versioning
+> consistency.
+>
+> Duncan Murdoch
+>
+> On 2024-10-27 7:48 a.m., Gianmarco Alberti wrote:
+> > Dear Duncan,
+> >
+> > Thank you for the straightforward guidance.
+> >
+> > My initial query stemmed from a concern about versioning consistency - I
+> > thought that once using three digits (1.1.1), I would need to maintain
+> > that format (e.g., 1.2.0) in future updates. Your suggestion clarified
+> > that I can use 1.1.1 for these formatting changes and still use 1.2 for
+> > future substantial updates.
+> >
+> > Best regards,
+> >
+> > Gm
+> >
+> >
+> > Il giorno dom 27 ott 2024 alle ore 11:49 Duncan Murdoch
+> > <murdoch.duncan at gmail.com <mailto:murdoch.duncan at gmail.com>> ha scritto:
+> >
+> >     On 2024-10-27 6:03 a.m., Gianmarco Alberti wrote:
+> >      > Dear R Package Developers,
+> >      > I am seeking guidance regarding a situation with my package
+> >     'chisquare'
+> >      > (version 1.1) on CRAN.
+> >      >
+> >      > Current situation:
+> >      >
+> >      > 1. The package was submitted and (automatically) accepted to CRAN
+> >     (version
+> >      > 1.1) after thorough local testing and complete devtools checks
+> >      > (check_win_oldrelease(), check_win_release(), check_win_devel())
+> >      >
+> >      > 2. After acceptance, I received a request to make formatting
+> >     changes to the
+> >      > DESCRIPTION file by November 2, 2024:
+> >      > -Remove version specifications for graphics and stats in Imports
+> >      > -Update R version dependency format from R (>= 4.0.0) to R (>= 4.0)
+> >      >
+> >      > 3. Upon attempting to submit these formatting changes, I received
+> >     a warning
+> >      > about "Insufficient package version (submitted: 1.1, existing:
+> >     1.1)". I am
+> >      > well aware that this warning typically indicates the need to
+> >     increment the
+> >      > version number for new submissions of existing packages, as per CRAN
+> >      > policies.
+> >      >
+> >      > This creates a procedural challenge:
+> >      > -I need to make the requested DESCRIPTION file changes to retain
+> >     the package
+> >      > -The changes are purely formatting-related, not functional (all
+> >     checks pass)
+> >      > -I cannot submit without changing the version number
+> >      > -However, incrementing the version number seems disproportionate for
+> >      > formatting changes.
+> >      >
+> >      > I would greatly appreciate guidance on the proper way to handle this
+> >      > situation.
+> >      > What is the recommended approach for submitting DESCRIPTION file
+> >     formatting
+> >      > corrections for an already-accepted package, given that
+> >     incrementing the
+> >      > version number might seem a bit disproportionate?
+> >      >
+> >      > Thank you for your time and assistance.
+> >
+> >     The simplest thing is to just update the version.  Use 1.1.1 if you
+> >     don't want to go to 1.2.
+> >
+> >     Duncan Murdoch
+> >
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!PDiH4ENfjr2_Jw!DCS7NzQVm5Q1FFruS86zOyiLNBS9_EZ46Qpjb7Ks8TvH80ChDrXf8l5x94KXWZtPgoOExpq8805sRyJ_Zz_aNn7qkCwbNu8XZ0yf$[stat[.]ethz[.]ch]
+
+
+
+--
+Joshua Ulrich  |  about.me/joshuaulrich
+FOSS Trading  |  https://urldefense.com/v3/__http://www.fosstrading.com__;!!PDiH4ENfjr2_Jw!DCS7NzQVm5Q1FFruS86zOyiLNBS9_EZ46Qpjb7Ks8TvH80ChDrXf8l5x94KXWZtPgoOExpq8805sRyJ_Zz_aNn7qkCwbNgL0eU2t$[fosstrading[.]com]
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!PDiH4ENfjr2_Jw!DCS7NzQVm5Q1FFruS86zOyiLNBS9_EZ46Qpjb7Ks8TvH80ChDrXf8l5x94KXWZtPgoOExpq8805sRyJ_Zz_aNn7qkCwbNu8XZ0yf$[stat[.]ethz[.]ch]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon Oct 28 18:03:31 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 28 Oct 2024 13:03:31 -0400
+Subject: [R-pkg-devel] DESCRIPTION file corrections for accepted package
+In-Reply-To: <LO0P265MB6325B421A9C4EE0D7E3999ADAE4A2@LO0P265MB6325.GBRP265.PROD.OUTLOOK.COM>
+References: <CAMQoV_oo3ry2ZAsLDRMRASM9LE9ciOOy8a9W-Ykj9269gh=Bgg@mail.gmail.com>
+ <142292b0-f4e2-4a96-b77e-a337d287606a@gmail.com>
+ <CAMQoV_qqOx8AGcosji0QrvV2Vc-nnXE0cC5xZjkrssCLC+K6pA@mail.gmail.com>
+ <49f94200-e26a-4d4d-9934-988b5ec82269@gmail.com>
+ <CAPPM_gS21xVZ7Fyh+xwQ3nGjUx4KdQyp7MF9hQR1t8ea0hhkwA@mail.gmail.com>
+ <LO0P265MB6325B421A9C4EE0D7E3999ADAE4A2@LO0P265MB6325.GBRP265.PROD.OUTLOOK.COM>
+Message-ID: <aa5fa16b-194a-44af-81bb-8f7a173ad5f2@gmail.com>
+
+On 2024-10-28 12:56 p.m., Georgi Boshnakov wrote:
+> Also, v1.1 = v1.1.0:
+> 
+>>   package_version("1.1.0") > package_version("1.1")
+> [1] FALSE
+>>   package_version("1.1.0") == package_version("1.1")
+> [1] TRUE
+> 
+> If you adopt the 2-digit versions but decide to keep the possibility for 3-letter ones for minor fixes (bugs; fixing CRAN NOTES, minor bugs etc.), always use the four-digit development versions, e.g. 1.1.0.9000 after release of 1.1, to keep the possibility for 1.2 or 1.1.1 for the following release.
+
+That's one strategy, but it's not the one I use.  I generally increment 
+the 3rd digit whenever I make a bug fix or minor change to the source. 
+I won't necessarily release every one of those, but they'll be available 
+on Github, and if I get a bug report that has been dealt with, I can say 
+things like "that was fixed in version 1.2.12.  You can get 1.2.14 from 
+Github using this code: ...., or wait a couple of months until a later 
+version is released on CRAN".  I dislike Hadley's x.y.z.9000 scheme.
+
+Duncan Murdoch
+
+
