@@ -2460,3 +2460,514 @@ Best regards,
 Ivan
 
 
+From k@||eng|u @end|ng |rom gm@||@com  Thu Oct 31 17:06:25 2024
+From: k@||eng|u @end|ng |rom gm@||@com (Kaifeng Lu)
+Date: Thu, 31 Oct 2024 12:06:25 -0400
+Subject: [R-pkg-devel] Warnings related to functions from the survival
+ package
+Message-ID: <CAAsVnmJ=EurBKD6ber9umE68bH5ZO6HhmHuhX4ryHbWgXJ+cqQ@mail.gmail.com>
+
+Dear friends,
+
+I received the following warning messages related to functions from the
+survival package. I didn't directly use the functions mentioned below:
+coxph_wtest, agsurv5, survdiff2, and coxmart. I believe they are used by
+higher-level functions from the survival package, such as survdiff and
+coxph, which I used in my unit tests. Does anyone know how to get rid of
+suchwarning to pass the CRAN checks?
+
+Thank you very much in advance for your help.
+
+Regards,
+Kaifeng
+
+
+package trtswitch_0.1.1.tar.gz does not pass the incoming checks
+automatically, please see the following pre-tests (additional issue checks):
+Windows: <
+https://win-builder.r-project.org/incoming_pretest/trtswitch_0.1.1_20241031_134058/Windows/00check.log
+>
+Status: OK
+Debian: <
+https://win-builder.r-project.org/incoming_pretest/trtswitch_0.1.1_20241031_134058/Debian/00check.log
+>
+Status: OK
+
+Additional issues checked: <
+https://win-builder.r-project.org/incoming_pretest/trtswitch_0.1.1_20241031_134058/specialChecks/
+>
+clang-san: Status: WARNING
+
+More details are given in the directory:
+<
+https://win-builder.r-project.org/incoming_pretest/trtswitch_0.1.1_20241031_134058/
+>
+The files will be removed after roughly 7 days.
+
+
+Flavor: r-devel-linux-x86_64-debian-special-clang-san
+Check: *, Result: NA
+
+
+Flavor: r-devel-linux-x86_64-debian-special-clang-san
+Check: Post-processing issues found for clang-san, Result: WARNING
+  File: tests/testthat.Rout
+  /home/hornik/src/R/src/main/dotcode.c:1978:2: runtime error: call to
+function coxph_wtest through pointer to incorrect function type 'void
+(*)(void *, void *, void *, void *, void *, void *)'
+  /home/hornik/src/R/src/main/dotcode.c:1994:2: runtime error: call to
+function agsurv5 through pointer to incorrect function type 'void (*)(void
+*, void *, void *, void *, void *, void *, void *, void *, void *, void *)'
+  /home/hornik/src/R/src/main/dotcode.c:2008:2: runtime error: call to
+function survdiff2 through pointer to incorrect function type 'void
+(*)(void *, void *, void *, void *, void *, void *, void *, void *, void *,
+void *, void *, void *, void *)'
+  /home/hornik/src/R/src/main/dotcode.c:1986:2: runtime error: call to
+function coxmart through pointer to incorrect function type 'void (*)(void
+*, void *, void *, void *, void *, void *, void *, void *)'
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Thu Oct 31 17:39:14 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 31 Oct 2024 19:39:14 +0300
+Subject: [R-pkg-devel] Warnings related to functions from the survival
+ package
+In-Reply-To: <CAAsVnmJ=EurBKD6ber9umE68bH5ZO6HhmHuhX4ryHbWgXJ+cqQ@mail.gmail.com>
+References: <CAAsVnmJ=EurBKD6ber9umE68bH5ZO6HhmHuhX4ryHbWgXJ+cqQ@mail.gmail.com>
+Message-ID: <20241031193914.54310b7e@arachnoid>
+
+? Thu, 31 Oct 2024 12:06:25 -0400
+Kaifeng Lu <kaifenglu at gmail.com> ?????:
+
+>   /home/hornik/src/R/src/main/dotcode.c:1978:2: runtime error: call to
+> function coxph_wtest through pointer to incorrect function type 'void
+> (*)(void *, void *, void *, void *, void *, void *)'
+>   /home/hornik/src/R/src/main/dotcode.c:1994:2: runtime error: call to
+> function agsurv5 through pointer to incorrect function type 'void
+> (*)(void *, void *, void *, void *, void *, void *, void *, void *,
+> void *, void *)' /home/hornik/src/R/src/main/dotcode.c:2008:2:
+> runtime error: call to function survdiff2 through pointer to
+> incorrect function type 'void (*)(void *, void *, void *, void *,
+> void *, void *, void *, void *, void *, void *, void *, void *, void
+> *)' /home/hornik/src/R/src/main/dotcode.c:1986:2: runtime error: call
+> to function coxmart through pointer to incorrect function type 'void
+> (*)(void *, void *, void *, void *, void *, void *, void *, void *)'
+
+This is something R does to call all .C() / .Fortran() functions. For
+example, coxph_wtest actually takes int*, int*, double*, double*,
+double*, double *, but R assumes that the calling convention is the
+same as if it took 6 times void* and calls it through a pointer of a
+different type [1]. In practice it works well, but formally, calling a
+function through a pointer of a different type is undefined behaviour.
+Unfortunately, there is no easy way to call arbitrary functions, like
+.C() and .Fortran() do, without either breaking some rules (which
+happens here) or generating function calls at runtime (like some
+foreign function interfaces do, which is less portable).
+
+This check may need suppressions for src/main/dotcode.c or special
+attributes [2] on R's do_dotCode.
+
+-- 
+Best regards,
+Ivan
+
+[1]
+https://github.com/r-devel/r-svn/blob/91a84c048a26b2b776603482545e4678625a54c3/src/main/dotcode.c#L1977-L1979
+
+[2]
+https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html#issue-suppression
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Thu Oct 31 17:59:01 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Thu, 31 Oct 2024 17:59:01 +0100
+Subject: [R-pkg-devel] Warnings related to functions from the survival
+ package
+In-Reply-To: <20241031193914.54310b7e@arachnoid>
+References: <CAAsVnmJ=EurBKD6ber9umE68bH5ZO6HhmHuhX4ryHbWgXJ+cqQ@mail.gmail.com>
+ <20241031193914.54310b7e@arachnoid>
+Message-ID: <f78c3ec9-30ba-4edb-afe2-0244dff37715@gmail.com>
+
+
+On 10/31/24 17:39, Ivan Krylov via R-package-devel wrote:
+> ? Thu, 31 Oct 2024 12:06:25 -0400
+> Kaifeng Lu <kaifenglu at gmail.com> ?????:
+>
+>>    /home/hornik/src/R/src/main/dotcode.c:1978:2: runtime error: call to
+>> function coxph_wtest through pointer to incorrect function type 'void
+>> (*)(void *, void *, void *, void *, void *, void *)'
+>>    /home/hornik/src/R/src/main/dotcode.c:1994:2: runtime error: call to
+>> function agsurv5 through pointer to incorrect function type 'void
+>> (*)(void *, void *, void *, void *, void *, void *, void *, void *,
+>> void *, void *)' /home/hornik/src/R/src/main/dotcode.c:2008:2:
+>> runtime error: call to function survdiff2 through pointer to
+>> incorrect function type 'void (*)(void *, void *, void *, void *,
+>> void *, void *, void *, void *, void *, void *, void *, void *, void
+>> *)' /home/hornik/src/R/src/main/dotcode.c:1986:2: runtime error: call
+>> to function coxmart through pointer to incorrect function type 'void
+>> (*)(void *, void *, void *, void *, void *, void *, void *, void *)'
+> This is something R does to call all .C() / .Fortran() functions. For
+> example, coxph_wtest actually takes int*, int*, double*, double*,
+> double*, double *, but R assumes that the calling convention is the
+> same as if it took 6 times void* and calls it through a pointer of a
+> different type [1]. In practice it works well, but formally, calling a
+> function through a pointer of a different type is undefined behaviour.
+> Unfortunately, there is no easy way to call arbitrary functions, like
+> .C() and .Fortran() do, without either breaking some rules (which
+> happens here) or generating function calls at runtime (like some
+> foreign function interfaces do, which is less portable).
+>
+> This check may need suppressions for src/main/dotcode.c or special
+> attributes [2] on R's do_dotCode.
+
+Yes, yes. This is in base R and can be ignored by package authors.
+
+We might consider outsourcing this e.g. to libffi at some point, but for 
+now, if you know an elegant, minimal way how to suppress this, and have 
+the time and energy, a patch would be welcome. We've known about this 
+since the start of this year, but it hasn't gotten high enough on 
+anyone's priority list, and then popped up here.
+
+Best
+Tomas
+
+>
+
+
+From n|ko@bo@@e @end|ng |rom gm@||@com  Thu Oct 31 18:04:47 2024
+From: n|ko@bo@@e @end|ng |rom gm@||@com (Nikos Bosse)
+Date: Thu, 31 Oct 2024 18:04:47 +0100
+Subject: [R-pkg-devel] HTML validation error in roxygen2 generated
+ documentation
+Message-ID: <084d69e2-dc9e-41ba-aab9-21c0a5ef054f@Spark>
+
+Dear list,
+
+I'm trying to submit an updated version of R package scoringutils to CRAN (https://github.com/epiforecasts/scoringutils). I built the package using `R CMD build` with Roxygen2 7.3.2 both on Mac and on Ubuntu.
+
+I'm seeing a NOTE related to several HTML validation problems (see below).
+
+These are some of the offending Rd files and corresponding source files:
+
+? https://github.com/epiforecasts/scoringutils/blob/main/man/ae_median_quantile.Rd, https://github.com/epiforecasts/scoringutils/blob/efb41afd9925ffc4b62963abc0642cc1f7447c22/R/metrics-quantile.R#L559
+? https://github.com/epiforecasts/scoringutils/blob/main/man/dss_sample.Rd, https://github.com/epiforecasts/scoringutils/blob/efb41afd9925ffc4b62963abc0642cc1f7447c22/R/metrics-sample.R#L224
+? https://github.com/epiforecasts/scoringutils/blob/main/man/interpolate_median.Rd, https://github.com/epiforecasts/scoringutils/blob/efb41afd9925ffc4b62963abc0642cc1f7447c22/R/metrics-quantile.R#L530
+
+
+I suspect the issue might be related to images that get added using the following code (https://github.com/epiforecasts/scoringutils/blob/efb41afd9925ffc4b62963abc0642cc1f7447c22/R/documentation-templates.R#L106):
+
+```
+#' Illustration of required inputs for sample-based forecasts
+#' @details # Input format
+#' \if{html}{
+#'? ?\out{<div style="text-align: left">}
+#'? ?\figure{metrics-sample.png}{options: style="width:750px;max-width:100\%;"}
+#'? ?\out{</div>}
+#' }
+#' \if{latex}{
+#'? ?\figure{metrics-sample.png}
+#' }
+#' @name illustration-input-metric-sample
+#' @keywords internal
+NULL
+```
+
+I've tried changing @details to @section, tried adding linebreaks, but that didn't help, unfortunately.
+Any help would be much appreciated, thank you!
+
+Best wishes,
+Nikos
+
+
+CRAN Note:
+
+Flavor: r-devel-linux-x86_64-debian-gcc, r-devel-windows-x86_64
+Check: HTML version of manual, Result: NOTE
+?Found the following HTML validation problems:
+?ae_median_quantile.html:79:1 (ae_median_quantile.Rd:41): Warning: inserting implicit <p>
+?ae_median_quantile.html:79:1 (ae_median_quantile.Rd:41): Warning: trimming empty <p>
+?ae_median_sample.html:71:1 (ae_median_sample.Rd:35): Warning: inserting implicit <p>
+?ae_median_sample.html:71:1 (ae_median_sample.Rd:35): Warning: trimming empty <p>
+?bias_quantile.html:133:1 (bias_quantile.Rd:85): Warning: inserting implicit <p>
+?bias_quantile.html:133:1 (bias_quantile.Rd:85): Warning: trimming empty <p>
+?bias_sample.html:94:1 (bias_sample.Rd:56): Warning: inserting implicit <p>
+?bias_sample.html:94:1 (bias_sample.Rd:56): Warning: trimming empty <p>
+?crps_sample.html:107:1 (crps_sample.Rd:73): Warning: inserting implicit <p>
+?crps_sample.html:107:1 (crps_sample.Rd:73): Warning: trimming empty <p>
+?dss_sample.html:70:1 (dss_sample.Rd:35): Warning: inserting implicit <p>
+?dss_sample.html:70:1 (dss_sample.Rd:35): Warning: trimming empty <p>
+?get_metrics.forecast_binary.html:82:1 (get_metrics.forecast_binary.Rd:39): Warning: inserting implicit <p>
+?get_metrics.forecast_binary.html:82:1 (get_metrics.forecast_binary.Rd:39): Warning: trimming empty <p>
+?get_metrics.forecast_point.html:92:1 (get_metrics.forecast_point.Rd:50): Warning: inserting implicit <p>
+?get_metrics.forecast_point.html:92:1 (get_metrics.forecast_point.Rd:50): Warning: trimming empty <p>
+?get_metrics.forecast_quantile.html:104:1 (get_metrics.forecast_quantile.Rd:52): Warning: inserting implicit <p>
+?get_metrics.forecast_quantile.html:104:1 (get_metrics.forecast_quantile.Rd:52): Warning: trimming empty <p>
+?get_metrics.forecast_sample.html:100:1 (get_metrics.forecast_sample.Rd:44): Warning: inserting implicit <p>
+?get_metrics.forecast_sample.html:100:1 (get_metrics.forecast_sample.Rd:44): Warning: trimming empty <p>
+?get_pairwise_comparisons.html:43:1 (get_pairwise_comparisons.Rd:74): Warning: inserting implicit <p>
+?get_pairwise_comparisons.html:43:1 (get_pairwise_comparisons.Rd:74): Warning: trimming empty <p>
+?illustration-input-metric-binary-point.html:35:1 (illustration-input-metric-binary-point.Rd:17): Warning: inserting implicit <p>
+?illustration-input-metric-binary-point.html:35:1 (illustration-input-metric-binary-point.Rd:17): Warning: trimming empty <p>
+?illustration-input-metric-nominal.html:35:1 (illustration-input-metric-nominal.Rd:17): Warning: inserting implicit <p>
+?illustration-input-metric-nominal.html:35:1 (illustration-input-metric-nominal.Rd:17): Warning: trimming empty <p>
+?illustration-input-metric-quantile.html:35:1 (illustration-input-metric-quantile.Rd:17): Warning: inserting implicit <p>
+?illustration-input-metric-quantile.html:35:1 (illustration-input-metric-quantile.Rd:17): Warning: trimming empty <p>
+?illustration-input-metric-sample.html:35:1 (illustration-input-metric-sample.Rd:17): Warning: inserting implicit <p>
+?illustration-input-metric-sample.html:35:1 (illustration-input-metric-sample.Rd:17): Warning: trimming empty <p>
+?interpolate_median.html:67:1 (interpolate_median.Rd:34): Warning: inserting implicit <p>
+?interpolate_median.html:67:1 (interpolate_median.Rd:34): Warning: trimming empty <p>
+?interval_coverage.html:83:1 (interval_coverage.Rd:46): Warning: inserting implicit <p>
+?interval_coverage.html:83:1 (interval_coverage.Rd:46): Warning: trimming empty <p>
+?logs_sample.html:81:1 (logs_sample.Rd:46): Warning: inserting implicit <p>
+?logs_sample.html:81:1 (logs_sample.Rd:46): Warning: trimming empty <p>
+?mad_sample.html:77:1 (mad_sample.Rd:42): Warning: inserting implicit <p>
+?mad_sample.html:77:1 (mad_sample.Rd:42): Warning: trimming empty <p>
+?pit_histogram_sample.html:120:32 (pit_histogram_sample.Rd:84): Warning: trimming empty <code>
+?pit_histogram_sample.html:127:32 (pit_histogram_sample.Rd:90): Warning: trimming empty <code>
+?quantile_score.html:119:1 (quantile_score.Rd:76): Warning: inserting implicit <p>
+?quantile_score.html:119:1 (quantile_score.Rd:76): Warning: trimming empty <p>
+?scoring-functions-binary.html:112:1 (scoring-functions-binary.Rd:78): Warning: inserting implicit <p>
+?scoring-functions-binary.html:112:1 (scoring-functions-binary.Rd:78): Warning: trimming empty <p>
+?scoring-functions-nominal.html:73:1 (scoring-functions-nominal.Rd:38): Warning: inserting implicit <p>
+?scoring-functions-nominal.html:73:1 (scoring-functions-nominal.Rd:38): Warning: trimming empty <p>
+?se_mean_sample.html:64:1 (se_mean_sample.Rd:34): Warning: inserting implicit <p>
+?se_mean_sample.html:64:1 (se_mean_sample.Rd:34): Warning: trimming empty <p>
+?wis.html:210:1 (wis.Rd:169): Warning: inserting implicit <p>
+?wis.html:210:1 (wis.Rd:169): Warning: trimming empty <p>
+
+
+
+
+
+
+
+
+R version 4.3.1 (2023-06-16)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: Ubuntu 22.04.2 LTS
+
+Matrix products: default
+BLAS:? ?/usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3
+LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.20.so;??LAPACK version 3.10.0
+
+locale:
+?[1] LC_CTYPE=en_US.UTF-8? ? ? ?LC_NUMERIC=C
+?[3] LC_TIME=en_US.UTF-8?? ? ? ?LC_COLLATE=en_US.UTF-8
+?[5] LC_MONETARY=en_US.UTF-8?? ?LC_MESSAGES=en_US.UTF-8
+?[7] LC_PAPER=en_US.UTF-8? ? ? ?LC_NAME=C
+?[9] LC_ADDRESS=C? ? ? ? ? ? ? ?LC_TELEPHONE=C
+[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C
+
+time zone: Etc/UTC
+tzcode source: system (glibc)
+
+attached base packages:
+[1] stats? ? ?graphics??grDevices utils? ? ?datasets??methods? ?base
+
+loaded via a namespace (and not attached):
+[1] compiler_4.3.1 tools_4.3.1
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Thu Oct 31 19:06:08 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 31 Oct 2024 21:06:08 +0300
+Subject: [R-pkg-devel] HTML validation error in roxygen2 generated
+ documentation
+In-Reply-To: <084d69e2-dc9e-41ba-aab9-21c0a5ef054f@Spark>
+References: <084d69e2-dc9e-41ba-aab9-21c0a5ef054f@Spark>
+Message-ID: <20241031210608.3c959584@Tarkus>
+
+? Thu, 31 Oct 2024 18:04:47 +0100
+Nikos Bosse <nikosbosse at gmail.com> ?????:
+
+> ?Found the following HTML validation problems:
+> ?ae_median_quantile.html:79:1 (ae_median_quantile.Rd:41): Warning:
+> inserting implicit <p>
+> ae_median_quantile.html:79:1 (ae_median_quantile.Rd:41): Warning:
+> trimming empty <p>
+
+Thank you for providing the links to the source code!
+
+This can be diagnosed using R CMD Rdconv:
+
+R CMD Rdconv -o ae_median_quantile.html -t html ae_median_quantile.Rd
+tidy ae_median_quantile.html >/dev/null
+
+Here are the lines around the problematic part of the HTML document:
+
+-----------------------------------8<-----------------------------------
+<h3>Input format</h3>
+
+
+<div style="text-align: left">
+<p><img src="../help/figures/metrics-quantile.png"
+style="width:750px;max-width:100%;" alt="metrics-quantile.png" /> </div>
+
+
+</p> <!-- here: inserting implicit <p>, trimming empty <p> -->
+-----------------------------------8<-----------------------------------
+
+This </p> is inserted here by Rd2HTML to terminate the paragraph
+started above (I think by \figure if not by \section). Rd2HTML doesn't
+know that you started and ended a <div> before this line, which
+implicitly ended the previous <p>, which makes the present </p> an
+error.
+
+The only way I was able to silence the warning while preserving the
+existing tag structure was to make it \out{</div><p>} to start the new
+paragraph and provide some text for the auto-inserted </p> to finish
+it. Maybe you'll come up with a better fix that doesn't rely on Rd2HTML
+auto-inserting the terminating </p>. I'm not sure, but could it help to
+set style="text-align: left;..." on \figure itself, without the <div>?
+
+-- 
+Best regards,
+Ivan
+
+
+From |kry|ov @end|ng |rom d|@root@org  Thu Oct 31 21:06:06 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 31 Oct 2024 23:06:06 +0300
+Subject: [R-pkg-devel] Warnings related to functions from the survival
+ package
+In-Reply-To: <f78c3ec9-30ba-4edb-afe2-0244dff37715@gmail.com>
+References: <CAAsVnmJ=EurBKD6ber9umE68bH5ZO6HhmHuhX4ryHbWgXJ+cqQ@mail.gmail.com>
+ <20241031193914.54310b7e@arachnoid>
+ <f78c3ec9-30ba-4edb-afe2-0244dff37715@gmail.com>
+Message-ID: <20241031230606.641cf104@Tarkus>
+
+On Thu, 31 Oct 2024 17:59:01 +0100
+Tomas Kalibera <tomas.kalibera at gmail.com> wrote:
+
+> for now, if you know an elegant, minimal way how to suppress
+> this, and have the time and energy, a patch would be welcome
+
+A fresh R-4.4.2 build compiled with clang-19 -fsanitize=function gives
+the error:
+
+$ bin/R -q -s -e 'library(survival); survdiff(Surv(futime, fustat) ~ rx,data=ovarian)'
+dotcode.c:2008:2: runtime error: call to function survdiff2 through pointer to incorrect function type 'void (*)(void *, void *, void *, void *, void *, void *, void *, void *, void *, void *, void *, void *, void *)'
+/tmp/RtmpW0SC00/R.INSTALL5d1b3402d0c5/survival/src/survdiff2.c:10: note: survdiff2 defined here
+SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior dotcode.c:2008:2 
+
+A suppression file will avoid the error without patching R:
+
+$ cat dotcode.supp 
+function:dotcode.c
+
+or more fine-grained:
+
+$ cat dotcode.supp
+function:do_dotCode
+
+$ UBSAN_OPTIONS="suppressions=$(realpath dotcode.supp)" bin/R -q -s -e 'library(survival); survdiff(Surv(futime, fustat) ~ rx,data=ovarian)'
+Call:
+survdiff(formula = Surv(futime, fustat) ~ rx, data = ovarian)
+<and so on>
+
+Alternatively, the following patch will also suppress the error:
+
+--- src/main/dotcode.c     2024-03-26 23:02:08.000000000 +0000
++++ src/main/dotcode.c  2024-10-31 19:53:36.272334541 +0000
+@@ -1658,6 +1658,9 @@
+ #define FILL 0xee
+ #define NG 64
+ 
++#ifdef __clang__
++__attribute__((no_sanitize("function")))
++#endif
+ attribute_hidden SEXP do_dotCode(SEXP call, SEXP op, SEXP args, SEXP env)
+ {
+     void **cargs, **cargs0 = NULL /* -Wall */;
+
+I hope I understood you correctly that you're looking for a tested
+workaround.
+
+-- 
+Best regards,
+Ivan
+
+
+From n|ko@bo@@e @end|ng |rom gm@||@com  Thu Oct 31 21:32:34 2024
+From: n|ko@bo@@e @end|ng |rom gm@||@com (Nikos Bosse)
+Date: Thu, 31 Oct 2024 21:32:34 +0100
+Subject: [R-pkg-devel] HTML validation error in roxygen2 generated
+ documentation
+In-Reply-To: <20241031210608.3c959584@Tarkus>
+References: <084d69e2-dc9e-41ba-aab9-21c0a5ef054f@Spark>
+ <20241031210608.3c959584@Tarkus>
+Message-ID: <c0a29815-a074-4e2b-a0e7-f945bd072fe7@Spark>
+
+Hi Ivan,
+
+Thanks SO much for your quick help. Removing the <div> did not work. However, I now did
+
+```
+#' \if{html}{
+#'? ?\out{<div style="text-align: left">}
+#'? ?\figure{metrics-binary-point.png}{options: style="width:750px;max-width:100\%;"}
+#'? ?\out{</div><p>}
+#'? ?Overview of required input format for binary and point forecasts
+#' }
+```
+
+with an addition <p> and some text, following your suggestion. And that worked like a charm. Also thank your for showing me R CMD Rdconv.
+
+You made my day!
+With gratitude and best regards,
+Nikos
+On 31 Oct 2024 at 19:06 +0100, Ivan Krylov <ikrylov at disroot.org>, wrote:
+> ? Thu, 31 Oct 2024 18:04:47 +0100
+> Nikos Bosse <nikosbosse at gmail.com> ?????:
+>
+> > ?Found the following HTML validation problems:
+> > ?ae_median_quantile.html:79:1 (ae_median_quantile.Rd:41): Warning:
+> > inserting implicit <p>
+> > ae_median_quantile.html:79:1 (ae_median_quantile.Rd:41): Warning:
+> > trimming empty <p>
+>
+> Thank you for providing the links to the source code!
+>
+> This can be diagnosed using R CMD Rdconv:
+>
+> R CMD Rdconv -o ae_median_quantile.html -t html ae_median_quantile.Rd
+> tidy ae_median_quantile.html >/dev/null
+>
+> Here are the lines around the problematic part of the HTML document:
+>
+> -----------------------------------8<-----------------------------------
+> <h3>Input format</h3>
+>
+>
+> <div style="text-align: left">
+> <p><img src="../help/figures/metrics-quantile.png"
+> style="width:750px;max-width:100%;" alt="metrics-quantile.png" /> </div>
+>
+>
+> </p> <!-- here: inserting implicit <p>, trimming empty <p> -->
+> -----------------------------------8<-----------------------------------
+>
+> This </p> is inserted here by Rd2HTML to terminate the paragraph
+> started above (I think by \figure if not by \section). Rd2HTML doesn't
+> know that you started and ended a <div> before this line, which
+> implicitly ended the previous <p>, which makes the present </p> an
+> error.
+>
+> The only way I was able to silence the warning while preserving the
+> existing tag structure was to make it \out{</div><p>} to start the new
+> paragraph and provide some text for the auto-inserted </p> to finish
+> it. Maybe you'll come up with a better fix that doesn't rely on Rd2HTML
+> auto-inserting the terminating </p>. I'm not sure, but could it help to
+> set style="text-align: left;..." on \figure itself, without the <div>?
+>
+> --
+> Best regards,
+> Ivan
+
+	[[alternative HTML version deleted]]
+
+
