@@ -2971,3 +2971,135 @@ On 31 Oct 2024 at 19:06 +0100, Ivan Krylov <ikrylov at disroot.org>, wrote:
 	[[alternative HTML version deleted]]
 
 
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Fri Nov  1 09:56:01 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Fri, 1 Nov 2024 09:56:01 +0100
+Subject: [R-pkg-devel] Warnings related to functions from the survival
+ package
+In-Reply-To: <20241031230606.641cf104@Tarkus>
+References: <CAAsVnmJ=EurBKD6ber9umE68bH5ZO6HhmHuhX4ryHbWgXJ+cqQ@mail.gmail.com>
+ <20241031193914.54310b7e@arachnoid>
+ <f78c3ec9-30ba-4edb-afe2-0244dff37715@gmail.com>
+ <20241031230606.641cf104@Tarkus>
+Message-ID: <89aeae5f-efe8-4d85-a328-9688f6fd5460@gmail.com>
+
+
+On 10/31/24 21:06, Ivan Krylov wrote:
+> On Thu, 31 Oct 2024 17:59:01 +0100
+> Tomas Kalibera <tomas.kalibera at gmail.com> wrote:
+>
+>> for now, if you know an elegant, minimal way how to suppress
+>> this, and have the time and energy, a patch would be welcome
+> A fresh R-4.4.2 build compiled with clang-19 -fsanitize=function gives
+> the error:
+>
+> $ bin/R -q -s -e 'library(survival); survdiff(Surv(futime, fustat) ~ rx,data=ovarian)'
+> dotcode.c:2008:2: runtime error: call to function survdiff2 through pointer to incorrect function type 'void (*)(void *, void *, void *, void *, void *, void *, void *, void *, void *, void *, void *, void *, void *)'
+> /tmp/RtmpW0SC00/R.INSTALL5d1b3402d0c5/survival/src/survdiff2.c:10: note: survdiff2 defined here
+> SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior dotcode.c:2008:2
+>
+> A suppression file will avoid the error without patching R:
+>
+> $ cat dotcode.supp
+> function:dotcode.c
+>
+> or more fine-grained:
+>
+> $ cat dotcode.supp
+> function:do_dotCode
+>
+> $ UBSAN_OPTIONS="suppressions=$(realpath dotcode.supp)" bin/R -q -s -e 'library(survival); survdiff(Surv(futime, fustat) ~ rx,data=ovarian)'
+> Call:
+> survdiff(formula = Surv(futime, fustat) ~ rx, data = ovarian)
+> <and so on>
+>
+> Alternatively, the following patch will also suppress the error:
+>
+> --- src/main/dotcode.c     2024-03-26 23:02:08.000000000 +0000
+> +++ src/main/dotcode.c  2024-10-31 19:53:36.272334541 +0000
+> @@ -1658,6 +1658,9 @@
+>   #define FILL 0xee
+>   #define NG 64
+>   
+> +#ifdef __clang__
+> +__attribute__((no_sanitize("function")))
+> +#endif
+>   attribute_hidden SEXP do_dotCode(SEXP call, SEXP op, SEXP args, SEXP env)
+>   {
+>       void **cargs, **cargs0 = NULL /* -Wall */;
+>
+> I hope I understood you correctly that you're looking for a tested
+> workaround.
+
+Thanks, yes - and there is also attribute_no_sanitizer_instrumentation 
+in Defn.h - but isn't there a finer-grained way to suppress reports just 
+of this particular issue, ideally at finer granularity than a function?
+
+Tomas
+
+>
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Nov  1 17:40:58 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 1 Nov 2024 19:40:58 +0300
+Subject: [R-pkg-devel] Warnings related to functions from the survival
+ package
+In-Reply-To: <89aeae5f-efe8-4d85-a328-9688f6fd5460@gmail.com>
+References: <CAAsVnmJ=EurBKD6ber9umE68bH5ZO6HhmHuhX4ryHbWgXJ+cqQ@mail.gmail.com>
+ <20241031193914.54310b7e@arachnoid>
+ <f78c3ec9-30ba-4edb-afe2-0244dff37715@gmail.com>
+ <20241031230606.641cf104@Tarkus>
+ <89aeae5f-efe8-4d85-a328-9688f6fd5460@gmail.com>
+Message-ID: <20241101194058.48917be7@arachnoid>
+
+On Fri, 1 Nov 2024 09:56:01 +0100
+Tomas Kalibera <tomas.kalibera at gmail.com> wrote:
+
+> isn't there a finer-grained way to suppress reports just 
+> of this particular issue, ideally at finer granularity than a
+> function?
+
+The line saying "function:do_dotCode" in the suppression file will
+suppress errors just for mismatched function pointer types inside
+do_dotCode(), because "function" is the name of this check [1]. Here's
+do_dotCode with a different error added:
+
+bin/R -q -s -e 'library(survival); survdiff(Surv(futime, fustat) ~
+rx,data=ovarian)'
+
+dotcode.c:1958:9: runtime error: 1e+100 is outside the range of
+representable values of type 'int'
+SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior dotcode.c:1958:9
+dotcode.c:2012:2: runtime error: call to function survdiff2 through
+pointer to incorrect function type
+'void (*)(void *, void *, void *, void *, void *, void *, void *, void
+*, void *, void *, void *, void
+*, void *)'
+/tmp/RtmpVPlRnI/R.INSTALL65eb26c0356f/survival/src/survdiff2.c:10:
+note: survdiff2 defined here
+SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior dotcode.c:2012:2
+
+UBSAN_OPTIONS="suppressions=$(realpath dotcode.supp)" \
+bin/R -q -s -e 'library(survival); survdiff(Surv(futime, fustat) ~
+rx,data=ovarian)'
+
+dotcode.c:1958:9: runtime error: 1e+100 is outside the range of
+representable values of type 'int'
+
+I don't think UBSan can suppress errors in a more precise manner. The
+documentation only mentions files, functions ans libraries. Best I
+could find was a 2020 comment [2] suggesting to separate the offending
+code into a function and let the optimiser inline it.
+
+-- 
+Best regards,
+Ivan
+
+[1]
+https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html#runtime-suppressions
+
+[2]
+https://bugs.llvm.org/show_bug.cgi?id=19834#c11
+
+
