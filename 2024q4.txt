@@ -3103,3 +3103,350 @@ https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html#runtime-suppressions
 https://bugs.llvm.org/show_bug.cgi?id=19834#c11
 
 
+From t|@goo||voto @end|ng |rom gm@||@com  Sun Nov  3 15:02:49 2024
+From: t|@goo||voto @end|ng |rom gm@||@com (Tiago Olivoto)
+Date: Sun, 3 Nov 2024 11:02:49 -0300
+Subject: [R-pkg-devel] Cascade effect of non-available packages?
+Message-ID: <CAMyz+tV14n8i9TUp_LbWpoe1ZU7YDidijbaafwfAjxcpPimGbA@mail.gmail.com>
+
+Dear R-devs,
+
+I?ve just submitted a bug-fix release of my package, pliman, to address
+some reported errors. However, the new version, pliman_3.0.0.tar.gz, did
+not pass the incoming checks automatically.
+
+When testing locally using devtools::check() encountered no errors,
+warnings, or notes. However, one error was flagged in the "Additional
+issues checked" section, as seen here:
+https://www.stats.ox.ac.uk/pub/bdr/noSuggests/pliman.out. This error has
+already been addressed in the latest submission by including a check_ebi()
+function to verify whether EBImage (from Bioconductor) is available before
+running code that depends on it.
+
+Today, I noticed that several stable packages, such as Rcpp and sf, were
+unavailable during the check process for this submission. This wasn?t an
+issue in the previously published version of pliman. Could this be a
+temporary problem with the package availability on CRAN?
+
+Here is the link to the checks for the new version of pliman. Any insights
+or suggestions you might have would be greatly appreciated.
+
+Thank you for your time and assistance.
+
+Olivoto
+
+
+
+--------------------
+Windows: <
+https://win-builder.r-project.org/incoming_pretest/pliman_3.0.0_20241102_181842/Windows/00check.log
+>
+Status: 1 NOTE
+Debian: <
+https://win-builder.r-project.org/incoming_pretest/pliman_3.0.0_20241102_181842/Debian/00check.log
+>
+Status: 1 NOTE
+
+Additional issues checked: <
+https://win-builder.r-project.org/incoming_pretest/pliman_3.0.0_20241102_181842/specialChecks/
+>
+noSuggests: Status: 1 ERROR, 1 NOTE
+
+Last released version's CRAN status: OK: 5, NOTE: 7, ERROR: 1
+See: <https://CRAN.R-project.org/web/checks/check_results_pliman.html
+<https://cran.r-project.org/web/checks/check_results_pliman.html>>
+
+Last released version's additional issues:
+  noSuggests <https://www.stats.ox.ac.uk/pub/bdr/noSuggests/pliman.out>
+
+CRAN Web: <https://cran.r-project.org/package=pliman>
+
+Please fix all problems and resubmit a fixed version via the webform.
+If you are not sure how to fix the problems shown, please ask for help on
+the R-package-devel mailing list:
+<https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+If you are fairly certain the rejection is a false positive, please
+reply-all to this message and explain.
+
+More details are given in the directory:
+<
+https://win-builder.r-project.org/incoming_pretest/pliman_3.0.0_20241102_181842/
+>
+The files will be removed after roughly 7 days.
+
+-------------------------
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Sun Nov  3 15:17:21 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Sun, 3 Nov 2024 08:17:21 -0600
+Subject: [R-pkg-devel] Cascade effect of non-available packages?
+In-Reply-To: <CAMyz+tV14n8i9TUp_LbWpoe1ZU7YDidijbaafwfAjxcpPimGbA@mail.gmail.com>
+References: <CAMyz+tV14n8i9TUp_LbWpoe1ZU7YDidijbaafwfAjxcpPimGbA@mail.gmail.com>
+Message-ID: <26407.34289.794293.355518@rob.eddelbuettel.com>
+
+
+On 3 November 2024 at 11:02, Tiago Olivoto wrote:
+| Today, I noticed that several stable packages, such as Rcpp and sf, were
+| unavailable during the check process for this submission. This wasn?t an
+| issue in the previously published version of pliman. Could this be a
+| temporary problem with the package availability on CRAN?
+
+I could be. (Auto-)build systems for 21k packages and 3 architectures can be
+fragile, and we are in time of transition (R 4.4.2 just came about) so this
+could have been spurious.  If in doubt, check the status of a given package
+at its CRAN page. But I looked at the log links yu provided, and I saw no
+build failure over 'missing Rcpp and/or sf' there.  Can you point us to an
+error?
+
+Moreover, reading
+  https://win-builder.r-project.org/incoming_pretest/pliman_3.0.0_20241102_181842/specialChecks/noSuggests/summary.txt
+I do not see your aforementioned 'check_ebi()' function at work. The
+suggested package is not present, you are asked to not fail and just skip
+but do not seem to do so. I think you need to fix that, and that the CRAN
+messaging is fairly clear and standard here. I may of course have missed
+something in which case 'my bad'.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From georg|@bo@hn@kov @end|ng |rom m@nche@ter@@c@uk  Sun Nov  3 17:09:58 2024
+From: georg|@bo@hn@kov @end|ng |rom m@nche@ter@@c@uk (Georgi Boshnakov)
+Date: Sun, 3 Nov 2024 16:09:58 +0000
+Subject: [R-pkg-devel] Cascade effect of non-available packages?
+In-Reply-To: <26407.34289.794293.355518@rob.eddelbuettel.com>
+References: <CAMyz+tV14n8i9TUp_LbWpoe1ZU7YDidijbaafwfAjxcpPimGbA@mail.gmail.com>
+ <26407.34289.794293.355518@rob.eddelbuettel.com>
+Message-ID: <LO0P265MB63251DB0F09F095AC05294ACAE502@LO0P265MB6325.GBRP265.PROD.OUTLOOK.COM>
+
+A lot of packages are erring on CRAN at the moment. From time to time weird things happen en masse. It is better to wait a little for intermittent problems to clear themselves out, especially during the weekend.
+
+Georgi Boshnakov
+
+Sent from Outlook for Android<https://aka.ms/AAb9ysg>
+________________________________
+From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Dirk Eddelbuettel <edd at debian.org>
+Sent: Sunday, November 3, 2024 2:17:21 PM
+To: Tiago Olivoto <tiagoolivoto at gmail.com>
+Cc: R Package Devel <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Cascade effect of non-available packages?
+
+
+On 3 November 2024 at 11:02, Tiago Olivoto wrote:
+| Today, I noticed that several stable packages, such as Rcpp and sf, were
+| unavailable during the check process for this submission. This wasn?t an
+| issue in the previously published version of pliman. Could this be a
+| temporary problem with the package availability on CRAN?
+
+I could be. (Auto-)build systems for 21k packages and 3 architectures can be
+fragile, and we are in time of transition (R 4.4.2 just came about) so this
+could have been spurious.  If in doubt, check the status of a given package
+at its CRAN page. But I looked at the log links yu provided, and I saw no
+build failure over 'missing Rcpp and/or sf' there.  Can you point us to an
+error?
+
+Moreover, reading
+  https://urldefense.com/v3/__https://win-builder.r-project.org/incoming_pretest/pliman_3.0.0_20241102_181842/specialChecks/noSuggests/summary.txt__;!!PDiH4ENfjr2_Jw!Af5Xuvyms6hGqaC8rcf5EXqH8icVsEPEbdr4dvBxDrdeNRZb4hlwLZo9QccOefhWkiYMiOT4lFhp93zWR5eCbGaJ$ [win-builder[.]r-project[.]org]
+I do not see your aforementioned 'check_ebi()' function at work. The
+suggested package is not present, you are asked to not fail and just skip
+but do not seem to do so. I think you need to fix that, and that the CRAN
+messaging is fairly clear and standard here. I may of course have missed
+something in which case 'my bad'.
+
+Dirk
+
+--
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!PDiH4ENfjr2_Jw!Af5Xuvyms6hGqaC8rcf5EXqH8icVsEPEbdr4dvBxDrdeNRZb4hlwLZo9QccOefhWkiYMiOT4lFhp93zWR1sto-Mt$ [stat[.]ethz[.]ch]
+
+	[[alternative HTML version deleted]]
+
+
+From t|@goo||voto @end|ng |rom gm@||@com  Sun Nov  3 17:35:44 2024
+From: t|@goo||voto @end|ng |rom gm@||@com (Tiago Olivoto)
+Date: Sun, 3 Nov 2024 13:35:44 -0300
+Subject: [R-pkg-devel] Cascade effect of non-available packages?
+In-Reply-To: <LO0P265MB63251DB0F09F095AC05294ACAE502@LO0P265MB6325.GBRP265.PROD.OUTLOOK.COM>
+References: <CAMyz+tV14n8i9TUp_LbWpoe1ZU7YDidijbaafwfAjxcpPimGbA@mail.gmail.com>
+ <26407.34289.794293.355518@rob.eddelbuettel.com>
+ <LO0P265MB63251DB0F09F095AC05294ACAE502@LO0P265MB6325.GBRP265.PROD.OUTLOOK.COM>
+Message-ID: <CAMyz+tUq7L2KJHOVce8oZCiuyrvh0mEa=6R9tWU602b_RrBThw@mail.gmail.com>
+
+Dear all,
+Thanks for your prompt reply.
+
+Dear Dirk, check_ebi() was added in the new version at the location I
+believe might be triggering the error:
+
+https://github.com/NEPEM-UFSC/pliman/blob/24a1781073f9b1a3141002f0985b0542b1f7178d/R/utils_imagem.R#L317
+
+check_ebi <- function(){
+  if(!requireNamespace("EBImage", quietly = TRUE)) {
+    if(interactive() == TRUE){
+      inst <-
+        switch(menu(c("Yes", "No"), title = "Package {EBImage} required but
+not installed.\nDo you want to install it now?"),
+               "yes", "no")
+      if(inst == "yes"){
+        if(!requireNamespace("BiocManager", quietly = TRUE)) {
+          install.packages("BiocManager", quiet = TRUE)
+        }
+        BiocManager::install("EBImage",
+                             update = FALSE,
+                             ask = FALSE,
+                             quiet = TRUE)
+      } else{
+        message("To use {pliman}, first install {EBImage} following the
+directions at 'https://bioconductor.org/packages/EBImage'")
+      }
+    }
+  }
+}
+
+Looking just now to the function, I realized that it will only work in an
+interactive section. I'm not sure if it could be the source of the error
+during the checks, because the latest stable version of pliman already
+contained it and worked with no erros (but this could be related to the new
+version of R or something indirectly related to it).
+
+Anyway, I would appreciate any suggestions to make check_ebi() more robust,
+mainly regarding on the way it is handled in the automatic CRAN checks.
+
+
+Best regards,
+
+
+
+Em dom., 3 de nov. de 2024 ?s 13:10, Georgi Boshnakov <
+georgi.boshnakov at manchester.ac.uk> escreveu:
+
+> A lot of packages are erring on CRAN at the moment. From time to time
+> weird things happen en masse. It is better to wait a little for
+> intermittent problems to clear themselves out, especially during the
+> weekend.
+>
+> Georgi Boshnakov
+>
+> Sent from Outlook for Android <https://aka.ms/AAb9ysg>
+> ------------------------------
+> *From:* R-package-devel <r-package-devel-bounces at r-project.org> on behalf
+> of Dirk Eddelbuettel <edd at debian.org>
+> *Sent:* Sunday, November 3, 2024 2:17:21 PM
+> *To:* Tiago Olivoto <tiagoolivoto at gmail.com>
+> *Cc:* R Package Devel <r-package-devel at r-project.org>
+> *Subject:* Re: [R-pkg-devel] Cascade effect of non-available packages?
+>
+>
+> On 3 November 2024 at 11:02, Tiago Olivoto wrote:
+> | Today, I noticed that several stable packages, such as Rcpp and sf, were
+> | unavailable during the check process for this submission. This wasn?t an
+> | issue in the previously published version of pliman. Could this be a
+> | temporary problem with the package availability on CRAN?
+>
+> I could be. (Auto-)build systems for 21k packages and 3 architectures can
+> be
+> fragile, and we are in time of transition (R 4.4.2 just came about) so this
+> could have been spurious.  If in doubt, check the status of a given package
+> at its CRAN page. But I looked at the log links yu provided, and I saw no
+> build failure over 'missing Rcpp and/or sf' there.  Can you point us to an
+> error?
+>
+> Moreover, reading
+>
+> https://urldefense.com/v3/__https://win-builder.r-project.org/incoming_pretest/pliman_3.0.0_20241102_181842/specialChecks/noSuggests/summary.txt__;!!PDiH4ENfjr2_Jw!Af5Xuvyms6hGqaC8rcf5EXqH8icVsEPEbdr4dvBxDrdeNRZb4hlwLZo9QccOefhWkiYMiOT4lFhp93zWR5eCbGaJ$
+> [win-builder[.]r-project[.]org]
+> I do not see your aforementioned 'check_ebi()' function at work. The
+> suggested package is not present, you are asked to not fail and just skip
+> but do not seem to do so. I think you need to fix that, and that the CRAN
+> messaging is fairly clear and standard here. I may of course have missed
+> something in which case 'my bad'.
+>
+> Dirk
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+>
+> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!PDiH4ENfjr2_Jw!Af5Xuvyms6hGqaC8rcf5EXqH8icVsEPEbdr4dvBxDrdeNRZb4hlwLZo9QccOefhWkiYMiOT4lFhp93zWR1sto-Mt$
+> [stat[.]ethz[.]ch]
+>
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Sun Nov  3 18:08:52 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Sun, 3 Nov 2024 11:08:52 -0600
+Subject: [R-pkg-devel] Cascade effect of non-available packages?
+In-Reply-To: <CAMyz+tUq7L2KJHOVce8oZCiuyrvh0mEa=6R9tWU602b_RrBThw@mail.gmail.com>
+References: <CAMyz+tV14n8i9TUp_LbWpoe1ZU7YDidijbaafwfAjxcpPimGbA@mail.gmail.com>
+ <26407.34289.794293.355518@rob.eddelbuettel.com>
+ <LO0P265MB63251DB0F09F095AC05294ACAE502@LO0P265MB6325.GBRP265.PROD.OUTLOOK.COM>
+ <CAMyz+tUq7L2KJHOVce8oZCiuyrvh0mEa=6R9tWU602b_RrBThw@mail.gmail.com>
+Message-ID: <26407.44580.950632.162385@rob.eddelbuettel.com>
+
+
+Tiago,
+
+Looking at https://www.stats.ox.ac.uk/pub/bdr/noSuggests/pliman.out
+we see it errors after trying '* checking examples ...':
+
+   * checking examples ... ERROR
+   Running examples in ?pliman-Ex.R? failed
+   The error most likely occurred in:
+   
+   > ### Name: as_image
+   > ### Title: Create an 'Image' object
+   > ### Aliases: as_image
+   > 
+   > ### ** Examples
+   > 
+   > img <-
+   + as_image(rnorm(150 * 150 * 3),
+   +          dim = c(150, 150, 3),
+   +          colormode = 'Color')
+   Error in loadNamespace(x) : there is no package called ?EBImage?
+   Calls: as_image ... loadNamespace -> withRestarts -> withOneRestart -> doWithOneRestart
+   Execution halted
+   * checking PDF version of manual ... [12s/12s] OK
+
+Looking at as_image.Rd in https://github.com/NEPEM-UFSC/pliman/blob/24a1781073f9b1a3141002f0985b0542b1f7178d/man/as_image.Rd
+we see that you do have an \donttest{} there but that alone does not protect
+you. Instead of
+
+   \examples{
+   \donttest{
+   library(pliman)
+   img <-
+   as_image(rnorm(150 * 150 * 3),
+            dim = c(150, 150, 3),
+            colormode = 'Color')
+   plot(img)
+   }
+
+I would do something like
+
+  if (interactive() && requireNamespace("EBImage", quietly=TRUE)) {
+    library(pliman)
+    img <- as_image(rnorm(150 * 150 * 3), dim = c(150, 150, 3), colormode = 'Color')
+    plot(img)
+  }
+
+where you could of course put that condition into a helper function.
+
+Hope this helps,  Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
