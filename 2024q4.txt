@@ -3450,3 +3450,317 @@ Hope this helps,  Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Mon Nov  4 11:08:36 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Mon, 4 Nov 2024 11:08:36 +0100
+Subject: [R-pkg-devel] Warnings related to functions from the survival
+ package
+In-Reply-To: <20241101194058.48917be7@arachnoid>
+References: <CAAsVnmJ=EurBKD6ber9umE68bH5ZO6HhmHuhX4ryHbWgXJ+cqQ@mail.gmail.com>
+ <20241031193914.54310b7e@arachnoid>
+ <f78c3ec9-30ba-4edb-afe2-0244dff37715@gmail.com>
+ <20241031230606.641cf104@Tarkus>
+ <89aeae5f-efe8-4d85-a328-9688f6fd5460@gmail.com>
+ <20241101194058.48917be7@arachnoid>
+Message-ID: <edde9ed3-a248-495b-9094-42545a7ea7ed@gmail.com>
+
+
+On 11/1/24 17:40, Ivan Krylov wrote:
+> On Fri, 1 Nov 2024 09:56:01 +0100
+> Tomas Kalibera <tomas.kalibera at gmail.com> wrote:
+>
+>> isn't there a finer-grained way to suppress reports just
+>> of this particular issue, ideally at finer granularity than a
+>> function?
+> The line saying "function:do_dotCode" in the suppression file will
+> suppress errors just for mismatched function pointer types inside
+> do_dotCode(), because "function" is the name of this check [1]. Here's
+> do_dotCode with a different error added:
+>
+> bin/R -q -s -e 'library(survival); survdiff(Surv(futime, fustat) ~
+> rx,data=ovarian)'
+>
+> dotcode.c:1958:9: runtime error: 1e+100 is outside the range of
+> representable values of type 'int'
+> SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior dotcode.c:1958:9
+> dotcode.c:2012:2: runtime error: call to function survdiff2 through
+> pointer to incorrect function type
+> 'void (*)(void *, void *, void *, void *, void *, void *, void *, void
+> *, void *, void *, void *, void
+> *, void *)'
+> /tmp/RtmpVPlRnI/R.INSTALL65eb26c0356f/survival/src/survdiff2.c:10:
+> note: survdiff2 defined here
+> SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior dotcode.c:2012:2
+>
+> UBSAN_OPTIONS="suppressions=$(realpath dotcode.supp)" \
+> bin/R -q -s -e 'library(survival); survdiff(Surv(futime, fustat) ~
+> rx,data=ovarian)'
+>
+> dotcode.c:1958:9: runtime error: 1e+100 is outside the range of
+> representable values of type 'int'
+>
+> I don't think UBSan can suppress errors in a more precise manner. The
+> documentation only mentions files, functions ans libraries. Best I
+> could find was a 2020 comment [2] suggesting to separate the offending
+> code into a function and let the optimiser inline it.
+I feared that might be the case, thanks for looking this up,
+Tomas
+>
+
+
+From t|@goo||voto @end|ng |rom gm@||@com  Mon Nov  4 11:25:54 2024
+From: t|@goo||voto @end|ng |rom gm@||@com (Tiago Olivoto)
+Date: Mon, 4 Nov 2024 07:25:54 -0300
+Subject: [R-pkg-devel] Cascade effect of non-available packages?
+In-Reply-To: <26407.44580.950632.162385@rob.eddelbuettel.com>
+References: <CAMyz+tV14n8i9TUp_LbWpoe1ZU7YDidijbaafwfAjxcpPimGbA@mail.gmail.com>
+ <26407.34289.794293.355518@rob.eddelbuettel.com>
+ <LO0P265MB63251DB0F09F095AC05294ACAE502@LO0P265MB6325.GBRP265.PROD.OUTLOOK.COM>
+ <CAMyz+tUq7L2KJHOVce8oZCiuyrvh0mEa=6R9tWU602b_RrBThw@mail.gmail.com>
+ <26407.44580.950632.162385@rob.eddelbuettel.com>
+Message-ID: <CAMyz+tXUBsx3tO3B561=-dNZk_DK-JOprm9LimygsH3wf07q=Q@mail.gmail.com>
+
+Dear Dirk,
+Thank you so much for your tips.
+I'll implement them and try a new submission.
+
+Best regards,
+Olivoto
+
+
+Em dom., 3 de nov. de 2024 ?s 14:08, Dirk Eddelbuettel <edd at debian.org>
+escreveu:
+
+>
+> Tiago,
+>
+> Looking at https://www.stats.ox.ac.uk/pub/bdr/noSuggests/pliman.out
+> we see it errors after trying '* checking examples ...':
+>
+>    * checking examples ... ERROR
+>    Running examples in ?pliman-Ex.R? failed
+>    The error most likely occurred in:
+>
+>    > ### Name: as_image
+>    > ### Title: Create an 'Image' object
+>    > ### Aliases: as_image
+>    >
+>    > ### ** Examples
+>    >
+>    > img <-
+>    + as_image(rnorm(150 * 150 * 3),
+>    +          dim = c(150, 150, 3),
+>    +          colormode = 'Color')
+>    Error in loadNamespace(x) : there is no package called ?EBImage?
+>    Calls: as_image ... loadNamespace -> withRestarts -> withOneRestart ->
+> doWithOneRestart
+>    Execution halted
+>    * checking PDF version of manual ... [12s/12s] OK
+>
+> Looking at as_image.Rd in
+> https://github.com/NEPEM-UFSC/pliman/blob/24a1781073f9b1a3141002f0985b0542b1f7178d/man/as_image.Rd
+> we see that you do have an \donttest{} there but that alone does not
+> protect
+> you. Instead of
+>
+>    \examples{
+>    \donttest{
+>    library(pliman)
+>    img <-
+>    as_image(rnorm(150 * 150 * 3),
+>             dim = c(150, 150, 3),
+>             colormode = 'Color')
+>    plot(img)
+>    }
+>
+> I would do something like
+>
+>   if (interactive() && requireNamespace("EBImage", quietly=TRUE)) {
+>     library(pliman)
+>     img <- as_image(rnorm(150 * 150 * 3), dim = c(150, 150, 3), colormode
+> = 'Color')
+>     plot(img)
+>   }
+>
+> where you could of course put that condition into a helper function.
+>
+> Hope this helps,  Dirk
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+
+	[[alternative HTML version deleted]]
+
+
+From tdhock5 @end|ng |rom gm@||@com  Mon Nov  4 22:33:40 2024
+From: tdhock5 @end|ng |rom gm@||@com (Toby Hocking)
+Date: Mon, 4 Nov 2024 16:33:40 -0500
+Subject: [R-pkg-devel] new version jumps in minor?
+Message-ID: <CALK03d21pQLFDuUnoLRJ5PaGTZWf5tDbq-aAZGqWcrtT0+nWDQ@mail.gmail.com>
+
+Dear CRAN
+I see a new NOTE, and I wonder if you would consider undoing this new
+addition to checks? This would cause all of my packages to fail auto
+checks, which would cause a lot of extra false positives, and lots of
+extra work for both me and the CRAN team who works on approving
+submissions which do not pass auto checks.
+Thanks for your consideration
+
+* checking CRAN incoming feasibility ... [11s] NOTE
+Maintainer: 'Toby Hocking <toby.hocking at r-project.org>'
+
+Version jumps in minor (submitted: 2024.11.2, existing: 2024.1.24)
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon Nov  4 23:32:35 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 4 Nov 2024 17:32:35 -0500
+Subject: [R-pkg-devel] new version jumps in minor?
+In-Reply-To: <CALK03d21pQLFDuUnoLRJ5PaGTZWf5tDbq-aAZGqWcrtT0+nWDQ@mail.gmail.com>
+References: <CALK03d21pQLFDuUnoLRJ5PaGTZWf5tDbq-aAZGqWcrtT0+nWDQ@mail.gmail.com>
+Message-ID: <5437c552-4b76-4eb8-bc0e-efbfa14279b6@gmail.com>
+
+On 2024-11-04 4:33 p.m., Toby Hocking wrote:
+> Dear CRAN
+> I see a new NOTE, and I wonder if you would consider undoing this new
+> addition to checks? This would cause all of my packages to fail auto
+> checks, which would cause a lot of extra false positives, and lots of
+> extra work for both me and the CRAN team who works on approving
+> submissions which do not pass auto checks.
+> Thanks for your consideration
+> 
+> * checking CRAN incoming feasibility ... [11s] NOTE
+> Maintainer: 'Toby Hocking <toby.hocking at r-project.org>'
+> 
+> Version jumps in minor (submitted: 2024.11.2, existing: 2024.1.24)
+
+Was your package auto-rejected with this note?  Not all notes trigger a 
+rejection, some (like the maintainer note just above) are just for 
+information.
+
+Duncan Murdoch
+
+
+From ro||turner @end|ng |rom po@teo@net  Tue Nov  5 00:31:55 2024
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Mon,  4 Nov 2024 23:31:55 +0000
+Subject: [R-pkg-devel] new version jumps in minor?
+In-Reply-To: <CALK03d21pQLFDuUnoLRJ5PaGTZWf5tDbq-aAZGqWcrtT0+nWDQ@mail.gmail.com>
+References: <CALK03d21pQLFDuUnoLRJ5PaGTZWf5tDbq-aAZGqWcrtT0+nWDQ@mail.gmail.com>
+Message-ID: <20241105123155.7ab0eecf@elderly-dell>
+
+
+On Mon, 4 Nov 2024 16:33:40 -0500
+Toby Hocking <tdhock5 at gmail.com> wrote:
+
+<SNIP>
+
+> Version jumps in minor (submitted: 2024.11.2, existing: 2024.1.24)
+
+It looks to me that you are setting your version numbers in an
+unorthodox manner, which could/will confuse the living Drambuie out of
+people.
+
+I conjecture that you are setting your version number to represent the
+relevant date.  E.g. 2024.11.2  means 2 November, 2024 and 2024.1.24
+means 24 January 2024.
+
+In my understanding, the usual convention is for the version number to
+be of the form l.m.n (or l.m-n) --- major.minor.patch (or
+major.minor-patch).  The date should be specified in the *Date* field of
+the DESCRIPTION file.
+
+It probably does not matter a hell of a lot.  "Writing R Extensions"
+just says that the version number should be "a sequence of at least two
+(and usually three) non-negative integers separated by single ?.? or
+?-? characters".
+
+However you might save yourself some "NOTEs" by adhering to the
+"l.m.n" convention and incrementing the components sequentially.
+
+cheers,
+
+Rolf Turner
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Tue Nov  5 01:02:26 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Mon, 4 Nov 2024 16:02:26 -0800
+Subject: [R-pkg-devel] new version jumps in minor?
+In-Reply-To: <20241105123155.7ab0eecf@elderly-dell>
+References: <CALK03d21pQLFDuUnoLRJ5PaGTZWf5tDbq-aAZGqWcrtT0+nWDQ@mail.gmail.com>
+ <20241105123155.7ab0eecf@elderly-dell>
+Message-ID: <CAL3ufUJ+g7p=66QoEbScj++x6CrC-uH+MDXFtoNphCnkbeE0BQ@mail.gmail.com>
+
+Rolf,
+
+The versioning method they?re using is referred to as CalVer
+https://calver.org/ (not as catchy as SemVer) and it is actually quite
+useful! With one look at the version you can get a good sense of it?s
+general release date.
+
+Posit, for example, moved their professional products to use this
+versioning method a number of years ago.
+
+I wouldn?t poopoo it so quickly!
+
+On Mon, Nov 4, 2024 at 15:32 Rolf Turner <rolfturner at posteo.net> wrote:
+
+>
+> On Mon, 4 Nov 2024 16:33:40 -0500
+> Toby Hocking <tdhock5 at gmail.com> wrote:
+>
+> <SNIP>
+>
+> > Version jumps in minor (submitted: 2024.11.2, existing: 2024.1.24)
+>
+> It looks to me that you are setting your version numbers in an
+> unorthodox manner, which could/will confuse the living Drambuie out of
+> people.
+>
+> I conjecture that you are setting your version number to represent the
+> relevant date.  E.g. 2024.11.2  means 2 November, 2024 and 2024.1.24
+> means 24 January 2024.
+>
+> In my understanding, the usual convention is for the version number to
+> be of the form l.m.n (or l.m-n) --- major.minor.patch (or
+> major.minor-patch).  The date should be specified in the *Date* field of
+> the DESCRIPTION file.
+>
+> It probably does not matter a hell of a lot.  "Writing R Extensions"
+> just says that the version number should be "a sequence of at least two
+> (and usually three) non-negative integers separated by single ?.? or
+> ?-? characters".
+>
+> However you might save yourself some "NOTEs" by adhering to the
+> "l.m.n" convention and incrementing the components sequentially.
+>
+> cheers,
+>
+> Rolf Turner
+>
+> --
+> Honorary Research Fellow
+> Department of Statistics
+> University of Auckland
+> Stats. Dep't. (secretaries) phone:
+>          +64-9-373-7599 ext. 89622
+> Home phone: +64-9-480-4619
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
