@@ -4373,3 +4373,277 @@ On Wed, Nov 6, 2024 at 4:01?AM Uwe Ligges
 > > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Fri Nov  8 20:21:16 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Fri, 8 Nov 2024 11:21:16 -0800
+Subject: [R-pkg-devel] Alternative to ifeq for Makevars
+Message-ID: <CAL3ufUKNA5bqwMASsk6E0ZwtiU4LmMQc076q+fRiE9GC2+6uKg@mail.gmail.com>
+
+I am working on refactoring some Makevars files and I am quite stuck. I
+want to conditionally set the value of CRAN_FLAGS like so in my Makevars
+files
+
+ifeq ($(NOT_CRAN), false)
+  CRAN_FLAGS = -j 2 --offline
+else
+  CRAN_FLAGS =
+endif
+
+Using ifeq appears to be the only way to get the value of CRAN_FLAGS to
+persist within the $(STATILIB) portion of the Makevars file.
+
+However, this results in a Warning
+
+checking for GNU extensions in Makefiles ... WARNING
+  Found the following file(s) containing GNU extensions:
+    src/Makevars
+  Portable Makefiles do not use GNU extensions such as +=, :=, $(shell),
+  $(wildcard), ifeq ... endif, .NOTPARALLEL See section ?Writing portable
+  packages? in the ?Writing R Extensions? manual.
+
+How do other people address this?
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Nov  8 20:33:45 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 8 Nov 2024 22:33:45 +0300
+Subject: [R-pkg-devel] Alternative to ifeq for Makevars
+In-Reply-To: <CAL3ufUKNA5bqwMASsk6E0ZwtiU4LmMQc076q+fRiE9GC2+6uKg@mail.gmail.com>
+References: <CAL3ufUKNA5bqwMASsk6E0ZwtiU4LmMQc076q+fRiE9GC2+6uKg@mail.gmail.com>
+Message-ID: <20241108223345.7fce261c@Tarkus>
+
+? Fri, 8 Nov 2024 11:21:16 -0800
+Josiah Parry <josiah.parry at gmail.com> ?????:
+
+> I want to conditionally set the value of CRAN_FLAGS like so in my
+> Makevars files
+> 
+> ifeq ($(NOT_CRAN), false)
+>   CRAN_FLAGS = -j 2 --offline
+> else
+>   CRAN_FLAGS =
+> endif
+
+Unless a better approach surfaces (detect the environment variable in
+the configure script and generate src/Makevars from src/Makevars.in?),
+you may be interested in the following movfuscator-like
+POSIX-compatible trick: https://nullprogram.com/blog/2016/04/30/
+
+EXTRA_FLAGS_true =
+EXTRA_FLAGS_ = -j 2 --offline
+EXTRA_FLAGS = $(EXTRA_FLAGS_$(NOT_CRAN))
+
+(This one is untested, sorry.)
+
+-- 
+Best regards,
+Ivan
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Fri Nov  8 20:44:15 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Fri, 8 Nov 2024 11:44:15 -0800
+Subject: [R-pkg-devel] Alternative to ifeq for Makevars
+In-Reply-To: <20241108223345.7fce261c@Tarkus>
+References: <CAL3ufUKNA5bqwMASsk6E0ZwtiU4LmMQc076q+fRiE9GC2+6uKg@mail.gmail.com>
+ <20241108223345.7fce261c@Tarkus>
+Message-ID: <CAL3ufUKyRFw9Wdrfups+dSOuafmdzoE0va5B6Bm5d1QSufxWeA@mail.gmail.com>
+
+Thanks, Ivan!
+
+Do you know of any good documentation on the use of Makevars.in with
+configure?
+The @VARNAME@ syntax is quite confusing and isn't explained in WRE from
+what I can tell.
+
+On Fri, Nov 8, 2024 at 11:33?AM Ivan Krylov <ikrylov at disroot.org> wrote:
+
+> ? Fri, 8 Nov 2024 11:21:16 -0800
+> Josiah Parry <josiah.parry at gmail.com> ?????:
+>
+> > I want to conditionally set the value of CRAN_FLAGS like so in my
+> > Makevars files
+> >
+> > ifeq ($(NOT_CRAN), false)
+> >   CRAN_FLAGS = -j 2 --offline
+> > else
+> >   CRAN_FLAGS =
+> > endif
+>
+> Unless a better approach surfaces (detect the environment variable in
+> the configure script and generate src/Makevars from src/Makevars.in?),
+> you may be interested in the following movfuscator-like
+> POSIX-compatible trick: https://nullprogram.com/blog/2016/04/30/
+>
+> EXTRA_FLAGS_true =
+> EXTRA_FLAGS_ = -j 2 --offline
+> EXTRA_FLAGS = $(EXTRA_FLAGS_$(NOT_CRAN))
+>
+> (This one is untested, sorry.)
+>
+> --
+> Best regards,
+> Ivan
+>
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Nov  8 21:04:14 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 8 Nov 2024 23:04:14 +0300
+Subject: [R-pkg-devel] Alternative to ifeq for Makevars
+In-Reply-To: <CAL3ufUKyRFw9Wdrfups+dSOuafmdzoE0va5B6Bm5d1QSufxWeA@mail.gmail.com>
+References: <CAL3ufUKNA5bqwMASsk6E0ZwtiU4LmMQc076q+fRiE9GC2+6uKg@mail.gmail.com>
+ <20241108223345.7fce261c@Tarkus>
+ <CAL3ufUKyRFw9Wdrfups+dSOuafmdzoE0va5B6Bm5d1QSufxWeA@mail.gmail.com>
+Message-ID: <20241108230414.2f5b338e@Tarkus>
+
+? Fri, 8 Nov 2024 11:44:15 -0800
+Josiah Parry <josiah.parry at gmail.com> ?????:
+
+> Do you know of any good documentation on the use of Makevars.in with
+> configure?
+
+A configure script for an R package could be any POSIX-compatible shell
+script, including a hand-written one that substitutes strings using sed
+[*], or even one that delegates to R [**]. If you do want to use GNU
+Autoconf, the relevant sections of the manual are 4.8 and 7.2:
+https://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.72/html_node/Makefile-Substitutions.html
+https://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.72/html_node/Setting-Output-Variables.html
+
+-- 
+Best regards,
+Ivan
+
+[*] https://github.com/jeroen/V8/blob/master/configure
+[**] https://github.com/kevinushey/configure
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Fri Nov  8 22:55:27 2024
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Fri, 8 Nov 2024 13:55:27 -0800
+Subject: [R-pkg-devel] Alternative to ifeq for Makevars
+In-Reply-To: <20241108230414.2f5b338e@Tarkus>
+References: <CAL3ufUKNA5bqwMASsk6E0ZwtiU4LmMQc076q+fRiE9GC2+6uKg@mail.gmail.com>
+ <20241108223345.7fce261c@Tarkus>
+ <CAL3ufUKyRFw9Wdrfups+dSOuafmdzoE0va5B6Bm5d1QSufxWeA@mail.gmail.com>
+ <20241108230414.2f5b338e@Tarkus>
+Message-ID: <CAL3ufUK48h+TY1JAuQOeuMX3GqSp5ARPvhh=rsPzVAAkrnzB3w@mail.gmail.com>
+
+Thanks, Ivan! I've been able to get quite far based on the code in
+data.table*
+which uses sed to generate the Makevars from the Makevars.in file. The new
+challenge is that the Makevars file needs to be deleted after building.
+
+The approach I have now is a cleanup script with only rm -rf src/Makevars.
+
+This works *only* when --preclean or --clean is called. SO I'm not sure if
+it is a
+permanent solution. For example devtools::document() doesn't run the clean
+step nor does pkgbuild::compile_dll().
+
+I may keep banging my head against the keyboard on this...
+
+*
+https://github.com/Rdatatable/data.table/blob/08e94b7f4af3fc4403959282bf81c490ebdf9e72/src/Makevars.in#L7
+
+On Fri, Nov 8, 2024 at 12:04?PM Ivan Krylov <ikrylov at disroot.org> wrote:
+
+> ? Fri, 8 Nov 2024 11:44:15 -0800
+> Josiah Parry <josiah.parry at gmail.com> ?????:
+>
+> > Do you know of any good documentation on the use of Makevars.in with
+> > configure?
+>
+> A configure script for an R package could be any POSIX-compatible shell
+> script, including a hand-written one that substitutes strings using sed
+> [*], or even one that delegates to R [**]. If you do want to use GNU
+> Autoconf, the relevant sections of the manual are 4.8 and 7.2:
+>
+> https://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.72/html_node/Makefile-Substitutions.html
+>
+> https://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.72/html_node/Setting-Output-Variables.html
+>
+> --
+> Best regards,
+> Ivan
+>
+> [*] https://github.com/jeroen/V8/blob/master/configure
+> [**] https://github.com/kevinushey/configure
+>
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Nov  9 01:00:25 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 8 Nov 2024 19:00:25 -0500
+Subject: [R-pkg-devel] Alternative to ifeq for Makevars
+In-Reply-To: <CAL3ufUK48h+TY1JAuQOeuMX3GqSp5ARPvhh=rsPzVAAkrnzB3w@mail.gmail.com>
+References: <CAL3ufUKNA5bqwMASsk6E0ZwtiU4LmMQc076q+fRiE9GC2+6uKg@mail.gmail.com>
+ <20241108223345.7fce261c@Tarkus>
+ <CAL3ufUKyRFw9Wdrfups+dSOuafmdzoE0va5B6Bm5d1QSufxWeA@mail.gmail.com>
+ <20241108230414.2f5b338e@Tarkus>
+ <CAL3ufUK48h+TY1JAuQOeuMX3GqSp5ARPvhh=rsPzVAAkrnzB3w@mail.gmail.com>
+Message-ID: <f44f3604-7248-4e5c-9650-9e3fff32e648@gmail.com>
+
+On 2024-11-08 4:55 p.m., Josiah Parry wrote:
+> Thanks, Ivan! I've been able to get quite far based on the code in
+> data.table*
+> which uses sed to generate the Makevars from the Makevars.in file. The new
+> challenge is that the Makevars file needs to be deleted after building.
+
+I am pretty sure it does not need to be deleted. Just ignore it in the 
+build (i.e. list it in .Rbuildignore, so it doesn't end up in the 
+tarball, and each system installing the package recreates it).
+
+Duncan Murdoch
+
+> 
+> The approach I have now is a cleanup script with only rm -rf src/Makevars.
+> 
+> This works *only* when --preclean or --clean is called. SO I'm not sure if
+> it is a
+> permanent solution. For example devtools::document() doesn't run the clean
+> step nor does pkgbuild::compile_dll().
+> 
+> I may keep banging my head against the keyboard on this...
+> 
+> *
+> https://github.com/Rdatatable/data.table/blob/08e94b7f4af3fc4403959282bf81c490ebdf9e72/src/Makevars.in#L7
+> 
+> On Fri, Nov 8, 2024 at 12:04?PM Ivan Krylov <ikrylov at disroot.org> wrote:
+> 
+>> ? Fri, 8 Nov 2024 11:44:15 -0800
+>> Josiah Parry <josiah.parry at gmail.com> ?????:
+>>
+>>> Do you know of any good documentation on the use of Makevars.in with
+>>> configure?
+>>
+>> A configure script for an R package could be any POSIX-compatible shell
+>> script, including a hand-written one that substitutes strings using sed
+>> [*], or even one that delegates to R [**]. If you do want to use GNU
+>> Autoconf, the relevant sections of the manual are 4.8 and 7.2:
+>>
+>> https://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.72/html_node/Makefile-Substitutions.html
+>>
+>> https://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.72/html_node/Setting-Output-Variables.html
+>>
+>> --
+>> Best regards,
+>> Ivan
+>>
+>> [*] https://github.com/jeroen/V8/blob/master/configure
+>> [**] https://github.com/kevinushey/configure
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
