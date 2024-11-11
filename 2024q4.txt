@@ -4647,3 +4647,53 @@ Duncan Murdoch
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From tony_@_w||ke@ @end|ng |rom out|ook@com  Sat Nov  9 07:44:27 2024
+From: tony_@_w||ke@ @end|ng |rom out|ook@com (Tony Wilkes)
+Date: Sat, 9 Nov 2024 06:44:27 +0000
+Subject: [R-pkg-devel] Why is Rf_Seql hidden?
+Message-ID: <AS4P195MB14303DC7A2F4E9C48B00F194BE5D2@AS4P195MB1430.EURP195.PROD.OUTLOOK.COM>
+
+Hi everyone,
+
+Checking if 2 strings are equal, when these strings might be of different encoding, whilst still maintaining good performance, can be quite difficult.
+But R seems to manage reasonably well.
+It appears that R uses Rf_seql() to check if 2 strings are equal.
+But Rf_seql is not public in R's C API; it is hidden.
+So I have 2 questions:
+
+1) ?Why is Rf_Seql() hidden? (what would be the problem if it were made public?)
+2) What would be an alternative way to re-create Rf_Seql (a way that is relatively stable)? (An example C function that re-creates Rf_seql() using R's public C Api would be really nice.)
+
+Kind regards,
+
+
+Tony.
+
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Sat Nov  9 08:19:52 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sat, 09 Nov 2024 10:19:52 +0300
+Subject: [R-pkg-devel] Why is Rf_Seql hidden?
+In-Reply-To: <AS4P195MB14303DC7A2F4E9C48B00F194BE5D2@AS4P195MB1430.EURP195.PROD.OUTLOOK.COM>
+References: <AS4P195MB14303DC7A2F4E9C48B00F194BE5D2@AS4P195MB1430.EURP195.PROD.OUTLOOK.COM>
+Message-ID: <3D866938-A47C-4FC2-9C36-42206B8CEFD1@disroot.org>
+
+9 ?????? 2024 ?. 09:44:27 GMT+03:00, Tony Wilkes <tony_a_wilkes at outlook.com> ?????: 
+> 1) ?Why is Rf_Seql() hidden? (what would be the problem if it were made public?)
+
+It accepts two SEXP arguments but then performs operations on them that are only valid for CHARSXP objects. This might be unsafe.
+
+> 2) What would be an alternative way to re-create Rf_Seql (a way that is relatively stable)?
+
+How about R_compute_identical()? It tests for TYPEOF() equality and then quickly jumps to Seql() for CHARSXP values. It's listed among "experimental" APIs and so may grow more flags [*] in the future, but they don't seem relevant for CHARSXPs.
+
+-- 
+Best regards,
+Ivan
+
+[*] Unofficial description: https://aitap.codeberg.page/R-api/#R_005fcompute_005fidentical
+
+
