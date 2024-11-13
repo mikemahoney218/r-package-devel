@@ -4985,3 +4985,248 @@ PhD Student, Political Science
 University of Toronto
 
 
+From |kry|ov @end|ng |rom d|@root@org  Mon Nov 11 10:48:40 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 11 Nov 2024 12:48:40 +0300
+Subject: [R-pkg-devel] 
+ Possible false negative for compiled C++ code in CRAN checks
+In-Reply-To: <YT2PPFFFCD7005701B25728913116FEEC8BDD5E2@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+References: <YT2PPFFFCD7005701B25728913116FEEC8BDD5E2@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+Message-ID: <20241111124840.55248fa6@Tarkus>
+
+Dear Mauricio Vargas Sepulveda,
+
+Welcome to R-package-devel!
+
+? Sat, 9 Nov 2024 17:34:07 +0000
+Mauricio Vargas Sepulveda <m.sepulveda at mail.utoronto.ca> ?????:
+
+> CRAN reported memory leaks for:
+> 
+> CLAN/ASAN:
+> https://www.stats.ox.ac.uk/pub/bdr/memtests/clang-ASAN/redatam/00check.log
+> CLANG/UBSAN:
+> https://www.stats.ox.ac.uk/pub/bdr/memtests/gcc-UBSAN/redatam/00check.log
+
+These include container-overflow at
+src/redatamlib/ByteArrayReader.cpp:170:23 and method calls with `this`
+being a null pointer at src/redatamlib/FuzzyVariableParser.cpp:47 and
+src/redatamlib/Entity.cpp:52.
+
+A container-overflow in ByteArrayReader::ReadByte is dangerous because
+the code is reading past the end of the vector populated with known
+data. While the code doesn't crash, the remainder of the vector could
+contain anything. This could invalidate the conclusions of a scientific
+work if they end up being based on random contents of uninitialised
+memory. You need to find out why m_currPos exceeds the number of bytes
+in the array and prevent it from happening.
+
+Calling methods on a null pointer is also an error in the code. This is
+quite confusing, but I have a guess for what might be causing this:
+
+  for (size_t i = 0; i < entities.size() - 1; ++i) {
+    ret.push_back(
+        {entities[i].GetBounds().second, entities[i + 1].GetBounds().first});
+  }
+
+If entities.size() is 0, entities.size() - 1 will overflow to a large
+positive number, due to std::vector<T>::size_type being unsigned. The
+loop will proceed accessing out-of-bounds elements of 'entities' until
+something will cause it to crash. The guess could be completely wrong,
+unfortunately.
+
+Have you fixed these problems since v2.0.0?
+
+> After asking on Stack Overflow
+> (https://stackoverflow.com/q/79171799/3720258), it was suggested that
+> I set 'CXXFLAGS="-stdlib=libc++"' in 'configure'. The question is
+> very long and provides all the details that I skip here.
+
+I am not seeing alloc-dealloc-mismatch in the CRAN checks, neither in
+the links you provided, nor in the latest pretest results at
+<https://win-builder.r-project.org/incoming_pretest/redatam_2.0.3_20241107_154750/>.
+I think that these indicate a problem with the way your GitHub actions
+are set up. Have you received a CRAN check report with
+alloc-dealloc-mismatch in it?
+
+I've tried to compare the versions visible in the CRAN archive but
+couldn't get far because there was a lot of formatting changes. What
+exactly are the problems for which your latest submission of v2.0.3 has
+been archived? Do you need help reproducing the container-overflow
+and/or null object pointer errors?
+
+-- 
+Best regards,
+Ivan
+
+
+From @|ex@nder@p@te @end|ng |rom m@nche@ter@@c@uk  Mon Nov 11 14:22:43 2024
+From: @|ex@nder@p@te @end|ng |rom m@nche@ter@@c@uk (Alexander Pate)
+Date: Mon, 11 Nov 2024 13:22:43 +0000
+Subject: [R-pkg-devel] Creating temporary files in tests/examples/vignettes
+ - adhering to CRAN policies
+Message-ID: <CWLP265MB20671BECDB67CB453264BA26B8582@CWLP265MB2067.GBRP265.PROD.OUTLOOK.COM>
+
+Hello,
+
+The CRAN policies (https://cran.r-project.org/web/packages/policies.html) for R package development state:
+
+"Packages should not write in the user's home filespace (including clipboards), nor anywhere else on the file system apart from the R session's temporary directory (or during installation in the location pointed to by TMPDIR: and such usage should be cleaned up)."
+
+If a file is created in the R session's temporary directory, does it then need to be cleaned up? Or does it only apply "during installation in the location pointed to by TMPDIR". I am unsure, given the "and such usage should be cleaned up" is contained within the brackets, whether it applies to creating files in the temporary directory during function examples/vignettes/tests.
+
+For example, the following command will create an SQLite database in the R session's temporary directory:
+
+testdb <- RSQLite::dbConnect(RSQLite::SQLite(), tempfile("temp"))
+
+Suppose a package function (called: myfunc) runs this command. Should the file created in the temporary directory have to be removed after running an example of myfunc, or a test for myfunc, or when myfunc is used in a vignette?
+
+I think part of my confusion comes from not understanding what TMPDIR is during installation. Is this just the temporary directory used when vignettes are built during package installation? In which case they are effectively the same thing?
+
+Many thanks
+
+
+	[[alternative HTML version deleted]]
+
+
+From ke||ey @end|ng |rom d@|@c@  Mon Nov 11 15:26:12 2024
+From: ke||ey @end|ng |rom d@|@c@ (Daniel Kelley)
+Date: Mon, 11 Nov 2024 14:26:12 +0000
+Subject: [R-pkg-devel] 
+ Creating temporary files in tests/examples/vignettes
+ - adhering to CRAN policies
+In-Reply-To: <CWLP265MB20671BECDB67CB453264BA26B8582@CWLP265MB2067.GBRP265.PROD.OUTLOOK.COM>
+References: <CWLP265MB20671BECDB67CB453264BA26B8582@CWLP265MB2067.GBRP265.PROD.OUTLOOK.COM>
+Message-ID: <BB20527F-9F22-49F4-AA14-049830468BA2@dal.ca>
+
+I think the idea is to do as below.  You can also make temporary directories in a similar way.
+
+        tempFile <- tempfile()
+        # write to tempFile, and use it anyway you like
+        unlink(tempFile)
+
+> On Nov 11, 2024, at 9:22?AM, Alexander Pate <alexander.pate at manchester.ac.uk> wrote:
+> 
+> CAUTION: The Sender of this email is not from within Dalhousie.
+> 
+> Hello,
+> 
+> The CRAN policies (https://cran.r-project.org/web/packages/policies.html) for R package development state:
+> 
+> "Packages should not write in the user's home filespace (including clipboards), nor anywhere else on the file system apart from the R session's temporary directory (or during installation in the location pointed to by TMPDIR: and such usage should be cleaned up)."
+> 
+> If a file is created in the R session's temporary directory, does it then need to be cleaned up? Or does it only apply "during installation in the location pointed to by TMPDIR". I am unsure, given the "and such usage should be cleaned up" is contained within the brackets, whether it applies to creating files in the temporary directory during function examples/vignettes/tests.
+> 
+> For example, the following command will create an SQLite database in the R session's temporary directory:
+> 
+> testdb <- RSQLite::dbConnect(RSQLite::SQLite(), tempfile("temp"))
+> 
+> Suppose a package function (called: myfunc) runs this command. Should the file created in the temporary directory have to be removed after running an example of myfunc, or a test for myfunc, or when myfunc is used in a vignette?
+> 
+> I think part of my confusion comes from not understanding what TMPDIR is during installation. Is this just the temporary directory used when vignettes are built during package installation? In which case they are effectively the same thing?
+> 
+> Many thanks
+> 
+> 
+>        [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From m@@epu|ved@ @end|ng |rom m@||@utoronto@c@  Tue Nov 12 01:44:57 2024
+From: m@@epu|ved@ @end|ng |rom m@||@utoronto@c@ (Mauricio Vargas Sepulveda)
+Date: Tue, 12 Nov 2024 00:44:57 +0000
+Subject: [R-pkg-devel] 
+ Possible false negative for compiled C++ code in CRAN checks
+In-Reply-To: <20241111124840.55248fa6@Tarkus>
+References: <YT2PPFFFCD7005701B25728913116FEEC8BDD5E2@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <20241111124840.55248fa6@Tarkus>
+Message-ID: <YT2PPFFFCD70057CF5F7C2CA2439229E0B6DD592@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+
+Dear Prof. Dr.  Ivan Krylov,
+
+I hope you are doing well.
+
+Thanks for your prompt reply. I shall try to implement a fix and resumit based on this. It is a valuable suggestion.
+??
+Mauricio "Pach?" Vargas Sep?lveda
+PhD Student, Political Science
+University of Toronto
+
+
+________________________________________
+From: Ivan Krylov <ikrylov at disroot.org>
+Sent: November 11, 2024 4:48 AM
+To: Mauricio Vargas Sepulveda <m.sepulveda at mail.utoronto.ca>
+Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Possible false negative for compiled C++ code in CRAN checks
+
+[You don't often get email from ikrylov at disroot.org. Learn why this is important at https://aka.ms/LearnAboutSenderIdentification ]
+
+Dear Mauricio Vargas Sepulveda,
+
+Welcome to R-package-devel!
+
+? Sat, 9 Nov 2024 17:34:07 +0000
+Mauricio Vargas Sepulveda <m.sepulveda at mail.utoronto.ca> ?????:
+
+> CRAN reported memory leaks for:
+>
+> CLAN/ASAN:
+> https://www.stats.ox.ac.uk/pub/bdr/memtests/clang-ASAN/redatam/00check.log
+> CLANG/UBSAN:
+> https://www.stats.ox.ac.uk/pub/bdr/memtests/gcc-UBSAN/redatam/00check.log
+
+These include container-overflow at
+src/redatamlib/ByteArrayReader.cpp:170:23 and method calls with `this`
+being a null pointer at src/redatamlib/FuzzyVariableParser.cpp:47 and
+src/redatamlib/Entity.cpp:52.
+
+A container-overflow in ByteArrayReader::ReadByte is dangerous because
+the code is reading past the end of the vector populated with known
+data. While the code doesn't crash, the remainder of the vector could
+contain anything. This could invalidate the conclusions of a scientific
+work if they end up being based on random contents of uninitialised
+memory. You need to find out why m_currPos exceeds the number of bytes
+in the array and prevent it from happening.
+
+Calling methods on a null pointer is also an error in the code. This is
+quite confusing, but I have a guess for what might be causing this:
+
+  for (size_t i = 0; i < entities.size() - 1; ++i) {
+    ret.push_back(
+        {entities[i].GetBounds().second, entities[i + 1].GetBounds().first});
+  }
+
+If entities.size() is 0, entities.size() - 1 will overflow to a large
+positive number, due to std::vector<T>::size_type being unsigned. The
+loop will proceed accessing out-of-bounds elements of 'entities' until
+something will cause it to crash. The guess could be completely wrong,
+unfortunately.
+
+Have you fixed these problems since v2.0.0?
+
+> After asking on Stack Overflow
+> (https://stackoverflow.com/q/79171799/3720258), it was suggested that
+> I set 'CXXFLAGS="-stdlib=libc++"' in 'configure'. The question is
+> very long and provides all the details that I skip here.
+
+I am not seeing alloc-dealloc-mismatch in the CRAN checks, neither in
+the links you provided, nor in the latest pretest results at
+<https://win-builder.r-project.org/incoming_pretest/redatam_2.0.3_20241107_154750/>.
+I think that these indicate a problem with the way your GitHub actions
+are set up. Have you received a CRAN check report with
+alloc-dealloc-mismatch in it?
+
+I've tried to compare the versions visible in the CRAN archive but
+couldn't get far because there was a lot of formatting changes. What
+exactly are the problems for which your latest submission of v2.0.3 has
+been archived? Do you need help reproducing the container-overflow
+and/or null object pointer errors?
+
+--
+Best regards,
+Ivan
+
