@@ -5230,3 +5230,1435 @@ and/or null object pointer errors?
 Best regards,
 Ivan
 
+From m@@epu|ved@ @end|ng |rom m@||@utoronto@c@  Tue Nov 12 05:02:17 2024
+From: m@@epu|ved@ @end|ng |rom m@||@utoronto@c@ (Mauricio Vargas Sepulveda)
+Date: Tue, 12 Nov 2024 04:02:17 +0000
+Subject: [R-pkg-devel] 
+ Possible false negative for compiled C++ code in CRAN checks
+In-Reply-To: <YT2PPFFFCD70057CF5F7C2CA2439229E0B6DD592@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+References: <YT2PPFFFCD7005701B25728913116FEEC8BDD5E2@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <20241111124840.55248fa6@Tarkus>
+ <YT2PPFFFCD70057CF5F7C2CA2439229E0B6DD592@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+Message-ID: <YT2PPFFFCD700570537573F529D215EC62ADD592@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+
+The issue persists, and I really appreciate the help. The last comment in Stack Overflow (https://stackoverflow.com/questions/79171799/addresssanitizer-error-alloc-dealloc-mismatch-operator-new-vs-free-in-r-packa?noredirect=1#comment139621299_79171799) suggests a false positive, and if that is the case, should I add that as a note when resubmitting?
+
+For v2.0.3 I implemented a full refactor, where I simplified the code considerably while trying to solve what looks to be a false positive.
+
+Now I implemented a "patch" based on the suggestion:
+
+  vector<pair<size_t, size_t>> ret;
+
+  // ADDED //
+  if (entities.empty() || entities.size() == 0) {
+    return ret;
+  }
+  ////////////
+
+  for (size_t i = 0; i < entities.size() - 1; ++i) {
+    ret.push_back(
+        {entities[i].GetBounds().second, entities[i + 1].GetBounds().first});
+  }
+
+After testing with the R-Hub image "Clang Asan" with this code:
+
+  # Define the package directory and Docker image
+  PACKAGE_DIR=$(pwd)
+  DOCKER_IMAGE="ghcr.io/r-hub/containers/clang-asan:latest"
+
+  # Pull the Docker image
+  docker pull $DOCKER_IMAGE
+
+  # Run the R CMD check inside the Docker container
+  docker run --rm -v "$PACKAGE_DIR":/workspace -w /workspace $DOCKER_IMAGE bash -c "
+   Rscript -e 'if (!requireNamespace(\"pak\", quietly = TRUE)) { install.packages(\"pak\", repos = \"https://r-lib.github.io/p/pak/dev//") }'
+   Rscript -e 'pak::pkg_install(\"decor\", dependencies = TRUE)'
+   Rscript -e 'pak::pkg_install(\"rcmdcheck\", dependencies = TRUE)'
+   Rscript -e 'pak::pkg_install(\"pkgbuild\", dependencies = TRUE)'
+   Rscript -e 'pak::pkg_install(\".\", dependencies = TRUE)'
+   Rscript -e 'pkgbuild::check_build_tools(debug = TRUE)'
+   Rscript -e 'rcmdcheck::rcmdcheck(args = c(\"--no-manual\", \"--as-cran\"), build_args = \"--no-manual\", error_on = \"error\")'
+  "
+
+I get the following output:
+
+    #2 0x7bc709b3e119 in RedatamLib::ByteArrayReader::MovePos(int) readers/ByteArrayReader.cpp:99:44
+    #3 0x7bc709b3e119 in RedatamLib::ByteArrayReader::ReadByte() readers/ByteArrayReader.cpp:172:3
+    #4 0x7bc709b3d2a6 in RedatamLib::ByteArrayReader::ReadInt16LE() readers/ByteArrayReader.cpp:178:32
+    #5 0x7bc709b3d2a6 in RedatamLib::ByteArrayReader::TryReadStr(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>*, bool) readers/ByteArrayReader.cpp:110:20
+    #6 0x7bc709b4778a in RedatamLib::FuzzyEntityParser::TryGetEntity() readers/FuzzyEntityParser.cpp:44:17
+    #7 0x7bc709b4601b in RedatamLib::FuzzyEntityParser::ParseEntities() readers/FuzzyEntityParser.cpp:18:14
+    #8 0x7bc709baaaa7 in RedatamLib::RedatamDatabase::OpenDictionary(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&) entities/RedatamDatabase.cpp:31:25
+    #9 0x7bc709baa876 in RedatamLib::RedatamDatabase::RedatamDatabase(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&) entities/RedatamDatabase.cpp:18:3
+    #10 0x7bc709bb76f8 in export_redatam_to_list_(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>) /tmp/RtmpEHQaSu/file136708ed8/redatam.Rcheck/00_pkg_src/redatam/src/main.cpp:13:33
+    #11 0x7bc709bb8438 in _redatam_export_redatam_to_list_ src/cpp11.cpp:12:27
+    #12 0x7bc757f3a700 in R_doDotCall /tmp/R-devel/src/main/dotcode.c:754:11
+
+   SUMMARY: AddressSanitizer: alloc-dealloc-mismatch (/opt/R/devel-asan/lib/R/bin/exec/R+0xc6306) (BuildId: 178e357df79b1589a38c1949da5e5f022d4bb535) in free
+   ==4218==HINT: if you don't care about these errors you may set ASAN_OPTIONS=alloc_dealloc_mismatch=0
+   ==4218==ABORTING
+
+  2 errors ? | 0 warnings ? | 2 notes ?
+  Error: R CMD check found ERRORs
+
+
+??
+Mauricio "Pach?" Vargas Sep?lveda
+PhD Student, Political Science
+University of Toronto
+
+
+________________________________________
+From: Mauricio Vargas Sepulveda <m.sepulveda at mail.utoronto.ca>
+Sent: November 11, 2024 7:44 PM
+To: Ivan Krylov <ikrylov at disroot.org>
+Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Possible false negative for compiled C++ code in CRAN checks
+
+Dear Prof. Dr.  Ivan Krylov,
+
+I hope you are doing well.
+
+Thanks for your prompt reply. I shall try to implement a fix and resumit based on this. It is a valuable suggestion.
+??
+Mauricio "Pach?" Vargas Sep?lveda
+PhD Student, Political Science
+University of Toronto
+
+
+________________________________________
+From: Ivan Krylov <ikrylov at disroot.org>
+Sent: November 11, 2024 4:48 AM
+To: Mauricio Vargas Sepulveda <m.sepulveda at mail.utoronto.ca>
+Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Possible false negative for compiled C++ code in CRAN checks
+
+[You don't often get email from ikrylov at disroot.org. Learn why this is important at https://aka.ms/LearnAboutSenderIdentification ]
+
+Dear Mauricio Vargas Sepulveda,
+
+Welcome to R-package-devel!
+
+? Sat, 9 Nov 2024 17:34:07 +0000
+Mauricio Vargas Sepulveda <m.sepulveda at mail.utoronto.ca> ?????:
+
+> CRAN reported memory leaks for:
+>
+> CLAN/ASAN:
+> https://www.stats.ox.ac.uk/pub/bdr/memtests/clang-ASAN/redatam/00check.log
+> CLANG/UBSAN:
+> https://www.stats.ox.ac.uk/pub/bdr/memtests/gcc-UBSAN/redatam/00check.log
+
+These include container-overflow at
+src/redatamlib/ByteArrayReader.cpp:170:23 and method calls with `this`
+being a null pointer at src/redatamlib/FuzzyVariableParser.cpp:47 and
+src/redatamlib/Entity.cpp:52.
+
+A container-overflow in ByteArrayReader::ReadByte is dangerous because
+the code is reading past the end of the vector populated with known
+data. While the code doesn't crash, the remainder of the vector could
+contain anything. This could invalidate the conclusions of a scientific
+work if they end up being based on random contents of uninitialised
+memory. You need to find out why m_currPos exceeds the number of bytes
+in the array and prevent it from happening.
+
+Calling methods on a null pointer is also an error in the code. This is
+quite confusing, but I have a guess for what might be causing this:
+
+  for (size_t i = 0; i < entities.size() - 1; ++i) {
+    ret.push_back(
+        {entities[i].GetBounds().second, entities[i + 1].GetBounds().first});
+  }
+
+If entities.size() is 0, entities.size() - 1 will overflow to a large
+positive number, due to std::vector<T>::size_type being unsigned. The
+loop will proceed accessing out-of-bounds elements of 'entities' until
+something will cause it to crash. The guess could be completely wrong,
+unfortunately.
+
+Have you fixed these problems since v2.0.0?
+
+> After asking on Stack Overflow
+> (https://stackoverflow.com/q/79171799/3720258), it was suggested that
+> I set 'CXXFLAGS="-stdlib=libc++"' in 'configure'. The question is
+> very long and provides all the details that I skip here.
+
+I am not seeing alloc-dealloc-mismatch in the CRAN checks, neither in
+the links you provided, nor in the latest pretest results at
+<https://win-builder.r-project.org/incoming_pretest/redatam_2.0.3_20241107_154750/>.
+I think that these indicate a problem with the way your GitHub actions
+are set up. Have you received a CRAN check report with
+alloc-dealloc-mismatch in it?
+
+I've tried to compare the versions visible in the CRAN archive but
+couldn't get far because there was a lot of formatting changes. What
+exactly are the problems for which your latest submission of v2.0.3 has
+been archived? Do you need help reproducing the container-overflow
+and/or null object pointer errors?
+
+--
+Best regards,
+Ivan
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Tue Nov 12 08:53:08 2024
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Tue, 12 Nov 2024 01:53:08 -0600
+Subject: [R-pkg-devel] Found the following HTML validation problems: in R
+ CMD check --as-cran
+Message-ID: <b39ad7b5-7cba-4a78-bc4b-624d18981bf6@effectivedefense.org>
+
+Hello, All:
+
+
+	  In running "R CMD check --as-cran Ecfun_0.3-5.tar.gz" on my local 
+macOS 15.0.1 system, 00check.log contains "Found the following HTML 
+validation problems:" followed by 501 lines like the following:
+
+
+Arrows.html:15:44 (Arrows.Rd:3): Error: <main> is not recognized!
+Arrows.html:15:44 (Arrows.Rd:3): Warning: discarding unexpected <main>
+Arrows.html:97:1 (Arrows.Rd:59): Warning: discarding unexpected </main>
+Arrows.html:4:1 (Arrows.Rd:3): Warning: <link> inserting "type" attribute
+Arrows.html:12:1 (Arrows.Rd:3): Warning: <script> proprietary attribute 
+"onload"
+Arrows.html:12:1 (Arrows.Rd:3): Warning: <script> inserting "type" attribute
+Arrows.html:17:1 (Arrows.Rd:3): Warning: <table> lacks "summary" attribute
+Arrows.html:42:1 (Arrows.Rd:18): Warning: <table> lacks "summary" attribute
+Arrows.html:43:339 (Arrows.Rd:18): Warning: <code> attribute "id" has 
+invalid value "..."
+
+
+	  Lines like this seem to appear roughly for ~each(?) of the 59 *.Rd 
+file in my man directory. However, 501 is not evenly divisible by 59, 
+which means that the number of lines like this is not the same for every 
+*.Rd file.
+
+
+	  Suggestions?
+	  This looks like a problem with "R CMD check --as-cran" and NOT with 
+Ecfun. However, I felt a need to ask.
+
+
+	  Thanks,
+	  Spencer Graves
+
+
+p.s. This package is on GitHub at:
+
+
+https://github.com/sbgraves237/Ecfun
+
+
+From |kry|ov @end|ng |rom d|@root@org  Tue Nov 12 09:03:18 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 12 Nov 2024 11:03:18 +0300
+Subject: [R-pkg-devel] 
+ Found the following HTML validation problems: in R
+ CMD check --as-cran
+In-Reply-To: <b39ad7b5-7cba-4a78-bc4b-624d18981bf6@effectivedefense.org>
+References: <b39ad7b5-7cba-4a78-bc4b-624d18981bf6@effectivedefense.org>
+Message-ID: <20241112110318.20242345@Tarkus>
+
+? Tue, 12 Nov 2024 01:53:08 -0600
+Spencer Graves <spencer.graves at effectivedefense.org> ?????:
+
+> 	  In running "R CMD check --as-cran Ecfun_0.3-5.tar.gz" on my
+> local macOS 15.0.1 system, 00check.log contains "Found the following
+> HTML validation problems:" followed by 501 lines like the following
+
+When you run `tidy --version`, what does it say? If it doesn't say at
+least version 5.0.0 (or shows you a build date instead of the version),
+this is the wrong version of HTML-Tidy and you can safely discard the
+output: https://bugs.r-project.org/show_bug.cgi?id=18731
+
+-- 
+Best regards,
+Ivan
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Tue Nov 12 10:04:50 2024
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Tue, 12 Nov 2024 03:04:50 -0600
+Subject: [R-pkg-devel] 
+ Found the following HTML validation problems: in R
+ CMD check --as-cran
+In-Reply-To: <20241112110318.20242345@Tarkus>
+References: <b39ad7b5-7cba-4a78-bc4b-624d18981bf6@effectivedefense.org>
+ <20241112110318.20242345@Tarkus>
+Message-ID: <53e662dd-f46e-4af1-9a96-33953bc9d4ef@effectivedefense.org>
+
+Hi, Ivan:
+
+
+	  Thanks very much.
+
+
+On 11/12/24 02:03, Ivan Krylov wrote:
+> ? Tue, 12 Nov 2024 01:53:08 -0600
+> Spencer Graves <spencer.graves at effectivedefense.org> ?????:
+> 
+>> 	  In running "R CMD check --as-cran Ecfun_0.3-5.tar.gz" on my
+>> local macOS 15.0.1 system, 00check.log contains "Found the following
+>> HTML validation problems:" followed by 501 lines like the following
+> 
+> When you run `tidy --version`, what does it say? If it doesn't say at
+> least version 5.0.0 (or shows you a build date instead of the version),
+> this is the wrong version of HTML-Tidy and you can safely discard the
+> output: https://bugs.r-project.org/show_bug.cgi?id=18731
+> 
+
+
+...% `tidy --version
+
+
+HTML Tidy for Mac OS X released on 31 October 2006 - Apple Inc. build 1509
+
+
+https://stackoverflow.com/questions/13380012/tidy-html5-on-mac-os-how-to-install
+
+
+	  I did:
+
+
+brew update
+
+
+brew upgrade
+
+
+  brew install tidy-html5
+
+
+	  AND this problem disappeared.
+
+
+	  Thanks again,
+	  Spencer Graves
+
+
+From |kry|ov @end|ng |rom d|@root@org  Tue Nov 12 11:56:34 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 12 Nov 2024 13:56:34 +0300
+Subject: [R-pkg-devel] 
+ Possible false negative for compiled C++ code in CRAN checks
+In-Reply-To: <YT2PPFFFCD700570537573F529D215EC62ADD592@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+References: <YT2PPFFFCD7005701B25728913116FEEC8BDD5E2@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <20241111124840.55248fa6@Tarkus>
+ <YT2PPFFFCD70057CF5F7C2CA2439229E0B6DD592@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <YT2PPFFFCD700570537573F529D215EC62ADD592@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+Message-ID: <20241112135634.44ceb4a9@arachnoid>
+
+? Tue, 12 Nov 2024 04:02:17 +0000
+Mauricio Vargas Sepulveda <m.sepulveda at mail.utoronto.ca> ?????:
+
+> For v2.0.3 I implemented a full refactor, where I simplified the code
+> considerably while trying to solve what looks to be a false positive.
+> 
+> Now I implemented a "patch" based on the suggestion:
+
+I see the change on GitHub [1], made back on October 22nd, but I am not
+seeing these checks in your latest submission to CRAN [2] from November
+7th. Before you have implemented [1], have you been able to reproduce
+the errors that your package received on CRAN, that is, the
+container-overflow and the null object pointers?
+
+I've just noticed that FuzzyVariableParser::ParseAllVariables is using
+std::thread::hardware_concurrency(). CRAN uses a shared computer with
+many cores to test many packages at the same time, so the code most
+likely needs to limit itself to two threads during tests and examples
+[3].
+
+>    SUMMARY: AddressSanitizer: alloc-dealloc-mismatch
+> (/opt/R/devel-asan/lib/R/bin/exec/R+0xc6306) (BuildId:
+> 178e357df79b1589a38c1949da5e5f022d4bb535) in free
+
+This is an error you're getting when testing with an R-hub image. R-hub
+is not CRAN. You've performed good investigative work to reduce the
+issue you're seeing on R-hub for the StackOverflow question [4], but it
+looks like this particular problem is already reported to R-hub
+developers [5] and it's not what got your latest CRAN submission
+archived.
+
+When your latest submission, redatam_2.0.3.tar.gz, was archived, you
+should have received an e-mail from CRAN. Was it about the package
+failing automatic checks? Were there any other comments? Did the e-mail
+highlight any issues in particular?
+
+I do see the problem in [6], but it's hard to diagnose by itself. I was
+able to reproduce it (but only after compiling everything with
+-shared-san and providing the necessary LD_LIBRARY_PATH, otherwise
+packages using C++ failed to load; I also had to manually set
+UBSAN_OPTIONS=print_stacktrace=1 to find out where the overflow
+originates):
+
+> read_redatam(paste(dout, "cg15.dic", sep = "/"))
+Opening dictionary file...
+/usr/bin/../lib/gcc/x86_64-linux-gnu/14/../../../../include/c++/14/bits/basic_string.h:1272:9: runtime error: addition of unsigned offset to 0x7f38f12bcc30 overflowed to 0x7f38f12bcc2f
+    #0 0x7f38e859a15f in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::operator[](unsigned long) /usr/bin/../lib/gcc/x86_64-linux-gnu/14/../../../../include/c++/14/bits/basic_string.h:1272:9
+    #1 0x7f38e859a15f in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::back() /usr/bin/../lib/gcc/x86_64-linux-gnu/14/../../../../include/c++/14/bits/basic_string.h:1353:9
+    #2 0x7f38e859a15f in RedatamLib::ListExporter::ListExporter(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>> const&) /root/redatam.Rcheck/00_pkg_src/redatam/src/redatamlib/exporters/RListExporter.cpp:16:21
+    #3 0x7f38e85a7d60 in RedatamLib::RedatamDatabase::ExportRLists() const /root/redatam.Rcheck/00_pkg_src/redatam/src/redatamlib/entities/RedatamDatabase.cpp:23:16
+    #4 0x7f38e85b2224 in export_redatam_to_list_(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>) /root/redatam.Rcheck/00_pkg_src/redatam/src/main.cpp:13:15
+    #5 0x7f38e85b3068 in _redatam_export_redatam_to_list_ /root/redatam.Rcheck/00_pkg_src/redatam/src/cpp11.cpp:12:27
+    #6 0x55b5da67bf6a in R_doDotCall /root/R/src/main/../../../R-svn/src/main/dotcode.c:754:11
+
+The corresponding lines of the source code are:
+
+ListExporter::ListExporter(const std::string &outputDirectory)
+    : m_path(outputDirectory) {
+  if ('/' != m_path.back()) { // <-- here
+    m_path.append("/");
+  }
+}
+
+Looks like the code is calling .back() on an empty string. This also
+needs to be prevented somehow.
+
+To summarise, I recommend to do the following for the next submission:
+
+ - make sure the fix for the UBSan issues from [7] is included and note
+   it in the submission comments
+ - avoid using more than two threads during R CMD check
+ - fix the empty string issue from [6] and note it in the submission
+   comments
+ - fix any other issues noted in the CRAN correspondence and note it in
+   the submission comments
+ - do not mention the alloc-free-mismatch problem in the submission
+   comments
+
+Good luck! I hope this helps and there won't be any more issues hiding
+in the code.
+
+-- 
+Best regards,
+Ivan
+
+[1] 
+https://github.com/pachadotdev/open-redatam/commit/5399332f26fde8029cc7f78e0f889dfd983504c2
+
+[2]
+https://cran.r-project.org/incoming/archive/redatam_2.0.3.tar.gz
+
+[3]
+https://contributor.r-project.org/cran-cookbook/code_issues.html#using-more-than-2-cores
+
+[4]
+https://stackoverflow.com/q/79171799
+
+[5]
+https://github.com/r-hub/rhub/issues/598
+There's no actual alloc-free-mismatch, it's a false positive due to the
+way libc++ (correctly) uses the delete operator:
+https://github.com/llvm/llvm-project/issues/59432
+
+[6]
+https://win-builder.r-project.org/incoming_pretest/redatam_2.0.3_20241107_154750/specialChecks/clang-san/summary.txt
+
+[7]
+https://www.stats.ox.ac.uk/pub/bdr/memtests/clang-ASAN/redatam/00check.log
+https://www.stats.ox.ac.uk/pub/bdr/memtests/gcc-UBSAN/redatam/00check.log
+
+
+From pep|jn@devr|e@ @end|ng |rom out|ook@com  Tue Nov 12 13:40:24 2024
+From: pep|jn@devr|e@ @end|ng |rom out|ook@com (Pepijn de Vries)
+Date: Tue, 12 Nov 2024 12:40:24 +0000
+Subject: [R-pkg-devel] CRAN build error on Windows
+Message-ID: <AS8PR10MB466318BEE8305A6903DBD580A7592@AS8PR10MB4663.EURPRD10.PROD.OUTLOOK.COM>
+
+Hi r-package-devel team,
+
+I'm author of the ProTrackR2 package and have recently submitted a new release to CRAN. It builds without problems on all operating systems, except for Windows:
+
+https://cran.r-project.org/web/checks/check_results_ProTrackR2.html
+
+At first I thought it might be a problem caused by my 'configure.win' script, which would be strange since it remained unchanged since the previously submitted version (which built without problems on Windows). Also, the package builds without problems on Windows machines at r-universe and the rhub checks. This is why I'm beginning to suspect that this is an issue with the CRAN Windows machine. The install.log from CRAN reports:
+
+"Cannot create temporary file in D:\temp\2024_11_12_ 1_50_00_12637\: No such file or directory"
+
+After snooping around I found another (unrelated) package with exactly the same problem:
+
+https://cran.r-project.org/web/checks/check_results_Amelia.html
+
+This package has a completely different setup (no configure script, and it uses Rcpp instead of cpp11).
+
+My question is: how can I figure out if something is wrong with my package setup, or whether this is an issue at CRAN with building for Windows?
+
+Thanks in advance for your help!
+
+
+From Luc@DeW||de @end|ng |rom UGent@be  Tue Nov 12 15:06:53 2024
+From: Luc@DeW||de @end|ng |rom UGent@be (Luc De Wilde)
+Date: Tue, 12 Nov 2024 14:06:53 +0000
+Subject: [R-pkg-devel] New package with C++ code causes R abort in RStudio,
+ not in R console.
+Message-ID: <AM0PR09MB3843B5A6489B9D868B68F8C498592@AM0PR09MB3843.eurprd09.prod.outlook.com>
+
+Dear R package developers,
+
+I'm helping with the development of the lavaan package (see https://lavaan.ugent.be/) and currently writing a C++ version of the parser of the model syntax in lavaan. The package with C++ code is in  https://github.com/lucdw/lavaanC.?
+
+When testing with a bunch of models, there is one model that causes an abort of the R session in RStudio (on Windows), but in the R console or in a batch job it causes no errors. The model is the following :?
+model <- '?
+?   F1 =~ "a b"*X1
+? ? F2 =~ a * X1 + 3*X2 # dat is hier een beetje commentaar
+? ? # efa block 2
+? ? efa("efa2")*f3 +
+? ? efa("efa2")*f4 =~ y1 + y2 + y3 + y1:y3
+? ? f4 := 3.14159 * F2
+? ? F1 ~ start(0.76)*F2 + a*F2
+? ? a == (b + f3)^2
+? ? b1 > exp(b2 + b3) '
+
+and the translation can be tested - after installing lavaanC - with?
+
+lavaanC::lav_parse_model_string_c(model)
+
+As mentioned, this causes an abort of the R session when executed in RStudio on Windows (10 or 11), but passes without problem in the R console or a batch job. 
+
+Because many users are using RStudio I 'd like to tackle this problem, but don't know how to pinpoint the cause of the problem. I hope some of you have an idea how to handle this problem ...
+
+All the best,
+
+
+Luc De Wilde
+
+
+From m@@epu|ved@ @end|ng |rom m@||@utoronto@c@  Tue Nov 12 17:01:34 2024
+From: m@@epu|ved@ @end|ng |rom m@||@utoronto@c@ (Mauricio Vargas Sepulveda)
+Date: Tue, 12 Nov 2024 16:01:34 +0000
+Subject: [R-pkg-devel] 
+ Possible false negative for compiled C++ code in CRAN checks
+In-Reply-To: <20241112135634.44ceb4a9@arachnoid>
+References: <YT2PPFFFCD7005701B25728913116FEEC8BDD5E2@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <20241111124840.55248fa6@Tarkus>
+ <YT2PPFFFCD70057CF5F7C2CA2439229E0B6DD592@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <YT2PPFFFCD700570537573F529D215EC62ADD592@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <20241112135634.44ceb4a9@arachnoid>
+Message-ID: <YT2PPFFFCD700574402F067CF21834F38FCDD592@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+
+Dear Prof. Dr. Kryov,
+
+Thanks a lot.
+
+Apologies if the email has an odd format, I have a modified Outlook UI that makes everything "curious".
+
+After taking each of the suggestions, now I get this with Clang-ASAN on R-Hub:
+
+> 0 errors | 0 warnings | 2 note
+> Package was archived on CRAN
+> CRAN repository db overrides: X-CRAN-Comment: Archived on 2024-11-06 for repeated policy violation. Repeatedy spamming a team member's personal email address in HTML.
+> checking compilation flags used ... NOTE Compilation used the following non-portable flag(s): ?-Wp,-D_FORTIFY_SOURCE=3?
+
+This is great. Thanks a lot. I would like to add you to AUTHORS.md or as "ctb" to list your contribution. Hopefully it can be re-accepted.
+
+The first note was because I was asking about this same issue when CRAN notified me. Now I make sure to use non-HTML email when sending R-related emails.
+
+So far, this is the only useful communication I received about this. On Stack Overflow I only got "-1".
+
+I added the changes here: https://github.com/pachadotdev/open-redatam/commit/d8955195d4e13fd7794de56d24b4238b7a7ec26f
+
+Best wishes,
+
+??
+Mauricio "Pach?" Vargas Sep?lveda
+PhD Student, Political Science
+University of Toronto
+
+
+________________________________________
+From: Ivan Krylov <ikrylov at disroot.org>
+Sent: November 12, 2024 5:56 AM
+To: Mauricio Vargas Sepulveda <m.sepulveda at mail.utoronto.ca>
+Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Possible false negative for compiled C++ code in CRAN checks
+
+? Tue, 12 Nov 2024 04:02:17 +0000
+Mauricio Vargas Sepulveda <m.sepulveda at mail.utoronto.ca> ?????:
+
+> For v2.0.3 I implemented a full refactor, where I simplified the code
+> considerably while trying to solve what looks to be a false positive.
+>
+> Now I implemented a "patch" based on the suggestion:
+
+I see the change on GitHub [1], made back on October 22nd, but I am not
+seeing these checks in your latest submission to CRAN [2] from November
+7th. Before you have implemented [1], have you been able to reproduce
+the errors that your package received on CRAN, that is, the
+container-overflow and the null object pointers?
+
+I've just noticed that FuzzyVariableParser::ParseAllVariables is using
+std::thread::hardware_concurrency(). CRAN uses a shared computer with
+many cores to test many packages at the same time, so the code most
+likely needs to limit itself to two threads during tests and examples
+[3].
+
+>    SUMMARY: AddressSanitizer: alloc-dealloc-mismatch
+> (/opt/R/devel-asan/lib/R/bin/exec/R+0xc6306) (BuildId:
+> 178e357df79b1589a38c1949da5e5f022d4bb535) in free
+
+This is an error you're getting when testing with an R-hub image. R-hub
+is not CRAN. You've performed good investigative work to reduce the
+issue you're seeing on R-hub for the StackOverflow question [4], but it
+looks like this particular problem is already reported to R-hub
+developers [5] and it's not what got your latest CRAN submission
+archived.
+
+When your latest submission, redatam_2.0.3.tar.gz, was archived, you
+should have received an e-mail from CRAN. Was it about the package
+failing automatic checks? Were there any other comments? Did the e-mail
+highlight any issues in particular?
+
+I do see the problem in [6], but it's hard to diagnose by itself. I was
+able to reproduce it (but only after compiling everything with
+-shared-san and providing the necessary LD_LIBRARY_PATH, otherwise
+packages using C++ failed to load; I also had to manually set
+UBSAN_OPTIONS=print_stacktrace=1 to find out where the overflow
+originates):
+
+> read_redatam(paste(dout, "cg15.dic", sep = "/"))
+Opening dictionary file...
+/usr/bin/../lib/gcc/x86_64-linux-gnu/14/../../../../include/c++/14/bits/basic_string.h:1272:9: runtime error: addition of unsigned offset to 0x7f38f12bcc30 overflowed to 0x7f38f12bcc2f
+    #0 0x7f38e859a15f in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::operator[](unsigned long) /usr/bin/../lib/gcc/x86_64-linux-gnu/14/../../../../include/c++/14/bits/basic_string.h:1272:9
+    #1 0x7f38e859a15f in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::back() /usr/bin/../lib/gcc/x86_64-linux-gnu/14/../../../../include/c++/14/bits/basic_string.h:1353:9
+    #2 0x7f38e859a15f in RedatamLib::ListExporter::ListExporter(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>> const&) /root/redatam.Rcheck/00_pkg_src/redatam/src/redatamlib/exporters/RListExporter.cpp:16:21
+    #3 0x7f38e85a7d60 in RedatamLib::RedatamDatabase::ExportRLists() const /root/redatam.Rcheck/00_pkg_src/redatam/src/redatamlib/entities/RedatamDatabase.cpp:23:16
+    #4 0x7f38e85b2224 in export_redatam_to_list_(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>) /root/redatam.Rcheck/00_pkg_src/redatam/src/main.cpp:13:15
+    #5 0x7f38e85b3068 in _redatam_export_redatam_to_list_ /root/redatam.Rcheck/00_pkg_src/redatam/src/cpp11.cpp:12:27
+    #6 0x55b5da67bf6a in R_doDotCall /root/R/src/main/../../../R-svn/src/main/dotcode.c:754:11
+
+The corresponding lines of the source code are:
+
+ListExporter::ListExporter(const std::string &outputDirectory)
+    : m_path(outputDirectory) {
+  if ('/' != m_path.back()) { // <-- here
+    m_path.append("/");
+  }
+}
+
+Looks like the code is calling .back() on an empty string. This also
+needs to be prevented somehow.
+
+To summarise, I recommend to do the following for the next submission:
+
+ - make sure the fix for the UBSan issues from [7] is included and note
+   it in the submission comments
+ - avoid using more than two threads during R CMD check
+ - fix the empty string issue from [6] and note it in the submission
+   comments
+ - fix any other issues noted in the CRAN correspondence and note it in
+   the submission comments
+ - do not mention the alloc-free-mismatch problem in the submission
+   comments
+
+Good luck! I hope this helps and there won't be any more issues hiding
+in the code.
+
+--
+Best regards,
+Ivan
+
+[1]
+https://github.com/pachadotdev/open-redatam/commit/5399332f26fde8029cc7f78e0f889dfd983504c2
+
+[2]
+https://cran.r-project.org/incoming/archive/redatam_2.0.3.tar.gz
+
+[3]
+https://contributor.r-project.org/cran-cookbook/code_issues.html#using-more-than-2-cores
+
+[4]
+https://stackoverflow.com/q/79171799
+
+[5]
+https://github.com/r-hub/rhub/issues/598
+There's no actual alloc-free-mismatch, it's a false positive due to the
+way libc++ (correctly) uses the delete operator:
+https://github.com/llvm/llvm-project/issues/59432
+
+[6]
+https://win-builder.r-project.org/incoming_pretest/redatam_2.0.3_20241107_154750/specialChecks/clang-san/summary.txt
+
+[7]
+https://www.stats.ox.ac.uk/pub/bdr/memtests/clang-ASAN/redatam/00check.log
+https://www.stats.ox.ac.uk/pub/bdr/memtests/gcc-UBSAN/redatam/00check.log
+
+From edd @end|ng |rom deb|@n@org  Tue Nov 12 17:47:19 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 12 Nov 2024 10:47:19 -0600
+Subject: [R-pkg-devel] CRAN build error on Windows
+In-Reply-To: <AS8PR10MB466318BEE8305A6903DBD580A7592@AS8PR10MB4663.EURPRD10.PROD.OUTLOOK.COM>
+References: <AS8PR10MB466318BEE8305A6903DBD580A7592@AS8PR10MB4663.EURPRD10.PROD.OUTLOOK.COM>
+Message-ID: <26419.34455.556919.593429@rob.eddelbuettel.com>
+
+
+On 12 November 2024 at 12:40, Pepijn de Vries wrote:
+| "Cannot create temporary file in D:\temp\2024_11_12_ 1_50_00_12637\: No such file or directory"
+
+Based on your quote and the log [1] it looks like you have a space in the
+directory name. Windows can accommodate these but you must then quote them
+prperly. A more defensive mechanism is to not have spaces there in the first
+so may call `sub()` on the path replacing ' ' with '_'.
+ 
+Dirk
+
+[1] https://www.r-project.org/nosvn/R.check/r-devel-windows-x86_64/ProTrackR2-00install.html
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From edd @end|ng |rom deb|@n@org  Tue Nov 12 17:47:28 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 12 Nov 2024 10:47:28 -0600
+Subject: [R-pkg-devel] CRAN build error on Windows
+In-Reply-To: <AS8PR10MB466318BEE8305A6903DBD580A7592@AS8PR10MB4663.EURPRD10.PROD.OUTLOOK.COM>
+References: <AS8PR10MB466318BEE8305A6903DBD580A7592@AS8PR10MB4663.EURPRD10.PROD.OUTLOOK.COM>
+Message-ID: <26419.34464.99541.550806@rob.eddelbuettel.com>
+
+
+On 12 November 2024 at 12:40, Pepijn de Vries wrote:
+| "Cannot create temporary file in D:\temp\2024_11_12_ 1_50_00_12637\: No such file or directory"
+
+Based on your quote and the log [1] it looks like you have a space in the
+directory name. Windows can accommodate these but you must then quote them
+prperly. A more defensive mechanism is to not have spaces there in the first
+so may call `sub()` on the path replacing ' ' with '_'.
+ 
+Dirk
+
+[1] https://www.r-project.org/nosvn/R.check/r-devel-windows-x86_64/ProTrackR2-00install.html
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From vo|ody@ @end|ng |rom m|nd@pr|ng@com  Tue Nov 12 18:15:03 2024
+From: vo|ody@ @end|ng |rom m|nd@pr|ng@com (Vladimir Dergachev)
+Date: Tue, 12 Nov 2024 12:15:03 -0500 (EST)
+Subject: [R-pkg-devel] 
+ New package with C++ code causes R abort in RStudio,
+ not in R console.
+In-Reply-To: <AM0PR09MB3843B5A6489B9D868B68F8C498592@AM0PR09MB3843.eurprd09.prod.outlook.com>
+References: <AM0PR09MB3843B5A6489B9D868B68F8C498592@AM0PR09MB3843.eurprd09.prod.outlook.com>
+Message-ID: <alpine.DEB.2.22.394.2411121206480.3374@iridium>
+
+
+Hi Luc,
+
+   The standard tools for writing parsers are "flex" and "bison" - they 
+generate code automatically and so can save you a lot of effort. For 
+language with simple syntax you can get away with just using "flex".
+
+   Here are some examples:
+
+Flex:
+
+https://westes.github.io/flex/manual/Simple-Examples.html#Simple-Examples
+
+Bison:
+
+https://www.gnu.org/software/bison/manual/bison.html#Infix-Calc
+
+best
+
+Vladimir Dergachev
+
+On Tue, 12 Nov 2024, Luc De Wilde wrote:
+
+> Dear R package developers,
+>
+> I'm helping with the development of the lavaan package (see https://lavaan.ugent.be/) and currently writing a C++ version of the parser of the model syntax in lavaan. The package with C++ code is in  https://github.com/lucdw/lavaanC.?
+>
+> When testing with a bunch of models, there is one model that causes an abort of the R session in RStudio (on Windows), but in the R console or in a batch job it causes no errors. The model is the following :?
+> model <- '?
+> ?   F1 =~ "a b"*X1
+> ? ? F2 =~ a * X1 + 3*X2 # dat is hier een beetje commentaar
+> ? ? # efa block 2
+> ? ? efa("efa2")*f3 +
+> ? ? efa("efa2")*f4 =~ y1 + y2 + y3 + y1:y3
+> ? ? f4 := 3.14159 * F2
+> ? ? F1 ~ start(0.76)*F2 + a*F2
+> ? ? a == (b + f3)^2
+> ? ? b1 > exp(b2 + b3) '
+>
+> and the translation can be tested - after installing lavaanC - with?
+>
+> lavaanC::lav_parse_model_string_c(model)
+>
+> As mentioned, this causes an abort of the R session when executed in RStudio on Windows (10 or 11), but passes without problem in the R console or a batch job.
+>
+> Because many users are using RStudio I 'd like to tackle this problem, but don't know how to pinpoint the cause of the problem. I hope some of you have an idea how to handle this problem ...
+>
+> All the best,
+>
+>
+> Luc De Wilde
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+From m@@epu|ved@ @end|ng |rom m@||@utoronto@c@  Tue Nov 12 18:37:40 2024
+From: m@@epu|ved@ @end|ng |rom m@||@utoronto@c@ (Mauricio Vargas Sepulveda)
+Date: Tue, 12 Nov 2024 17:37:40 +0000
+Subject: [R-pkg-devel] 
+ Possible false negative for compiled C++ code in CRAN checks
+In-Reply-To: <YT2PPFFFCD700574402F067CF21834F38FCDD592@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+References: <YT2PPFFFCD7005701B25728913116FEEC8BDD5E2@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <20241111124840.55248fa6@Tarkus>
+ <YT2PPFFFCD70057CF5F7C2CA2439229E0B6DD592@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <YT2PPFFFCD700570537573F529D215EC62ADD592@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <20241112135634.44ceb4a9@arachnoid>
+ <YT2PPFFFCD700574402F067CF21834F38FCDD592@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+Message-ID: <QB1PPF4A6194682D335931D60BE683F6DB3DD592@QB1PPF4A6194682.CANPRD01.PROD.OUTLOOK.COM>
+
+Dear R Developers,
+
+I hope you are doing well.
+
+I re-sent my package and I still see:
+
+  1.
+https://win-builder.r-project.org/incoming_pretest/redatam_2.0.3_20241112_165458/specialChecks/clang-san/outputs.txt
+  2.
+https://win-builder.r-project.org/incoming_pretest/redatam_2.0.3_20241112_165458/specialChecks/gcc-san/outputs.txt
+
+As it was discussed in:
+
+1. "Possible false negative for compiled C++ code in CRAN checks" (this R developers mailing list)
+2. "AddressSanitizer Error (alloc-dealloc-mismatch, operator new vs free) in R Package with C++ Code Using libc++ and CLANG-ASAN/UBSAN" (Stackoverflow, https://stackoverflow.com/questions/79171799/addresssanitizer-error-alloc-dealloc-mismatch-operator-new-vs-free-in-r-packa?noredirect=1#comment139621299_79171799)
+3. "clang-asan: use clang 19 as CRAN does" (GitHub, https://github.com/r-hub/containers/pull/79#issuecomment-2470390769)
+
+The package was tested with Clang 19 on Fedora 36 and Ubuntu 22, and as S.O. reads "it is likely a false positive in the container used by R-Hub as discussed in this [#598] issue at its repo but not a false positive but an actual error as shown in the setup at CRAN (different container)."
+
+The R-Hub container was fixed with a pull request I sent, and now it passes the checks. The CRAN errors were addressed as mentioned in the mailing list.
+
+I am also using "-Wall -O0 -pedantic" and "-UDEBUG -g" to check locally, and I am also using all the available R-Hub images (27 different configurations, as in https://github.com/pachadotdev/open-redatam/actions/runs/11801021816)
+
+I would really appreciate some guidance here before re-submitting.
+
+Best wishes,
+
+
+????
+
+Mauricio "Pach??" Vargas Sep??lveda
+
+PhD Student, Political Science
+University of Toronto
+
+
+
+________________________________
+From: Mauricio Vargas Sepulveda <m.sepulveda at mail.utoronto.ca>
+Sent: November 12, 2024 11:01 AM
+To: Ivan Krylov <ikrylov at disroot.org>
+Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Possible false negative for compiled C++ code in CRAN checks
+
+Dear Prof. Dr. Kryov,
+
+Thanks a lot.
+
+Apologies if the email has an odd format, I have a modified Outlook UI that makes everything "curious".
+
+After taking each of the suggestions, now I get this with Clang-ASAN on R-Hub:
+
+> 0 errors | 0 warnings | 2 note
+> Package was archived on CRAN
+> CRAN repository db overrides: X-CRAN-Comment: Archived on 2024-11-06 for repeated policy violation. Repeatedy spamming a team member's personal email address in HTML.
+> checking compilation flags used ... NOTE Compilation used the following non-portable flag(s): ??-Wp,-D_FORTIFY_SOURCE=3??
+
+This is great. Thanks a lot. I would like to add you to AUTHORS.md or as "ctb" to list your contribution. Hopefully it can be re-accepted.
+
+The first note was because I was asking about this same issue when CRAN notified me. Now I make sure to use non-HTML email when sending R-related emails.
+
+So far, this is the only useful communication I received about this. On Stack Overflow I only got "-1".
+
+I added the changes here: https://github.com/pachadotdev/open-redatam/commit/d8955195d4e13fd7794de56d24b4238b7a7ec26f
+
+Best wishes,
+
+????
+Mauricio "Pach??" Vargas Sep??lveda
+PhD Student, Political Science
+University of Toronto
+
+
+________________________________________
+From: Ivan Krylov <ikrylov at disroot.org>
+Sent: November 12, 2024 5:56 AM
+To: Mauricio Vargas Sepulveda <m.sepulveda at mail.utoronto.ca>
+Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Possible false negative for compiled C++ code in CRAN checks
+
+?? Tue, 12 Nov 2024 04:02:17 +0000
+Mauricio Vargas Sepulveda <m.sepulveda at mail.utoronto.ca> ??????:
+
+> For v2.0.3 I implemented a full refactor, where I simplified the code
+> considerably while trying to solve what looks to be a false positive.
+>
+> Now I implemented a "patch" based on the suggestion:
+
+I see the change on GitHub [1], made back on October 22nd, but I am not
+seeing these checks in your latest submission to CRAN [2] from November
+7th. Before you have implemented [1], have you been able to reproduce
+the errors that your package received on CRAN, that is, the
+container-overflow and the null object pointers?
+
+I've just noticed that FuzzyVariableParser::ParseAllVariables is using
+std::thread::hardware_concurrency(). CRAN uses a shared computer with
+many cores to test many packages at the same time, so the code most
+likely needs to limit itself to two threads during tests and examples
+[3].
+
+>    SUMMARY: AddressSanitizer: alloc-dealloc-mismatch
+> (/opt/R/devel-asan/lib/R/bin/exec/R+0xc6306) (BuildId:
+> 178e357df79b1589a38c1949da5e5f022d4bb535) in free
+
+This is an error you're getting when testing with an R-hub image. R-hub
+is not CRAN. You've performed good investigative work to reduce the
+issue you're seeing on R-hub for the StackOverflow question [4], but it
+looks like this particular problem is already reported to R-hub
+developers [5] and it's not what got your latest CRAN submission
+archived.
+
+When your latest submission, redatam_2.0.3.tar.gz, was archived, you
+should have received an e-mail from CRAN. Was it about the package
+failing automatic checks? Were there any other comments? Did the e-mail
+highlight any issues in particular?
+
+I do see the problem in [6], but it's hard to diagnose by itself. I was
+able to reproduce it (but only after compiling everything with
+-shared-san and providing the necessary LD_LIBRARY_PATH, otherwise
+packages using C++ failed to load; I also had to manually set
+UBSAN_OPTIONS=print_stacktrace=1 to find out where the overflow
+originates):
+
+> read_redatam(paste(dout, "cg15.dic", sep = "/"))
+Opening dictionary file...
+/usr/bin/../lib/gcc/x86_64-linux-gnu/14/../../../../include/c++/14/bits/basic_string.h:1272:9: runtime error: addition of unsigned offset to 0x7f38f12bcc30 overflowed to 0x7f38f12bcc2f
+    #0 0x7f38e859a15f in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::operator[](unsigned long) /usr/bin/../lib/gcc/x86_64-linux-gnu/14/../../../../include/c++/14/bits/basic_string.h:1272:9
+    #1 0x7f38e859a15f in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::back() /usr/bin/../lib/gcc/x86_64-linux-gnu/14/../../../../include/c++/14/bits/basic_string.h:1353:9
+    #2 0x7f38e859a15f in RedatamLib::ListExporter::ListExporter(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>> const&) /root/redatam.Rcheck/00_pkg_src/redatam/src/redatamlib/exporters/RListExporter.cpp:16:21
+    #3 0x7f38e85a7d60 in RedatamLib::RedatamDatabase::ExportRLists() const /root/redatam.Rcheck/00_pkg_src/redatam/src/redatamlib/entities/RedatamDatabase.cpp:23:16
+    #4 0x7f38e85b2224 in export_redatam_to_list_(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>) /root/redatam.Rcheck/00_pkg_src/redatam/src/main.cpp:13:15
+    #5 0x7f38e85b3068 in _redatam_export_redatam_to_list_ /root/redatam.Rcheck/00_pkg_src/redatam/src/cpp11.cpp:12:27
+    #6 0x55b5da67bf6a in R_doDotCall /root/R/src/main/../../../R-svn/src/main/dotcode.c:754:11
+
+The corresponding lines of the source code are:
+
+ListExporter::ListExporter(const std::string &outputDirectory)
+    : m_path(outputDirectory) {
+  if ('/' != m_path.back()) { // <-- here
+    m_path.append("/");
+  }
+}
+
+Looks like the code is calling .back() on an empty string. This also
+needs to be prevented somehow.
+
+To summarise, I recommend to do the following for the next submission:
+
+ - make sure the fix for the UBSan issues from [7] is included and note
+   it in the submission comments
+ - avoid using more than two threads during R CMD check
+ - fix the empty string issue from [6] and note it in the submission
+   comments
+ - fix any other issues noted in the CRAN correspondence and note it in
+   the submission comments
+ - do not mention the alloc-free-mismatch problem in the submission
+   comments
+
+Good luck! I hope this helps and there won't be any more issues hiding
+in the code.
+
+--
+Best regards,
+Ivan
+
+[1]
+https://can01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fgithub.com%2Fpachadotdev%2Fopen-redatam%2Fcommit%2F5399332f26fde8029cc7f78e0f889dfd983504c2&data=05%7C02%7Cm.sepulveda%40mail.utoronto.ca%7C1e1a8fc469b049d82c1508dd0308b0d1%7C78aac2262f034b4d9037b46d56c55210%7C0%7C0%7C638670058049707683%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=Y9GdK8O0MMGX%2FBjLqpU7da7VMGJXfeYv3C7v4PHvN%2FI%3D&reserved=0<https://github.com/pachadotdev/open-redatam/commit/5399332f26fde8029cc7f78e0f889dfd983504c2>
+
+[2]
+https://can01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fcran.r-project.org%2Fincoming%2Farchive%2Fredatam_2.0.3.tar.gz&data=05%7C02%7Cm.sepulveda%40mail.utoronto.ca%7C1e1a8fc469b049d82c1508dd0308b0d1%7C78aac2262f034b4d9037b46d56c55210%7C0%7C0%7C638670058049727294%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=kBArgyzK12m3U%2F3f2U%2BIDweyYyznZQEFhjXZ9by4WRA%3D&reserved=0<https://cran.r-project.org/incoming/archive/redatam_2.0.3.tar.gz>
+
+[3]
+https://can01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fcontributor.r-project.org%2Fcran-cookbook%2Fcode_issues.html%23using-more-than-2-cores&data=05%7C02%7Cm.sepulveda%40mail.utoronto.ca%7C1e1a8fc469b049d82c1508dd0308b0d1%7C78aac2262f034b4d9037b46d56c55210%7C0%7C0%7C638670058049737222%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=grg1UU%2FKj6BhySwAV9aLn%2BqzN78l8BuQTDy71%2BOCGmY%3D&reserved=0<https://contributor.r-project.org/cran-cookbook/code_issues.html#using-more-than-2-cores>
+
+[4]
+https://can01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstackoverflow.com%2Fq%2F79171799&data=05%7C02%7Cm.sepulveda%40mail.utoronto.ca%7C1e1a8fc469b049d82c1508dd0308b0d1%7C78aac2262f034b4d9037b46d56c55210%7C0%7C0%7C638670058049747065%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=wC3%2BnFVKhJuppgiJlX6OMZyKRcZnCRIz%2BftqrRPBztc%3D&reserved=0<https://stackoverflow.com/q/79171799>
+
+[5]
+https://can01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fgithub.com%2Fr-hub%2Frhub%2Fissues%2F598&data=05%7C02%7Cm.sepulveda%40mail.utoronto.ca%7C1e1a8fc469b049d82c1508dd0308b0d1%7C78aac2262f034b4d9037b46d56c55210%7C0%7C0%7C638670058049756791%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=%2FVDNBLbGM9%2ByHGlpgXRBuWWhviPq%2FHdGxCYyXCs6ys0%3D&reserved=0<https://github.com/r-hub/rhub/issues/598>
+There's no actual alloc-free-mismatch, it's a false positive due to the
+way libc++ (correctly) uses the delete operator:
+https://can01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fgithub.com%2Fllvm%2Fllvm-project%2Fissues%2F59432&data=05%7C02%7Cm.sepulveda%40mail.utoronto.ca%7C1e1a8fc469b049d82c1508dd0308b0d1%7C78aac2262f034b4d9037b46d56c55210%7C0%7C0%7C638670058049766535%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=8RXeYSqX09BjLczvg5qO%2FP7joiYeDahKMCB83e4x8YQ%3D&reserved=0<https://github.com/llvm/llvm-project/issues/59432>
+
+[6]
+https://can01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fwin-builder.r-project.org%2Fincoming_pretest%2Fredatam_2.0.3_20241107_154750%2FspecialChecks%2Fclang-san%2Fsummary.txt&data=05%7C02%7Cm.sepulveda%40mail.utoronto.ca%7C1e1a8fc469b049d82c1508dd0308b0d1%7C78aac2262f034b4d9037b46d56c55210%7C0%7C0%7C638670058049776187%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=U%2FPeu7qjoLu%2BGjN3sx%2FZ43%2BS5waMgMfV26FI9R40%2BvM%3D&reserved=0<https://win-builder.r-project.org/incoming_pretest/redatam_2.0.3_20241107_154750/specialChecks/clang-san/summary.txt>
+
+[7]
+https://can01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fwww.stats.ox.ac.uk%2Fpub%2Fbdr%2Fmemtests%2Fclang-ASAN%2Fredatam%2F00check.log&data=05%7C02%7Cm.sepulveda%40mail.utoronto.ca%7C1e1a8fc469b049d82c1508dd0308b0d1%7C78aac2262f034b4d9037b46d56c55210%7C0%7C0%7C638670058049785895%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=HGE%2BuM83P0TBqCHrBEiX2twRbdKe3vHPbez8%2B5tI9CY%3D&reserved=0<https://www.stats.ox.ac.uk/pub/bdr/memtests/clang-ASAN/redatam/00check.log>
+https://can01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fwww.stats.ox.ac.uk%2Fpub%2Fbdr%2Fmemtests%2Fgcc-UBSAN%2Fredatam%2F00check.log&data=05%7C02%7Cm.sepulveda%40mail.utoronto.ca%7C1e1a8fc469b049d82c1508dd0308b0d1%7C78aac2262f034b4d9037b46d56c55210%7C0%7C0%7C638670058049795583%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=OaIvDVSUXmxIHEwMBpLOlgNkpgsNjXlBwJsYWXcBaho%3D&reserved=0<https://www.stats.ox.ac.uk/pub/bdr/memtests/gcc-UBSAN/redatam/00check.log>
+
+	[[alternative HTML version deleted]]
+
+
+From Luc@DeW||de @end|ng |rom UGent@be  Tue Nov 12 18:49:14 2024
+From: Luc@DeW||de @end|ng |rom UGent@be (Luc De Wilde)
+Date: Tue, 12 Nov 2024 17:49:14 +0000
+Subject: [R-pkg-devel] 
+ New package with C++ code causes R abort in RStudio,
+ not in R console.
+In-Reply-To: <alpine.DEB.2.22.394.2411121206480.3374@iridium>
+References: <AM0PR09MB3843B5A6489B9D868B68F8C498592@AM0PR09MB3843.eurprd09.prod.outlook.com>
+ <alpine.DEB.2.22.394.2411121206480.3374@iridium>
+Message-ID: <AM0PR09MB384359A64AB3DBE1812B9E8B98592@AM0PR09MB3843.eurprd09.prod.outlook.com>
+
+Dear Vladimir,
+
+thank you for your reply.
+
+The model syntax is not simple though and the parser needs to look at the meaning in SEM terms to accept or reject certain things.
+
+Moreover, this is only a first step and later other calculations need to be done in C++, which is why I find it important to know exactly why the code works in R console but not in RStudio, and of course what can be done to make it work in RStudio also.
+
+Kind regards,
+
+
+Luc De Wilde
+
+________________________________________
+Van: Vladimir Dergachev <volodya at mindspring.com>
+Verzonden: dinsdag 12 november 2024 18:15
+Aan: Luc De Wilde <Luc.DeWilde at UGent.be>
+CC: r-package-devel at r-project.org <r-package-devel at r-project.org>; Yves Rosseel <Yves.Rosseel at UGent.be>
+Onderwerp: Re: [R-pkg-devel] New package with C++ code causes R abort in RStudio, not in R console.
+
+
+Hi Luc,
+
+   The standard tools for writing parsers are "flex" and "bison" - they
+generate code automatically and so can save you a lot of effort. For
+language with simple syntax you can get away with just using "flex".
+
+   Here are some examples:
+
+Flex:
+
+https://westes.github.io/flex/manual/Simple-Examples.html#Simple-Examples
+
+Bison:
+
+https://www.gnu.org/software/bison/manual/bison.html#Infix-Calc
+
+best
+
+Vladimir Dergachev
+
+On Tue, 12 Nov 2024, Luc De Wilde wrote:
+
+> Dear R package developers,
+>
+> I'm helping with the development of the lavaan package (see https://lavaan.ugent.be/) and currently writing a C++ version of the parser of the model syntax in lavaan. The package with C++ code is in  https://github.com/lucdw/lavaanC.
+>
+> When testing with a bunch of models, there is one model that causes an abort of the R session in RStudio (on Windows), but in the R console or in a batch job it causes no errors. The model is the following :
+> model <- '
+>     F1 =~ "a b"*X1
+>     F2 =~ a * X1 + 3*X2 # dat is hier een beetje commentaar
+>     # efa block 2
+>     efa("efa2")*f3 +
+>     efa("efa2")*f4 =~ y1 + y2 + y3 + y1:y3
+>     f4 := 3.14159 * F2
+>     F1 ~ start(0.76)*F2 + a*F2
+>     a == (b + f3)^2
+>     b1 > exp(b2 + b3) '
+>
+> and the translation can be tested - after installing lavaanC - with
+>
+> lavaanC::lav_parse_model_string_c(model)
+>
+> As mentioned, this causes an abort of the R session when executed in RStudio on Windows (10 or 11), but passes without problem in the R console or a batch job.
+>
+> Because many users are using RStudio I 'd like to tackle this problem, but don't know how to pinpoint the cause of the problem. I hope some of you have an idea how to handle this problem ...
+>
+> All the best,
+>
+>
+> Luc De Wilde
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+From |kry|ov @end|ng |rom d|@root@org  Tue Nov 12 19:44:03 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 12 Nov 2024 21:44:03 +0300
+Subject: [R-pkg-devel] 
+ New package with C++ code causes R abort in RStudio,
+ not in R console.
+In-Reply-To: <AM0PR09MB3843B5A6489B9D868B68F8C498592@AM0PR09MB3843.eurprd09.prod.outlook.com>
+References: <AM0PR09MB3843B5A6489B9D868B68F8C498592@AM0PR09MB3843.eurprd09.prod.outlook.com>
+Message-ID: <20241112214403.1ab126b0@Tarkus>
+
+? Tue, 12 Nov 2024 14:06:53 +0000
+Luc De Wilde <Luc.DeWilde at UGent.be> ?????:
+
+> The package with C++ code is in  https://github.com/lucdw/lavaanC.?
+> 
+> When testing with a bunch of models, there is one model that causes
+> an abort of the R session in RStudio (on Windows), but in the R
+> console or in a batch job it causes no errors.
+
+This is a low-confidence guess, but there's a stray src/lavaanC.dll in
+the repository. If you install the package straight from the source
+directory, you may pick up the *.dll without recompiling it, which may
+be incompatible with the version of R running inside RStudio.
+
+If this does reproduce on a clean installation, the most informative
+way forward would be to attach a debugger to the RStudio's R process
+before it crashes.
+
+-- 
+Best regards,
+Ivan
+
+
+From edd @end|ng |rom deb|@n@org  Tue Nov 12 20:25:11 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 12 Nov 2024 13:25:11 -0600
+Subject: [R-pkg-devel] CRAN build error on Windows
+In-Reply-To: <26419.34464.99541.550806@rob.eddelbuettel.com>
+References: <AS8PR10MB466318BEE8305A6903DBD580A7592@AS8PR10MB4663.EURPRD10.PROD.OUTLOOK.COM>
+ <26419.34464.99541.550806@rob.eddelbuettel.com>
+Message-ID: <26419.43927.403453.796237@rob.eddelbuettel.com>
+
+
+On 12 November 2024 at 10:47, Dirk Eddelbuettel wrote:
+| 
+| On 12 November 2024 at 12:40, Pepijn de Vries wrote:
+| | "Cannot create temporary file in D:\temp\2024_11_12_ 1_50_00_12637\: No such file or directory"
+| 
+| Based on your quote and the log [1] it looks like you have a space in the
+| directory name. Windows can accommodate these but you must then quote them
+| prperly. A more defensive mechanism is to not have spaces there in the first
+| so may call `sub()` on the path replacing ' ' with '_'.
+
+Just saw the same error in a package on mine, updated yesterday. [1]
+
+That makes it more likely that this is a (hopefully transient) issue on the
+Windows builder.  Uwe reads this list and may chime in.
+
+Dirk
+
+[1] https://www.r-project.org/nosvn/R.check/r-devel-windows-x86_64/RcppSpdlog-00install.html
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From |kry|ov @end|ng |rom d|@root@org  Tue Nov 12 21:37:10 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 12 Nov 2024 23:37:10 +0300
+Subject: [R-pkg-devel] 
+ Possible false negative for compiled C++ code in CRAN checks
+In-Reply-To: <QB1PPF4A6194682D335931D60BE683F6DB3DD592@QB1PPF4A6194682.CANPRD01.PROD.OUTLOOK.COM>
+References: <YT2PPFFFCD7005701B25728913116FEEC8BDD5E2@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <20241111124840.55248fa6@Tarkus>
+ <YT2PPFFFCD70057CF5F7C2CA2439229E0B6DD592@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <YT2PPFFFCD700570537573F529D215EC62ADD592@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <20241112135634.44ceb4a9@arachnoid>
+ <YT2PPFFFCD700574402F067CF21834F38FCDD592@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <QB1PPF4A6194682D335931D60BE683F6DB3DD592@QB1PPF4A6194682.CANPRD01.PROD.OUTLOOK.COM>
+Message-ID: <20241112233710.3b18c120@Tarkus>
+
+? Tue, 12 Nov 2024 17:37:40 +0000
+Mauricio Vargas Sepulveda <m.sepulveda at mail.utoronto.ca> ?????:
+
+> I re-sent my package and I still see:
+> 
+>   1.
+> https://win-builder.r-project.org/incoming_pretest/redatam_2.0.3_20241112_165458/specialChecks/clang-san/outputs.txt
+
+I understand this doesn't feel like progress, but this time clang-san
+is giving your package a clean bill of health. There are no issues to
+fix here.
+
+>   2.
+> https://win-builder.r-project.org/incoming_pretest/redatam_2.0.3_20241112_165458/specialChecks/gcc-san/outputs.txt
+
+This one, unfortunately, does demonstrate a new error in the package.
+The problem with software testing is that it can only demonstrate the
+presence of bugs, not their absence. The new error is different from
+all the errors we've seen previously. The code at
+redatamlib/readers/FuzzyVariableParser.cpp:33:38 performs an integer
+division by zero, which crashes the process:
+
+  size_t chunkSize = entities.size() / numThreads;
+
+It's not in the outputs.txt, but in the summary.txt:
+https://win-builder.r-project.org/incoming_pretest/redatam_2.0.3_20241112_165458/specialChecks/gcc-san/summary.txt
+
+https://en.cppreference.com/w/cpp/thread/thread/hardware_concurrency
+says that std::thread::hardware_concurrency() could plausibly return 0.
+Or is this due to empty entities vector?
+
+> I am also using "-Wall -O0 -pedantic" and "-UDEBUG -g" to check
+> locally, and I am also using all the available R-Hub images (27
+> different configurations, as in
+> https://github.com/pachadotdev/open-redatam/actions/runs/11801021816)
+
+Unfortunately, none of these use gcc with UBSanitizer enabled. I think
+that the rocker/r-devel-san container [*] image comes closest to the
+configuration that fails your package during the CRAN checks. By
+running the following commands, I can reproduce the crash:
+
+podman run -it docker.io/rocker/r-devel-san Rdevel
+f <- 'https://cran.r-project.org/incoming/archive/redatam_2.0.3.tar.gz'
+download.file(f, basename(f))
+install.packages(c('data.table','janitor', 'stringi', 'knitr',
+'rmarkdown','testthat'))
+tools::Rcmd('check redatam_2.0.3.tar.gz')
+
+By installing gdb inside the container, running Rdevel -d gdb and
+setting a breakpoint on __ubsan_on_report, I can catch the moment
+before the crash:
+
+(gdb) frame 5
+#5  0x00007f95bf293a16 in
+RedatamLib::FuzzyVariableParser::ParseAllVariables
+(this=this at entry=0x7fff80974bd0, entities=std::vector of length 0,
+capacity 0) at redatamlib/readers/FuzzyVariableParser.cpp:33
+33       size_t chunkSize = entities.size() / numThreads;
+(gdb) p entities.size()
+$1 = 0
+(gdb) p numThreads
+$2 = 0
+(gdb) p maxThreads 
+$3 = 4
+
+The entities vector is empty, and the 0/0 integer division invokes
+undefined behaviour.
+
+Would you find it acceptable to also test your package using the
+docker.io/rocker/r-devel-san container before the next submission?
+
+-- 
+Best regards,
+Ivan
+
+[*] https://rocker-project.org/images/base/r-devel.html
+
+
+From Luc@DeW||de @end|ng |rom UGent@be  Tue Nov 12 22:09:54 2024
+From: Luc@DeW||de @end|ng |rom UGent@be (Luc De Wilde)
+Date: Tue, 12 Nov 2024 21:09:54 +0000
+Subject: [R-pkg-devel] 
+ New package with C++ code causes R abort in RStudio,
+ not in R console.
+In-Reply-To: <20241112214403.1ab126b0@Tarkus>
+References: <AM0PR09MB3843B5A6489B9D868B68F8C498592@AM0PR09MB3843.eurprd09.prod.outlook.com>
+ <20241112214403.1ab126b0@Tarkus>
+Message-ID: <AM0PR09MB384306BE44733AECE667B8CE98592@AM0PR09MB3843.eurprd09.prod.outlook.com>
+
+Dear Ivan,
+
+Thank you for your reply!
+The error occurs on my local machine(s), where the dll is always reproduced by the "install package".
+I have attached a debugger (from Visual Studio) to the R process, which gives me the message "A breakpoint instruction (__debugbreak() statement or similar call) was executed in rsession-utf8.exe.
+
+When I go to the dll module in the Call Stack I get the message "Binary was not built with debug information". I do not know how to ask R CMD INSTALL to produce info which can be used by a debugger, perhaps you can direct me to the correct information to do so (in Windows)?
+
+Luc
+
+________________________________
+Van: Ivan Krylov <ikrylov at disroot.org>
+Verzonden: dinsdag 12 november 2024 19:44
+Aan: Luc De Wilde <Luc.DeWilde at UGent.be>
+CC: r-package-devel at r-project.org <r-package-devel at r-project.org>; Yves Rosseel <Yves.Rosseel at UGent.be>
+Onderwerp: Re: [R-pkg-devel] New package with C++ code causes R abort in RStudio, not in R console.
+
+? Tue, 12 Nov 2024 14:06:53 +0000
+Luc De Wilde <Luc.DeWilde at UGent.be> ?????:
+
+> The package with C++ code is in  https://eur03.safelinks.protection.outlook.com/?url=https%3A%2F%2Fgithub.com%2Flucdw%2FlavaanC&data=05%7C02%7CLuc.DeWilde%40UGent.be%7C4b0d32b0971e4072fad808dd0349ffd7%7Cd7811cdeecef496c8f91a1786241b99c%7C1%7C0%7C638670338539751490%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C40000%7C%7C%7C&sdata=2IppWyDOPRyhVGDhlARjPGN9XgZcLfRe1ANp%2FSYHHZI%3D&reserved=0<https://github.com/lucdw/lavaanC>.
+>
+> When testing with a bunch of models, there is one model that causes
+> an abort of the R session in RStudio (on Windows), but in the R
+> console or in a batch job it causes no errors.
+
+This is a low-confidence guess, but there's a stray src/lavaanC.dll in
+the repository. If you install the package straight from the source
+directory, you may pick up the *.dll without recompiling it, which may
+be incompatible with the version of R running inside RStudio.
+
+If this does reproduce on a clean installation, the most informative
+way forward would be to attach a debugger to the RStudio's R process
+before it crashes.
+
+--
+Best regards,
+Ivan
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Tue Nov 12 22:33:09 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Wed, 13 Nov 2024 00:33:09 +0300
+Subject: [R-pkg-devel] 
+ New package with C++ code causes R abort in RStudio,
+ not in R console.
+In-Reply-To: <AM0PR09MB384306BE44733AECE667B8CE98592@AM0PR09MB3843.eurprd09.prod.outlook.com>
+References: <AM0PR09MB3843B5A6489B9D868B68F8C498592@AM0PR09MB3843.eurprd09.prod.outlook.com>
+ <20241112214403.1ab126b0@Tarkus>
+ <AM0PR09MB384306BE44733AECE667B8CE98592@AM0PR09MB3843.eurprd09.prod.outlook.com>
+Message-ID: <20241113003309.337d826a@Tarkus>
+
+? Tue, 12 Nov 2024 21:09:54 +0000
+Luc De Wilde <Luc.DeWilde at UGent.be> ?????:
+
+> I have attached a debugger (from Visual Studio) to the R process,
+> which gives me the message "A breakpoint instruction (__debugbreak()
+> statement or similar call) was executed in rsession-utf8.exe.
+> 
+> When I go to the dll module in the Call Stack I get the message
+> "Binary was not built with debug information".
+
+So the crash does happen inside lavaanC.dll, did I get this right?
+
+If you set the environment variable DEBUG to a non-empty string before
+compiling the package, the resulting *.dll will have debug information
+in the DWARF format (this is set in file.path(R.home('etc'), 'x64',
+'Makeconf')). Visual Studio might not work with it, so you could
+install gdb into Rtools using pacman, or you could try to give the
+executable to Dr. Mingw <https://github.com/jrfonseca/drmingw>.
+
+-- 
+Best regards,
+Ivan
+
+
+From vo|ody@ @end|ng |rom m|nd@pr|ng@com  Tue Nov 12 23:50:39 2024
+From: vo|ody@ @end|ng |rom m|nd@pr|ng@com (Vladimir Dergachev)
+Date: Tue, 12 Nov 2024 17:50:39 -0500 (EST)
+Subject: [R-pkg-devel] 
+ New package with C++ code causes R abort in RStudio,
+ not in R console.
+In-Reply-To: <AM0PR09MB384359A64AB3DBE1812B9E8B98592@AM0PR09MB3843.eurprd09.prod.outlook.com>
+References: <AM0PR09MB3843B5A6489B9D868B68F8C498592@AM0PR09MB3843.eurprd09.prod.outlook.com>
+ <alpine.DEB.2.22.394.2411121206480.3374@iridium>
+ <AM0PR09MB384359A64AB3DBE1812B9E8B98592@AM0PR09MB3843.eurprd09.prod.outlook.com>
+Message-ID: <alpine.DEB.2.22.394.2411121746070.3374@iridium>
+
+
+Hi Luc,
+
+On Tue, 12 Nov 2024, Luc De Wilde wrote:
+
+> Dear Vladimir,
+>
+> thank you for your reply.
+>
+> The model syntax is not simple though and the parser needs to look at the meaning in SEM terms to accept or reject certain things.
+
+What do you mean by "SEM terms" ? I have not seen a situation yet that a 
+grammar could not be handled by bison, it does have mechanism to deal with 
+exceptions to pure LR syntax.
+
+>
+> Moreover, this is only a first step and later other calculations need to 
+> be done in C++, which is why I find it important to know exactly why the 
+> code works in R console but not in RStudio, and of course what can be 
+> done to make it work in RStudio also.
+
+My thought was that perhaps some sort of memory issues occurs because of 
+the hand-written parser.
+
+For example, one possibility is that stack sizes in R and Rstudio could be 
+different. So if you are parsing something recursively it might work in 
+one and not another.
+
+The parsers generated by flex and bison are designed to handle arbitrary 
+length inputs.
+
+best
+
+Vladimir Dergachev
+
+>
+> Kind regards,
+>
+>
+> Luc De Wilde
+>
+> ________________________________________
+> Van: Vladimir Dergachev <volodya at mindspring.com>
+> Verzonden: dinsdag 12 november 2024 18:15
+> Aan: Luc De Wilde <Luc.DeWilde at UGent.be>
+> CC: r-package-devel at r-project.org <r-package-devel at r-project.org>; Yves Rosseel <Yves.Rosseel at UGent.be>
+> Onderwerp: Re: [R-pkg-devel] New package with C++ code causes R abort in RStudio, not in R console.
+>
+>
+> Hi Luc,
+>
+>   The standard tools for writing parsers are "flex" and "bison" - they
+> generate code automatically and so can save you a lot of effort. For
+> language with simple syntax you can get away with just using "flex".
+>
+>   Here are some examples:
+>
+> Flex:
+>
+> https://westes.github.io/flex/manual/Simple-Examples.html#Simple-Examples
+>
+> Bison:
+>
+> https://www.gnu.org/software/bison/manual/bison.html#Infix-Calc
+>
+> best
+>
+> Vladimir Dergachev
+>
+> On Tue, 12 Nov 2024, Luc De Wilde wrote:
+>
+>> Dear R package developers,
+>>
+>> I'm helping with the development of the lavaan package (see https://lavaan.ugent.be/) and currently writing a C++ version of the parser of the model syntax in lavaan. The package with C++ code is in  https://github.com/lucdw/lavaanC.
+>>
+>> When testing with a bunch of models, there is one model that causes an abort of the R session in RStudio (on Windows), but in the R console or in a batch job it causes no errors. The model is the following :
+>> model <- '
+>>     F1 =~ "a b"*X1
+>>     F2 =~ a * X1 + 3*X2 # dat is hier een beetje commentaar
+>>     # efa block 2
+>>     efa("efa2")*f3 +
+>>     efa("efa2")*f4 =~ y1 + y2 + y3 + y1:y3
+>>     f4 := 3.14159 * F2
+>>     F1 ~ start(0.76)*F2 + a*F2
+>>     a == (b + f3)^2
+>>     b1 > exp(b2 + b3) '
+>>
+>> and the translation can be tested - after installing lavaanC - with
+>>
+>> lavaanC::lav_parse_model_string_c(model)
+>>
+>> As mentioned, this causes an abort of the R session when executed in RStudio on Windows (10 or 11), but passes without problem in the R console or a batch job.
+>>
+>> Because many users are using RStudio I 'd like to tackle this problem, but don't know how to pinpoint the cause of the problem. I hope some of you have an idea how to handle this problem ...
+>>
+>> All the best,
+>>
+>>
+>> Luc De Wilde
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>
+
+
