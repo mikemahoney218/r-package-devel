@@ -6662,3 +6662,242 @@ Vladimir Dergachev
 >
 
 
+From Luc@DeW||de @end|ng |rom UGent@be  Wed Nov 13 09:28:01 2024
+From: Luc@DeW||de @end|ng |rom UGent@be (Luc De Wilde)
+Date: Wed, 13 Nov 2024 08:28:01 +0000
+Subject: [R-pkg-devel] 
+ New package with C++ code causes R abort in RStudio,
+ not in R console.
+In-Reply-To: <20241113003309.337d826a@Tarkus>
+References: <AM0PR09MB3843B5A6489B9D868B68F8C498592@AM0PR09MB3843.eurprd09.prod.outlook.com>
+ <20241112214403.1ab126b0@Tarkus>
+ <AM0PR09MB384306BE44733AECE667B8CE98592@AM0PR09MB3843.eurprd09.prod.outlook.com>
+ <20241113003309.337d826a@Tarkus>
+Message-ID: <AM0PR09MB3843F0DF1C7BA1A7B2E8E743985A2@AM0PR09MB3843.eurprd09.prod.outlook.com>
+
+Thanks to your instructions I have found the probable reason of the crash: char* items allocated with "new char[...]" were deleted with 'delete' and not with 'delete[]' in one of the destructors. I will recheck my code and retry all tests.
+
+For your information: Visual Studio debugger works with the debug info stored in the dll, it asks for the location of the source file (.cpp) and then shows the correct location of the problematic instruction.
+
+Thanks a lot!
+
+Luc
+________________________________
+Van: Ivan Krylov <ikrylov at disroot.org>
+Verzonden: dinsdag 12 november 2024 22:33
+Aan: Luc De Wilde <Luc.DeWilde at UGent.be>
+CC: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Onderwerp: Re: [R-pkg-devel] New package with C++ code causes R abort in RStudio, not in R console.
+
+? Tue, 12 Nov 2024 21:09:54 +0000
+Luc De Wilde <Luc.DeWilde at UGent.be> ?????:
+
+> I have attached a debugger (from Visual Studio) to the R process,
+> which gives me the message "A breakpoint instruction (__debugbreak()
+> statement or similar call) was executed in rsession-utf8.exe.
+>
+> When I go to the dll module in the Call Stack I get the message
+> "Binary was not built with debug information".
+
+So the crash does happen inside lavaanC.dll, did I get this right?
+
+If you set the environment variable DEBUG to a non-empty string before
+compiling the package, the resulting *.dll will have debug information
+in the DWARF format (this is set in file.path(R.home('etc'), 'x64',
+'Makeconf')). Visual Studio might not work with it, so you could
+install gdb into Rtools using pacman, or you could try to give the
+executable to Dr. Mingw <https://eur03.safelinks.protection.outlook.com/?url=https%3A%2F%2Fgithub.com%2Fjrfonseca%2Fdrmingw&data=05%7C02%7CLuc.DeWilde%40UGent.be%7C74c6b594e5414ac8486c08dd03619cae%7Cd7811cdeecef496c8f91a1786241b99c%7C1%7C0%7C638670439969607386%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=hiUfEIBkezT%2FoWd%2FC5ZJncKFkTNUZPmqiavOCLOzOUM%3D&reserved=0<https://github.com/jrfonseca/drmingw>>.
+
+--
+Best regards,
+Ivan
+
+	[[alternative HTML version deleted]]
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Wed Nov 13 09:57:05 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Wed, 13 Nov 2024 09:57:05 +0100
+Subject: [R-pkg-devel] CRAN build error on Windows
+In-Reply-To: <26419.43927.403453.796237@rob.eddelbuettel.com>
+References: <AS8PR10MB466318BEE8305A6903DBD580A7592@AS8PR10MB4663.EURPRD10.PROD.OUTLOOK.COM>
+ <26419.34464.99541.550806@rob.eddelbuettel.com>
+ <26419.43927.403453.796237@rob.eddelbuettel.com>
+Message-ID: <448fb713-bdcc-432a-947c-c32cdb112b80@statistik.tu-dortmund.de>
+
+
+
+On 12.11.2024 20:25, Dirk Eddelbuettel wrote:
+> 
+> On 12 November 2024 at 10:47, Dirk Eddelbuettel wrote:
+> |
+> | On 12 November 2024 at 12:40, Pepijn de Vries wrote:
+> | | "Cannot create temporary file in D:\temp\2024_11_12_ 1_50_00_12637\: No such file or directory"
+> |
+> | Based on your quote and the log [1] it looks like you have a space in the
+> | directory name. Windows can accommodate these but you must then quote them
+> | prperly. A more defensive mechanism is to not have spaces there in the first
+> | so may call `sub()` on the path replacing ' ' with '_'.
+> 
+> Just saw the same error in a package on mine, updated yesterday. [1]
+> 
+> That makes it more likely that this is a (hopefully transient) issue on the
+> Windows builder.  Uwe reads this list and may chime in.
+> 
+> Dirk
+> 
+> [1] https://www.r-project.org/nosvn/R.check/r-devel-windows-x86_64/RcppSpdlog-00install.html
+> 
+
+
+You are right, the temp dir got too big to handle and hence I have time 
+specific temp dirs now. WHat I did not anticipate is that although 
+Windows writes "01" for days, months, minutes, and seconds, it rather 
+prints " 1" for hours when asking for %DATE% and %TIME% in a batch file.
+Fixed in the meantime and check results should clear up soon.
+
+Best,
+Uwe
+
+From pep|jn@devr|e@ @end|ng |rom out|ook@com  Wed Nov 13 12:57:16 2024
+From: pep|jn@devr|e@ @end|ng |rom out|ook@com (Pepijn de Vries)
+Date: Wed, 13 Nov 2024 11:57:16 +0000
+Subject: [R-pkg-devel] CRAN build error on Windows
+In-Reply-To: <448fb713-bdcc-432a-947c-c32cdb112b80@statistik.tu-dortmund.de>
+References: <AS8PR10MB466318BEE8305A6903DBD580A7592@AS8PR10MB4663.EURPRD10.PROD.OUTLOOK.COM>
+ <26419.34464.99541.550806@rob.eddelbuettel.com>
+ <26419.43927.403453.796237@rob.eddelbuettel.com>
+ <448fb713-bdcc-432a-947c-c32cdb112b80@statistik.tu-dortmund.de>
+Message-ID: <AM8PR10MB4660F950E1B4587F06F45804A75A2@AM8PR10MB4660.EURPRD10.PROD.OUTLOOK.COM>
+
+> On 12.11.2024 20:25, Dirk Eddelbuettel wrote:
+> >
+> > On 12 November 2024 at 10:47, Dirk Eddelbuettel wrote:
+> > |
+> > | On 12 November 2024 at 12:40, Pepijn de Vries wrote:
+> > | | "Cannot create temporary file in D:\temp\2024_11_12_ 1_50_00_12637\: No such file or directory"
+> > |
+> > | Based on your quote and the log [1] it looks like you have a space in the
+> > | directory name. Windows can accommodate these but you must then quote them
+> > | prperly. A more defensive mechanism is to not have spaces there in the first
+> > | so may call `sub()` on the path replacing ' ' with '_'.
+> >
+> > Just saw the same error in a package on mine, updated yesterday. [1]
+> >
+> > That makes it more likely that this is a (hopefully transient) issue on the
+> > Windows builder.  Uwe reads this list and may chime in.
+> >
+> > Dirk
+> >
+> > [1] https://www.r-project.org/nosvn/R.check/r-devel-windows-x86_64/RcppSpdlog-00install.html
+> >
+>
+>
+> You are right, the temp dir got too big to handle and hence I have time
+> specific temp dirs now. WHat I did not anticipate is that although
+> Windows writes "01" for days, months, minutes, and seconds, it rather
+> prints " 1" for hours when asking for %DATE% and %TIME% in a batch file.
+> Fixed in the meantime and check results should clear up soon.
+>
+> Best,
+> Uwe
+
+Thanks for the quick responses and fixing this. Indeed, the package has now built without problems.
+
+Kind regards,
+
+Pepijn
+
+From Luc@DeW||de @end|ng |rom UGent@be  Wed Nov 13 16:47:47 2024
+From: Luc@DeW||de @end|ng |rom UGent@be (Luc De Wilde)
+Date: Wed, 13 Nov 2024 15:47:47 +0000
+Subject: [R-pkg-devel] 
+ New package with C++ code causes R abort in RStudio,
+ not in R console.
+In-Reply-To: <20241113003309.337d826a@Tarkus>
+References: <AM0PR09MB3843B5A6489B9D868B68F8C498592@AM0PR09MB3843.eurprd09.prod.outlook.com>
+ <20241112214403.1ab126b0@Tarkus>
+ <AM0PR09MB384306BE44733AECE667B8CE98592@AM0PR09MB3843.eurprd09.prod.outlook.com>
+ <20241113003309.337d826a@Tarkus>
+Message-ID: <AM0PR09MB3843634119CF54E3C6BED9CF985A2@AM0PR09MB3843.eurprd09.prod.outlook.com>
+
+Dear Ivan,
+
+
+Unfortunately the error did not go away, after the correction (delete[] where needed) still error free execution in R console but abort of the R process in Rstudio.
+
+The debugger of RStudio did not give any useful information anymore. I then installed Drmingw and attached the R process of Rstudio to it.
+When I then execute the tests everything happens error free ...
+... until I close the debugger: then RStudio says that there is a fatal error in the R process and aborts it.
+
+So of course I cannot find a cause this way!
+
+Maybe you have an idea how to deal with this?
+
+
+
+Luc
+
+________________________________
+Van: Ivan Krylov <ikrylov at disroot.org>
+Verzonden: dinsdag 12 november 2024 22:33
+Aan: Luc De Wilde <Luc.DeWilde at UGent.be>
+CC: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Onderwerp: Re: [R-pkg-devel] New package with C++ code causes R abort in RStudio, not in R console.
+
+? Tue, 12 Nov 2024 21:09:54 +0000
+Luc De Wilde <Luc.DeWilde at UGent.be> ?????:
+
+> I have attached a debugger (from Visual Studio) to the R process,
+> which gives me the message "A breakpoint instruction (__debugbreak()
+> statement or similar call) was executed in rsession-utf8.exe.
+>
+> When I go to the dll module in the Call Stack I get the message
+> "Binary was not built with debug information".
+
+So the crash does happen inside lavaanC.dll, did I get this right?
+
+If you set the environment variable DEBUG to a non-empty string before
+compiling the package, the resulting *.dll will have debug information
+in the DWARF format (this is set in file.path(R.home('etc'), 'x64',
+'Makeconf')). Visual Studio might not work with it, so you could
+install gdb into Rtools using pacman, or you could try to give the
+executable to Dr. Mingw <https://eur03.safelinks.protection.outlook.com/?url=https%3A%2F%2Fgithub.com%2Fjrfonseca%2Fdrmingw&data=05%7C02%7CLuc.DeWilde%40UGent.be%7C74c6b594e5414ac8486c08dd03619cae%7Cd7811cdeecef496c8f91a1786241b99c%7C1%7C0%7C638670439969607386%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=hiUfEIBkezT%2FoWd%2FC5ZJncKFkTNUZPmqiavOCLOzOUM%3D&reserved=0<https://github.com/jrfonseca/drmingw>>.
+
+--
+Best regards,
+Ivan
+
+	[[alternative HTML version deleted]]
+
+
+From pro|jcn@@h @end|ng |rom gm@||@com  Wed Nov 13 18:14:09 2024
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Wed, 13 Nov 2024 12:14:09 -0500
+Subject: [R-pkg-devel] Closing a display window from a program
+Message-ID: <d87c8648-0c41-406a-a4eb-88a08992b276@gmail.com>
+
+Hi,
+
+I'm trying to prepare a package to manage some diverse data. It is
+extremely convenient to display a PDF derived from the data so the user
+can verify information that the R script is going to process (even nicer
+if on a 2 monitor system). I've 2 issues:
+
+1) I can display the pdf either with file_show() from the fs package
+or browseURL(). Both leave the pdf displayed and return to the
+R "terminal". But when I finish processing at the end of the script,
+I want to have the display close. This seems to need (non-platform-neutral)
+use of a system() call to wmctrl, which is only on X-windows systems.
+Note that the display tools don't seem to return a handle that I can use to
+close the display window some other way. On my system both the tools
+for display loaded xreader (I'm on Linux Mint Wilma).
+
+2) the tools also don't seem to offer window size or placement, which
+   would be nice.
+
+Suggestions welcome.
+
+John Nash
+
+
