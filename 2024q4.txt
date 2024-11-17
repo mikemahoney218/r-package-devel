@@ -7473,3 +7473,283 @@ Shail Choksi
 	[[alternative HTML version deleted]]
 
 
+From |kry|ov @end|ng |rom d|@root@org  Fri Nov 15 08:42:01 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 15 Nov 2024 10:42:01 +0300
+Subject: [R-pkg-devel] Is this an issue with the package submission?
+In-Reply-To: <CAAFj5saKfA4rUUEmh8RmaYxUp+MMDK-GY4GHccsTjqQ4ca02Bw@mail.gmail.com>
+References: <CAAFj5saKfA4rUUEmh8RmaYxUp+MMDK-GY4GHccsTjqQ4ca02Bw@mail.gmail.com>
+Message-ID: <20241115104201.7ad0f1b0@Tarkus>
+
+? Thu, 14 Nov 2024 12:27:02 -0500
+Shail Choksi <choksishail at gmail.com> ?????:
+
+> The process.txt here:
+> https://win-builder.r-project.org/incoming_pretest/ToxicR_24.10.1.4_20241113_200016/specialChecks/clang-san/process.txt
+> 
+> gives an error. Is this a win-builder issue or a package issue? How
+> do I go about debugging this?
+
+Searching for cleancall.c on CRAN yields the 'cli' package:
+https://github.com/cran/cli/blob/79876598df96964dee9032362b0773868d624021/src/cleancall.c#L103-L109
+
+The function cb_progress_done from the 'purrr' package, indeed, takes a
+different set of argument types:
+https://github.com/cran/purrr/blob/de947f6ca0cefdb95f7f0442b08c12c1ef3368ae/src/map.c#L14-L18
+
+This shouldn't break anything on most modern CPU architectures in
+practice (R itself is doing similar tricks in order to implement .C()
+and .Fortran()), but it is a formal violation of the C standard (and
+would crash on certain weird architectures with very large pointers
+that encode type information). Since the error is not in your package,
+it should be possible to reply to the automatic e-mail (does it say
+reply to all or to reply to cran-submission at r-project.org? I don't
+remember) and explain the situation.
+
+-- 
+Best regards,
+Ivan
+
+
+From Luc@DeW||de @end|ng |rom UGent@be  Fri Nov 15 09:27:01 2024
+From: Luc@DeW||de @end|ng |rom UGent@be (Luc De Wilde)
+Date: Fri, 15 Nov 2024 08:27:01 +0000
+Subject: [R-pkg-devel] 
+ New package with C++ code causes R abort in RStudio,
+ not in R console.
+In-Reply-To: <20241114233251.02e6999d@Tarkus>
+References: <AM0PR09MB3843B5A6489B9D868B68F8C498592@AM0PR09MB3843.eurprd09.prod.outlook.com>
+ <20241112214403.1ab126b0@Tarkus>
+ <AM0PR09MB384306BE44733AECE667B8CE98592@AM0PR09MB3843.eurprd09.prod.outlook.com>
+ <20241113003309.337d826a@Tarkus>
+ <DB8PR09MB385024061ED407F5A5F99CE7985B2@DB8PR09MB3850.eurprd09.prod.outlook.com>
+ <20241114233251.02e6999d@Tarkus>
+Message-ID: <DB8PR09MB3850C37B1BE36D4F532EF1F998242@DB8PR09MB3850.eurprd09.prod.outlook.com>
+
+The 'parser' in lavaanC was written in two parts:
+* a part in  pure C/C++ without the R interface things like SEXP, etc. ; taking as input a string (the model) and a bool (produce debuginfo yes/no) , and returning a structure with all parsed information and debuginfo (if requested) or an error code (and position in the model) if an error was detected in the model; (lav_SyntaxParser.cpp + lav_SyntaxParser.h + lav_Util.cpp + lav_Util.h + lav_SmallStringList.h)
+* an interface function with R which is callable from R with .Call taking SEXP model and SEXP debug as input and returning a SEXP with the parsed information in about the same format as the lavaan parser written in R returns. This interface function also evaluates the parts of the model syntax that are written as an R expression (and that can be evaluated in the Global environment). (lav_parser_interface.cpp)
+
+The first part of parser was written using Visual Studio (the IDE I know well (for C#) because I wrote many programs in C# in this environment), and I also wrote a main function as 'replacement' for the interface function in R to be able to test this first part in Visual Studio.
+
+When searching for the reason Rstudio aborts the R session when executing tests, I found - thanks to the help of Ivan - that there were some memory allocation or usage problems in my code. Because I work most of the time in Windows and the Address Sanitizer in R is only available on Linux/MacOS (cfr Writing R Extensions 4.3.3) I felt stuck.
+
+Because C/C++ is relatively new to me (about 3 months) I didn't know very well the different tools for C/C++ available in Visual Studio, but looking at the documentation of Dr Memory I realized that there should also be some tools in Visual Studio to check the memory allocation and usage in C++ programs.  So I found that in Visual Studio Project options -> C/C++  -> General there is an option "Enable Address Sanitizer". When I enabled it and ran the tests I found the problematic code where I allocated one byte less then needed to copy a string.
+
+I have looked at the documentation of Dr. Memory but not yet installed it.
+
+
+Luc
+
+________________________________________
+Van: Ivan Krylov <ikrylov at disroot.org>
+Verzonden: donderdag 14 november 2024 21:32
+Aan: Luc De Wilde <Luc.DeWilde at UGent.be>
+CC: r-package-devel at r-project.org <r-package-devel at r-project.org>; Yves Rosseel <Yves.Rosseel at UGent.be>
+Onderwerp: Re: [R-pkg-devel] New package with C++ code causes R abort in RStudio, not in R console.
+
+? Thu, 14 Nov 2024 13:08:13 +0000
+Luc De Wilde <Luc.DeWilde at UGent.be> ?????:
+
+> At last, with checking of the program with address sanitizer in
+> Visual Studio, I found an "off by 1 error" in my code. Now all tests
+> pass without problems in Rstudio.
+
+Congratulations on being able to solve the problem yourself!
+
+It took me too long to figure out that the syntax errors I was getting
+from lavaanC::lav_parse_model_string_c() were due to the invisible
+U+00A0 (non-breakable space) characters from the e-mail. Once I ran
+lav_parse_model_string_c(gsub('\ua0', ' ', model)) in a sanitized build
+of R, I too saw the buffer overflow and a number of memory leaks.
+
+Would you mind sharing with the list how you used address sanitizer
+with R on Windows? Did you have to use the clang compiler, or have you
+been able to use MSVC? Does Dr. Memory <https://drmemory.org/> find any
+additional problems?
+
+--
+Best regards,
+Ivan
+
+
+From m@@epu|ved@ @end|ng |rom m@||@utoronto@c@  Fri Nov 15 13:16:38 2024
+From: m@@epu|ved@ @end|ng |rom m@||@utoronto@c@ (Mauricio Vargas Sepulveda)
+Date: Fri, 15 Nov 2024 12:16:38 +0000
+Subject: [R-pkg-devel] 
+ Possible false negative for compiled C++ code in CRAN checks
+In-Reply-To: <20241115005043.1947995d@Tarkus>
+References: <YT2PPFFFCD7005701B25728913116FEEC8BDD5E2@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <20241111124840.55248fa6@Tarkus>
+ <YT2PPFFFCD70057CF5F7C2CA2439229E0B6DD592@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <YT2PPFFFCD700570537573F529D215EC62ADD592@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <20241112135634.44ceb4a9@arachnoid>
+ <YT2PPFFFCD700574402F067CF21834F38FCDD592@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <QB1PPF4A6194682D335931D60BE683F6DB3DD592@QB1PPF4A6194682.CANPRD01.PROD.OUTLOOK.COM>
+ <20241112233710.3b18c120@Tarkus>
+ <YT2PPFFFCD700572D7D25315A5FFFD31378DD5B2@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <20241115005043.1947995d@Tarkus>
+Message-ID: <YT2PPFFFCD70057924C4ACF03BE9598A68EDD242@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+
+Dear R Developers,
+
+I implemented Dr. Krylov's fix, and now redatam is back to CRAN (Point 1).
+
+Dr. Eddelbuettel's suggestion about not fully mimicking CRAN gcc-san setup was also correct (Point 2).
+
+Point 1:
+- When the big endian issue was described here, I tried the s390x image from R-Hub, which does not work on my laptop. Then I went to a big endian server that we have at UofT and that reproduced the error!
+
+Point 2:
+- I was testing with docker.io/rocker/r-devel-san:latest, and I could not replicate the error.
+- I ended up using the R-Hub image with https://github.com/r-hub/containers/pull/81#issuecomment-2478009166, and that replicated the error line by line.
+
+Besides it, I implemented the same fix for the command line tool and the Python package. I also changed the example data by aggregating Uruguay's census to show some numbers. Just cutting the levels and show region/city is not informative. Being Redatam a closed format with no standard or specification, I ended up reading the census with my pkg, aggregating with dplyr, saving to CSV, and then converting back to Redatam with a point-and-click tool following an unofficial tutorial from You Tube. There is no easy way  to aggregate and save in the same format as we do with SPSS.
+
+I added Dr. Krylov to ctb for this very useful fix! Thanks a lot to Dr. Krylov and Dr. Eddelbuettel for the suggestions, I was going in circles being unable to replicate the issue and I now asked Dr. Ligges for the possibility to know more about the CRAN specific configuration to add it to R-Hub.
+
+Best,
+
+??
+Mauricio "Pach?" Vargas Sep?lveda
+PhD Student, Political Science
+University of Toronto
+
+
+________________________________________
+From: Ivan Krylov <ikrylov at disroot.org>
+Sent: November 14, 2024 4:50 PM
+To: Mauricio Vargas Sepulveda <m.sepulveda at mail.utoronto.ca>
+Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Possible false negative for compiled C++ code in CRAN checks
+
+? Thu, 14 Nov 2024 16:24:16 +0000
+Mauricio Vargas Sepulveda <m.sepulveda at mail.utoronto.ca> ?????:
+
+> After enabling the SAN flags, I cannot reproduce the gcc-san error
+> [2].
+
+Can you use the rocker/r-devel-san container? It reproduces the problem
+for me.
+
+When reading galapagos/cg15.dic, FuzzyEntityParser::ParseEntities()
+keeps advancing over the file and failing to parse a single entity
+until it eventually calls stop() because it didn't find any entities.
+
+In a non-sanitized build, it first succeeds at 0-based offset 1095. In
+a sanitized build, it fails for all offsets. I think this is due to the
+ordering of the byte reads:
+https://github.com/pachadotdev/open-redatam/blob/bbb65242f1af5f601def1c0b971ed601d459b4f3/src/readers/ByteArrayReader.cpp#L176-L192
+
+In C++, an operation like the following:
+
+static_cast<uint16_t>(ReadByte()) << 8 |
+static_cast<uint16_t>(ReadByte());
+
+...depends on the order in which the compiler will choose to evaluate
+the calls to static_cast<uint16_t>(ReadByte()), and this order is not
+guaranteed to be left-to-right:
+https://en.cppreference.com/w/cpp/language/eval_order
+
+I edited all four byte-reading functions and replaced the one-statement
+operations with separate statements for each of the byte reads:
+
+--- redatam.orig/src/redatamlib/readers/ByteArrayReader.cpp     2024-11-09 02:12:17.000000000 +0000
++++ redatam.new/src/redatamlib/readers/ByteArrayReader.cpp      2024-11-14 21:25:54.000000000 +0000
+@@ -175,23 +175,27 @@
+ }
+
+ uint16_t ByteArrayReader::ReadInt16LE() {
+-  return static_cast<uint16_t>(ReadByte()) |
+-         (static_cast<uint16_t>(ReadByte()) << 8);
++  uint16_t a = static_cast<uint16_t>(ReadByte());
++  uint16_t b = static_cast<uint16_t>(ReadByte()) << 8;
++  return a | b;
+ }
+
+ uint32_t ByteArrayReader::ReadInt32LE() {
+-  return static_cast<uint32_t>(ReadInt16LE()) |
+-         static_cast<uint32_t>(ReadInt16LE()) << 16;
++  uint32_t a = static_cast<uint32_t>(ReadInt16LE());
++  uint32_t b = static_cast<uint32_t>(ReadInt16LE()) << 16;
++  return a | b;
+ }
+
+ uint16_t ByteArrayReader::ReadInt16BE() {
+-  return (static_cast<uint16_t>(ReadByte()) << 8) |
+-         static_cast<uint16_t>(ReadByte());
++ uint16_t a= (static_cast<uint16_t>(ReadByte()) << 8);
++ uint16_t b= static_cast<uint16_t>(ReadByte());
++ return a| b;
+ }
+
+ uint32_t ByteArrayReader::ReadInt32BE() {
+-  return (static_cast<uint32_t>(ReadInt16BE()) << 16) |
+-         static_cast<uint32_t>(ReadInt16BE());
++  uint32_t b = static_cast<uint32_t>(ReadInt16LE()) << 16;
++  uint32_t a = static_cast<uint32_t>(ReadInt16LE());
++  return b | a;
+ }
+
+ }  // namespace RedatamLib
+
+...and this seems to make the error vanish. I think I see the
+misordering too. In the output of objdump -d
+redatam.Rcheck/redatam/libs/redatam.so, I see:
+
+0000000000267010 <_ZN10RedatamLib15ByteArrayReader11ReadInt16LEEv>:
+
+  267028:       e8 93 6f f5 ff          call   1bdfc0 <_ZN10RedatamLib15ByteArrayReader8ReadByteEv at plt>
+                                               first_byte <- ReadByte()
+  26702d:       41 89 c4                mov    %eax,%r12d
+                                               save first byte in r12
+  26703d:       41 c1 e4 08             shl    $0x8,%r12d
+                                               left-shift the first byte!
+  267041:       e8 7a 6f f5 ff          call   1bdfc0 <_ZN10RedatamLib15ByteArrayReader8ReadByteEv at plt>
+                                               second byte in eax
+  26704a:       44 09 e0                or     %r12d,%eax
+                                               OR them together
+
+...which is how you read big-endian numbers, not little-endian ones.
+
+--
+Best regards,
+Ivan
+
+From edd @end|ng |rom deb|@n@org  Fri Nov 15 15:16:48 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 15 Nov 2024 08:16:48 -0600
+Subject: [R-pkg-devel] 
+ Possible false negative for compiled C++ code in CRAN checks
+In-Reply-To: <YT2PPFFFCD70057924C4ACF03BE9598A68EDD242@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+References: <YT2PPFFFCD7005701B25728913116FEEC8BDD5E2@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <20241111124840.55248fa6@Tarkus>
+ <YT2PPFFFCD70057CF5F7C2CA2439229E0B6DD592@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <YT2PPFFFCD700570537573F529D215EC62ADD592@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <20241112135634.44ceb4a9@arachnoid>
+ <YT2PPFFFCD700574402F067CF21834F38FCDD592@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <QB1PPF4A6194682D335931D60BE683F6DB3DD592@QB1PPF4A6194682.CANPRD01.PROD.OUTLOOK.COM>
+ <20241112233710.3b18c120@Tarkus>
+ <YT2PPFFFCD700572D7D25315A5FFFD31378DD5B2@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <20241115005043.1947995d@Tarkus>
+ <YT2PPFFFCD70057924C4ACF03BE9598A68EDD242@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+Message-ID: <26423.22480.284011.754126@rob.eddelbuettel.com>
+
+
+On 15 November 2024 at 12:16, Mauricio Vargas Sepulveda wrote:
+| [...] and I now asked Dr. Ligges for the possibility to know more about the CRAN specific configuration to add it to R-Hub.
+
+It is (and has always been) documented in a text file on the server 
+
+   https://www.stats.ox.ac.uk/pub/bdr/memtests/README.txt
+
+which is also referenced in a few places (but I forget where, I tend to go
+back to my rocker san repos who have it too -- Google gets a few pages of
+hits for the URL as a constant quoted string).
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
