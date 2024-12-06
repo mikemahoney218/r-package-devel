@@ -9728,3 +9728,150 @@ On Mon, Dec 2, 2024 at 13:17 Cohen, Aaron <cohenaa at iu.edu> wrote:
 	[[alternative HTML version deleted]]
 
 
+From @zz@||n| @end|ng |rom @t@t@un|pd@|t  Wed Dec  4 19:25:54 2024
+From: @zz@||n| @end|ng |rom @t@t@un|pd@|t (Adelchi Azzalini)
+Date: Wed, 4 Dec 2024 19:25:54 +0100
+Subject: [R-pkg-devel] conditional import of a package?
+Message-ID: <562E9DD8-97A4-4B30-A568-C814CADF7F11@stat.unipd.it>
+
+Hi. I am working on the development of an existing package (smof, on CRAN). My current aim is widen the list of possible optimizers from which the user can select one method for optimizing a certain task. Well-known possibilities within the base package are optim (with various options) and nlminb. Besides these, I am thinking of including also those of package nloptr, but without forcing users to install this package which perhaps they don't need for other purposes. Hence, I would like to import nloptr only if it is available on the user system; it not, I can just confine the list of optimizers to optim and nlminb.  
+
+This idea implies a sort of ?conditional import? of nloptr. Is this possible? Section 1.1.3.1 "Suggested packages" of
+https://translation.r-project.org/man/R-exts/R-exts-ko.html#Suggested-packages
+seems to hint at such a possibility.  See the use of requireNamespace in the second paragraph.
+
+After elaborating along this line, I packaged my code, with nloptr listed on the line Suggests of DESCRIPTION.  However this attempt failed a the ?R CMD check ? stage with message
+
+Namespace dependency missing from DESCRIPTION Imports/Depends entries: ?nloptr?
+
+In addition, I have no idea of how to declare a "conditional import? in NAMESPACE. 
+
+Is this idea of ?conditional import? totally unfeasible, then?
+
+---
+Adelchi Azzalini
+http://azzalini.stat.unipd.it
+
+
+From br|@n @end|ng |rom br@verock@com  Wed Dec  4 19:56:20 2024
+From: br|@n @end|ng |rom br@verock@com (Brian G. Peterson)
+Date: Wed, 04 Dec 2024 12:56:20 -0600
+Subject: [R-pkg-devel] conditional import of a package?
+In-Reply-To: <562E9DD8-97A4-4B30-A568-C814CADF7F11@stat.unipd.it>
+References: <562E9DD8-97A4-4B30-A568-C814CADF7F11@stat.unipd.it>
+Message-ID: <26d1a055dde950cdeb0948286bb8479d4e3e992e.camel@braverock.com>
+
+Adelchi,
+
+The package 'PortfolioAnalytics', which we maintain, uses this pattern
+extensively to support different optimization solvers. ?The packages
+are all in 'Suggests' rather than 'Imports', because we don't want them
+all required all the time.
+
+So the code pattern is something like this:
+
+if(optimize_method=="pso"){
+? ?stopifnot("package:pso" %in% search() ||
+requireNamespace("pso",quietly = TRUE) )
+? # ...
+}
+
+where all the code that requires the 'pso' engine in this example is
+contained inside the if block and the stopifnot check.
+
+Regards,
+
+Brian
+
+-- 
+Brian G. Peterson
+ph: +1.773.459.4973
+im: bgpbraverock
+
+On Wed, 2024-12-04 at 19:25 +0100, Adelchi Azzalini wrote:
+> Hi. I am working on the development of an existing package (smof, on
+> CRAN). My current aim is widen the list of possible optimizers from
+> which the user can select one method for optimizing a certain task.
+> Well-known possibilities within the base package are optim (with
+> various options) and nlminb. Besides these, I am thinking of
+> including also those of package nloptr, but without forcing users to
+> install this package which perhaps they don't need for other
+> purposes. Hence, I would like to import nloptr only if it is
+> available on the user system; it not, I can just confine the list of
+> optimizers to optim and nlminb.? 
+> 
+> This idea implies a sort of ?conditional import? of nloptr. Is this
+> possible? Section 1.1.3.1 "Suggested packages" of
+> https://translation.r-project.org/man/R-exts/R-exts-ko.html#Suggested-packages
+> seems to hint at such a possibility.? See the use of requireNamespace
+> in the second paragraph.
+> 
+> After elaborating along this line, I packaged my code, with nloptr
+> listed on the line Suggests of DESCRIPTION.? However this attempt
+> failed a the ?R CMD check ? stage with message
+> 
+> Namespace dependency missing from DESCRIPTION Imports/Depends
+> entries: ?nloptr?
+> 
+> In addition, I have no idea of how to declare a "conditional import?
+> in NAMESPACE. 
+> 
+> Is this idea of ?conditional import? totally unfeasible, then?
+> 
+> ---
+> Adelchi Azzalini
+> http://azzalini.stat.unipd.it
+> 
+> ______________________________________________
+> R-package-devel at r-project.org?mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Dec  4 20:56:52 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 4 Dec 2024 14:56:52 -0500
+Subject: [R-pkg-devel] conditional import of a package?
+In-Reply-To: <562E9DD8-97A4-4B30-A568-C814CADF7F11@stat.unipd.it>
+References: <562E9DD8-97A4-4B30-A568-C814CADF7F11@stat.unipd.it>
+Message-ID: <2f5a7a59-0b68-4e99-ab3f-3064d45dcd36@gmail.com>
+
+On 2024-12-04 1:25 p.m., Adelchi Azzalini wrote:
+> Hi. I am working on the development of an existing package (smof, on CRAN). My current aim is widen the list of possible optimizers from which the user can select one method for optimizing a certain task. Well-known possibilities within the base package are optim (with various options) and nlminb. Besides these, I am thinking of including also those of package nloptr, but without forcing users to install this package which perhaps they don't need for other purposes. Hence, I would like to import nloptr only if it is available on the user system; it not, I can just confine the list of optimizers to optim and nlminb.
+> 
+> This idea implies a sort of ?conditional import? of nloptr. Is this possible? Section 1.1.3.1 "Suggested packages" of
+> https://translation.r-project.org/man/R-exts/R-exts-ko.html#Suggested-packages
+> seems to hint at such a possibility.  See the use of requireNamespace in the second paragraph.
+> 
+> After elaborating along this line, I packaged my code, with nloptr listed on the line Suggests of DESCRIPTION.  However this attempt failed a the ?R CMD check ? stage with message
+> 
+> Namespace dependency missing from DESCRIPTION Imports/Depends entries: ?nloptr?
+> 
+> In addition, I have no idea of how to declare a "conditional import? in NAMESPACE.
+> 
+> Is this idea of ?conditional import? totally unfeasible, then?
+
+The usual way to do this is to list the package in Suggests, and then 
+wrap any use of it in `if (requireNamespace("pkg")) { ... }` blocks. 
+This doesn't quite import the functions, you would need to use the 
+`pkg::fn` syntax to access the functions.
+
+If you really want to simulate importing so that you don't need the 
+`pkg::` prefix, you could do it this way:  In the `.onLoad` function of 
+your package, you would have code like
+
+   if (requireNamespace("pkg")) {
+     foo <- pkg::foo
+     bar <- pkg::bar
+   } else {
+     foo <- stub
+     bar <- stub
+   }
+
+where `stub` is a function that says "you need `pkg` to use this function".
+
+Duncan Murdoch
+
+
