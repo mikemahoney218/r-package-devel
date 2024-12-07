@@ -9875,3 +9875,947 @@ where `stub` is a function that says "you need `pkg` to use this function".
 Duncan Murdoch
 
 
+From @zz@||n| @end|ng |rom @t@t@un|pd@|t  Thu Dec  5 09:06:10 2024
+From: @zz@||n| @end|ng |rom @t@t@un|pd@|t (Adelchi Azzalini)
+Date: Thu, 5 Dec 2024 09:06:10 +0100
+Subject: [R-pkg-devel] conditional import of a package?
+In-Reply-To: <2f5a7a59-0b68-4e99-ab3f-3064d45dcd36@gmail.com>
+References: <562E9DD8-97A4-4B30-A568-C814CADF7F11@stat.unipd.it>
+ <2f5a7a59-0b68-4e99-ab3f-3064d45dcd36@gmail.com>
+Message-ID: <8B8E7114-B848-4D9F-81A6-A22B43CCEC46@stat.unipd.it>
+
+Thanks, Duncan, for the kind advice. 
+
+In my understanding, this is what I have done (or I tried to do).  My code is as follows:
+
+  opt.methods <- c("Nelder-Mead", "BFGS", "nlminb")
+  if(requireNamespace("nloptr", quietly = TRUE)) {
+    nloptr.methods <- c("newuoa", "bobyqa", "cobyla")
+    if(opt.method %in%  nloptr.methods) require(nloptr, quietly=TRUE)
+    opt.methods <- c(opt.methods, nloptr.methods)
+   }
+
+<skip>
+
+   if(opt.method %in% nloptr.methods) {    
+      pos <- match("package:nloptr", search())
+      nloptr.method <-  get(paste("nloptr", opt.method, sep="::"), pos=pos)
+      opt <- nloptr.method(<args>)
+      }
+       
+In the DESCRIPTION file there is
+   Suggests: ggplot2, survival, nloptr
+
+However, when I run ?R CMD check <etc>?, I get the following message 
+* checking package dependencies ... ERROR
+Namespace dependency missing from DESCRIPTION Imports/Depends entries: ?nloptr?
+
+See section ?The DESCRIPTION file? in the ?Writing R Extensions?
+manual.
+* DONE
+
+And - admittedly - I have no idea about how to insert appropriate import statements in NAMESPACE.
+
+
+Best regards,
+
+Adelchi
+
+
+> On 4 Dec 2024, at 20:56, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+> 
+> On 2024-12-04 1:25 p.m., Adelchi Azzalini wrote:
+>> Hi. I am working on the development of an existing package (smof, on CRAN). My current aim is widen the list of possible optimizers from which the user can select one method for optimizing a certain task. Well-known possibilities within the base package are optim (with various options) and nlminb. Besides these, I am thinking of including also those of package nloptr, but without forcing users to install this package which perhaps they don't need for other purposes. Hence, I would like to import nloptr only if it is available on the user system; it not, I can just confine the list of optimizers to optim and nlminb.
+>> This idea implies a sort of ?conditional import? of nloptr. Is this possible? Section 1.1.3.1 "Suggested packages" of
+>> https://translation.r-project.org/man/R-exts/R-exts-ko.html#Suggested-packages
+>> seems to hint at such a possibility.  See the use of requireNamespace in the second paragraph.
+>> After elaborating along this line, I packaged my code, with nloptr listed on the line Suggests of DESCRIPTION.  However this attempt failed a the ?R CMD check ? stage with message
+>> Namespace dependency missing from DESCRIPTION Imports/Depends entries: ?nloptr?
+>> In addition, I have no idea of how to declare a "conditional import? in NAMESPACE.
+>> Is this idea of ?conditional import? totally unfeasible, then?
+> 
+> The usual way to do this is to list the package in Suggests, and then wrap any use of it in `if (requireNamespace("pkg")) { ... }` blocks. This doesn't quite import the functions, you would need to use the `pkg::fn` syntax to access the functions.
+> 
+> If you really want to simulate importing so that you don't need the `pkg::` prefix, you could do it this way:  In the `.onLoad` function of your package, you would have code like
+> 
+>  if (requireNamespace("pkg")) {
+>    foo <- pkg::foo
+>    bar <- pkg::bar
+>  } else {
+>    foo <- stub
+>    bar <- stub
+>  }
+> 
+> where `stub` is a function that says "you need `pkg` to use this function".
+> 
+> Duncan Murdoch
+> 
+
+
+From @ergue|@@oko| @end|ng |rom gm@||@com  Thu Dec  5 09:36:54 2024
+From: @ergue|@@oko| @end|ng |rom gm@||@com (Sokol Serguei)
+Date: Thu, 5 Dec 2024 09:36:54 +0100
+Subject: [R-pkg-devel] conditional import of a package?
+In-Reply-To: <8B8E7114-B848-4D9F-81A6-A22B43CCEC46@stat.unipd.it>
+References: <562E9DD8-97A4-4B30-A568-C814CADF7F11@stat.unipd.it>
+ <2f5a7a59-0b68-4e99-ab3f-3064d45dcd36@gmail.com>
+ <8B8E7114-B848-4D9F-81A6-A22B43CCEC46@stat.unipd.it>
+Message-ID: <caecb7f9-214a-4cdd-964a-590422a92b64@gmail.com>
+
+Le 05/12/2024 ? 09:06, Adelchi Azzalini a ?crit?:
+> Thanks, Duncan, for the kind advice.
+>
+> In my understanding, this is what I have done (or I tried to do).  My code is as follows:
+>
+>    opt.methods <- c("Nelder-Mead", "BFGS", "nlminb")
+>    if(requireNamespace("nloptr", quietly = TRUE)) {
+>      nloptr.methods <- c("newuoa", "bobyqa", "cobyla")
+>      if(opt.method %in%  nloptr.methods) require(nloptr, quietly=TRUE)
+>      opt.methods <- c(opt.methods, nloptr.methods)
+>     }
+>
+> <skip>
+>
+>     if(opt.method %in% nloptr.methods) {
+>        pos <- match("package:nloptr", search())
+>        nloptr.method <-  get(paste("nloptr", opt.method, sep="::"), pos=pos)
+>        opt <- nloptr.method(<args>)
+>        }
+>         
+> In the DESCRIPTION file there is
+>     Suggests: ggplot2, survival, nloptr
+>
+> However, when I run ?R CMD check <etc>?, I get the following message
+> * checking package dependencies ... ERROR
+> Namespace dependency missing from DESCRIPTION Imports/Depends entries: ?nloptr?
+
+It probably means that despite your intention, there is somewhere in
+your code a place where you call nloptr::some_fun() out of the
+'if(requireNamespace("nloptr", quietly = TRUE)) {...}' scope.
+
+You can try to locally uninstall nloptr, then run 'R CMD check ...' to see where it happens and why.
+
+Best,
+Serguei.
+
+>
+> See section ?The DESCRIPTION file? in the ?Writing R Extensions?
+> manual.
+> * DONE
+>
+> And - admittedly - I have no idea about how to insert appropriate import statements in NAMESPACE.
+>
+>
+> Best regards,
+>
+> Adelchi
+>
+>
+>> On 4 Dec 2024, at 20:56, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>>
+>> On 2024-12-04 1:25 p.m., Adelchi Azzalini wrote:
+>>> Hi. I am working on the development of an existing package (smof, on CRAN). My current aim is widen the list of possible optimizers from which the user can select one method for optimizing a certain task. Well-known possibilities within the base package are optim (with various options) and nlminb. Besides these, I am thinking of including also those of package nloptr, but without forcing users to install this package which perhaps they don't need for other purposes. Hence, I would like to import nloptr only if it is available on the user system; it not, I can just confine the list of optimizers to optim and nlminb.
+>>> This idea implies a sort of ?conditional import? of nloptr. Is this possible? Section 1.1.3.1 "Suggested packages" of
+>>> https://translation.r-project.org/man/R-exts/R-exts-ko.html#Suggested-packages
+>>> seems to hint at such a possibility.  See the use of requireNamespace in the second paragraph.
+>>> After elaborating along this line, I packaged my code, with nloptr listed on the line Suggests of DESCRIPTION.  However this attempt failed a the ?R CMD check ? stage with message
+>>> Namespace dependency missing from DESCRIPTION Imports/Depends entries: ?nloptr?
+>>> In addition, I have no idea of how to declare a "conditional import? in NAMESPACE.
+>>> Is this idea of ?conditional import? totally unfeasible, then?
+>> The usual way to do this is to list the package in Suggests, and then wrap any use of it in `if (requireNamespace("pkg")) { ... }` blocks. This doesn't quite import the functions, you would need to use the `pkg::fn` syntax to access the functions.
+>>
+>> If you really want to simulate importing so that you don't need the `pkg::` prefix, you could do it this way:  In the `.onLoad` function of your package, you would have code like
+>>
+>>   if (requireNamespace("pkg")) {
+>>     foo <- pkg::foo
+>>     bar <- pkg::bar
+>>   } else {
+>>     foo <- stub
+>>     bar <- stub
+>>   }
+>>
+>> where `stub` is a function that says "you need `pkg` to use this function".
+>>
+>> Duncan Murdoch
+>>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Dec  5 11:41:24 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 5 Dec 2024 05:41:24 -0500
+Subject: [R-pkg-devel] conditional import of a package?
+In-Reply-To: <8B8E7114-B848-4D9F-81A6-A22B43CCEC46@stat.unipd.it>
+References: <562E9DD8-97A4-4B30-A568-C814CADF7F11@stat.unipd.it>
+ <2f5a7a59-0b68-4e99-ab3f-3064d45dcd36@gmail.com>
+ <8B8E7114-B848-4D9F-81A6-A22B43CCEC46@stat.unipd.it>
+Message-ID: <4d818ee1-e4c7-4366-b5a7-76e81cc22a3e@gmail.com>
+
+On 2024-12-05 3:06 a.m., Adelchi Azzalini wrote:
+> Thanks, Duncan, for the kind advice.
+> 
+> In my understanding, this is what I have done (or I tried to do).  My code is as follows:
+> 
+>    opt.methods <- c("Nelder-Mead", "BFGS", "nlminb")
+>    if(requireNamespace("nloptr", quietly = TRUE)) {
+>      nloptr.methods <- c("newuoa", "bobyqa", "cobyla")
+>      if(opt.method %in%  nloptr.methods) require(nloptr, quietly=TRUE)
+
+You shouldn't use `require(nloptr, quietly=TRUE)`.  That puts it on the 
+search list, and packages should generally not modify the search list.
+
+Just before this in your code, you know that nloptr is loaded.  You 
+don't know if it's on the search list or not, and that shouldn't matter.
+
+>      opt.methods <- c(opt.methods, nloptr.methods)
+>     }
+> 
+> <skip>
+> 
+>     if(opt.method %in% nloptr.methods) {
+>        pos <- match("package:nloptr", search())
+>        nloptr.method <-  get(paste("nloptr", opt.method, sep="::"), pos=pos)
+>        opt <- nloptr.method(<args>)
+>        }
+
+The code above relies on having nloptr on the search list, and you don't 
+know that, so you'll need a different way to set nloptr.method.  Another 
+problem is that at this point you don't know if nloptr is loaded or not, 
+because the requireNamespace() call above might have returned FALSE.
+
+What I would do is to set nloptr.method in the code block above, i.e. 
+change the first block to
+
+     opt.methods <- c("Nelder-Mead", "BFGS", "nlminb")
+     if(requireNamespace("nloptr", quietly = TRUE)) {
+       nloptr.methods <- c("newuoa", "bobyqa", "cobyla")
+       if(opt.method %in%  nloptr.methods)
+         nloptr.method <- get(opt.method,
+                              envir = loadNamespace("nloptr"))
+     } else
+       nloptr.method <- function(...) stop("this optimization needs the 
+nloptr package.")
+
+
+The second block could then be simplified to
+
+      if(opt.method %in% nloptr.methods)
+         opt <- nloptr.method(<args>)
+
+
+>         
+> In the DESCRIPTION file there is
+>     Suggests: ggplot2, survival, nloptr
+
+That should be fine.
+
+> 
+> However, when I run ?R CMD check <etc>?, I get the following message
+> * checking package dependencies ... ERROR
+> Namespace dependency missing from DESCRIPTION Imports/Depends entries: ?nloptr?
+> 
+> See section ?The DESCRIPTION file? in the ?Writing R Extensions?
+> manual.
+> * DONE
+> 
+> And - admittedly - I have no idea about how to insert appropriate import statements in NAMESPACE.
+
+You shouldn't need to do that.
+
+Duncan Murdoch
+
+> 
+> 
+> Best regards,
+> 
+> Adelchi
+> 
+> 
+>> On 4 Dec 2024, at 20:56, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>>
+>> On 2024-12-04 1:25 p.m., Adelchi Azzalini wrote:
+>>> Hi. I am working on the development of an existing package (smof, on CRAN). My current aim is widen the list of possible optimizers from which the user can select one method for optimizing a certain task. Well-known possibilities within the base package are optim (with various options) and nlminb. Besides these, I am thinking of including also those of package nloptr, but without forcing users to install this package which perhaps they don't need for other purposes. Hence, I would like to import nloptr only if it is available on the user system; it not, I can just confine the list of optimizers to optim and nlminb.
+>>> This idea implies a sort of ?conditional import? of nloptr. Is this possible? Section 1.1.3.1 "Suggested packages" of
+>>> https://translation.r-project.org/man/R-exts/R-exts-ko.html#Suggested-packages
+>>> seems to hint at such a possibility.  See the use of requireNamespace in the second paragraph.
+>>> After elaborating along this line, I packaged my code, with nloptr listed on the line Suggests of DESCRIPTION.  However this attempt failed a the ?R CMD check ? stage with message
+>>> Namespace dependency missing from DESCRIPTION Imports/Depends entries: ?nloptr?
+>>> In addition, I have no idea of how to declare a "conditional import? in NAMESPACE.
+>>> Is this idea of ?conditional import? totally unfeasible, then?
+>>
+>> The usual way to do this is to list the package in Suggests, and then wrap any use of it in `if (requireNamespace("pkg")) { ... }` blocks. This doesn't quite import the functions, you would need to use the `pkg::fn` syntax to access the functions.
+>>
+>> If you really want to simulate importing so that you don't need the `pkg::` prefix, you could do it this way:  In the `.onLoad` function of your package, you would have code like
+>>
+>>   if (requireNamespace("pkg")) {
+>>     foo <- pkg::foo
+>>     bar <- pkg::bar
+>>   } else {
+>>     foo <- stub
+>>     bar <- stub
+>>   }
+>>
+>> where `stub` is a function that says "you need `pkg` to use this function".
+>>
+>> Duncan Murdoch
+>>
+>
+
+
+From Luc@DeW||de @end|ng |rom UGent@be  Thu Dec  5 14:21:30 2024
+From: Luc@DeW||de @end|ng |rom UGent@be (Luc De Wilde)
+Date: Thu, 5 Dec 2024 13:21:30 +0000
+Subject: [R-pkg-devel] Cannot create C code with acceptable performance with
+ respect to internal R command.
+Message-ID: <AM0PR09MB3843E3FD6F0F9F3847ECEC5898302@AM0PR09MB3843.eurprd09.prod.outlook.com>
+
+Dear package developers,
+
+in creating a package lavaanC for use in lavaan, I need to perform some matrix computations involving matrix products and crossproducts. As far as I see I cannot directly call the C code in the R core. So I copied the code in the R core, but the same C/C++ code in a package is 2.5 ? 3 times slower than executed directly in R :?
+
+C code in package :?
+? SEXP prod0(SEXP mat1, SEXP mat2) {
+? ? SEXP u1 = Rf_getAttrib(mat1, R_DimSymbol);
+? ? int m1 = INTEGER(u1)[0];
+? ? int n1 = INTEGER(u1)[1];
+? ? SEXP u2 = Rf_getAttrib(mat2, R_DimSymbol);
+? ? int m2 = INTEGER(u2)[0];
+? ? int n2 = INTEGER(u2)[1];
+? ? if (n1 != m2) Rf_error("matrices not conforming");
+? ? SEXP retval = PROTECT(Rf_allocMatrix(REALSXP, m1, n2));
+? ? double* left = REAL(mat1);
+? ? double* right = REAL(mat2);
+? ? double* ret = REAL(retval);
+? ? double werk = 0.0;
+? ? for (int j = 0; j < n2; j++) {
+? ? ? for (int i = 0; i < m1; i++) {
+? ? ? ? ? werk = 0.0;
+? ? ? ? for (int k = 0; k < n1; k++) werk += (left[i + m1 * k] * right[k + m2 * j]);
+? ? ? ? ret[j * m1 + i] = ?werk;
+? ? ? }
+? ? }
+? ? UNPROTECT(1);
+? ? return retval;
+? }
+
+Test script :
+m1 <- matrix(rnorm(300000), nrow = 60)
+m2 <- matrix(rnorm(300000), ncol = 60)
+print(microbenchmark::microbenchmark(
+  m1 %*% m2, .Call("prod0", m1, m2), times = 100
+))
+
+Result on my pc:
+Unit: milliseconds
+                   expr     min      lq     mean  median       uq     max neval
+              m1 %*% m2 10.5650 10.8967 11.13434 10.9449 11.02965 15.8397   100
+ .Call("prod0", m1, m2) 29.3336 30.7868 32.05114 31.0408 33.85935 45.5321   100
+
+
+Can anyone explain why the compiled code in the package is so much slower than in R core?
+
+and
+
+Is there a way to improve the performance in R package?
+
+
+Best regards,
+
+Luc De Wilde
+
+
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Thu Dec  5 14:39:43 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Thu, 5 Dec 2024 14:39:43 +0100
+Subject: [R-pkg-devel] 
+ Cannot create C code with acceptable performance with
+ respect to internal R command.
+In-Reply-To: <AM0PR09MB3843E3FD6F0F9F3847ECEC5898302@AM0PR09MB3843.eurprd09.prod.outlook.com>
+References: <AM0PR09MB3843E3FD6F0F9F3847ECEC5898302@AM0PR09MB3843.eurprd09.prod.outlook.com>
+Message-ID: <fdda61b7-2258-4273-aab9-19d7e01286f4@gmail.com>
+
+
+On 12/5/24 14:21, Luc De Wilde wrote:
+> Dear package developers,
+>
+> in creating a package lavaanC for use in lavaan, I need to perform some matrix computations involving matrix products and crossproducts. As far as I see I cannot directly call the C code in the R core. So I copied the code in the R core, but the same C/C++ code in a package is 2.5 ? 3 times slower than executed directly in R :
+>
+> C code in package :
+>  ? SEXP prod0(SEXP mat1, SEXP mat2) {
+>  ? ? SEXP u1 = Rf_getAttrib(mat1, R_DimSymbol);
+>  ? ? int m1 = INTEGER(u1)[0];
+>  ? ? int n1 = INTEGER(u1)[1];
+>  ? ? SEXP u2 = Rf_getAttrib(mat2, R_DimSymbol);
+>  ? ? int m2 = INTEGER(u2)[0];
+>  ? ? int n2 = INTEGER(u2)[1];
+>  ? ? if (n1 != m2) Rf_error("matrices not conforming");
+>  ? ? SEXP retval = PROTECT(Rf_allocMatrix(REALSXP, m1, n2));
+>  ? ? double* left = REAL(mat1);
+>  ? ? double* right = REAL(mat2);
+>  ? ? double* ret = REAL(retval);
+>  ? ? double werk = 0.0;
+>  ? ? for (int j = 0; j < n2; j++) {
+>  ? ? ? for (int i = 0; i < m1; i++) {
+>  ? ? ? ? ? werk = 0.0;
+>  ? ? ? ? for (int k = 0; k < n1; k++) werk += (left[i + m1 * k] * right[k + m2 * j]);
+>  ? ? ? ? ret[j * m1 + i] = ?werk;
+>  ? ? ? }
+>  ? ? }
+>  ? ? UNPROTECT(1);
+>  ? ? return retval;
+>  ? }
+>
+> Test script :
+> m1 <- matrix(rnorm(300000), nrow = 60)
+> m2 <- matrix(rnorm(300000), ncol = 60)
+> print(microbenchmark::microbenchmark(
+>    m1 %*% m2, .Call("prod0", m1, m2), times = 100
+> ))
+>
+> Result on my pc:
+> Unit: milliseconds
+>                     expr     min      lq     mean  median       uq     max neval
+>                m1 %*% m2 10.5650 10.8967 11.13434 10.9449 11.02965 15.8397   100
+>   .Call("prod0", m1, m2) 29.3336 30.7868 32.05114 31.0408 33.85935 45.5321   100
+>
+>
+> Can anyone explain why the compiled code in the package is so much slower than in R core?
+
+By default, R would use BLAS, not the simple algorithm above. See 
+?options, look for "matprod" for more information on how to select an 
+algorithm. The code is then in array.c, function matprod().
+
+> and
+>
+> Is there a way to improve the performance in R package?
+
+One option is to use BLAS.
+
+Best
+Tomas
+
+>
+>
+> Best regards,
+>
+> Luc De Wilde
+>
+>
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From Luc@DeW||de @end|ng |rom UGent@be  Thu Dec  5 14:50:22 2024
+From: Luc@DeW||de @end|ng |rom UGent@be (Luc De Wilde)
+Date: Thu, 5 Dec 2024 13:50:22 +0000
+Subject: [R-pkg-devel] 
+ Cannot create C code with acceptable performance with
+ respect to internal R command.
+In-Reply-To: <fdda61b7-2258-4273-aab9-19d7e01286f4@gmail.com>
+References: <AM0PR09MB3843E3FD6F0F9F3847ECEC5898302@AM0PR09MB3843.eurprd09.prod.outlook.com>
+ <fdda61b7-2258-4273-aab9-19d7e01286f4@gmail.com>
+Message-ID: <AM0PR09MB3843075CEA5CD544CA37CFE298302@AM0PR09MB3843.eurprd09.prod.outlook.com>
+
+Thank you very much, Tomas, now it's clear and I'll see what to do with that knowledge!
+
+Luc
+
+________________________________________
+Van: Tomas Kalibera <tomas.kalibera at gmail.com>
+Verzonden: donderdag 5 december 2024 14:39
+Aan: Luc De Wilde <Luc.DeWilde at UGent.be>; r-package-devel at r-project.org <r-package-devel at r-project.org>
+CC: Yves Rosseel <Yves.Rosseel at UGent.be>
+Onderwerp: Re: [R-pkg-devel] Cannot create C code with acceptable performance with respect to internal R command.
+
+
+On 12/5/24 14:21, Luc De Wilde wrote:
+> Dear package developers,
+>
+> in creating a package lavaanC for use in lavaan, I need to perform some matrix computations involving matrix products and crossproducts. As far as I see I cannot directly call the C code in the R core. So I copied the code in the R core, but the same C/C++ code in a package is 2.5 ? 3 times slower than executed directly in R :
+>
+> C code in package :
+>    SEXP prod0(SEXP mat1, SEXP mat2) {
+>      SEXP u1 = Rf_getAttrib(mat1, R_DimSymbol);
+>      int m1 = INTEGER(u1)[0];
+>      int n1 = INTEGER(u1)[1];
+>      SEXP u2 = Rf_getAttrib(mat2, R_DimSymbol);
+>      int m2 = INTEGER(u2)[0];
+>      int n2 = INTEGER(u2)[1];
+>      if (n1 != m2) Rf_error("matrices not conforming");
+>      SEXP retval = PROTECT(Rf_allocMatrix(REALSXP, m1, n2));
+>      double* left = REAL(mat1);
+>      double* right = REAL(mat2);
+>      double* ret = REAL(retval);
+>      double werk = 0.0;
+>      for (int j = 0; j < n2; j++) {
+>        for (int i = 0; i < m1; i++) {
+>            werk = 0.0;
+>          for (int k = 0; k < n1; k++) werk += (left[i + m1 * k] * right[k + m2 * j]);
+>          ret[j * m1 + i] =  werk;
+>        }
+>      }
+>      UNPROTECT(1);
+>      return retval;
+>    }
+>
+> Test script :
+> m1 <- matrix(rnorm(300000), nrow = 60)
+> m2 <- matrix(rnorm(300000), ncol = 60)
+> print(microbenchmark::microbenchmark(
+>    m1 %*% m2, .Call("prod0", m1, m2), times = 100
+> ))
+>
+> Result on my pc:
+> Unit: milliseconds
+>                     expr     min      lq     mean  median       uq     max neval
+>                m1 %*% m2 10.5650 10.8967 11.13434 10.9449 11.02965 15.8397   100
+>   .Call("prod0", m1, m2) 29.3336 30.7868 32.05114 31.0408 33.85935 45.5321   100
+>
+>
+> Can anyone explain why the compiled code in the package is so much slower than in R core?
+
+By default, R would use BLAS, not the simple algorithm above. See
+?options, look for "matprod" for more information on how to select an
+algorithm. The code is then in array.c, function matprod().
+
+> and
+>
+> Is there a way to improve the performance in R package?
+
+One option is to use BLAS.
+
+Best
+Tomas
+
+>
+>
+> Best regards,
+>
+> Luc De Wilde
+>
+>
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From @ergue|@@oko| @end|ng |rom gm@||@com  Thu Dec  5 14:55:51 2024
+From: @ergue|@@oko| @end|ng |rom gm@||@com (Sokol Serguei)
+Date: Thu, 5 Dec 2024 14:55:51 +0100
+Subject: [R-pkg-devel] 
+ Cannot create C code with acceptable performance with
+ respect to internal R command.
+In-Reply-To: <AM0PR09MB3843E3FD6F0F9F3847ECEC5898302@AM0PR09MB3843.eurprd09.prod.outlook.com>
+References: <AM0PR09MB3843E3FD6F0F9F3847ECEC5898302@AM0PR09MB3843.eurprd09.prod.outlook.com>
+Message-ID: <140e06f2-202c-4f98-8d65-189fcf061450@gmail.com>
+
+Luc,
+
+There can be many reasons explaining the difference in compiled code 
+performances. Tuning such code to achieve a pick performance is 
+generally a fine art.
+Optimizations techniques can include but are not limited to:
+ ?- SIMD instructions (and memory alignment for their optimal use);
+ ?- instruction level parallelism;
+ ?- unrolling loops;
+ ?- cache level (mis-)hits;
+ ?- multi-thread parallelism;
+ ?- ...
+Approaches in optimization are not the same depending on kind of 
+application: CPU-bound, memory-bound or IO-bound.
+Many of this techniques can be directly used (or not) by compiler 
+depending on chosen options. Are you sure to use the same options and 
+compiler that were used during R compilation?
+And finally, the compared code could be plainly not the same. R can use 
+BLAS call, e.g. OpenBLAS to multiply two matrices. This latter is 
+heavily optimized for such operations and can achieve x10 acceleration 
+compared to plain "naive" BLAS.
+The R code you cite can be just the code for a fallback in case no BLAS 
+was found during R compilation.
+Look at what your sessionInfo() says about used BLAS.
+
+Best,
+Serguei.
+
+Le 05/12/2024 ? 14:21, Luc De Wilde a ?crit?:
+> Dear package developers,
+>
+> in creating a package lavaanC for use in lavaan, I need to perform some matrix computations involving matrix products and crossproducts. As far as I see I cannot directly call the C code in the R core. So I copied the code in the R core, but the same C/C++ code in a package is 2.5 ? 3 times slower than executed directly in R :
+>
+> C code in package :
+>  ? SEXP prod0(SEXP mat1, SEXP mat2) {
+>  ? ? SEXP u1 = Rf_getAttrib(mat1, R_DimSymbol);
+>  ? ? int m1 = INTEGER(u1)[0];
+>  ? ? int n1 = INTEGER(u1)[1];
+>  ? ? SEXP u2 = Rf_getAttrib(mat2, R_DimSymbol);
+>  ? ? int m2 = INTEGER(u2)[0];
+>  ? ? int n2 = INTEGER(u2)[1];
+>  ? ? if (n1 != m2) Rf_error("matrices not conforming");
+>  ? ? SEXP retval = PROTECT(Rf_allocMatrix(REALSXP, m1, n2));
+>  ? ? double* left = REAL(mat1);
+>  ? ? double* right = REAL(mat2);
+>  ? ? double* ret = REAL(retval);
+>  ? ? double werk = 0.0;
+>  ? ? for (int j = 0; j < n2; j++) {
+>  ? ? ? for (int i = 0; i < m1; i++) {
+>  ? ? ? ? ? werk = 0.0;
+>  ? ? ? ? for (int k = 0; k < n1; k++) werk += (left[i + m1 * k] * right[k + m2 * j]);
+>  ? ? ? ? ret[j * m1 + i] = ?werk;
+>  ? ? ? }
+>  ? ? }
+>  ? ? UNPROTECT(1);
+>  ? ? return retval;
+>  ? }
+>
+> Test script :
+> m1 <- matrix(rnorm(300000), nrow = 60)
+> m2 <- matrix(rnorm(300000), ncol = 60)
+> print(microbenchmark::microbenchmark(
+>    m1 %*% m2, .Call("prod0", m1, m2), times = 100
+> ))
+>
+> Result on my pc:
+> Unit: milliseconds
+>                     expr     min      lq     mean  median       uq     max neval
+>                m1 %*% m2 10.5650 10.8967 11.13434 10.9449 11.02965 15.8397   100
+>   .Call("prod0", m1, m2) 29.3336 30.7868 32.05114 31.0408 33.85935 45.5321   100
+>
+>
+> Can anyone explain why the compiled code in the package is so much slower than in R core?
+>
+> and
+>
+> Is there a way to improve the performance in R package?
+>
+>
+> Best regards,
+>
+> Luc De Wilde
+>
+>
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From edd @end|ng |rom deb|@n@org  Thu Dec  5 15:09:44 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 5 Dec 2024 08:09:44 -0600
+Subject: [R-pkg-devel] 
+ Cannot create C code with acceptable performance with
+ respect to internal R command.
+In-Reply-To: <AM0PR09MB3843075CEA5CD544CA37CFE298302@AM0PR09MB3843.eurprd09.prod.outlook.com>
+References: <AM0PR09MB3843E3FD6F0F9F3847ECEC5898302@AM0PR09MB3843.eurprd09.prod.outlook.com>
+ <fdda61b7-2258-4273-aab9-19d7e01286f4@gmail.com>
+ <AM0PR09MB3843075CEA5CD544CA37CFE298302@AM0PR09MB3843.eurprd09.prod.outlook.com>
+Message-ID: <26449.46120.144741.619166@rob.eddelbuettel.com>
+
+
+Luc,
+
+As Tomas mentioned, matrix-multiplication can take advantage of multiple
+threads, and the 'text book' nexted loops do not do that.  Now, one
+alternative that appeals a lot to me is to farm out to Armadillo which also
+calls LAPACK for you (as R does). And via RcppArmadillo, the setup becomes a
+one-liner with the expression 'mat1 * mat2' where '*' is overloaded
+appropriately (as is matrix multiplication '%*%' in R).  I include your
+example as self-contained and reproducible script below, on my not-so-recent
+machine with twelve cores I get
+
+$ Rscript luc.r 
+Unit: microseconds
+ expr       min        lq     mean    median       uq      max neval cld
+    C 29010.538 39242.004 47948.98 50930.500 52715.30 81668.53   100  a 
+    R   685.658   800.653  1984.17  1129.754  2719.88  8420.66   100   b
+  Cpp   401.182   444.164  1775.03   651.023  1656.24 30369.15   100   b
+$ 
+
+but what really shines (in my eyes) is that a function
+
+    arma::mat cppprod(const arma::mat& m1, const arma::mat& m2) {
+        return m1 * m2;
+    }
+
+gets set-up for you with no worries whatsoever and outscores the R
+version. (And if you look into the Rcpp docs you can learn to make this a
+little faster still but skipping a (generally recommended !!) handshake with
+RNG status etc).
+
+But different strokes for different folks, not everybody likes C++ (which is
+both perfectly find and also includes Tomas who saw fit to rail against it
+yesterday regarding its compile times which can both tweaked and are also
+worse still in some other popular languages) but I digress ...
+
+Hope this helps, Dirk
+
+
+ccode <- r"(
+SEXP u1 = Rf_getAttrib(mat1, R_DimSymbol);
+int m1 = INTEGER(u1)[0];
+int n1 = INTEGER(u1)[1];
+SEXP u2 = Rf_getAttrib(mat2, R_DimSymbol);
+int m2 = INTEGER(u2)[0];
+int n2 = INTEGER(u2)[1];
+if (n1 != m2) Rf_error("matrices not conforming");
+SEXP retval = PROTECT(Rf_allocMatrix(REALSXP, m1, n2));
+double* left = REAL(mat1);
+double* right = REAL(mat2);
+double* ret = REAL(retval);
+double werk = 0.0;
+for (int j = 0; j < n2; j++) {
+  for (int i = 0; i < m1; i++) {
+     werk = 0.0;
+     for (int k = 0; k < n1; k++)
+       werk += (left[i + m1 * k] * right[k + m2 * j]);
+     ret[j * m1 + i] = werk;
+  }
+}
+UNPROTECT(1);
+return retval;
+)"
+cprod <- inline::cfunction(sig=signature(mat1="numeric", mat2="numeric"), body=ccode, language="C")
+
+Rcpp::cppFunction("arma::mat cppprod(const arma::mat& m1, const arma::mat& m2) { return m1 * m2; }", depends="RcppArmadillo")
+
+set.seed(123)
+m1 <- matrix(rnorm(300000), nrow = 60)
+m2 <- matrix(rnorm(300000), ncol = 60)
+print(microbenchmark::microbenchmark(C = cprod(m1, m2),
+                                     R = m1 %*% m2,
+                                     Cpp = cppprod(m1, m2),
+                                     times = 100))
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From @zz@||n| @end|ng |rom @t@t@un|pd@|t  Thu Dec  5 16:36:45 2024
+From: @zz@||n| @end|ng |rom @t@t@un|pd@|t (Adelchi Azzalini)
+Date: Thu, 5 Dec 2024 16:36:45 +0100
+Subject: [R-pkg-devel] conditional import of a package?
+In-Reply-To: <4d818ee1-e4c7-4366-b5a7-76e81cc22a3e@gmail.com>
+References: <562E9DD8-97A4-4B30-A568-C814CADF7F11@stat.unipd.it>
+ <2f5a7a59-0b68-4e99-ab3f-3064d45dcd36@gmail.com>
+ <8B8E7114-B848-4D9F-81A6-A22B43CCEC46@stat.unipd.it>
+ <4d818ee1-e4c7-4366-b5a7-76e81cc22a3e@gmail.com>
+Message-ID: <D12E7668-3B78-4390-ADD7-35C1C94D149D@stat.unipd.it>
+
+Hi. Thanks for the additional advice. It now works!
+
+I only had to move the assignment of  nloptr.methods outside the if(.) block in the first chunk of code, otherwise the variable was undefined for the second block. This issue only showed up when I tried the newly created package on a machine without nloptr installed.
+
+Best regards, and thanks again for your kind help.
+
+Adelchi
+
+
+> On 5 Dec 2024, at 11:41, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+> 
+> On 2024-12-05 3:06 a.m., Adelchi Azzalini wrote:
+>> Thanks, Duncan, for the kind advice.
+>> In my understanding, this is what I have done (or I tried to do).  My code is as follows:
+>>   opt.methods <- c("Nelder-Mead", "BFGS", "nlminb")
+>>   if(requireNamespace("nloptr", quietly = TRUE)) {
+>>     nloptr.methods <- c("newuoa", "bobyqa", "cobyla")
+>>     if(opt.method %in%  nloptr.methods) require(nloptr, quietly=TRUE)
+> 
+> You shouldn't use `require(nloptr, quietly=TRUE)`.  That puts it on the search list, and packages should generally not modify the search list.
+> 
+> Just before this in your code, you know that nloptr is loaded.  You don't know if it's on the search list or not, and that shouldn't matter.
+> 
+>>     opt.methods <- c(opt.methods, nloptr.methods)
+>>    }
+>> <skip>
+>>    if(opt.method %in% nloptr.methods) {
+>>       pos <- match("package:nloptr", search())
+>>       nloptr.method <-  get(paste("nloptr", opt.method, sep="::"), pos=pos)
+>>       opt <- nloptr.method(<args>)
+>>       }
+> 
+> The code above relies on having nloptr on the search list, and you don't know that, so you'll need a different way to set nloptr.method.  Another problem is that at this point you don't know if nloptr is loaded or not, because the requireNamespace() call above might have returned FALSE.
+> 
+> What I would do is to set nloptr.method in the code block above, i.e. change the first block to
+> 
+>    opt.methods <- c("Nelder-Mead", "BFGS", "nlminb")
+>    if(requireNamespace("nloptr", quietly = TRUE)) {
+>      nloptr.methods <- c("newuoa", "bobyqa", "cobyla")
+>      if(opt.method %in%  nloptr.methods)
+>        nloptr.method <- get(opt.method,
+>                             envir = loadNamespace("nloptr"))
+>    } else
+>      nloptr.method <- function(...) stop("this optimization needs the nloptr package.")
+> 
+> 
+> The second block could then be simplified to
+> 
+>     if(opt.method %in% nloptr.methods)
+>        opt <- nloptr.method(<args>)
+> 
+> 
+>>        In the DESCRIPTION file there is
+>>    Suggests: ggplot2, survival, nloptr
+> 
+> That should be fine.
+> 
+>> However, when I run ?R CMD check <etc>?, I get the following message
+>> * checking package dependencies ... ERROR
+>> Namespace dependency missing from DESCRIPTION Imports/Depends entries: ?nloptr?
+>> See section ?The DESCRIPTION file? in the ?Writing R Extensions?
+>> manual.
+>> * DONE
+>> And - admittedly - I have no idea about how to insert appropriate import statements in NAMESPACE.
+> 
+> You shouldn't need to do that.
+> 
+> Duncan Murdoch
+> 
+>> Best regards,
+>> Adelchi
+>>> On 4 Dec 2024, at 20:56, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>>> 
+>>> On 2024-12-04 1:25 p.m., Adelchi Azzalini wrote:
+>>>> Hi. I am working on the development of an existing package (smof, on CRAN). My current aim is widen the list of possible optimizers from which the user can select one method for optimizing a certain task. Well-known possibilities within the base package are optim (with various options) and nlminb. Besides these, I am thinking of including also those of package nloptr, but without forcing users to install this package which perhaps they don't need for other purposes. Hence, I would like to import nloptr only if it is available on the user system; it not, I can just confine the list of optimizers to optim and nlminb.
+>>>> This idea implies a sort of ?conditional import? of nloptr. Is this possible? Section 1.1.3.1 "Suggested packages" of
+>>>> https://translation.r-project.org/man/R-exts/R-exts-ko.html#Suggested-packages
+>>>> seems to hint at such a possibility.  See the use of requireNamespace in the second paragraph.
+>>>> After elaborating along this line, I packaged my code, with nloptr listed on the line Suggests of DESCRIPTION.  However this attempt failed a the ?R CMD check ? stage with message
+>>>> Namespace dependency missing from DESCRIPTION Imports/Depends entries: ?nloptr?
+>>>> In addition, I have no idea of how to declare a "conditional import? in NAMESPACE.
+>>>> Is this idea of ?conditional import? totally unfeasible, then?
+>>> 
+>>> The usual way to do this is to list the package in Suggests, and then wrap any use of it in `if (requireNamespace("pkg")) { ... }` blocks. This doesn't quite import the functions, you would need to use the `pkg::fn` syntax to access the functions.
+>>> 
+>>> If you really want to simulate importing so that you don't need the `pkg::` prefix, you could do it this way:  In the `.onLoad` function of your package, you would have code like
+>>> 
+>>>  if (requireNamespace("pkg")) {
+>>>    foo <- pkg::foo
+>>>    bar <- pkg::bar
+>>>  } else {
+>>>    foo <- stub
+>>>    bar <- stub
+>>>  }
+>>> 
+>>> where `stub` is a function that says "you need `pkg` to use this function".
+>>> 
+>>> Duncan Murdoch
+>>> 
+> 
+
+
+From Luc@DeW||de @end|ng |rom UGent@be  Thu Dec  5 23:14:03 2024
+From: Luc@DeW||de @end|ng |rom UGent@be (Luc De Wilde)
+Date: Thu, 5 Dec 2024 22:14:03 +0000
+Subject: [R-pkg-devel] 
+ Cannot create C code with acceptable performance with
+ respect to internal R command.
+In-Reply-To: <26449.46120.144741.619166@rob.eddelbuettel.com>
+References: <AM0PR09MB3843E3FD6F0F9F3847ECEC5898302@AM0PR09MB3843.eurprd09.prod.outlook.com>
+ <fdda61b7-2258-4273-aab9-19d7e01286f4@gmail.com>
+ <AM0PR09MB3843075CEA5CD544CA37CFE298302@AM0PR09MB3843.eurprd09.prod.outlook.com>
+ <26449.46120.144741.619166@rob.eddelbuettel.com>
+Message-ID: <AM0PR09MB3843BE9F3B6B1BC43774583A98302@AM0PR09MB3843.eurprd09.prod.outlook.com>
+
+Dirk,
+
+that's indeed an easy way to go, but I'm searching for methods that doesn't need to add other dependencies in my package, so the answer of Avraham is the most relevant for me.
+
+But off course, thank you for your help!
+
+Luc
+
+________________________________
+Van: Dirk Eddelbuettel <edd at debian.org>
+Verzonden: donderdag 5 december 2024 15:09
+Aan: Luc De Wilde <Luc.DeWilde at UGent.be>
+CC: Tomas Kalibera <tomas.kalibera at gmail.com>; r-package-devel at r-project.org <r-package-devel at r-project.org>; Yves Rosseel <Yves.Rosseel at UGent.be>
+Onderwerp: Re: [R-pkg-devel] Cannot create C code with acceptable performance with respect to internal R command.
+
+
+Luc,
+
+As Tomas mentioned, matrix-multiplication can take advantage of multiple
+threads, and the 'text book' nexted loops do not do that.  Now, one
+alternative that appeals a lot to me is to farm out to Armadillo which also
+calls LAPACK for you (as R does). And via RcppArmadillo, the setup becomes a
+one-liner with the expression 'mat1 * mat2' where '*' is overloaded
+appropriately (as is matrix multiplication '%*%' in R).  I include your
+example as self-contained and reproducible script below, on my not-so-recent
+machine with twelve cores I get
+
+$ Rscript luc.r
+Unit: microseconds
+ expr       min        lq     mean    median       uq      max neval cld
+    C 29010.538 39242.004 47948.98 50930.500 52715.30 81668.53   100  a
+    R   685.658   800.653  1984.17  1129.754  2719.88  8420.66   100   b
+  Cpp   401.182   444.164  1775.03   651.023  1656.24 30369.15   100   b
+$
+
+but what really shines (in my eyes) is that a function
+
+    arma::mat cppprod(const arma::mat& m1, const arma::mat& m2) {
+        return m1 * m2;
+    }
+
+gets set-up for you with no worries whatsoever and outscores the R
+version. (And if you look into the Rcpp docs you can learn to make this a
+little faster still but skipping a (generally recommended !!) handshake with
+RNG status etc).
+
+But different strokes for different folks, not everybody likes C++ (which is
+both perfectly find and also includes Tomas who saw fit to rail against it
+yesterday regarding its compile times which can both tweaked and are also
+worse still in some other popular languages) but I digress ...
+
+Hope this helps, Dirk
+
+
+ccode <- r"(
+SEXP u1 = Rf_getAttrib(mat1, R_DimSymbol);
+int m1 = INTEGER(u1)[0];
+int n1 = INTEGER(u1)[1];
+SEXP u2 = Rf_getAttrib(mat2, R_DimSymbol);
+int m2 = INTEGER(u2)[0];
+int n2 = INTEGER(u2)[1];
+if (n1 != m2) Rf_error("matrices not conforming");
+SEXP retval = PROTECT(Rf_allocMatrix(REALSXP, m1, n2));
+double* left = REAL(mat1);
+double* right = REAL(mat2);
+double* ret = REAL(retval);
+double werk = 0.0;
+for (int j = 0; j < n2; j++) {
+  for (int i = 0; i < m1; i++) {
+     werk = 0.0;
+     for (int k = 0; k < n1; k++)
+       werk += (left[i + m1 * k] * right[k + m2 * j]);
+     ret[j * m1 + i] = werk;
+  }
+}
+UNPROTECT(1);
+return retval;
+)"
+cprod <- inline::cfunction(sig=signature(mat1="numeric", mat2="numeric"), body=ccode, language="C")
+
+Rcpp::cppFunction("arma::mat cppprod(const arma::mat& m1, const arma::mat& m2) { return m1 * m2; }", depends="RcppArmadillo")
+
+set.seed(123)
+m1 <- matrix(rnorm(300000), nrow = 60)
+m2 <- matrix(rnorm(300000), ncol = 60)
+print(microbenchmark::microbenchmark(C = cprod(m1, m2),
+                                     R = m1 %*% m2,
+                                     Cpp = cppprod(m1, m2),
+                                     times = 100))
+
+--
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+	[[alternative HTML version deleted]]
+
+
