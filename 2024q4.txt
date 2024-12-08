@@ -10819,3 +10819,366 @@ dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 	[[alternative HTML version deleted]]
 
 
+From @vr@h@m@@d|er @end|ng |rom gm@||@com  Fri Dec  6 08:58:10 2024
+From: @vr@h@m@@d|er @end|ng |rom gm@||@com (Avraham Adler)
+Date: Fri, 6 Dec 2024 09:58:10 +0200
+Subject: [R-pkg-devel] 
+ Cannot create C code with acceptable performance with
+ respect to internal R command.
+In-Reply-To: <140e06f2-202c-4f98-8d65-189fcf061450@gmail.com>
+References: <140e06f2-202c-4f98-8d65-189fcf061450@gmail.com>
+Message-ID: <D73C8AC0-ED5B-40F0-8B4A-0627E753F49A@gmail.com>
+
+
+Sent from my iPhone
+
+> On Dec 5, 2024, at 4:11?PM, Sokol Serguei <serguei.sokol at gmail.com> wrote:
+> 
+> ?Luc,
+> 
+> There can be many reasons explaining the difference in compiled code performances. Tuning such code to achieve a pick performance is generally a fine art.
+> Optimizations techniques can include but are not limited to:
+>  - SIMD instructions (and memory alignment for their optimal use);
+>  - instruction level parallelism;
+>  - unrolling loops;
+>  - cache level (mis-)hits;
+>  - multi-thread parallelism;
+>  - ...
+> Approaches in optimization are not the same depending on kind of application: CPU-bound, memory-bound or IO-bound.
+> Many of this techniques can be directly used (or not) by compiler depending on chosen options. Are you sure to use the same options and compiler that were used during R compilation?
+> And finally, the compared code could be plainly not the same. R can use BLAS call, e.g. OpenBLAS to multiply two matrices. This latter is heavily optimized for such operations and can achieve x10 acceleration compared to plain "naive" BLAS.
+> The R code you cite can be just the code for a fallback in case no BLAS was found during R compilation.
+> Look at what your sessionInfo() says about used BLAS.
+
+That doesn?t always work. I build R on Windows (10) linking to a pre-compiled static OpenBLAS (3.28) and my sessionInfo has an empty string for BLAS. I reckon that is because I?m using Rblas.dll, it?s just that my Rblas isn?t vanilla. 
+
+Avi
+
+> 
+> Best,
+> Serguei.
+> 
+>> Le 05/12/2024 ? 14:21, Luc De Wilde a ?crit :
+>> Dear package developers,
+>> 
+>> in creating a package lavaanC for use in lavaan, I need to perform some matrix computations involving matrix products and crossproducts. As far as I see I cannot directly call the C code in the R core. So I copied the code in the R core, but the same C/C++ code in a package is 2.5 ? 3 times slower than executed directly in R :
+>> 
+>> C code in package :
+>>   SEXP prod0(SEXP mat1, SEXP mat2) {
+>>     SEXP u1 = Rf_getAttrib(mat1, R_DimSymbol);
+>>     int m1 = INTEGER(u1)[0];
+>>     int n1 = INTEGER(u1)[1];
+>>     SEXP u2 = Rf_getAttrib(mat2, R_DimSymbol);
+>>     int m2 = INTEGER(u2)[0];
+>>     int n2 = INTEGER(u2)[1];
+>>     if (n1 != m2) Rf_error("matrices not conforming");
+>>     SEXP retval = PROTECT(Rf_allocMatrix(REALSXP, m1, n2));
+>>     double* left = REAL(mat1);
+>>     double* right = REAL(mat2);
+>>     double* ret = REAL(retval);
+>>     double werk = 0.0;
+>>     for (int j = 0; j < n2; j++) {
+>>       for (int i = 0; i < m1; i++) {
+>>           werk = 0.0;
+>>         for (int k = 0; k < n1; k++) werk += (left[i + m1 * k] * right[k + m2 * j]);
+>>         ret[j * m1 + i] =  werk;
+>>       }
+>>     }
+>>     UNPROTECT(1);
+>>     return retval;
+>>   }
+>> 
+>> Test script :
+>> m1 <- matrix(rnorm(300000), nrow = 60)
+>> m2 <- matrix(rnorm(300000), ncol = 60)
+>> print(microbenchmark::microbenchmark(
+>>   m1 %*% m2, .Call("prod0", m1, m2), times = 100
+>> ))
+>> 
+>> Result on my pc:
+>> Unit: milliseconds
+>>                    expr     min      lq     mean  median       uq     max neval
+>>               m1 %*% m2 10.5650 10.8967 11.13434 10.9449 11.02965 15.8397   100
+>>  .Call("prod0", m1, m2) 29.3336 30.7868 32.05114 31.0408 33.85935 45.5321   100
+>> 
+>> 
+>> Can anyone explain why the compiled code in the package is so much slower than in R core?
+>> 
+>> and
+>> 
+>> Is there a way to improve the performance in R package?
+>> 
+>> 
+>> Best regards,
+>> 
+>> Luc De Wilde
+>> 
+>> 
+>> 
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From Luc@DeW||de @end|ng |rom UGent@be  Fri Dec  6 09:39:08 2024
+From: Luc@DeW||de @end|ng |rom UGent@be (Luc De Wilde)
+Date: Fri, 6 Dec 2024 08:39:08 +0000
+Subject: [R-pkg-devel] 
+ Cannot create C code with acceptable performance with
+ respect to internal R command.
+In-Reply-To: <60433DA0-BD30-48E8-B189-C4651A5372DB@gmail.com>
+References: <AM0PR09MB3843BE9F3B6B1BC43774583A98302@AM0PR09MB3843.eurprd09.prod.outlook.com>
+ <60433DA0-BD30-48E8-B189-C4651A5372DB@gmail.com>
+Message-ID: <AM0PR09MB3843CA93CE9D6D99925D188B98312@AM0PR09MB3843.eurprd09.prod.outlook.com>
+
+Thanks to all help, I finally got two (!) solutions for my problem :?
+
+
+Unit: milliseconds
+                                        expr     min       lq     mean   median       uq     max neval
+                                   m1 %*% m2 11.2685 11.48595 11.83029 11.60745 11.83170 17.2381   200
+ .Call("prod0", m1, m2, PACKAGE = "ldwTest") 10.8301 11.03360 11.43360 11.18950 11.36395 24.4530   200
+ .Call("prod2", m1, m2, PACKAGE = "ldwTest") 10.7453 10.96310 11.29727 11.09395 11.31465 17.3467   200
+
+m& %*% m2 : R matrix product
+
+prod0 : the BLAS fortran GEMM routine rewritten in C++ (there was an important rearrangement of the for loops to improve cache use)
+
+prod1 : call, in C++, of the BLAS fortran GEMM routine
+
+
+
+Luc
+
+________________________________________
+Van:?Avraham Adler <avraham.adler at gmail.com>
+Verzonden:?vrijdag 6 december 2024 8:46
+Aan:?Luc De Wilde <Luc.DeWilde at UGent.be>
+CC:?Dirk Eddelbuettel <edd at debian.org>; Yves Rosseel <Yves.Rosseel at UGent.be>; r-package-devel at r-project.org <r-package-devel at r-project.org>
+Onderwerp:?Re: [R-pkg-devel] Cannot create C code with acceptable performance with respect to internal R command.
+?
+For future reference and completeness, since I responded off list, I simply pointed out to Luke an example of using R?s BLAS interface with DGEMV. He needs DGEMM, but the idea is the same.?
+
+<?https://github.com/aadler/minimaxApprox/blob/master/src/Chebyshev.c>
+
+Avi
+
+Sent from my iPhone
+
+On Dec 6, 2024, at 12:14?AM, Luc De Wilde <Luc.DeWilde at ugent.be> wrote:
+
+?Dirk,
+
+that's indeed an easy way to go, but I'm searching for methods that doesn't need to add other dependencies in my package, so the answer of Avraham is the most relevant for me.
+
+But off course, thank you for your help!
+
+Luc
+
+________________________________
+Van: Dirk Eddelbuettel <edd at debian.org>
+Verzonden: donderdag 5 december 2024 15:09
+Aan: Luc De Wilde <Luc.DeWilde at UGent.be>
+CC: Tomas Kalibera <tomas.kalibera at gmail.com>; r-package-devel at r-project.org <r-package-devel at r-project.org>; Yves Rosseel <Yves.Rosseel at UGent.be>
+Onderwerp: Re: [R-pkg-devel] Cannot create C code with acceptable performance with respect to internal R command.
+
+
+Luc,
+
+As Tomas mentioned, matrix-multiplication can take advantage of multiple
+threads, and the 'text book' nexted loops do not do that. ?Now, one
+alternative that appeals a lot to me is to farm out to Armadillo which also
+calls LAPACK for you (as R does). And via RcppArmadillo, the setup becomes a
+one-liner with the expression 'mat1 * mat2' where '*' is overloaded
+appropriately (as is matrix multiplication '%*%' in R). ?I include your
+example as self-contained and reproducible script below, on my not-so-recent
+machine with twelve cores I get
+
+$ Rscript luc.r
+Unit: microseconds
+expr ??????min ???????lq ????mean ???median ??????uq ?????max neval cld
+???C 29010.538 39242.004 47948.98 50930.500 52715.30 81668.53 ??100 ?a
+???R ??685.658 ??800.653 ?1984.17 ?1129.754 ?2719.88 ?8420.66 ??100 ??b
+?Cpp ??401.182 ??444.164 ?1775.03 ??651.023 ?1656.24 30369.15 ??100 ??b
+$
+
+but what really shines (in my eyes) is that a function
+
+???arma::mat cppprod(const arma::mat& m1, const arma::mat& m2) {
+???????return m1 * m2;
+???}
+
+gets set-up for you with no worries whatsoever and outscores the R
+version. (And if you look into the Rcpp docs you can learn to make this a
+little faster still but skipping a (generally recommended !!) handshake with
+RNG status etc).
+
+But different strokes for different folks, not everybody likes C++ (which is
+both perfectly find and also includes Tomas who saw fit to rail against it
+yesterday regarding its compile times which can both tweaked and are also
+worse still in some other popular languages) but I digress ...
+
+Hope this helps, Dirk
+
+
+ccode <- r"(
+SEXP u1 = Rf_getAttrib(mat1, R_DimSymbol);
+int m1 = INTEGER(u1)[0];
+int n1 = INTEGER(u1)[1];
+SEXP u2 = Rf_getAttrib(mat2, R_DimSymbol);
+int m2 = INTEGER(u2)[0];
+int n2 = INTEGER(u2)[1];
+if (n1 != m2) Rf_error("matrices not conforming");
+SEXP retval = PROTECT(Rf_allocMatrix(REALSXP, m1, n2));
+double* left = REAL(mat1);
+double* right = REAL(mat2);
+double* ret = REAL(retval);
+double werk = 0.0;
+for (int j = 0; j < n2; j++) {
+?for (int i = 0; i < m1; i++) {
+????werk = 0.0;
+????for (int k = 0; k < n1; k++)
+??????werk += (left[i + m1 * k] * right[k + m2 * j]);
+????ret[j * m1 + i] = werk;
+?}
+}
+UNPROTECT(1);
+return retval;
+)"
+cprod <- inline::cfunction(sig=signature(mat1="numeric", mat2="numeric"), body=ccode, language="C")
+
+Rcpp::cppFunction("arma::mat cppprod(const arma::mat& m1, const arma::mat& m2) { return m1 * m2; }", depends="RcppArmadillo")
+
+set.seed(123)
+m1 <- matrix(rnorm(300000), nrow = 60)
+m2 <- matrix(rnorm(300000), ncol = 60)
+print(microbenchmark::microbenchmark(C = cprod(m1, m2),
+????????????????????????????????????R = m1 %*% m2,
+????????????????????????????????????Cpp = cppprod(m1, m2),
+????????????????????????????????????times = 100))
+
+--
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+? ?[[alternative HTML version deleted]]
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Fri Dec  6 15:50:23 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Fri, 6 Dec 2024 15:50:23 +0100
+Subject: [R-pkg-devel] 
+ Cannot create C code with acceptable performance with
+ respect to internal R command.
+In-Reply-To: <D73C8AC0-ED5B-40F0-8B4A-0627E753F49A@gmail.com>
+References: <140e06f2-202c-4f98-8d65-189fcf061450@gmail.com>
+ <D73C8AC0-ED5B-40F0-8B4A-0627E753F49A@gmail.com>
+Message-ID: <4c5af64e-0907-4d24-8c95-8be00b7e16cd@gmail.com>
+
+
+On 12/6/24 08:58, Avraham Adler wrote:
+> Sent from my iPhone
+>
+>> On Dec 5, 2024, at 4:11?PM, Sokol Serguei <serguei.sokol at gmail.com> wrote:
+>>
+>> ?Luc,
+>>
+>> There can be many reasons explaining the difference in compiled code performances. Tuning such code to achieve a pick performance is generally a fine art.
+>> Optimizations techniques can include but are not limited to:
+>>   - SIMD instructions (and memory alignment for their optimal use);
+>>   - instruction level parallelism;
+>>   - unrolling loops;
+>>   - cache level (mis-)hits;
+>>   - multi-thread parallelism;
+>>   - ...
+>> Approaches in optimization are not the same depending on kind of application: CPU-bound, memory-bound or IO-bound.
+>> Many of this techniques can be directly used (or not) by compiler depending on chosen options. Are you sure to use the same options and compiler that were used during R compilation?
+>> And finally, the compared code could be plainly not the same. R can use BLAS call, e.g. OpenBLAS to multiply two matrices. This latter is heavily optimized for such operations and can achieve x10 acceleration compared to plain "naive" BLAS.
+>> The R code you cite can be just the code for a fallback in case no BLAS was found during R compilation.
+>> Look at what your sessionInfo() says about used BLAS.
+> That doesn?t always work. I build R on Windows (10) linking to a pre-compiled static OpenBLAS (3.28) and my sessionInfo has an empty string for BLAS. I reckon that is because I?m using Rblas.dll, it?s just that my Rblas isn?t vanilla.
+Right, the BLAS/LAPACK detection in sessionInfo() is only implemented 
+for Unix, tested on Linux and macOS.
+
+Tomas
+
+>
+> Avi
+>
+>> Best,
+>> Serguei.
+>>
+>>> Le 05/12/2024 ? 14:21, Luc De Wilde a ?crit :
+>>> Dear package developers,
+>>>
+>>> in creating a package lavaanC for use in lavaan, I need to perform some matrix computations involving matrix products and crossproducts. As far as I see I cannot directly call the C code in the R core. So I copied the code in the R core, but the same C/C++ code in a package is 2.5 ? 3 times slower than executed directly in R :
+>>>
+>>> C code in package :
+>>>    SEXP prod0(SEXP mat1, SEXP mat2) {
+>>>      SEXP u1 = Rf_getAttrib(mat1, R_DimSymbol);
+>>>      int m1 = INTEGER(u1)[0];
+>>>      int n1 = INTEGER(u1)[1];
+>>>      SEXP u2 = Rf_getAttrib(mat2, R_DimSymbol);
+>>>      int m2 = INTEGER(u2)[0];
+>>>      int n2 = INTEGER(u2)[1];
+>>>      if (n1 != m2) Rf_error("matrices not conforming");
+>>>      SEXP retval = PROTECT(Rf_allocMatrix(REALSXP, m1, n2));
+>>>      double* left = REAL(mat1);
+>>>      double* right = REAL(mat2);
+>>>      double* ret = REAL(retval);
+>>>      double werk = 0.0;
+>>>      for (int j = 0; j < n2; j++) {
+>>>        for (int i = 0; i < m1; i++) {
+>>>            werk = 0.0;
+>>>          for (int k = 0; k < n1; k++) werk += (left[i + m1 * k] * right[k + m2 * j]);
+>>>          ret[j * m1 + i] =  werk;
+>>>        }
+>>>      }
+>>>      UNPROTECT(1);
+>>>      return retval;
+>>>    }
+>>>
+>>> Test script :
+>>> m1 <- matrix(rnorm(300000), nrow = 60)
+>>> m2 <- matrix(rnorm(300000), ncol = 60)
+>>> print(microbenchmark::microbenchmark(
+>>>    m1 %*% m2, .Call("prod0", m1, m2), times = 100
+>>> ))
+>>>
+>>> Result on my pc:
+>>> Unit: milliseconds
+>>>                     expr     min      lq     mean  median       uq     max neval
+>>>                m1 %*% m2 10.5650 10.8967 11.13434 10.9449 11.02965 15.8397   100
+>>>   .Call("prod0", m1, m2) 29.3336 30.7868 32.05114 31.0408 33.85935 45.5321   100
+>>>
+>>>
+>>> Can anyone explain why the compiled code in the package is so much slower than in R core?
+>>>
+>>> and
+>>>
+>>> Is there a way to improve the performance in R package?
+>>>
+>>>
+>>> Best regards,
+>>>
+>>> Luc De Wilde
+>>>
+>>>
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
