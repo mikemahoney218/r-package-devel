@@ -11279,3 +11279,259 @@ Uwe Ligges
 > R-package-devel at r-project.org mailing list
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
+From @n248 @end|ng |rom corne||@edu  Wed Dec 11 05:23:41 2024
+From: @n248 @end|ng |rom corne||@edu (Satyaprakash Nayak)
+Date: Tue, 10 Dec 2024 23:23:41 -0500
+Subject: [R-pkg-devel] Creating and hosting static libraries for package
+ installation on Windows
+Message-ID: <CAM3Cqv+WJjKSjLpv-_2rXDK2E8OF3MbF1zUTaxyhK6APwQiYbw@mail.gmail.com>
+
+Hi r-package-devel
+
+I am working on updating my package `sundialr` (
+https://cran.r-project.org/web/packages/sundialr/index.html), wherein I was
+earlier bundling the C source files with the package, but now I am using
+`cmake` to create static libraries for the upstream C library SUNDIALS
+which the package provides an interface for. In brief, the previous
+approach can be found at:
+
+https://github.com/sn248/sundialr/blob/master/src/Makevars
+
+And the new approach can be seen below (heavily borrowed from nloptr
+package installation approach):
+
+https://github.com/sn248/sundialr/blob/cmake-install/tools/cmake_call.sh
+
+The second approach works successfully on linux and macOS platforms
+(checked by rhub).
+
+I am struggling to get this working on a Windows platform, and have looked
+at a few packages (e.g., nloptr, rcppredis, openssl) which have solved this
+issue. As I understand the following steps are required to get the static
+libraries in correct locations for package installation on the Windows
+
+1) Host the .tar.gz files or .zip files on https://github.com/rwinlib/
+(deprecated now) or https://github.com/r-windows/bundles/releases/download/
+which should contain the static libraries (*.a files) in separate folders
+for i386, x64-ucrt and x-64 platforms and required header files in the
+`include` folder.
+
+2) Use a winlibs.R file within the `tools` sub-directory in the package
+file structure to download the .zip or .tar.gz file and extract them to a
+`windows` directory.
+
+3) Set PKG_CPPFLAGS and PKG_LIBS via Makewars.win file in src sub-directory
+in the package files.
+
+Currently, I am struggling with Step #1, i.e., how to create the required
+.zip or .tar.gz files and host them on
+https://github.com/r-windows/bundles/releases for download. I will be
+thankful if any one can provide some guidance in this regard.
+
+Sincerely
+Satya
+
+	[[alternative HTML version deleted]]
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Wed Dec 11 10:23:08 2024
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Wed, 11 Dec 2024 10:23:08 +0100
+Subject: [R-pkg-devel] Creating and hosting static libraries for package
+ installation on Windows
+In-Reply-To: <CAM3Cqv+WJjKSjLpv-_2rXDK2E8OF3MbF1zUTaxyhK6APwQiYbw@mail.gmail.com>
+References: <CAM3Cqv+WJjKSjLpv-_2rXDK2E8OF3MbF1zUTaxyhK6APwQiYbw@mail.gmail.com>
+Message-ID: <753efe58-1b6a-4f67-af29-66ea29665649@statistik.tu-dortmund.de>
+
+We really want to get rid of having compiled code imported during the 
+installation process. Ideally talk to Tomas Kalibera to get the 
+libraries you need included in to the next Rtools update.
+
+Best,
+Uwe Ligges
+
+
+On 11.12.2024 05:23, Satyaprakash Nayak wrote:
+> Hi r-package-devel
+> 
+> I am working on updating my package `sundialr` (
+> https://cran.r-project.org/web/packages/sundialr/index.html), wherein I was
+> earlier bundling the C source files with the package, but now I am using
+> `cmake` to create static libraries for the upstream C library SUNDIALS
+> which the package provides an interface for. In brief, the previous
+> approach can be found at:
+> 
+> https://github.com/sn248/sundialr/blob/master/src/Makevars
+> 
+> And the new approach can be seen below (heavily borrowed from nloptr
+> package installation approach):
+> 
+> https://github.com/sn248/sundialr/blob/cmake-install/tools/cmake_call.sh
+> 
+> The second approach works successfully on linux and macOS platforms
+> (checked by rhub).
+> 
+> I am struggling to get this working on a Windows platform, and have looked
+> at a few packages (e.g., nloptr, rcppredis, openssl) which have solved this
+> issue. As I understand the following steps are required to get the static
+> libraries in correct locations for package installation on the Windows
+> 
+> 1) Host the .tar.gz files or .zip files on https://github.com/rwinlib/
+> (deprecated now) or https://github.com/r-windows/bundles/releases/download/
+> which should contain the static libraries (*.a files) in separate folders
+> for i386, x64-ucrt and x-64 platforms and required header files in the
+> `include` folder.
+> 
+> 2) Use a winlibs.R file within the `tools` sub-directory in the package
+> file structure to download the .zip or .tar.gz file and extract them to a
+> `windows` directory.
+> 
+> 3) Set PKG_CPPFLAGS and PKG_LIBS via Makewars.win file in src sub-directory
+> in the package files.
+> 
+> Currently, I am struggling with Step #1, i.e., how to create the required
+> .zip or .tar.gz files and host them on
+> https://github.com/r-windows/bundles/releases for download. I will be
+> thankful if any one can provide some guidance in this regard.
+> 
+> Sincerely
+> Satya
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+From br@d|eyjeck @end|ng |rom gm@||@com  Wed Dec 11 13:12:11 2024
+From: br@d|eyjeck @end|ng |rom gm@||@com (Brad Eck)
+Date: Wed, 11 Dec 2024 12:12:11 +0000
+Subject: [R-pkg-devel] truncating strings on purpose
+Message-ID: <CALECgPaop1dk_Zfxrb-68sJkFfUPtBJ6FHkqMAuNTKbA+t=zPg@mail.gmail.com>
+
+Dear List
+
+The latest update to my epanet2toolkit package bounced from CRAN due to
+some warnings about string truncation in C code from gcc.
+
+Found the following significant warnings:
+    input2.c:863:5: warning: ?__builtin_strncpy? output may be truncated
+copying 225 bytes from a string of length 255 [-Wstringop-truncation]
+    input2.c:302:15: warning: ?__builtin_strncpy? output may be truncated
+copying 78 bytes from a string of length 1024 [-Wstringop-truncation]
+    report.c:795:9: warning: ?__builtin_strncpy? output may be truncated
+copying 967 bytes from a string of length 1024 [-Wstringop-truncation]
+
+The package wraps a simulation engine that parses inputs from and
+writes results to text files. Where the truncation warnings appear, I
+am truncating on purpose using `strncpy` to avoid overflows later.  I
+believe this works fine from an application point of view but the
+warnings remain.
+
+Any suggestions on how to carry out a truncation so that gcc won't
+complain?
+
+Thanks in advance,
+
+Brad
+
+PS - CRAN check info is here
+https://win-builder.r-project.org/incoming_pretest/epanet2toolkit_1.0.6_20241209_221743/specialChecks/
+
+PPS the latest CRAN submission is from this branch
+https://github.com/bradleyjeck/epanet2toolkit/tree/lto-crash
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Wed Dec 11 14:29:30 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Wed, 11 Dec 2024 16:29:30 +0300
+Subject: [R-pkg-devel] truncating strings on purpose
+In-Reply-To: <CALECgPaop1dk_Zfxrb-68sJkFfUPtBJ6FHkqMAuNTKbA+t=zPg@mail.gmail.com>
+References: <CALECgPaop1dk_Zfxrb-68sJkFfUPtBJ6FHkqMAuNTKbA+t=zPg@mail.gmail.com>
+Message-ID: <20241211162930.38eb4ba3@arachnoid>
+
+? Wed, 11 Dec 2024 12:12:11 +0000
+Brad Eck <bradleyjeck at gmail.com> ?????:
+
+> Found the following significant warnings:
+>     input2.c:863:5: warning: ?__builtin_strncpy? output may be
+> truncated copying 225 bytes from a string of length 255
+> [-Wstringop-truncation]
+
+> Where the truncation warnings appear, I am truncating on purpose
+> using `strncpy` to avoid overflows later.  I believe this works fine
+> from an application point of view but the warnings remain.
+
+GCC documentation suggests setting the length argument to _one less_
+than sizeof destination buffer in addition to terminating the string:
+https://gcc.gnu.org/onlinedocs/gcc-14.2.0/gcc/Warning-Options.html#index-Wstringop-truncation
+
+        strncpy(trunc_s1, s1, sizeof trunc_s1 - 1);
+        trunc_s1[sizeof trunc_s1 - 1] = '\0';
+
+-- 
+Best regards,
+Ivan
+
+
+From |kw@|mmo @end|ng |rom gm@||@com  Wed Dec 11 14:29:56 2024
+From: |kw@|mmo @end|ng |rom gm@||@com (Iris Simmons)
+Date: Wed, 11 Dec 2024 08:29:56 -0500
+Subject: [R-pkg-devel] truncating strings on purpose
+In-Reply-To: <CALECgPaop1dk_Zfxrb-68sJkFfUPtBJ6FHkqMAuNTKbA+t=zPg@mail.gmail.com>
+References: <CALECgPaop1dk_Zfxrb-68sJkFfUPtBJ6FHkqMAuNTKbA+t=zPg@mail.gmail.com>
+Message-ID: <CADNULg_UOuKmEUK79T0Wb8nBV4fPoddAw627jnuA3UHbKP7qOw@mail.gmail.com>
+
+You could use memcpy instead. That gets rids of the type checking though.
+
+You could also define something like char * my_strncpy ( char *
+destination, const char * source, size_t num ) { return (char *)
+memcpy(destination, source, num) } to keep the type checking.
+
+On Wed, Dec 11, 2024, 07:12 Brad Eck <bradleyjeck at gmail.com> wrote:
+
+> Dear List
+>
+> The latest update to my epanet2toolkit package bounced from CRAN due to
+> some warnings about string truncation in C code from gcc.
+>
+> Found the following significant warnings:
+>     input2.c:863:5: warning: ?__builtin_strncpy? output may be truncated
+> copying 225 bytes from a string of length 255 [-Wstringop-truncation]
+>     input2.c:302:15: warning: ?__builtin_strncpy? output may be truncated
+> copying 78 bytes from a string of length 1024 [-Wstringop-truncation]
+>     report.c:795:9: warning: ?__builtin_strncpy? output may be truncated
+> copying 967 bytes from a string of length 1024 [-Wstringop-truncation]
+>
+> The package wraps a simulation engine that parses inputs from and
+> writes results to text files. Where the truncation warnings appear, I
+> am truncating on purpose using `strncpy` to avoid overflows later.  I
+> believe this works fine from an application point of view but the
+> warnings remain.
+>
+> Any suggestions on how to carry out a truncation so that gcc won't
+> complain?
+>
+> Thanks in advance,
+>
+> Brad
+>
+> PS - CRAN check info is here
+>
+> https://win-builder.r-project.org/incoming_pretest/epanet2toolkit_1.0.6_20241209_221743/specialChecks/
+>
+> PPS the latest CRAN submission is from this branch
+> https://github.com/bradleyjeck/epanet2toolkit/tree/lto-crash
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
