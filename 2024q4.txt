@@ -11535,3 +11535,109 @@ On Wed, Dec 11, 2024, 07:12 Brad Eck <bradleyjeck at gmail.com> wrote:
 	[[alternative HTML version deleted]]
 
 
+From br@d|eyjeck @end|ng |rom gm@||@com  Thu Dec 12 15:46:08 2024
+From: br@d|eyjeck @end|ng |rom gm@||@com (Brad Eck)
+Date: Thu, 12 Dec 2024 14:46:08 +0000
+Subject: [R-pkg-devel] duplicating gcc-UBSAN warning
+Message-ID: <CALECgPZGfHrSSYKZeP_-sX5cBhzBn7FwM0RWmZ5Giq-=MpMsnA@mail.gmail.com>
+
+Dear List
+
+I'm trying to duplicate a warning CRAN is seeing on the additional checks
+for gcc-UBSAN.  That is using:
+
+CRAN's gcc-UBSAN:
+* using R Under development (unstable) (2024-12-04 r87420)
+* using platform: x86_64-pc-linux-gnu
+* R was compiled by
+    gcc-14 (GCC) 14.2.0
+    GNU Fortran (GCC) 14.2.0
+* running under: Fedora Linux 36 (Workstation Edition)
+
+And gave warnings like.
+    input2.c:863:5: warning: ?__builtin_strncpy? output may be truncated
+copying 225 bytes from a string of length 255 [-Wstringop-truncation]
+
+To try and duplicate, I added a src/Makevars with
+PKG_CFLAGS = -Wstringop-truncation
+
+And ran in two different docker images:
+Docker #1 (fedora:40)
+* using R version 4.4.2 (2024-10-31)
+
+* using platform: aarch64-redhat-linux-gnu
+
+* R was compiled by
+
+    gcc (GCC) 14.2.1 20240912 (Red Hat 14.2.1-3)
+
+    GNU Fortran (GCC) 14.2.1 20240912 (Red Hat 14.2.1-3)
+
+* running under: Fedora Linux 40 (Container Image)
+
+Docker #2 (thanks to Tomas Kalibera)
+
+* using R Under development (unstable) (2024-12-02 r87417)
+
+* using platform: aarch64-unknown-linux-gnu
+
+* R was compiled by
+
+    gcc (Debian 14.2.0-8) 14.2.0
+
+    GNU Fortran (Debian 14.2.0-8) 14.2.0
+
+* running under: Debian GNU/Linux trixie/sid
+
+The flag appears in 00install.out, but the warning doesn't get raised.
+
+Any ideas on how to duplicate?
+
+Thanks,
+
+Brad
+
+PS checks for my package are here:
+https://www.stats.ox.ac.uk/pub/bdr/memtests/gcc-UBSAN/epanet2toolkit/00check.log
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Thu Dec 12 16:38:45 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 12 Dec 2024 18:38:45 +0300
+Subject: [R-pkg-devel] duplicating gcc-UBSAN warning
+In-Reply-To: <CALECgPZGfHrSSYKZeP_-sX5cBhzBn7FwM0RWmZ5Giq-=MpMsnA@mail.gmail.com>
+References: <CALECgPZGfHrSSYKZeP_-sX5cBhzBn7FwM0RWmZ5Giq-=MpMsnA@mail.gmail.com>
+Message-ID: <20241212183845.407f9667@arachnoid>
+
+? Thu, 12 Dec 2024 14:46:08 +0000
+Brad Eck <bradleyjeck at gmail.com> ?????:
+
+> The flag appears in 00install.out, but the warning doesn't get raised.
+> 
+> Any ideas on how to duplicate?
+
+In my experiments with gcc 14.2.0-8 on Debian for amd64 (the
+debian:testing container), the warning only appears when all of the
+following flags are present:
+
+-fsanitize=address -O2 -Wstringop-truncation
+
+-Wall can be used instead of -Wstringop-truncation because the former
+includes the latter. -fsanitize=address,undefined also works, but not
+just -fsanitize=undefined.
+
+Remove the optimisation or the AddressSanitizer, and GCC stops being
+able to prove that truncation occurs. It looks like you will either
+need to find a container with R pre-built with sanitizers enabled (are
+there Rocker containers for aarch64?) or build R yourself [*].
+
+-- 
+Best regards,
+Ivan
+
+[*]
+https://cran.r-project.org/doc/manuals/R-exts.html#Using-Address-Sanitizer
+
+
