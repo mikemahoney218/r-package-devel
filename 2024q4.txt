@@ -11641,3 +11641,238 @@ Ivan
 https://cran.r-project.org/doc/manuals/R-exts.html#Using-Address-Sanitizer
 
 
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Fri Dec 13 07:52:29 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Fri, 13 Dec 2024 07:52:29 +0100
+Subject: [R-pkg-devel] Creating and hosting static libraries for package
+ installation on Windows
+In-Reply-To: <CAM3Cqv+WJjKSjLpv-_2rXDK2E8OF3MbF1zUTaxyhK6APwQiYbw@mail.gmail.com>
+References: <CAM3Cqv+WJjKSjLpv-_2rXDK2E8OF3MbF1zUTaxyhK6APwQiYbw@mail.gmail.com>
+Message-ID: <eeeedde4-9407-4e38-9263-0c28a2683c9c@gmail.com>
+
+On 12/11/24 05:23, Satyaprakash Nayak wrote:
+> Hi r-package-devel
+>
+> I am working on updating my package `sundialr` (
+> https://cran.r-project.org/web/packages/sundialr/index.html), wherein I was
+> earlier bundling the C source files with the package, but now I am using
+> `cmake` to create static libraries for the upstream C library SUNDIALS
+> which the package provides an interface for. In brief, the previous
+> approach can be found at:
+>
+> https://github.com/sn248/sundialr/blob/master/src/Makevars
+>
+> And the new approach can be seen below (heavily borrowed from nloptr
+> package installation approach):
+>
+> https://github.com/sn248/sundialr/blob/cmake-install/tools/cmake_call.sh
+>
+> The second approach works successfully on linux and macOS platforms
+> (checked by rhub).
+>
+> I am struggling to get this working on a Windows platform, and have looked
+> at a few packages (e.g., nloptr, rcppredis, openssl) which have solved this
+> issue. As I understand the following steps are required to get the static
+> libraries in correct locations for package installation on the Windows
+
+Technically, it is possible to build sundials from the downloaded source 
+code using cmake on Windows pretty much like on Unix. Rtools includes 
+cmake as well as the toolchains and libraries to build sundials. The 
+older version of sundialr was building sundials on Windows using make, 
+there is no technical reason why it couldn't do that using cmake (and 
+downloaded _sources_) as well.
+
+I was able to build the new sundialr on my Windows with these changes, 
+and the package passed its checks (with some warnings):
+
+1. delete Makevars.win and Makevars.ucrt
+2. create configure.win file with this content in the package root directory
+
+---
+
+#! /bin/sh
+
+./configure $*
+
+---
+
+Whenever in doubt, I would recommend starting with the same code for 
+Unix and Windows. Only customize for Windows (or macOS or another 
+system) if needed.
+
+Best Tomas
+
+> 1) Host the .tar.gz files or .zip files on https://github.com/rwinlib/
+> (deprecated now) or https://github.com/r-windows/bundles/releases/download/
+> which should contain the static libraries (*.a files) in separate folders
+> for i386, x64-ucrt and x-64 platforms and required header files in the
+> `include` folder.
+>
+> 2) Use a winlibs.R file within the `tools` sub-directory in the package
+> file structure to download the .zip or .tar.gz file and extract them to a
+> `windows` directory.
+>
+> 3) Set PKG_CPPFLAGS and PKG_LIBS via Makewars.win file in src sub-directory
+> in the package files.
+>
+> Currently, I am struggling with Step #1, i.e., how to create the required
+> .zip or .tar.gz files and host them on
+> https://github.com/r-windows/bundles/releases for download. I will be
+> thankful if any one can provide some guidance in this regard.
+>
+> Sincerely
+> Satya
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From @n248 @end|ng |rom corne||@edu  Fri Dec 13 15:02:50 2024
+From: @n248 @end|ng |rom corne||@edu (Satyaprakash Nayak)
+Date: Fri, 13 Dec 2024 09:02:50 -0500
+Subject: [R-pkg-devel] Creating and hosting static libraries for package
+ installation on Windows
+In-Reply-To: <CAM3Cqv+WJjKSjLpv-_2rXDK2E8OF3MbF1zUTaxyhK6APwQiYbw@mail.gmail.com>
+References: <CAM3Cqv+WJjKSjLpv-_2rXDK2E8OF3MbF1zUTaxyhK6APwQiYbw@mail.gmail.com>
+Message-ID: <CAM3Cqv+Np7ZYeX2HyapEruYLFoM6CeSCZYacT=yjvYaAOC129w@mail.gmail.com>
+
+For some reason, I am not getting emails from the list, but would like to
+thank Uwe and Tomas for their help. The code Tomas has provided in his
+response has resolved the issue.
+
+Satya
+
+
+On Tue, Dec 10, 2024 at 11:23?PM Satyaprakash Nayak <sn248 at cornell.edu>
+wrote:
+
+> Hi r-package-devel
+>
+> I am working on updating my package `sundialr` (
+> https://cran.r-project.org/web/packages/sundialr/index.html), wherein I
+> was
+> earlier bundling the C source files with the package, but now I am using
+> `cmake` to create static libraries for the upstream C library SUNDIALS
+> which the package provides an interface for. In brief, the previous
+> approach can be found at:
+>
+> https://github.com/sn248/sundialr/blob/master/src/Makevars
+>
+> And the new approach can be seen below (heavily borrowed from nloptr
+> package installation approach):
+>
+> https://github.com/sn248/sundialr/blob/cmake-install/tools/cmake_call.sh
+>
+> The second approach works successfully on linux and macOS platforms
+> (checked by rhub).
+>
+> I am struggling to get this working on a Windows platform, and have looked
+> at a few packages (e.g., nloptr, rcppredis, openssl) which have solved this
+> issue. As I understand the following steps are required to get the static
+> libraries in correct locations for package installation on the Windows
+>
+> 1) Host the .tar.gz files or .zip files on https://github.com/rwinlib/
+> (deprecated now) or
+> https://github.com/r-windows/bundles/releases/download/
+> which should contain the static libraries (*.a files) in separate folders
+> for i386, x64-ucrt and x-64 platforms and required header files in the
+> `include` folder.
+>
+> 2) Use a winlibs.R file within the `tools` sub-directory in the package
+> file structure to download the .zip or .tar.gz file and extract them to a
+> `windows` directory.
+>
+> 3) Set PKG_CPPFLAGS and PKG_LIBS via Makewars.win file in src sub-directory
+> in the package files.
+>
+> Currently, I am struggling with Step #1, i.e., how to create the required
+> .zip or .tar.gz files and host them on
+> https://github.com/r-windows/bundles/releases for download. I will be
+> thankful if any one can provide some guidance in this regard.
+>
+> Sincerely
+> Satya
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From br@d|eyjeck @end|ng |rom gm@||@com  Fri Dec 13 19:08:27 2024
+From: br@d|eyjeck @end|ng |rom gm@||@com (Brad Eck)
+Date: Fri, 13 Dec 2024 18:08:27 +0000
+Subject: [R-pkg-devel] truncating strings on purpose
+In-Reply-To: <20241211162930.38eb4ba3@arachnoid>
+References: <CALECgPaop1dk_Zfxrb-68sJkFfUPtBJ6FHkqMAuNTKbA+t=zPg@mail.gmail.com>
+ <20241211162930.38eb4ba3@arachnoid>
+Message-ID: <CALECgPbe1fNZ=XYA8A6Pypg1R8Uc7aVFcbA8uhqHLBRV09E8bA@mail.gmail.com>
+
+Hi Ivan, List,
+
+Thanks for the suggestion, and for the pointer on duplicating the error.
+The good news is that I am able to trigger the warning locally now. The bad
+news is that following the gcc docs on avoid the warning did not seem to
+work:
+
+
+gcc -std=gnu99 -fsanitize=undefined -fno-omit-frame-pointer -std=gnu11
+-I"/usr/local/lib/R/include" -DNDEBUG   -I/usr/local/include
+-fsanitize=address
+-O2 -Wstringop-truncation -fPIC  -g -O2  -c input2.c -o input2.o
+
+input2.c: In function ?inperrmsg?:
+
+input2.c:863:5: warning: ?strncpy? output may be truncated copying 225
+bytes from a string of length 255 [-Wstringop-truncation]
+
+  863 |     strncpy(trunc_tok, tok, sizeof trunc_tok - 1);
+
+      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+
+I could also try memcpy, but i don't so much like the idea of going away
+from string functions for string handling.
+
+
+Other suggestions are also welcome.
+
+
+Brad
+
+
+
+On Wed, Dec 11, 2024 at 1:29?PM Ivan Krylov <ikrylov at disroot.org> wrote:
+
+> ? Wed, 11 Dec 2024 12:12:11 +0000
+> Brad Eck <bradleyjeck at gmail.com> ?????:
+>
+> > Found the following significant warnings:
+> >     input2.c:863:5: warning: ?__builtin_strncpy? output may be
+> > truncated copying 225 bytes from a string of length 255
+> > [-Wstringop-truncation]
+>
+> > Where the truncation warnings appear, I am truncating on purpose
+> > using `strncpy` to avoid overflows later.  I believe this works fine
+> > from an application point of view but the warnings remain.
+>
+> GCC documentation suggests setting the length argument to _one less_
+> than sizeof destination buffer in addition to terminating the string:
+>
+> https://gcc.gnu.org/onlinedocs/gcc-14.2.0/gcc/Warning-Options.html#index-Wstringop-truncation
+>
+>         strncpy(trunc_s1, s1, sizeof trunc_s1 - 1);
+>         trunc_s1[sizeof trunc_s1 - 1] = '\0';
+>
+> --
+> Best regards,
+> Ivan
+>
+
+	[[alternative HTML version deleted]]
+
+
