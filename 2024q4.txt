@@ -11876,3 +11876,49 @@ On Wed, Dec 11, 2024 at 1:29?PM Ivan Krylov <ikrylov at disroot.org> wrote:
 	[[alternative HTML version deleted]]
 
 
+From |kry|ov @end|ng |rom d|@root@org  Mon Dec 16 16:36:25 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 16 Dec 2024 18:36:25 +0300
+Subject: [R-pkg-devel] truncating strings on purpose
+In-Reply-To: <CALECgPbe1fNZ=XYA8A6Pypg1R8Uc7aVFcbA8uhqHLBRV09E8bA@mail.gmail.com>
+References: <CALECgPaop1dk_Zfxrb-68sJkFfUPtBJ6FHkqMAuNTKbA+t=zPg@mail.gmail.com>
+ <20241211162930.38eb4ba3@arachnoid>
+ <CALECgPbe1fNZ=XYA8A6Pypg1R8Uc7aVFcbA8uhqHLBRV09E8bA@mail.gmail.com>
+Message-ID: <20241216183625.214f7c2d@arachnoid>
+
+Dear Brad, Kurt,
+
+? Fri, 13 Dec 2024 18:08:27 +0000
+Brad Eck <bradleyjeck at gmail.com> ?????:
+
+> The bad news is that following the gcc docs on avoid the warning did
+> not seem to work:
+
+I have asked on Libera.Chat's #gcc and was told that the "middle-end"
+warnings [1] (which include -Wstringop-truncation) should not count as
+failures when Address Sanitizer is enabled. (Many thanks to Sam James
+and Arsen Arsenovi? for the triage!) While we don't literally use
+-Werror, de-facto the result is the same: the package doesn't pass the
+check if the warning is emitted.
+
+The reason for that is that the "middle-end" warnings require
+optimisation to avoid false positives in the unreachable code paths,
+and sanitizers change optimisation too much for the warnings to remain
+reliable [2]. A similar false positive has been reported before [3].
+
+Can we use -Wno-stringop-truncation during incoming checks with ASan?
+
+-- 
+Best regards,
+Ivan
+
+[1]
+https://developers.redhat.com/blog/2019/03/13/understanding-gcc-warnings-part-2
+
+[2]
+https://gcc.gnu.org/bugzilla/show_bug.cgi?id=117881
+
+[3]
+https://gcc.gnu.org/bugzilla/show_bug.cgi?id=108939
+
+
