@@ -12954,3 +12954,1940 @@ R-package-devel at r-project.org mailing list
 https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!PDiH4ENfjr2_Jw!CVwdZfO0yYHtB0njRHzPvjXbopN3C4A8qqHbT3BDuJ6uvC08BIjde5hxt_7oeAmYqPRfG0OXgktleUAakOluLXaeqldRxK978yKiXQ$ [stat[.]ethz[.]ch]
 
 
+From d@v|d@corte@@r|ver@ @end|ng |rom gm@||@com  Tue Dec 17 20:26:01 2024
+From: d@v|d@corte@@r|ver@ @end|ng |rom gm@||@com (David Cortes)
+Date: Tue, 17 Dec 2024 20:26:01 +0100
+Subject: [R-pkg-devel] Non-reproducible ASAN flagged issue
+Message-ID: <410e009bfa3f33a843e0b366b09813b56972a83c.camel@gmail.com>
+
+I am seeing a curious error in an ASAN package check which is not
+reproducible in the r-debug containers
+(https://github.com/wch/r-debug), and which I'm suspecting might be a
+compiler bug.
+
+Wanted to ask for a second opinion on whether this could actually be a
+compiler bug or a real bug in the package, and if the former, how
+should I reply to the email from CRAN about fixing the issues from the
+checks in the package.
+
+In more detail, in the ASAN logs here:
+https://cran.r-project.org/web/checks/check_results_isotree.html
+
+It mentions detecting a global-buffer-overflow during a read, which
+happens in the contents of a string literal that's used as constructor
+for 'std::regex':
+https://github.com/david-cortes/isotree/blob/1f84128a03bb6fc5eecd1de7aebf4b745b54fa1e/src/formatted_exporters.cpp#L332C13-L332C31
+std::regex_replace(s, std::regex("\""), "\\\"")
+
+I'm not understanding how it could possibly cause an overflow from
+either constructing an 'std::regex' with a string literal, or from
+passing the result of it to 'std::regex_replace' with C++ strings - it
+looks like it should be an impossible situation.
+
+The values for argument 's' (the 'std::string' where to make
+replacements in the 'std::regex_replace' call which receives the
+'std::regex' object) which are seen during the example that gets
+flagged by ASAN do not have anything special - their contents are one
+of the following: "column_1", "column_2", "column_3" - and they are all
+obtained from a call to 'Rcpp::as<std::vector<std::string>>' on an R
+character vector, which should rule out issues with e.g. missing null
+termination, wrong size, and similar:
+https://github.com/david-cortes/isotree/blob/1f84128a03bb6fc5eecd1de7aebf4b745b54fa1e/src/Rwrapper.cpp#L1975
+
+Help here would be appreciated.
+
+Best,
+David Cortes
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Wed Dec 18 13:43:44 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Wed, 18 Dec 2024 13:43:44 +0100
+Subject: [R-pkg-devel] Non-reproducible ASAN flagged issue
+In-Reply-To: <410e009bfa3f33a843e0b366b09813b56972a83c.camel@gmail.com>
+References: <410e009bfa3f33a843e0b366b09813b56972a83c.camel@gmail.com>
+Message-ID: <10b6f282-2a0e-4b02-8177-e179044bb6ef@gmail.com>
+
+On 12/17/24 20:26, David Cortes wrote:
+> I am seeing a curious error in an ASAN package check which is not
+> reproducible in the r-debug containers
+> (https://github.com/wch/r-debug), and which I'm suspecting might be a
+> compiler bug.
+>
+> Wanted to ask for a second opinion on whether this could actually be a
+> compiler bug or a real bug in the package, and if the former, how
+> should I reply to the email from CRAN about fixing the issues from the
+> checks in the package.
+
+In principle, if you run into something you suspect to be a bug in the 
+compiler (or perhaps rather C++ library), the best course of action is 
+to narrow it down to a minimal reproducible example (no R, no R package, 
+just tiny C/C++ standalone code). And then report that to the 
+compiler/C++ library developers. With such a minimal example, I would 
+expect one would get a quick response from the developers on whether it 
+is actually a bug or the code is wrong. Also, on the way of narrowing 
+down, one might figure out the problem (if in the package). And if 
+confirmed compiler/C++ library/etc bug by the corresponding developers, 
+then I would let the CRAN team know.
+
+Best
+Tomas
+
+>
+> In more detail, in the ASAN logs here:
+> https://cran.r-project.org/web/checks/check_results_isotree.html
+>
+> It mentions detecting a global-buffer-overflow during a read, which
+> happens in the contents of a string literal that's used as constructor
+> for 'std::regex':
+> https://github.com/david-cortes/isotree/blob/1f84128a03bb6fc5eecd1de7aebf4b745b54fa1e/src/formatted_exporters.cpp#L332C13-L332C31
+> std::regex_replace(s, std::regex("\""), "\\\"")
+>
+> I'm not understanding how it could possibly cause an overflow from
+> either constructing an 'std::regex' with a string literal, or from
+> passing the result of it to 'std::regex_replace' with C++ strings - it
+> looks like it should be an impossible situation.
+>
+> The values for argument 's' (the 'std::string' where to make
+> replacements in the 'std::regex_replace' call which receives the
+> 'std::regex' object) which are seen during the example that gets
+> flagged by ASAN do not have anything special - their contents are one
+> of the following: "column_1", "column_2", "column_3" - and they are all
+> obtained from a call to 'Rcpp::as<std::vector<std::string>>' on an R
+> character vector, which should rule out issues with e.g. missing null
+> termination, wrong size, and similar:
+> https://github.com/david-cortes/isotree/blob/1f84128a03bb6fc5eecd1de7aebf4b745b54fa1e/src/Rwrapper.cpp#L1975
+>
+> Help here would be appreciated.
+>
+> Best,
+> David Cortes
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From georg|@bo@hn@kov @end|ng |rom m@nche@ter@@c@uk  Wed Dec 18 13:49:56 2024
+From: georg|@bo@hn@kov @end|ng |rom m@nche@ter@@c@uk (Georgi Boshnakov)
+Date: Wed, 18 Dec 2024 12:49:56 +0000
+Subject: [R-pkg-devel] 
+ Changes in function call with respect to the current
+ published version
+In-Reply-To: <LO0P265MB6325BDD86795FEF0CB21F635AE042@LO0P265MB6325.GBRP265.PROD.OUTLOOK.COM>
+References: <CACr7k5+pmMhwmEJ9Zb0gL4yRLt4gsuAW2_98uz3W0YZ3vydUxw@mail.gmail.com>
+ <LO0P265MB6325BDD86795FEF0CB21F635AE042@LO0P265MB6325.GBRP265.PROD.OUTLOOK.COM>
+Message-ID: <LO0P265MB63256095642CDE5EE51BDB7AAE052@LO0P265MB6325.GBRP265.PROD.OUTLOOK.COM>
+
+> myfun(formula, data = mydata, ..., y, x, z)
+
+Of course, it should be 
+
+> myfun(formula, data, ..., y, x, z)
+
+With no default for 'data'.
+
+Georgi Boshnakov
+
+-----Original Message-----
+From: R-package-devel <r-package-devel-bounces at r-project.org> On Behalf Of Georgi Boshnakov
+Sent: 17 December 2024 22:34
+To: Jose Barrera-G?mez <jose.barrera at isglobal.org>; R Package Development <r-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Changes in function call with respect to the current published version
+
+> myfun(y = birthweight, x = cotinine, z = age, data = mydata, ...)
+
+> and new usage would be
+
+> myfun(formula = birthweight ~ cotinine + age, data = mydata, ...)
+
+The NEWS file should state this incompatible change, loudly.
+
+If you don't want to break user code, you could make the new signature of the function something like:
+
+myfun(formula, data = mydata, ..., y, x, z)
+
+Then you could start with 
+
+if(!is.formula(formula)) {
+    issue a message that this is old syntax;
+
+    create a formula for the user from the arguments }
+
+You need this check since users often don't name the first argument. The purpose of putting y,x, and z after the ... is so that you will have arguments with these names only if the user explicitly named them so.
+
+In the new documentation function describe only the new usage and state that the old arguments are for back compatibility only and will be removed in version x.y.
+
+Georgi Boshnakov
+
+________________________________________
+From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Jose Barrera-G?mez <jose.barrera at isglobal.org>
+Sent: 17 December 2024 21:00
+To: R Package Development
+Subject: [R-pkg-devel] Changes in function call with respect to the current published version
+
+Dear List,
+
+I have a package that works in the context of regression models. The main function has arguments (y, x, z, data, ...), where y is the response variable, x is the explanatory variable and z can be other covariates.
+
+Due to some bugs, I am interested in changing the call from (y, x, z, data,
+...) to (formula, data, ...).
+
+For instance, current usage is
+
+myfun(y = birthweight, x = cotinine, z = age, data = mydata, ...)
+
+and new usage would be
+
+myfun(formula = birthweight ~ cotinine + age, data = mydata, ...)
+
+This change would have no impact on the usage for the rest of the package.
+
+My concern is that users updating the package won't be able to reproduce old analyses. I.e. they would need to update the calls to myfun (but nothing else related to the usage of other functions or methods).
+
+I think the new usage would result in some advantages and bugs fixing and only the disadvantage I mentioned just above.
+
+I would appreciate advice on:
+
+1) There could be other disadvantages for users of previous versions that I don't see?
+
+2) What would be the best location(s) in the documentation to explain in detail this change?
+
+Thanks in advance,
+
+Jose Barrera
+Statistician, Associate Lecturer
+
+*IS**Global*
+Barcelona Institute for Global Health - Campus MAR Barcelona Biomedical Research Park (PRBB) (Room Hypatia)
+
+Doctor Aiguader, 88
+08003 Barcelona, Spain
+Tel. +34 93 2147383
+jose.barrera at isglobal.org
+<https://urldefense.com/v3/__https://www.linkedin.com/in/josebarrera__;!!PDiH4ENfjr2_Jw!CVwdZfO0yYHtB0njRHzPvjXbopN3C4A8qqHbT3BDuJ6uvC08BIjde5hxt_7oeAmYqPRfG0OXgktleUAakOluLXaeqldRxK_OqfLjGA$ [linkedin[.]com]> Personal website: sites.google.com/view/josebarrera https://urldefense.com/v3/__http://www.isglobal.org__;!!PDiH4ENfjr2_Jw!CVwdZfO0yYHtB0njRHzPvjXbopN3C4A8qqHbT3BDuJ6uvC08BIjde5hxt_7oeAmYqPRfG0OXgktleUAakOluLXaeqldRxK_stJfB7A$ [isglobal[.]org]
+
+This message is intended exclusively for its addressee and may contain information that is CONFIDENTIAL and protected by professional privilege.
+If you are not the intended recipient you are hereby notified that any dissemination, copy or disclosure of this communication is strictly prohibited by law. If this message has been received in error, please immediately notify us via e-mail and delete it.
+
+DATA PROTECTION. We inform you that your personal data, including your e-mail address and data included in your email correspondence, are included in the ISGlobal Foundation filing system. Your personal data will be used for the purpose of contacting you and sending information on the activities of the above foundations. You can exercise your rights to  access to personal data, rectification, erasure, restriction of processing, data portability and object by contacting the following address: *lopd at isglobal.org <lopd at isglobal.org>*. ISGlobal Privacy Policy at *https://urldefense.com/v3/__http://www.isglobal.org__;!!PDiH4ENfjr2_Jw!CVwdZfO0yYHtB0njRHzPvjXbopN3C4A8qqHbT3BDuJ6uvC08BIjde5hxt_7oeAmYqPRfG0OXgktleUAakOluLXaeqldRxK_stJfB7A$ [isglobal[.]org] <https://urldefense.com/v3/__http://www.isglobal.org/__;!!PDiH4ENfjr2_Jw!CVwdZfO0yYHtB0njRHzPvjXbopN3C4A8qqHbT3BDuJ6uvC08BIjde5hxt_7oeAmYqPRfG0OXgktleUAakOluLXaeqldRxK9yVqqbBQ$ [isglobal[.]org]>*.
+
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+CONFIDENCIALIDAD. Este mensaje y sus anexos se dirigen exclusivamente a su destinatario y puede contener informaci?n confidencial, por lo que la utilizaci?n, divulgaci?n y/o copia sin autorizaci?n est? prohibida por la legislaci?n vigente. Si ha recibido este mensaje por error, le rogamos lo comunique inmediatamente por esta misma v?a y proceda a su destrucci?n.
+
+PROTECCI?N DE DATOS. Sus datos de car?cter personal utilizados en este env?o, incluida su direcci?n de e-mail, forman parte de ficheros de titularidad de la Fundaci?n ISGlobal  para cualquier finalidades de contacto, relaci?n institucional y/o env?o de informaci?n sobre sus actividades. Los datos que usted nos pueda facilitar contestando este correo quedar?n incorporados en los correspondientes ficheros, autorizando el uso de su direcci?n de e-mail para las finalidades citadas. Puede ejercer los derechos de acceso, rectificaci?n, supresi?n, limitaci?n del tratamiento, portabilidad y oposici?n dirigi?ndose a *lopd at isglobal.org
+<lopd at isglobal.org>* . Pol?tica de privacidad en *https://urldefense.com/v3/__http://www.isglobal.org__;!!PDiH4ENfjr2_Jw!CVwdZfO0yYHtB0njRHzPvjXbopN3C4A8qqHbT3BDuJ6uvC08BIjde5hxt_7oeAmYqPRfG0OXgktleUAakOluLXaeqldRxK_stJfB7A$ [isglobal[.]org] <https://urldefense.com/v3/__http://www.isglobal.org/__;!!PDiH4ENfjr2_Jw!CVwdZfO0yYHtB0njRHzPvjXbopN3C4A8qqHbT3BDuJ6uvC08BIjde5hxt_7oeAmYqPRfG0OXgktleUAakOluLXaeqldRxK9yVqqbBQ$ [isglobal[.]org]>*.
+
+--
+
+
+This message is intended exclusively for its addressee and may contain information that is CONFIDENTIAL and protected by professional privilege.
+If
+you are not the intended recipient you are hereby notified that any dissemination, copy or disclosure of this communication is strictly prohibited by law. If this message has been received in error, please immediately notify us via e-mail and delete it.
+
+
+
+DATA PROTECTION. We
+inform you that your personal data, including your e-mail address and data included in your email correspondence, are included in the ISGlobal Foundation files. Your personal data will be used for the purpose of contacting you and sending information on the activities of the above foundations. You can exercise your rights of access, rectification, cancellation and opposition by contacting the following address:
+lopd at isglobal.org <mailto:lopd at isglobal.org>. ISGlobal Privacy Policy at https://urldefense.com/v3/__http://www.isglobal.org__;!!PDiH4ENfjr2_Jw!CVwdZfO0yYHtB0njRHzPvjXbopN3C4A8qqHbT3BDuJ6uvC08BIjde5hxt_7oeAmYqPRfG0OXgktleUAakOluLXaeqldRxK_stJfB7A$ [isglobal[.]org] <https://urldefense.com/v3/__http://www.isglobal.org/__;!!PDiH4ENfjr2_Jw!CVwdZfO0yYHtB0njRHzPvjXbopN3C4A8qqHbT3BDuJ6uvC08BIjde5hxt_7oeAmYqPRfG0OXgktleUAakOluLXaeqldRxK9yVqqbBQ$ [isglobal[.]org]>.
+
+
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+CONFIDENCIALIDAD. Este mensaje y sus anexos se dirigen exclusivamente a su destinatario y puede contener informaci?n confidencial, por lo que la utilizaci?n, divulgaci?n y/o copia sin autorizaci?n est? prohibida por la legislaci?n vigente. Si ha recibido este mensaje por error, le rogamos lo comunique inmediatamente por esta misma v?a y proceda a su destrucci?n.
+
+
+
+
+
+
+
+
+
+PROTECCI?N DE DATOS. Sus datos de car?cter personal utilizados en este env?o, incluida su direcci?n de e-mail, forman parte de ficheros de titularidad de la Fundaci?n ISGlobal  para cualquier finalidades de contacto, relaci?n institucional y/o env?o de informaci?n sobre sus actividades. Los datos que usted nos pueda facilitar contestando este correo quedar?n incorporados en los correspondientes ficheros, autorizando el uso de su direcci?n de e-mail para las finalidades citadas. Puede ejercer los derechos de acceso, rectificaci?n, cancelaci?n y oposici?n dirigi?ndose a lopd at isglobal.org <mailto:lopd at isglobal.org>* *. Pol?tica de privacidad en https://urldefense.com/v3/__http://www.isglobal.org__;!!PDiH4ENfjr2_Jw!CVwdZfO0yYHtB0njRHzPvjXbopN3C4A8qqHbT3BDuJ6uvC08BIjde5hxt_7oeAmYqPRfG0OXgktleUAakOluLXaeqldRxK_stJfB7A$ [isglobal[.]org] <https://urldefense.com/v3/__http://www.isglobal.org/__;!!PDiH4ENfjr2_Jw!CVwdZfO0yYHtB0njRHzPvjXbopN3C4A8qqHbT3BDuJ6uvC08BIjde5hxt_7oeAmYqPRfG0OXgktleUAakOluLXaeqldRxK9yVqqbBQ$ [isglobal[.]org]>.
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-package-devel at r-project.org mailing list https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!PDiH4ENfjr2_Jw!CVwdZfO0yYHtB0njRHzPvjXbopN3C4A8qqHbT3BDuJ6uvC08BIjde5hxt_7oeAmYqPRfG0OXgktleUAakOluLXaeqldRxK978yKiXQ$ [stat[.]ethz[.]ch]
+
+______________________________________________
+R-package-devel at r-project.org mailing list https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!PDiH4ENfjr2_Jw!Cz9VJVZUkyjko2i02uiPQdKXhUPy1waEc4O2bYKfCUFO1ennqTbRVLVmfmolL0voClCtYT_AsA2K5MJAh_sEmAMbPJA_lQ9Bz06mYIqlZZo_-FON$ [stat[.]ethz[.]ch]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Wed Dec 18 15:34:57 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Wed, 18 Dec 2024 17:34:57 +0300
+Subject: [R-pkg-devel] Non-reproducible ASAN flagged issue
+In-Reply-To: <410e009bfa3f33a843e0b366b09813b56972a83c.camel@gmail.com>
+References: <410e009bfa3f33a843e0b366b09813b56972a83c.camel@gmail.com>
+Message-ID: <20241218173457.17cabbe5@arachnoid>
+
+? Tue, 17 Dec 2024 20:26:01 +0100
+David Cortes <david.cortes.rivera at gmail.com> ?????:
+
+> I am seeing a curious error in an ASAN package check which is not
+> reproducible in the r-debug containers
+> (https://github.com/wch/r-debug), and which I'm suspecting might be a
+> compiler bug.
+
+r-debug differs from the gcc-ASAN special check in at least the
+compiler version. The log at [1] says it's running with GCC 14.2.0,
+while docker.io/wch1/r-debug uses GCC 12.3.0. Additionally, LTO was
+recently enabled for R but not the packages [2].
+
+The log says that the std::regex("\"") constructor somehow manages to
+read a byte past the end (after the 0-terminator) of its C-style string
+argument. While I wasn't able to reproduce it even after starting
+with docker.io/rocker/drd and rebuilding R according to [2], with GCC
+14 and LTO for R but not packages, the following much simpler example
+does exhibit the same behaviour:
+
+#include <iostream>
+#include <regex>
+int main() {
+ std::string s{" gjdshlkhj \" lsjkhkljh "};
+ const char * rx = "\"";
+ std::cout
+  << std::regex_replace(s, std::regex(rx), "\\\"") // <-- line 7
+  << std::endl;
+ // the code below is required for the problem to happen above!
+ for (int i = 0; i < 100; ++i) volatile std::regex rxx(rx);
+}
+
+g++-14 -flto=10 -o foo -g -O2 -mtune=native \
+-fsanitize=address,undefined,bounds-strict foo.cpp && ./foo
+
+==648==ERROR: AddressSanitizer: global-buffer-overflow on address 0x556ed780fa02 at pc 0x556ed7731520 bp 0x7fff41781420 sp 0x7fff41781410
+READ of size 1 at 0x556ed780fa02 thread T0
+    #0 0x556ed773151f in std::__detail::_Scanner<char>::_M_scan_normal() /usr/include/c++/14/bits/regex_scanner.tcc:98
+    #1 0x556ed773151f in std::__detail::_Scanner<char>::_M_advance() /usr/include/c++/14/bits/regex_scanner.tcc:79
+    #2 0x556ed7734416 in std::__detail::_Compiler<std::__cxx11::regex_traits<char> >::_M_match_token(std::__detail::_ScannerBase::_TokenT) /usr/include/c++/14/bits/regex_compiler.tcc:575
+    #3 0x556ed7748374 in std::__detail::_Compiler<std::__cxx11::regex_traits<char> >::_M_atom() /usr/include/c++/14/bits/regex_compiler.tcc:310
+    #4 0x556ed7748374 in std::__detail::_Compiler<std::__cxx11::regex_traits<char> >::_M_term() /usr/include/c++/14/bits/regex_compiler.tcc:133
+    #5 0x556ed7748374 in std::__detail::_Compiler<std::__cxx11::regex_traits<char> >::_M_alternative() /usr/include/c++/14/bits/regex_compiler.tcc:115
+    #6 0x556ed7747428 in std::__detail::_Compiler<std::__cxx11::regex_traits<char> >::_M_alternative() /usr/include/c++/14/bits/regex_compiler.tcc:118
+    #7 0x556ed7753285 in std::__detail::_Compiler<std::__cxx11::regex_traits<char> >::_M_disjunction() /usr/include/c++/14/bits/regex_compiler.tcc:91
+    #8 0x556ed77df36e in std::__detail::_Compiler<std::__cxx11::regex_traits<char> >::_Compiler(char const*, char const*, std::locale const&, std::regex_constants::syntax_option_type) /usr/include/c++/14/bits/regex_compiler.tcc:76
+    #9 0x556ed77df36e in std::__cxx11::basic_regex<char, std::__cxx11::regex_traits<char> >::_M_compile(char const*, char const*, std::regex_constants::syntax_option_type) [clone .constprop.0] /usr/include/c++/14/bits/regex.h:809
+    #10 0x556ed771b8cf in std::__cxx11::basic_regex<char, std::__cxx11::regex_traits<char> >::basic_regex(char const*, std::regex_constants::syntax_option_type) /usr/include/c++/14/bits/regex.h:473
+    #11 0x556ed771b8cf in main foo.cpp:7 // <-- see line 7 above
+
+0x556ed780fa02 is located 0 bytes after global variable '*.LC45' defined in './foo.ltrans3.ltrans' (0x556ed780fa00) of size 2
+  '*.LC45' is ascii string '"'
+
+Disabling LTO or removing that loop that constructs additional regexps
+makes the error vanish.
+
+At the time of the error, members _M_current and _M_end (which should
+point at the current part of the string and past the end of the same
+string, respectively) point at completely different strings with the
+same content:
+
+(gdb) p _M_current-3
+$12 = 0x55ce00bb4a00 "\""
+(gdb) p _M_end-1
+$13 = 0x55ce00b956a0 "\""
+(gdb) p _M_end - _M_current
+$14 = -127842
+(gdb) p _M_current-4
+$15 = 0x55ce00bb49ff ""
+(gdb) p _M_end-2
+$16 = 0x55ce00b9569f ""
+
+Did the gcc-ASAN check enable LTO for packages too, not only R itself?
+
+For a quick workaround, I can only recommend writing your own
+replace_all() function using the std::string::find and
+std::string::replace methods in a loop. Thankfully, you replace plain
+strings, not complicated regular expressions.
+
+-- 
+Best regards,
+Ivan
+
+[1]
+https://www.stats.ox.ac.uk/pub/bdr/memtests/gcc-ASAN/isotree/00check.log
+
+[2]
+https://www.stats.ox.ac.uk/pub/bdr/memtests/README.txt
+
+
+From j|ox @end|ng |rom mcm@@ter@c@  Wed Dec 18 16:26:38 2024
+From: j|ox @end|ng |rom mcm@@ter@c@ (John Fox)
+Date: Wed, 18 Dec 2024 10:26:38 -0500
+Subject: [R-pkg-devel] 
+ Changes in function call with respect to the current
+ published version
+In-Reply-To: <CACr7k5+pmMhwmEJ9Zb0gL4yRLt4gsuAW2_98uz3W0YZ3vydUxw@mail.gmail.com>
+References: <CACr7k5+pmMhwmEJ9Zb0gL4yRLt4gsuAW2_98uz3W0YZ3vydUxw@mail.gmail.com>
+Message-ID: <314ed868-5582-4119-9c43-bd6c86200f6d@mcmaster.ca>
+
+Dear Jose,
+
+Assuming that you can fix the bugs in the original function, one 
+approach would be to make myfun() generic, say myfun <- function(y, ...) 
+UseMethod("myfun"), with the (fixed) original myfun() as the default 
+method and a new function method, which would probably set up a call to 
+the default method. Then existing code wouldn't break and users would 
+have the option of using a formula.
+
+I hope this helps,
+  John
+-- 
+John Fox, Professor Emeritus
+McMaster University
+Hamilton, Ontario, Canada
+web: https://www.john-fox.ca/
+--
+
+On 2024-12-17 4:00 p.m., Jose Barrera-G?mez wrote:
+> [You don't often get email from jose.barrera at isglobal.org. Learn why this is important at https://aka.ms/LearnAboutSenderIdentification ]
+> 
+> Caution: External email.
+> 
+> 
+> Dear List,
+> 
+> I have a package that works in the context of regression models. The main
+> function has arguments (y, x, z, data, ...), where y is the response
+> variable, x is the explanatory variable and z can be other covariates.
+> 
+> Due to some bugs, I am interested in changing the call from (y, x, z, data,
+> ...) to (formula, data, ...).
+> 
+> For instance, current usage is
+> 
+> myfun(y = birthweight, x = cotinine, z = age, data = mydata, ...)
+> 
+> and new usage would be
+> 
+> myfun(formula = birthweight ~ cotinine + age, data = mydata, ...)
+> 
+> This change would have no impact on the usage for the rest of the package.
+> 
+> My concern is that users updating the package won't be able to reproduce
+> old analyses. I.e. they would need to update the calls to myfun (but
+> nothing else related to the usage of other functions or methods).
+> 
+> I think the new usage would result in some advantages and bugs fixing and
+> only the disadvantage I mentioned just above.
+> 
+> I would appreciate advice on:
+> 
+> 1) There could be other disadvantages for users of previous versions that I
+> don't see?
+> 
+> 2) What would be the best location(s) in the documentation to explain in
+> detail this change?
+> 
+> Thanks in advance,
+> 
+> Jose Barrera
+> Statistician, Associate Lecturer
+> 
+> *IS**Global*
+> Barcelona Institute for Global Health - Campus MAR
+> Barcelona Biomedical Research Park (PRBB) (Room Hypatia)
+> 
+> Doctor Aiguader, 88
+> 08003 Barcelona, Spain
+> Tel. +34 93 2147383
+> jose.barrera at isglobal.org
+> <https://www.linkedin.com/in/josebarrera>
+> Personal website: sites.google.com/view/josebarrera
+> www.isglobal.org
+> 
+> This message is intended exclusively for its addressee and may contain
+> information that is CONFIDENTIAL and protected by professional privilege.
+> If you are not the intended recipient you are hereby notified that any
+> dissemination, copy or disclosure of this communication is strictly
+> prohibited by law. If this message has been received in error, please
+> immediately notify us via e-mail and delete it.
+> 
+> DATA PROTECTION. We inform you that your personal data, including your
+> e-mail address and data included in your email correspondence, are included
+> in the ISGlobal Foundation filing system. Your personal data will be used
+> for the purpose of contacting you and sending information on the activities
+> of the above foundations. You can exercise your rights to  access to
+> personal data, rectification, erasure, restriction of processing, data
+> portability and object by contacting the following address: *lopd at isglobal.org
+> <lopd at isglobal.org>*. ISGlobal Privacy Policy at *www.isglobal.org
+> <http://www.isglobal.org/>*.
+> 
+> 
+> -----------------------------------------------------------------------------------------------------------------------------
+> 
+> CONFIDENCIALIDAD. Este mensaje y sus anexos se dirigen exclusivamente a su
+> destinatario y puede contener informaci?n confidencial, por lo que la
+> utilizaci?n, divulgaci?n y/o copia sin autorizaci?n est? prohibida por la
+> legislaci?n vigente. Si ha recibido este mensaje por error, le rogamos lo
+> comunique inmediatamente por esta misma v?a y proceda a su destrucci?n.
+> 
+> PROTECCI?N DE DATOS. Sus datos de car?cter personal utilizados en este
+> env?o, incluida su direcci?n de e-mail, forman parte de ficheros de
+> titularidad de la Fundaci?n ISGlobal  para cualquier finalidades de
+> contacto, relaci?n institucional y/o env?o de informaci?n sobre sus
+> actividades. Los datos que usted nos pueda facilitar contestando este
+> correo quedar?n incorporados en los correspondientes ficheros, autorizando
+> el uso de su direcci?n de e-mail para las finalidades citadas. Puede
+> ejercer los derechos de acceso, rectificaci?n, supresi?n, limitaci?n del
+> tratamiento, portabilidad y oposici?n dirigi?ndose a *lopd at isglobal.org
+> <lopd at isglobal.org>* . Pol?tica de privacidad en *www.isglobal.org
+> <http://www.isglobal.org/>*.
+> 
+> --
+> 
+> 
+> This message is intended exclusively for its addressee and may contain
+> information that is CONFIDENTIAL and protected by professional privilege.
+> If
+> you are not the intended recipient you are hereby notified that any
+> dissemination, copy or disclosure of this communication is strictly
+> prohibited
+> by law. If this message has been received in error, please
+> immediately notify
+> us via e-mail and delete it.
+> 
+> 
+> 
+> DATA PROTECTION. We
+> inform you that your personal data, including your
+> e-mail address and data
+> included in your email correspondence, are included in
+> the ISGlobal
+> Foundation files. Your personal data will be used for the purpose
+> of
+> contacting you and sending information on the activities of the above
+> foundations. You can exercise your rights of access, rectification,
+> cancellation and opposition by contacting the following address:
+> lopd at isglobal.org <mailto:lopd at isglobal.org>. ISGlobal
+> Privacy Policy at
+> www.isglobal.org <http://www.isglobal.org/>.
+> 
+> 
+> 
+> -----------------------------------------------------------------------------------------------------------------------------
+> 
+> CONFIDENCIALIDAD. Este mensaje y sus anexos se dirigen exclusivamente a
+> su
+> destinatario y puede contener informaci?n confidencial, por lo que la
+> utilizaci?n,
+> divulgaci?n y/o copia sin autorizaci?n est? prohibida por la
+> legislaci?n
+> vigente. Si ha recibido este mensaje por error, le rogamos lo
+> comunique
+> inmediatamente por esta misma v?a y proceda a su destrucci?n.
+> 
+> 
+> 
+> 
+> 
+> 
+> 
+> 
+> 
+> PROTECCI?N DE DATOS. Sus datos de car?cter personal utilizados en este
+> env?o, incluida su direcci?n de e-mail, forman parte de ficheros de
+> titularidad
+> de la Fundaci?n ISGlobal  para cualquier
+> finalidades de
+> contacto, relaci?n institucional y/o env?o de informaci?n sobre
+> sus
+> actividades. Los datos que usted nos pueda facilitar contestando este
+> correo quedar?n incorporados en los correspondientes ficheros, autorizando
+> el
+> uso de su direcci?n de e-mail para las finalidades citadas. Puede
+> ejercer los
+> derechos de acceso, rectificaci?n, cancelaci?n y oposici?n
+> dirigi?ndose a lopd at isglobal.org <mailto:lopd at isglobal.org>* *. Pol?tica de
+> privacidad
+> en www.isglobal.org <http://www.isglobal.org/>.
+> 
+>          [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From d@v|d@corte@@r|ver@ @end|ng |rom gm@||@com  Wed Dec 18 18:12:40 2024
+From: d@v|d@corte@@r|ver@ @end|ng |rom gm@||@com (David Cortes)
+Date: Wed, 18 Dec 2024 18:12:40 +0100
+Subject: [R-pkg-devel] Non-reproducible ASAN flagged issue
+In-Reply-To: <20241218173457.17cabbe5@arachnoid>
+References: <410e009bfa3f33a843e0b366b09813b56972a83c.camel@gmail.com>
+ <20241218173457.17cabbe5@arachnoid>
+Message-ID: <d860e5eacc0cad1ac4fd8c978f5dc0b283f2938b.camel@gmail.com>
+
+Thank you, that was very helpful indeed!
+
+I've filed a bug report with GCC just in case:
+https://gcc.gnu.org/bugzilla/show_bug.cgi?id=118113
+
+Best regads,
+David Cortes
+On Wed, 2024-12-18 at 17:34 +0300, Ivan Krylov wrote:
+> ? Tue, 17 Dec 2024 20:26:01 +0100
+> David Cortes <david.cortes.rivera at gmail.com> ?????:
+> 
+> > I am seeing a curious error in an ASAN package check which is not
+> > reproducible in the r-debug containers
+> > (https://github.com/wch/r-debug), and which I'm suspecting might be
+> > a
+> > compiler bug.
+> 
+> r-debug differs from the gcc-ASAN special check in at least the
+> compiler version. The log at [1] says it's running with GCC 14.2.0,
+> while docker.io/wch1/r-debug uses GCC 12.3.0. Additionally, LTO was
+> recently enabled for R but not the packages [2].
+> 
+> The log says that the std::regex("\"") constructor somehow manages to
+> read a byte past the end (after the 0-terminator) of its C-style
+> string
+> argument. While I wasn't able to reproduce it even after starting
+> with docker.io/rocker/drd and rebuilding R according to [2], with GCC
+> 14 and LTO for R but not packages, the following much simpler example
+> does exhibit the same behaviour:
+> 
+> #include <iostream>
+> #include <regex>
+> int main() {
+> ?std::string s{" gjdshlkhj \" lsjkhkljh "};
+> ?const char * rx = "\"";
+> ?std::cout
+> ? << std::regex_replace(s, std::regex(rx), "\\\"") // <-- line 7
+> ? << std::endl;
+> ?// the code below is required for the problem to happen above!
+> ?for (int i = 0; i < 100; ++i) volatile std::regex rxx(rx);
+> }
+> 
+> g++-14 -flto=10 -o foo -g -O2 -mtune=native \
+> -fsanitize=address,undefined,bounds-strict foo.cpp && ./foo
+> 
+> ==648==ERROR: AddressSanitizer: global-buffer-overflow on address
+> 0x556ed780fa02 at pc 0x556ed7731520 bp 0x7fff41781420 sp
+> 0x7fff41781410
+> READ of size 1 at 0x556ed780fa02 thread T0
+> ??? #0 0x556ed773151f in
+> std::__detail::_Scanner<char>::_M_scan_normal()
+> /usr/include/c++/14/bits/regex_scanner.tcc:98
+> ??? #1 0x556ed773151f in std::__detail::_Scanner<char>::_M_advance()
+> /usr/include/c++/14/bits/regex_scanner.tcc:79
+> ??? #2 0x556ed7734416 in
+> std::__detail::_Compiler<std::__cxx11::regex_traits<char>
+> >::_M_match_token(std::__detail::_ScannerBase::_TokenT)
+> /usr/include/c++/14/bits/regex_compiler.tcc:575
+> ??? #3 0x556ed7748374 in
+> std::__detail::_Compiler<std::__cxx11::regex_traits<char>
+> >::_M_atom() /usr/include/c++/14/bits/regex_compiler.tcc:310
+> ??? #4 0x556ed7748374 in
+> std::__detail::_Compiler<std::__cxx11::regex_traits<char>
+> >::_M_term() /usr/include/c++/14/bits/regex_compiler.tcc:133
+> ??? #5 0x556ed7748374 in
+> std::__detail::_Compiler<std::__cxx11::regex_traits<char>
+> >::_M_alternative() /usr/include/c++/14/bits/regex_compiler.tcc:115
+> ??? #6 0x556ed7747428 in
+> std::__detail::_Compiler<std::__cxx11::regex_traits<char>
+> >::_M_alternative() /usr/include/c++/14/bits/regex_compiler.tcc:118
+> ??? #7 0x556ed7753285 in
+> std::__detail::_Compiler<std::__cxx11::regex_traits<char>
+> >::_M_disjunction() /usr/include/c++/14/bits/regex_compiler.tcc:91
+> ??? #8 0x556ed77df36e in
+> std::__detail::_Compiler<std::__cxx11::regex_traits<char>
+> >::_Compiler(char const*, char const*, std::locale const&,
+> std::regex_constants::syntax_option_type)
+> /usr/include/c++/14/bits/regex_compiler.tcc:76
+> ??? #9 0x556ed77df36e in std::__cxx11::basic_regex<char,
+> std::__cxx11::regex_traits<char> >::_M_compile(char const*, char
+> const*, std::regex_constants::syntax_option_type) [clone
+> .constprop.0] /usr/include/c++/14/bits/regex.h:809
+> ??? #10 0x556ed771b8cf in std::__cxx11::basic_regex<char,
+> std::__cxx11::regex_traits<char> >::basic_regex(char const*,
+> std::regex_constants::syntax_option_type)
+> /usr/include/c++/14/bits/regex.h:473
+> ??? #11 0x556ed771b8cf in main foo.cpp:7 // <-- see line 7 above
+> 
+> 0x556ed780fa02 is located 0 bytes after global variable '*.LC45'
+> defined in './foo.ltrans3.ltrans' (0x556ed780fa00) of size 2
+> ? '*.LC45' is ascii string '"'
+> 
+> Disabling LTO or removing that loop that constructs additional
+> regexps
+> makes the error vanish.
+> 
+> At the time of the error, members _M_current and _M_end (which should
+> point at the current part of the string and past the end of the same
+> string, respectively) point at completely different strings with the
+> same content:
+> 
+> (gdb) p _M_current-3
+> $12 = 0x55ce00bb4a00 "\""
+> (gdb) p _M_end-1
+> $13 = 0x55ce00b956a0 "\""
+> (gdb) p _M_end - _M_current
+> $14 = -127842
+> (gdb) p _M_current-4
+> $15 = 0x55ce00bb49ff ""
+> (gdb) p _M_end-2
+> $16 = 0x55ce00b9569f ""
+> 
+> Did the gcc-ASAN check enable LTO for packages too, not only R
+> itself?
+> 
+> For a quick workaround, I can only recommend writing your own
+> replace_all() function using the std::string::find and
+> std::string::replace methods in a loop. Thankfully, you replace plain
+> strings, not complicated regular expressions.
+> 
+
+
+From j|ox @end|ng |rom mcm@@ter@c@  Wed Dec 18 18:37:07 2024
+From: j|ox @end|ng |rom mcm@@ter@c@ (John Fox)
+Date: Wed, 18 Dec 2024 12:37:07 -0500
+Subject: [R-pkg-devel] 
+ Changes in function call with respect to the current
+ published version
+In-Reply-To: <314ed868-5582-4119-9c43-bd6c86200f6d@mcmaster.ca>
+References: <CACr7k5+pmMhwmEJ9Zb0gL4yRLt4gsuAW2_98uz3W0YZ3vydUxw@mail.gmail.com>
+ <314ed868-5582-4119-9c43-bd6c86200f6d@mcmaster.ca>
+Message-ID: <96f1a281-587d-4a83-be8b-b9da11a95215@mcmaster.ca>
+
+Dear Jose,
+
+On 2024-12-18 10:26 a.m., John Fox wrote:
+> Caution: External email.
+> 
+> 
+> Dear Jose,
+> 
+> Assuming that you can fix the bugs in the original function, one
+> approach would be to make myfun() generic, say myfun <- function(y, ...)
+> UseMethod("myfun"), with the (fixed) original myfun() as the default
+> method and a new function method, which would probably set up a call to
+
+That should read "a new formula method" (not "a new function method").
+
+Sorry for the confusion,
+  John
+
+> the default method. Then existing code wouldn't break and users would
+> have the option of using a formula.
+> 
+> I hope this helps,
+>  ?John
+> -- 
+> John Fox, Professor Emeritus
+> McMaster University
+> Hamilton, Ontario, Canada
+> web: https://www.john-fox.ca/
+> -- 
+> 
+> On 2024-12-17 4:00 p.m., Jose Barrera-G?mez wrote:
+>> [You don't often get email from jose.barrera at isglobal.org. Learn why 
+>> this is important at https://aka.ms/LearnAboutSenderIdentification ]
+>>
+>> Caution: External email.
+>>
+>>
+>> Dear List,
+>>
+>> I have a package that works in the context of regression models. The main
+>> function has arguments (y, x, z, data, ...), where y is the response
+>> variable, x is the explanatory variable and z can be other covariates.
+>>
+>> Due to some bugs, I am interested in changing the call from (y, x, z, 
+>> data,
+>> ...) to (formula, data, ...).
+>>
+>> For instance, current usage is
+>>
+>> myfun(y = birthweight, x = cotinine, z = age, data = mydata, ...)
+>>
+>> and new usage would be
+>>
+>> myfun(formula = birthweight ~ cotinine + age, data = mydata, ...)
+>>
+>> This change would have no impact on the usage for the rest of the 
+>> package.
+>>
+>> My concern is that users updating the package won't be able to reproduce
+>> old analyses. I.e. they would need to update the calls to myfun (but
+>> nothing else related to the usage of other functions or methods).
+>>
+>> I think the new usage would result in some advantages and bugs fixing and
+>> only the disadvantage I mentioned just above.
+>>
+>> I would appreciate advice on:
+>>
+>> 1) There could be other disadvantages for users of previous versions 
+>> that I
+>> don't see?
+>>
+>> 2) What would be the best location(s) in the documentation to explain in
+>> detail this change?
+>>
+>> Thanks in advance,
+>>
+>> Jose Barrera
+>> Statistician, Associate Lecturer
+>>
+>> *IS**Global*
+>> Barcelona Institute for Global Health - Campus MAR
+>> Barcelona Biomedical Research Park (PRBB) (Room Hypatia)
+>>
+>> Doctor Aiguader, 88
+>> 08003 Barcelona, Spain
+>> Tel. +34 93 2147383
+>> jose.barrera at isglobal.org
+>> <https://www.linkedin.com/in/josebarrera>
+>> Personal website: sites.google.com/view/josebarrera
+>> www.isglobal.org
+>>
+>> This message is intended exclusively for its addressee and may contain
+>> information that is CONFIDENTIAL and protected by professional privilege.
+>> If you are not the intended recipient you are hereby notified that any
+>> dissemination, copy or disclosure of this communication is strictly
+>> prohibited by law. If this message has been received in error, please
+>> immediately notify us via e-mail and delete it.
+>>
+>> DATA PROTECTION. We inform you that your personal data, including your
+>> e-mail address and data included in your email correspondence, are 
+>> included
+>> in the ISGlobal Foundation filing system. Your personal data will be used
+>> for the purpose of contacting you and sending information on the 
+>> activities
+>> of the above foundations. You can exercise your rights to? access to
+>> personal data, rectification, erasure, restriction of processing, data
+>> portability and object by contacting the following address: 
+>> *lopd at isglobal.org
+>> <lopd at isglobal.org>*. ISGlobal Privacy Policy at *www.isglobal.org
+>> <http://www.isglobal.org/>*.
+>>
+>>
+>> -----------------------------------------------------------------------------------------------------------------------------
+>>
+>> CONFIDENCIALIDAD. Este mensaje y sus anexos se dirigen exclusivamente 
+>> a su
+>> destinatario y puede contener informaci?n confidencial, por lo que la
+>> utilizaci?n, divulgaci?n y/o copia sin autorizaci?n est? prohibida por la
+>> legislaci?n vigente. Si ha recibido este mensaje por error, le rogamos lo
+>> comunique inmediatamente por esta misma v?a y proceda a su destrucci?n.
+>>
+>> PROTECCI?N DE DATOS. Sus datos de car?cter personal utilizados en este
+>> env?o, incluida su direcci?n de e-mail, forman parte de ficheros de
+>> titularidad de la Fundaci?n ISGlobal? para cualquier finalidades de
+>> contacto, relaci?n institucional y/o env?o de informaci?n sobre sus
+>> actividades. Los datos que usted nos pueda facilitar contestando este
+>> correo quedar?n incorporados en los correspondientes ficheros, 
+>> autorizando
+>> el uso de su direcci?n de e-mail para las finalidades citadas. Puede
+>> ejercer los derechos de acceso, rectificaci?n, supresi?n, limitaci?n del
+>> tratamiento, portabilidad y oposici?n dirigi?ndose a *lopd at isglobal.org
+>> <lopd at isglobal.org>* . Pol?tica de privacidad en *www.isglobal.org
+>> <http://www.isglobal.org/>*.
+>>
+>> -- 
+>>
+>>
+>> This message is intended exclusively for its addressee and may contain
+>> information that is CONFIDENTIAL and protected by professional privilege.
+>> If
+>> you are not the intended recipient you are hereby notified that any
+>> dissemination, copy or disclosure of this communication is strictly
+>> prohibited
+>> by law. If this message has been received in error, please
+>> immediately notify
+>> us via e-mail and delete it.
+>>
+>>
+>>
+>> DATA PROTECTION. We
+>> inform you that your personal data, including your
+>> e-mail address and data
+>> included in your email correspondence, are included in
+>> the ISGlobal
+>> Foundation files. Your personal data will be used for the purpose
+>> of
+>> contacting you and sending information on the activities of the above
+>> foundations. You can exercise your rights of access, rectification,
+>> cancellation and opposition by contacting the following address:
+>> lopd at isglobal.org <mailto:lopd at isglobal.org>. ISGlobal
+>> Privacy Policy at
+>> www.isglobal.org <http://www.isglobal.org/>.
+>>
+>>
+>>
+>> -----------------------------------------------------------------------------------------------------------------------------
+>>
+>> CONFIDENCIALIDAD. Este mensaje y sus anexos se dirigen exclusivamente a
+>> su
+>> destinatario y puede contener informaci?n confidencial, por lo que la
+>> utilizaci?n,
+>> divulgaci?n y/o copia sin autorizaci?n est? prohibida por la
+>> legislaci?n
+>> vigente. Si ha recibido este mensaje por error, le rogamos lo
+>> comunique
+>> inmediatamente por esta misma v?a y proceda a su destrucci?n.
+>>
+>>
+>>
+>>
+>>
+>>
+>>
+>>
+>>
+>> PROTECCI?N DE DATOS. Sus datos de car?cter personal utilizados en este
+>> env?o, incluida su direcci?n de e-mail, forman parte de ficheros de
+>> titularidad
+>> de la Fundaci?n ISGlobal? para cualquier
+>> finalidades de
+>> contacto, relaci?n institucional y/o env?o de informaci?n sobre
+>> sus
+>> actividades. Los datos que usted nos pueda facilitar contestando este
+>> correo quedar?n incorporados en los correspondientes ficheros, 
+>> autorizando
+>> el
+>> uso de su direcci?n de e-mail para las finalidades citadas. Puede
+>> ejercer los
+>> derechos de acceso, rectificaci?n, cancelaci?n y oposici?n
+>> dirigi?ndose a lopd at isglobal.org <mailto:lopd at isglobal.org>* *. 
+>> Pol?tica de
+>> privacidad
+>> en www.isglobal.org <http://www.isglobal.org/>.
+>>
+>> ???????? [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From roy@mende|@@ohn @end|ng |rom no@@@gov  Wed Dec 18 18:45:25 2024
+From: roy@mende|@@ohn @end|ng |rom no@@@gov (Roy Mendelssohn - NOAA Federal)
+Date: Wed, 18 Dec 2024 09:45:25 -0800
+Subject: [R-pkg-devel] r-hub question
+Message-ID: <19241F2E-E2EC-415B-9197-43A0EDB65C7A@noaa.gov>
+
+Hi All:
+
+r-hub has changed the way that it works.  Now you need Github,  plus it writes things to your Github repo.  I do not understand what it writes,  I am always loath to add anything to a repo I don't understand,  and I wonder if it conflicts in any way with existing Github actions.  Or alternately,  is there a way to set up Github Actions (of which, alas, I know the bare minimum) to test for the Debian used by CRAN.  I do not appear to be the only one that has packages that pass everything except the Debian distro,  I used to test this with r-hub before the changes.
+
+Any info appreciated,
+
+-Roy
+
+
+
+**********************
+"The contents of this message do not reflect any position of the U.S. Government or NOAA."
+**********************
+Roy Mendelssohn
+Supervisory Operations Research Analyst
+NOAA/NMFS
+Environmental Research Division
+Southwest Fisheries Science Center
+***Note new street address***
+110 McAllister Way
+Santa Cruz, CA 95060
+Phone: (831)-420-3666
+Fax: (831) 420-3980
+e-mail: Roy.Mendelssohn at noaa.gov www: https://www.pfeg.noaa.gov/
+
+"Old age and treachery will overcome youth and skill."
+"From those who have been given much, much will be expected" 
+"the arc of the moral universe is long, but it bends toward justice" -MLK Jr.
+
+
+From Chr|@@B|e|ow @end|ng |rom |u-ber||n@de  Wed Dec 18 19:46:15 2024
+From: Chr|@@B|e|ow @end|ng |rom |u-ber||n@de (Bielow, Chris)
+Date: Wed, 18 Dec 2024 19:46:15 +0100
+Subject: [R-pkg-devel] use of assert in C++
+In-Reply-To: <f78e3e990156453da4ef5f85befca7fe@fu-berlin.de>
+References: <f78e3e990156453da4ef5f85befca7fe@fu-berlin.de>
+Message-ID: <5b1d8b001a8a42ac8c639e610cb37ddb@fu-berlin.de>
+
+Dear all,
+
+hoping this is the right place for this:
+I stumbled upon documentation regarding the use of `assert` in C++ code, in
+particular, https://cran.r-project.org/web/packages/policies.html states
+that
+
+```
+Thus C/C++ calls to assert/abort/exit/std::terminate, Fortran calls to STOP
+and so on must be avoided.
+```
+
+, which goes against all best practice guidelines I'm aware of.
+Therefore I would propose to remove 'assert' from the above statement.
+In support, https://cran.r-project.org/doc/manuals/r-release/R-exts.html
+states that 
+
+``` 
+One usage that could call abort is the assert macro in C or C++ functions,
+which should never be active in production code. The normal way to ensure
+that is to define the macro NDEBUG, and R CMD INSTALL does so as part of the
+compilation flags.
+```
+which seems a reasonable thing to do.
+
+As a sidenote, the guide could be extended to encourage new mechanisms
+available in modern C++ like `static_assert`.
+
+
+Cheers
+Chris
+
+
+From edd @end|ng |rom deb|@n@org  Wed Dec 18 23:28:10 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 18 Dec 2024 16:28:10 -0600
+Subject: [R-pkg-devel] use of assert in C++
+In-Reply-To: <5b1d8b001a8a42ac8c639e610cb37ddb@fu-berlin.de>
+References: <f78e3e990156453da4ef5f85befca7fe@fu-berlin.de>
+ <5b1d8b001a8a42ac8c639e610cb37ddb@fu-berlin.de>
+Message-ID: <26467.19578.406591.499843@rob.eddelbuettel.com>
+
+
+On 18 December 2024 at 19:46, Bielow, Chris wrote:
+| hoping this is the right place for this:
+| I stumbled upon documentation regarding the use of `assert` in C++ code, in
+| particular, https://cran.r-project.org/web/packages/policies.html states
+| that
+| 
+| ```
+| Thus C/C++ calls to assert/abort/exit/std::terminate, Fortran calls to STOP
+| and so on must be avoided.
+| ```
+| 
+| , which goes against all best practice guidelines I'm aware of.
+
+Yes and no.
+
+Defensize programming is good, of course, but `assert()` leads to an
+`abort()` and immediate abort which for an _environment_ such as R is really
+not appropriate. You want a proper error return (i.e. Rf_error with a message
+or alike) to the R prompt.
+
+Note that you can always test something like this; there are several packages
+allowing ad-hoc compilation from `inline` to `Rcpp` and others. So here:
+
+  > Rcpp::cppFunction(r"(void ohnoes() { assert(false); })", includes=c("#undef NDEBUG", "#include <assert.h>"))
+  > ohnoes()
+  R: file2cd1353560062b.cpp:8: void ohnoes(): Assertion `false' failed.
+
+  Process R:3 aborted (core dumped) at Wed Dec 18 16:22:19 2024
+
+... and that took my R session down just like `assert()` is expected. Also
+note the trickery I had to do to re-enable `assert()` by undefining `NDEBUG`
+and including the header after that.
+
+So viewed from that angle, it really is not against _best practices for R
+extensions_ which is what the CRAN Policy is about.
+
+Cheers, Dirk
+
+| Therefore I would propose to remove 'assert' from the above statement.
+| In support, https://cran.r-project.org/doc/manuals/r-release/R-exts.html
+| states that 
+| 
+| ``` 
+| One usage that could call abort is the assert macro in C or C++ functions,
+| which should never be active in production code. The normal way to ensure
+| that is to define the macro NDEBUG, and R CMD INSTALL does so as part of the
+| compilation flags.
+| ```
+| which seems a reasonable thing to do.
+| 
+| As a sidenote, the guide could be extended to encourage new mechanisms
+| available in modern C++ like `static_assert`.
+| 
+| 
+| Cheers
+| Chris
+| 
+| ______________________________________________
+| R-package-devel at r-project.org mailing list
+| https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From Chr|@@B|e|ow @end|ng |rom |u-ber||n@de  Thu Dec 19 11:14:28 2024
+From: Chr|@@B|e|ow @end|ng |rom |u-ber||n@de (Bielow, Chris)
+Date: Thu, 19 Dec 2024 11:14:28 +0100
+Subject: [R-pkg-devel] use of assert in C++
+In-Reply-To: <26467.19578.406591.499843@rob.eddelbuettel.com>
+References: <f78e3e990156453da4ef5f85befca7fe@fu-berlin.de>
+ <5b1d8b001a8a42ac8c639e610cb37ddb@fu-berlin.de>
+ <26467.19578.406591.499843@rob.eddelbuettel.com>
+Message-ID: <3781cc747d51458c96b307260ac2540f@fu-berlin.de>
+
+|| hoping this is the right place for this:
+|| I stumbled upon documentation regarding the use of `assert` in C++ 
+|| code, in particular, 
+|| https://cran.r-project.org/web/packages/policies.html states that
+|| 
+|| ```
+|| Thus C/C++ calls to assert/abort/exit/std::terminate, Fortran calls to 
+|| STOP and so on must be avoided.
+|| ```
+|| 
+|| , which goes against all best practice guidelines I'm aware of.
+|
+|Yes and no.
+|
+|Defensize programming is good, of course, but `assert()` leads to an
+`abort()` and immediate abort which for an _environment_ such as R is really
+not appropriate. You want a proper error return (i.e. Rf_error with a
+message or alike) to the R prompt.
+|
+|Note that you can always test something like this; there are several
+packages allowing ad-hoc compilation from `inline` to `Rcpp` and others. So
+here:
+|
+|  > Rcpp::cppFunction(r"(void ohnoes() { assert(false); })",
+includes=c("#undef NDEBUG", "#include <assert.h>"))
+|  > ohnoes()
+|  R: file2cd1353560062b.cpp:8: void ohnoes(): Assertion `false' failed.
+|
+|  Process R:3 aborted (core dumped) at Wed Dec 18 16:22:19 2024
+|
+|... and that took my R session down just like `assert()` is expected. Also
+note the trickery I had to do to re-enable `assert()` by undefining `NDEBUG`
+and including the header after that.
+
+Exactly! You had to jump through a lot of hoops to even make assert() crash
+your R session. This would _not_ happen in production code.
+So a developer of an R extension could happily use asserts, then use your
+method to test his/her code. No need to remove the asserts, since NDEBUG is
+defined in production.
+
+
+|
+|So viewed from that angle, it really is not against _best practices for R
+extensions_ which is what the CRAN Policy is about.
+
+I'm not following this argument, since you (in my eyes) actually made a
+point for the opposite (see above).
+
+Keeping in mind that R is used mostly for scientific purposes I'd favor
+correctness over inconenviences like a crashing R session (keeping in mind
+that it would not even crash as per the arguments above). Encouraging
+asserts() would be a more C++-like experience for the developer, resulting
+in safer, more robust code, which is a good thing.
+
+Just my 50ct.
+
+cheers
+Chris
+
+
+|
+|Cheers, Dirk
+|
+|| Therefore I would propose to remove 'assert' from the above statement.
+|| In support, 
+|| https://cran.r-project.org/doc/manuals/r-release/R-exts.html
+|| states that
+|| 
+|| ```
+|| One usage that could call abort is the assert macro in C or C++ 
+|| functions, which should never be active in production code. The normal 
+|| way to ensure that is to define the macro NDEBUG, and R CMD INSTALL 
+|| does so as part of the compilation flags.
+|| ```
+|| which seems a reasonable thing to do.
+|| 
+|| As a sidenote, the guide could be extended to encourage new mechanisms 
+|| available in modern C++ like `static_assert`.
+|| 
+|| 
+|| Cheers
+|| Chris
+|| 
+|| ______________________________________________
+|| R-package-devel at r-project.org mailing list 
+|| https://stat.ethz.ch/mailman/listinfo/r-package-devel
+|
+|--
+|dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+|
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Dec 19 12:06:46 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 19 Dec 2024 06:06:46 -0500
+Subject: [R-pkg-devel] use of assert in C++
+In-Reply-To: <3781cc747d51458c96b307260ac2540f@fu-berlin.de>
+References: <f78e3e990156453da4ef5f85befca7fe@fu-berlin.de>
+ <5b1d8b001a8a42ac8c639e610cb37ddb@fu-berlin.de>
+ <26467.19578.406591.499843@rob.eddelbuettel.com>
+ <3781cc747d51458c96b307260ac2540f@fu-berlin.de>
+Message-ID: <463fb69e-8200-4770-9817-d71c199f7ed6@gmail.com>
+
+On 2024-12-19 5:14 a.m., Bielow, Chris wrote:
+> || hoping this is the right place for this:
+> || I stumbled upon documentation regarding the use of `assert` in C++
+> || code, in particular,
+> || https://cran.r-project.org/web/packages/policies.html states that
+> ||
+> || ```
+> || Thus C/C++ calls to assert/abort/exit/std::terminate, Fortran calls to
+> || STOP and so on must be avoided.
+> || ```
+> ||
+> || , which goes against all best practice guidelines I'm aware of.
+> |
+> |Yes and no.
+> |
+> |Defensize programming is good, of course, but `assert()` leads to an
+> `abort()` and immediate abort which for an _environment_ such as R is really
+> not appropriate. You want a proper error return (i.e. Rf_error with a
+> message or alike) to the R prompt.
+> |
+> |Note that you can always test something like this; there are several
+> packages allowing ad-hoc compilation from `inline` to `Rcpp` and others. So
+> here:
+> |
+> |  > Rcpp::cppFunction(r"(void ohnoes() { assert(false); })",
+> includes=c("#undef NDEBUG", "#include <assert.h>"))
+> |  > ohnoes()
+> |  R: file2cd1353560062b.cpp:8: void ohnoes(): Assertion `false' failed.
+> |
+> |  Process R:3 aborted (core dumped) at Wed Dec 18 16:22:19 2024
+> |
+> |... and that took my R session down just like `assert()` is expected. Also
+> note the trickery I had to do to re-enable `assert()` by undefining `NDEBUG`
+> and including the header after that.
+> 
+> Exactly! You had to jump through a lot of hoops to even make assert() crash
+> your R session. This would _not_ happen in production code.
+> So a developer of an R extension could happily use asserts, then use your
+> method to test his/her code. No need to remove the asserts, since NDEBUG is
+> defined in production.
+
+I think it would be really misleading to have code that routinely 
+ignored the assert() calls. In a year would you remember that those 
+asserts were effectively just comments, not being acted on without some 
+trickery to enable them?
+
+You'd be much safer if you used a different function specific to R that 
+triggered an R error if the assertion was false.
+
+Duncan Murdoch
+
+> 
+> 
+> |
+> |So viewed from that angle, it really is not against _best practices for R
+> extensions_ which is what the CRAN Policy is about.
+> 
+> I'm not following this argument, since you (in my eyes) actually made a
+> point for the opposite (see above).
+> 
+> Keeping in mind that R is used mostly for scientific purposes I'd favor
+> correctness over inconenviences like a crashing R session (keeping in mind
+> that it would not even crash as per the arguments above). Encouraging
+> asserts() would be a more C++-like experience for the developer, resulting
+> in safer, more robust code, which is a good thing.
+> 
+> Just my 50ct.
+> 
+> cheers
+> Chris
+> 
+> 
+> |
+> |Cheers, Dirk
+> |
+> || Therefore I would propose to remove 'assert' from the above statement.
+> || In support,
+> || https://cran.r-project.org/doc/manuals/r-release/R-exts.html
+> || states that
+> ||
+> || ```
+> || One usage that could call abort is the assert macro in C or C++
+> || functions, which should never be active in production code. The normal
+> || way to ensure that is to define the macro NDEBUG, and R CMD INSTALL
+> || does so as part of the compilation flags.
+> || ```
+> || which seems a reasonable thing to do.
+> ||
+> || As a sidenote, the guide could be extended to encourage new mechanisms
+> || available in modern C++ like `static_assert`.
+> ||
+> ||
+> || Cheers
+> || Chris
+> ||
+> || ______________________________________________
+> || R-package-devel at r-project.org mailing list
+> || https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> |
+> |--
+> |dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+> |
+> 
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From edd @end|ng |rom deb|@n@org  Thu Dec 19 12:35:09 2024
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 19 Dec 2024 05:35:09 -0600
+Subject: [R-pkg-devel] use of assert in C++
+In-Reply-To: <463fb69e-8200-4770-9817-d71c199f7ed6@gmail.com>
+References: <f78e3e990156453da4ef5f85befca7fe@fu-berlin.de>
+ <5b1d8b001a8a42ac8c639e610cb37ddb@fu-berlin.de>
+ <26467.19578.406591.499843@rob.eddelbuettel.com>
+ <3781cc747d51458c96b307260ac2540f@fu-berlin.de>
+ <463fb69e-8200-4770-9817-d71c199f7ed6@gmail.com>
+Message-ID: <26468.1261.138143.666018@rob.eddelbuettel.com>
+
+
+On 19 December 2024 at 06:06, Duncan Murdoch wrote:
+| I think it would be really misleading to have code that routinely 
+| ignored the assert() calls. In a year would you remember that those 
+| asserts were effectively just comments, not being acted on without some 
+| trickery to enable them?
+
+Or have a user with different compiler flags without the NDEBUG ... and now
+you have different behavior on different installation which is not great.
+
+| You'd be much safer if you used a different function specific to R that 
+| triggered an R error if the assertion was false.
+
+Seconded.
+
+We trade run-time and compile-time off in other ways so this should be a
+run-time check, with e.g. Rf_error() or Rcpp::stop() returning to the R
+prompt with an error message. If you feel you must program your C++
+components with assert() you could still do so in an external library
+effectively hiding it from CRAN check. But that's cheating.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From Chr|@@B|e|ow @end|ng |rom |u-ber||n@de  Thu Dec 19 13:45:32 2024
+From: Chr|@@B|e|ow @end|ng |rom |u-ber||n@de (Bielow, Chris)
+Date: Thu, 19 Dec 2024 13:45:32 +0100
+Subject: [R-pkg-devel] use of assert in C++
+In-Reply-To: <26468.1261.138143.666018@rob.eddelbuettel.com>
+References: <f78e3e990156453da4ef5f85befca7fe@fu-berlin.de>
+ <5b1d8b001a8a42ac8c639e610cb37ddb@fu-berlin.de>
+ <26467.19578.406591.499843@rob.eddelbuettel.com>
+ <3781cc747d51458c96b307260ac2540f@fu-berlin.de>
+ <463fb69e-8200-4770-9817-d71c199f7ed6@gmail.com>
+ <26468.1261.138143.666018@rob.eddelbuettel.com>
+Message-ID: <c3abbb64d2564cd79e925ce5c6a7067e@fu-berlin.de>
+
+|| I think it would be really misleading to have code that routinely 
+|| ignored the assert() calls. In a year would you remember that those 
+|| asserts were effectively just comments, not being acted on without 
+|| some trickery to enable them?
+|
+|Or have a user with different compiler flags without the NDEBUG ... and now
+you have different behavior on different installation which is not great.
+
+There are plenty of compiler flags which change program behavior (think
+--ffast-math or -fno-exceptions), which the user obviously needs to accept
+if he uses them.
+Different behavior on different platforms is not necessarily a bad thing,
+since it sometimes catches bugs which you never would have dreamed could
+happen.
+But I think we can all agree that the behavior should be as safe as possible
+on all platforms.
+
+|
+|| You'd be much safer if you used a different function specific to R 
+|| that triggered an R error if the assertion was false.
+|
+|Seconded.
+|
+
+That's a fair point, but know you changed the subject.
+The original documentation discourages assert() since it may crash the R
+session. Now, you are arguing that assert is not routinely enabled (due to
+NDEBUG) and does thus not serve any purpose. Even to the contrary it may
+suggest a kind of false safety when looking at code (since assert() is
+usually a noop).
+Completely different reasoning which still calls for an update of the docs
+and which should (repeating myself) contain a mention of static_assert.
+Right now, that part of the docs read as "Don't use assert, it's bad", which
+may translate to "Please don't write defensive/correct code" in some
+people's head.
+
+|We trade run-time and compile-time off in other ways so this should be a
+run-time check, with e.g. Rf_error() or Rcpp::stop() returning to the R
+prompt with an error message. If you feel you must program your C++
+components with assert() you could still do so in an external library
+effectively hiding it from CRAN check. But that's cheating.
+
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Dec 19 15:11:29 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 19 Dec 2024 09:11:29 -0500
+Subject: [R-pkg-devel] use of assert in C++
+In-Reply-To: <c3abbb64d2564cd79e925ce5c6a7067e@fu-berlin.de>
+References: <f78e3e990156453da4ef5f85befca7fe@fu-berlin.de>
+ <5b1d8b001a8a42ac8c639e610cb37ddb@fu-berlin.de>
+ <26467.19578.406591.499843@rob.eddelbuettel.com>
+ <3781cc747d51458c96b307260ac2540f@fu-berlin.de>
+ <463fb69e-8200-4770-9817-d71c199f7ed6@gmail.com>
+ <26468.1261.138143.666018@rob.eddelbuettel.com>
+ <c3abbb64d2564cd79e925ce5c6a7067e@fu-berlin.de>
+Message-ID: <0e126f82-9a35-4b0b-8905-014165b95c13@gmail.com>
+
+On 2024-12-19 7:45 a.m., Bielow, Chris wrote:
+> || I think it would be really misleading to have code that routinely
+> || ignored the assert() calls. In a year would you remember that those
+> || asserts were effectively just comments, not being acted on without
+> || some trickery to enable them?
+> |
+> |Or have a user with different compiler flags without the NDEBUG ... and now
+> you have different behavior on different installation which is not great.
+> 
+> There are plenty of compiler flags which change program behavior (think
+> --ffast-math or -fno-exceptions), which the user obviously needs to accept
+> if he uses them.
+> Different behavior on different platforms is not necessarily a bad thing,
+> since it sometimes catches bugs which you never would have dreamed could
+> happen.
+> But I think we can all agree that the behavior should be as safe as possible
+> on all platforms.
+> 
+> |
+> || You'd be much safer if you used a different function specific to R
+> || that triggered an R error if the assertion was false.
+> |
+> |Seconded.
+> |
+> 
+> That's a fair point, but know you changed the subject.
+> The original documentation discourages assert() since it may crash the R
+> session. Now, you are arguing that assert is not routinely enabled (due to
+> NDEBUG) and does thus not serve any purpose. Even to the contrary it may
+> suggest a kind of false safety when looking at code (since assert() is
+> usually a noop).
+> Completely different reasoning which still calls for an update of the docs
+> and which should (repeating myself) contain a mention of static_assert.
+> Right now, that part of the docs read as "Don't use assert, it's bad", which
+> may translate to "Please don't write defensive/correct code" in some
+> people's head.
+
+I think your original message said two things:
+
+   - code should use assert()
+   - the docs about assert() need fixing.
+
+As you say, both Dirk and I were mainly addressing the first of these 
+points.  Why don't you give a suggested rewrite of the two mentions of 
+assert() in the docs to fix them? (I'm not sure that there are only two 
+mentions, I'm just going by the two mentions you quoted in your first 
+message.)
+
+Duncan Murdoch
+
+> 
+> |We trade run-time and compile-time off in other ways so this should be a
+> run-time check, with e.g. Rf_error() or Rcpp::stop() returning to the R
+> prompt with an error message. If you feel you must program your C++
+> components with assert() you could still do so in an external library
+> effectively hiding it from CRAN check. But that's cheating.
+>
+
+
+From jo@e@b@rrer@ @end|ng |rom |@g|ob@|@org  Thu Dec 19 15:48:35 2024
+From: jo@e@b@rrer@ @end|ng |rom |@g|ob@|@org (=?UTF-8?Q?Jose_Barrera=2DG=C3=B3mez?=)
+Date: Thu, 19 Dec 2024 15:48:35 +0100
+Subject: [R-pkg-devel] 
+ Changes in function call with respect to the current
+ published version
+In-Reply-To: <96f1a281-587d-4a83-be8b-b9da11a95215@mcmaster.ca>
+References: <CACr7k5+pmMhwmEJ9Zb0gL4yRLt4gsuAW2_98uz3W0YZ3vydUxw@mail.gmail.com>
+ <314ed868-5582-4119-9c43-bd6c86200f6d@mcmaster.ca>
+ <96f1a281-587d-4a83-be8b-b9da11a95215@mcmaster.ca>
+Message-ID: <CACr7k5+-ZABSt-Qpphca=UkXJ=qr95WVa1nOWbfJr_Jg-YxS6Q@mail.gmail.com>
+
+Hi Georgi, Uri, John and List,
+
+Thank you, that was very helpful!
+
+Kind regards
+
+Jose Barrera
+Statistician, Associate Lecturer
+
+*IS**Global*
+Barcelona Institute for Global Health - Campus MAR
+Barcelona Biomedical Research Park (PRBB) (Room Hypatia)
+
+Doctor Aiguader, 88
+08003 Barcelona, Spain
+Tel. +34 93 2147383
+jose.barrera at isglobal.org
+<https://www.linkedin.com/in/josebarrera>
+Personal website: sites.google.com/view/josebarrera
+www.isglobal.org
+
+This message is intended exclusively for its addressee and may contain
+information that is CONFIDENTIAL and protected by professional privilege.
+If you are not the intended recipient you are hereby notified that any
+dissemination, copy or disclosure of this communication is strictly
+prohibited by law. If this message has been received in error, please
+immediately notify us via e-mail and delete it.
+
+DATA PROTECTION. We inform you that your personal data, including your
+e-mail address and data included in your email correspondence, are included
+in the ISGlobal Foundation filing system. Your personal data will be used
+for the purpose of contacting you and sending information on the activities
+of the above foundations. You can exercise your rights to  access to
+personal data, rectification, erasure, restriction of processing, data
+portability and object by contacting the following address: *lopd at isglobal.org
+<lopd at isglobal.org>*. ISGlobal Privacy Policy at *www.isglobal.org
+<http://www.isglobal.org/>*.
+
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+CONFIDENCIALIDAD. Este mensaje y sus anexos se dirigen exclusivamente a su
+destinatario y puede contener informaci?n confidencial, por lo que la
+utilizaci?n, divulgaci?n y/o copia sin autorizaci?n est? prohibida por la
+legislaci?n vigente. Si ha recibido este mensaje por error, le rogamos lo
+comunique inmediatamente por esta misma v?a y proceda a su destrucci?n.
+
+PROTECCI?N DE DATOS. Sus datos de car?cter personal utilizados en este
+env?o, incluida su direcci?n de e-mail, forman parte de ficheros de
+titularidad de la Fundaci?n ISGlobal  para cualquier finalidades de
+contacto, relaci?n institucional y/o env?o de informaci?n sobre sus
+actividades. Los datos que usted nos pueda facilitar contestando este
+correo quedar?n incorporados en los correspondientes ficheros, autorizando
+el uso de su direcci?n de e-mail para las finalidades citadas. Puede
+ejercer los derechos de acceso, rectificaci?n, supresi?n, limitaci?n del
+tratamiento, portabilidad y oposici?n dirigi?ndose a *lopd at isglobal.org
+<lopd at isglobal.org>* . Pol?tica de privacidad en *www.isglobal.org
+<http://www.isglobal.org/>*.
+
+
+El mi?, 18 dic 2024 a las 18:37, John Fox (<jfox at mcmaster.ca>) escribi?:
+
+> Dear Jose,
+>
+> On 2024-12-18 10:26 a.m., John Fox wrote:
+> > Caution: External email.
+> >
+> >
+> > Dear Jose,
+> >
+> > Assuming that you can fix the bugs in the original function, one
+> > approach would be to make myfun() generic, say myfun <- function(y, ...)
+> > UseMethod("myfun"), with the (fixed) original myfun() as the default
+> > method and a new function method, which would probably set up a call to
+>
+> That should read "a new formula method" (not "a new function method").
+>
+> Sorry for the confusion,
+>   John
+>
+> > the default method. Then existing code wouldn't break and users would
+> > have the option of using a formula.
+> >
+> > I hope this helps,
+> >   John
+> > --
+> > John Fox, Professor Emeritus
+> > McMaster University
+> > Hamilton, Ontario, Canada
+> > web: https://www.john-fox.ca/
+> > --
+> >
+> > On 2024-12-17 4:00 p.m., Jose Barrera-G?mez wrote:
+> >> [You don't often get email from jose.barrera at isglobal.org. Learn why
+> >> this is important at https://aka.ms/LearnAboutSenderIdentification ]
+> >>
+> >> Caution: External email.
+> >>
+> >>
+> >> Dear List,
+> >>
+> >> I have a package that works in the context of regression models. The
+> main
+> >> function has arguments (y, x, z, data, ...), where y is the response
+> >> variable, x is the explanatory variable and z can be other covariates.
+> >>
+> >> Due to some bugs, I am interested in changing the call from (y, x, z,
+> >> data,
+> >> ...) to (formula, data, ...).
+> >>
+> >> For instance, current usage is
+> >>
+> >> myfun(y = birthweight, x = cotinine, z = age, data = mydata, ...)
+> >>
+> >> and new usage would be
+> >>
+> >> myfun(formula = birthweight ~ cotinine + age, data = mydata, ...)
+> >>
+> >> This change would have no impact on the usage for the rest of the
+> >> package.
+> >>
+> >> My concern is that users updating the package won't be able to reproduce
+> >> old analyses. I.e. they would need to update the calls to myfun (but
+> >> nothing else related to the usage of other functions or methods).
+> >>
+> >> I think the new usage would result in some advantages and bugs fixing
+> and
+> >> only the disadvantage I mentioned just above.
+> >>
+> >> I would appreciate advice on:
+> >>
+> >> 1) There could be other disadvantages for users of previous versions
+> >> that I
+> >> don't see?
+> >>
+> >> 2) What would be the best location(s) in the documentation to explain in
+> >> detail this change?
+> >>
+> >> Thanks in advance,
+> >>
+> >> Jose Barrera
+> >> Statistician, Associate Lecturer
+> >>
+> >> *IS**Global*
+> >> Barcelona Institute for Global Health - Campus MAR
+> >> Barcelona Biomedical Research Park (PRBB) (Room Hypatia)
+> >>
+> >> Doctor Aiguader, 88
+> >> 08003 Barcelona, Spain
+> >> Tel. +34 93 2147383
+> >> jose.barrera at isglobal.org
+> >> <https://www.linkedin.com/in/josebarrera>
+> >> Personal website: sites.google.com/view/josebarrera
+> >> www.isglobal.org
+> >>
+> >> This message is intended exclusively for its addressee and may contain
+> >> information that is CONFIDENTIAL and protected by professional
+> privilege.
+> >> If you are not the intended recipient you are hereby notified that any
+> >> dissemination, copy or disclosure of this communication is strictly
+> >> prohibited by law. If this message has been received in error, please
+> >> immediately notify us via e-mail and delete it.
+> >>
+> >> DATA PROTECTION. We inform you that your personal data, including your
+> >> e-mail address and data included in your email correspondence, are
+> >> included
+> >> in the ISGlobal Foundation filing system. Your personal data will be
+> used
+> >> for the purpose of contacting you and sending information on the
+> >> activities
+> >> of the above foundations. You can exercise your rights to  access to
+> >> personal data, rectification, erasure, restriction of processing, data
+> >> portability and object by contacting the following address:
+> >> *lopd at isglobal.org
+> >> <lopd at isglobal.org>*. ISGlobal Privacy Policy at *www.isglobal.org
+> >> <http://www.isglobal.org/>*.
+> >>
+> >>
+> >>
+> -----------------------------------------------------------------------------------------------------------------------------
+> >>
+> >> CONFIDENCIALIDAD. Este mensaje y sus anexos se dirigen exclusivamente
+> >> a su
+> >> destinatario y puede contener informaci?n confidencial, por lo que la
+> >> utilizaci?n, divulgaci?n y/o copia sin autorizaci?n est? prohibida por
+> la
+> >> legislaci?n vigente. Si ha recibido este mensaje por error, le rogamos
+> lo
+> >> comunique inmediatamente por esta misma v?a y proceda a su destrucci?n.
+> >>
+> >> PROTECCI?N DE DATOS. Sus datos de car?cter personal utilizados en este
+> >> env?o, incluida su direcci?n de e-mail, forman parte de ficheros de
+> >> titularidad de la Fundaci?n ISGlobal  para cualquier finalidades de
+> >> contacto, relaci?n institucional y/o env?o de informaci?n sobre sus
+> >> actividades. Los datos que usted nos pueda facilitar contestando este
+> >> correo quedar?n incorporados en los correspondientes ficheros,
+> >> autorizando
+> >> el uso de su direcci?n de e-mail para las finalidades citadas. Puede
+> >> ejercer los derechos de acceso, rectificaci?n, supresi?n, limitaci?n del
+> >> tratamiento, portabilidad y oposici?n dirigi?ndose a *lopd at isglobal.org
+> >> <lopd at isglobal.org>* . Pol?tica de privacidad en *www.isglobal.org
+> >> <http://www.isglobal.org/>*.
+> >>
+> >> --
+> >>
+> >>
+> >> This message is intended exclusively for its addressee and may contain
+> >> information that is CONFIDENTIAL and protected by professional
+> privilege.
+> >> If
+> >> you are not the intended recipient you are hereby notified that any
+> >> dissemination, copy or disclosure of this communication is strictly
+> >> prohibited
+> >> by law. If this message has been received in error, please
+> >> immediately notify
+> >> us via e-mail and delete it.
+> >>
+> >>
+> >>
+> >> DATA PROTECTION. We
+> >> inform you that your personal data, including your
+> >> e-mail address and data
+> >> included in your email correspondence, are included in
+> >> the ISGlobal
+> >> Foundation files. Your personal data will be used for the purpose
+> >> of
+> >> contacting you and sending information on the activities of the above
+> >> foundations. You can exercise your rights of access, rectification,
+> >> cancellation and opposition by contacting the following address:
+> >> lopd at isglobal.org <mailto:lopd at isglobal.org>. ISGlobal
+> >> Privacy Policy at
+> >> www.isglobal.org <http://www.isglobal.org/>.
+> >>
+> >>
+> >>
+> >>
+> -----------------------------------------------------------------------------------------------------------------------------
+> >>
+> >> CONFIDENCIALIDAD. Este mensaje y sus anexos se dirigen exclusivamente a
+> >> su
+> >> destinatario y puede contener informaci?n confidencial, por lo que la
+> >> utilizaci?n,
+> >> divulgaci?n y/o copia sin autorizaci?n est? prohibida por la
+> >> legislaci?n
+> >> vigente. Si ha recibido este mensaje por error, le rogamos lo
+> >> comunique
+> >> inmediatamente por esta misma v?a y proceda a su destrucci?n.
+> >>
+> >>
+> >>
+> >>
+> >>
+> >>
+> >>
+> >>
+> >>
+> >> PROTECCI?N DE DATOS. Sus datos de car?cter personal utilizados en este
+> >> env?o, incluida su direcci?n de e-mail, forman parte de ficheros de
+> >> titularidad
+> >> de la Fundaci?n ISGlobal  para cualquier
+> >> finalidades de
+> >> contacto, relaci?n institucional y/o env?o de informaci?n sobre
+> >> sus
+> >> actividades. Los datos que usted nos pueda facilitar contestando este
+> >> correo quedar?n incorporados en los correspondientes ficheros,
+> >> autorizando
+> >> el
+> >> uso de su direcci?n de e-mail para las finalidades citadas. Puede
+> >> ejercer los
+> >> derechos de acceso, rectificaci?n, cancelaci?n y oposici?n
+> >> dirigi?ndose a lopd at isglobal.org <mailto:lopd at isglobal.org>* *.
+> >> Pol?tica de
+> >> privacidad
+> >> en www.isglobal.org <http://www.isglobal.org/>.
+> >>
+> >>          [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-package-devel at r-project.org mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+>
+>
+
+-- 
+
+
+This message is intended exclusively for its addressee and may contain
+information that is CONFIDENTIAL and protected by professional privilege. 
+If
+you are not the intended recipient you are hereby notified that any
+dissemination, copy or disclosure of this communication is strictly 
+prohibited
+by law. If this message has been received in error, please 
+immediately notify
+us via e-mail and delete it.
+
+
+
+DATA PROTECTION. We 
+inform you that your personal data, including your
+e-mail address and data 
+included in your email correspondence, are included in
+the ISGlobal 
+Foundation files. Your personal data will be used for the purpose
+of 
+contacting you and sending information on the activities of the above
+foundations. You can exercise your rights of access, rectification,
+cancellation and opposition by contacting the following address: 
+lopd at isglobal.org <mailto:lopd at isglobal.org>. ISGlobal
+Privacy Policy at 
+www.isglobal.org <http://www.isglobal.org/>.
+
+
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+CONFIDENCIALIDAD. Este mensaje y sus anexos se dirigen exclusivamente a
+su 
+destinatario y puede contener informaci?n confidencial, por lo que la
+utilizaci?n,
+divulgaci?n y/o copia sin autorizaci?n est? prohibida por la
+legislaci?n
+vigente. Si ha recibido este mensaje por error, le rogamos lo 
+comunique
+inmediatamente por esta misma v?a y proceda a su destrucci?n.
+
+
+
+
+
+
+
+
+
+PROTECCI?N DE DATOS. Sus datos de car?cter personal utilizados en este
+env?o, incluida su direcci?n de e-mail, forman parte de ficheros de 
+titularidad
+de la Fundaci?n ISGlobal? para cualquier
+finalidades de 
+contacto, relaci?n institucional y/o env?o de informaci?n sobre
+sus 
+actividades. Los datos que usted nos pueda facilitar contestando este
+correo quedar?n incorporados en los correspondientes ficheros, autorizando 
+el
+uso de su direcci?n de e-mail para las finalidades citadas. Puede 
+ejercer los
+derechos de acceso, rectificaci?n, cancelaci?n y oposici?n 
+dirigi?ndose a lopd at isglobal.org <mailto:lopd at isglobal.org>* *. Pol?tica de 
+privacidad
+en www.isglobal.org <http://www.isglobal.org/>.
+
+	[[alternative HTML version deleted]]
+
+
+From h@n@on @end|ng |rom dep@uw@edu  Fri Dec 20 02:54:10 2024
+From: h@n@on @end|ng |rom dep@uw@edu (Bryan Hanson)
+Date: Thu, 19 Dec 2024 18:54:10 -0700
+Subject: [R-pkg-devel] 
+ [CRAN-pretest-archived] CRAN Submission NMRphasing 1.0.6
+In-Reply-To: <YQBPR0101MB5045594845E47DD95EE9C242C6042@YQBPR0101MB5045.CANPRD01.PROD.OUTLOOK.COM>
+References: <20241217081412.044C6A0174@xmpalantir.wu.ac.at>
+ <01db505f$Blat.v3.2.22$b0d59b67$2e5f41fba@mail.statistik.tu-dortmund.de>
+ <YQBPR0101MB5045E4A7916B3292C50F54FFC6042@YQBPR0101MB5045.CANPRD01.PROD.OUTLOOK.COM>
+ <20241217131541.710bbfe6@arachnoid>
+ <YQBPR0101MB5045594845E47DD95EE9C242C6042@YQBPR0101MB5045.CANPRD01.PROD.OUTLOOK.COM>
+Message-ID: <EBD1AF2E-64A6-41B0-AC71-DDB0A9714741@depauw.edu>
+
+Several people passed this on to the maintainer and it has now been fixed, working its way through the Bioconductor system.
+
+https://github.com/zeehio/MassSpecWavelet/issues/7#?
+Did you see this error reported on r-pkg-devel? ? Issue #7 ? zeehio/MassSpecWavelet
+github.com
+
+
+> On Dec 17, 2024, at 2:40?PM, Aixiang Jiang <aijiang at bccrc.ca> wrote:
+> 
+> Thank you so much for pointing out the detailed info - Ivan!
+> 
+> Since the time for me to revise my own package is limited (otherwise my package will be withdrawn), I ended up revising the C functions and converting into R functions, which are then included in my own package.
+> 
+> Best,
+> Aixiang
+> 
+> ________________________________
+> From: Ivan Krylov <ikrylov at disroot.org>
+> Sent: Tuesday, December 17, 2024 2:15 AM
+> To: Aixiang Jiang <aijiang at bccrc.ca>
+> Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+> Subject: Re: [R-pkg-devel] [CRAN-pretest-archived] CRAN Submission NMRphasing 1.0.6
+> 
+> CAUTION: EXTERNAL EMAIL. Verify both the sender's email and name. Avoid links/attachments unless expected. Report any suspicious message by forwarding it as an attachment to spammail at bccrc.ca
+> 
+> 
+> Dear Aixiang,
+> 
+> Welcome to R-package-devel!
+> 
+> ? Tue, 17 Dec 2024 09:47:26 +0000
+> Aixiang Jiang <aijiang at bccrc.ca> ?????:
+> 
+>> I am really confused by the error, which did not happen in the
+>> previous versions.
+>> 
+>> Since I have not changed my code at all, the possible reason is that
+>> the external function is changed.
+> 
+> That's right, you've found a bug in the MassSpecWavelet package. It's
+> been introduced more than two years ago:
+> 
+> https://code.bioconductor.org/browse/MassSpecWavelet/commit/ea0f727ffc391fa2643f858844836d8297742433
+> 
+> The code finds out the length of the vector and a pointer to the start
+> of its data:
+> 
+>>> double *x;
+> 
+>>> R_xlen_t xlength = Rf_length(s_x);
+> 
+>>> x = REAL(s_x);
+> 
+> Later, the code tries to limit the offset into the array...
+> 
+>>> i2 = i2 >= xlength ? xlength : i2;
+> 
+> ...and accesses the data at this offset:
+> 
+>>> if (xmax > x[i2] && xmax > x[j-1]) {
+> 
+> Unfortunately, it is an error to access data at i2 equal to xlength.
+> The correct maximum for i2 must be xlength-1, the last valid element of
+> x.
+> 
+> Try reporting this to the maintainer at
+> <https://support.bioconductor.org/> or at
+> <http://github.com/zeehio/MassSpecWavelet/issues>.
+> 
+> --
+> Best regards,
+> Ivan
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+=============
+Bryan A. Hanson
+Prof. Emeritus, DePauw University
+Chemistry & Biochemistry
+hanson at depauw.edu
+profbryanhanson at gmail.com
+Nerdy blog: ChemoSpec.org
+I?m at GMT -7 year round
+
+
+
+
+
+
+
