@@ -14891,3 +14891,183 @@ I?m at GMT -7 year round
 
 
 
+From m@@epu|ved@ @end|ng |rom m@||@utoronto@c@  Fri Dec 20 09:00:08 2024
+From: m@@epu|ved@ @end|ng |rom m@||@utoronto@c@ (Mauricio Vargas Sepulveda)
+Date: Fri, 20 Dec 2024 08:00:08 +0000
+Subject: [R-pkg-devel] long user + system time with CRAN special checks
+ clang 19
+Message-ID: <YT2PPFFFCD7005737251148C5B6926568D7DD072@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+
+Dear R Community,
+
+First of all, happy holidays.
+
+I sent a package to CRAN and it passes all checks except this one:
+
+   https://win-builder.r-project.org/incoming_pretest/cpp11tesseract_5.3.5_20241220_042113/specialChecks/clang19/outputs.txt
+
+   checking cpp11tesseract_5.3.5.tar.gz ...
+
+   Timings:
+                    user system elapsed
+   cpp11tesseract 18.624  1.701  22.045
+
+I submitted a 2nd time after reducing the examples to the bare minimum and doing a copy and paste of the vignette outputs to provide a pre-rendered result, and it shows the same.
+
+Is there any way to be able to replicate this error locally? I tried Win Builder and the R Consortium docker images, but being this a nonspecific error it is hard to replicate.
+
+Best wishes,
+
+??
+Mauricio "Pach?" Vargas Sep?lveda
+PhD Student, Political Science
+University of Toronto
+
+
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Dec 20 09:30:04 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 20 Dec 2024 11:30:04 +0300
+Subject: [R-pkg-devel] long user + system time with CRAN special checks
+ clang 19
+In-Reply-To: <YT2PPFFFCD7005737251148C5B6926568D7DD072@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+References: <YT2PPFFFCD7005737251148C5B6926568D7DD072@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+Message-ID: <20241220113004.71a45027@Tarkus>
+
+? Fri, 20 Dec 2024 08:00:08 +0000
+Mauricio Vargas Sepulveda <m.sepulveda at mail.utoronto.ca> ?????:
+
+>    https://win-builder.r-project.org/incoming_pretest/cpp11tesseract_5.3.5_20241220_042113/specialChecks/clang19/outputs.txt
+> 
+>    checking cpp11tesseract_5.3.5.tar.gz ...
+> 
+>    Timings:
+>                     user system elapsed
+>    cpp11tesseract 18.624  1.701  22.045
+
+It's not about the timings. 22 seconds for a full package installation
+is quite tame compared to some C++ behemoths we have on CRAN (how about
+3700 seconds?). The problem is that the resulting shared library fails
+to load afterwards:
+
+> ** testing if installed package can be loaded from temporary location
+> Error: package or namespace load failed for ?cpp11tesseract? in
+> dyn.load(file, DLLpath = DLLpath, ...): unable to load shared object
+> '/home/hornik/tmp/CRAN_special_clang19/cpp11tesseract.Rcheck/00LOCK-cpp11tesseract/00new/cpp11tesseract/libs/cpp11tesseract.so':
+> /home/hornik/tmp/CRAN_special_clang19/cpp11tesseract.Rcheck/00LOCK-cpp11tesseract/00new/cpp11tesseract/libs/cpp11tesseract.so:
+> undefined symbol:
+> _ZNK9tesseract11TessBaseAPI19GetVariableAsStringEPKcPNSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEE
+
+<https://win-builder.r-project.org/incoming_pretest/cpp11tesseract_5.3.5_20241220_042113/specialChecks/clang19/package/00install.out>
+
+Unfortunately, it's still a puzzle why the function
+tesseract::TessBaseAPI::GetVariableAsString(char const*, std::string*)
+const fails to load from libtesseract.
+
+-- 
+Best regards,
+Ivan
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Dec 20 10:04:50 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 20 Dec 2024 12:04:50 +0300
+Subject: [R-pkg-devel] long user + system time with CRAN special checks
+ clang 19
+In-Reply-To: <20241220113004.71a45027@Tarkus>
+References: <YT2PPFFFCD7005737251148C5B6926568D7DD072@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <20241220113004.71a45027@Tarkus>
+Message-ID: <20241220120450.12523d0b@Tarkus>
+
+? Fri, 20 Dec 2024 11:30:04 +0300
+Ivan Krylov via R-package-devel <r-package-devel at r-project.org> ?????:
+
+> Unfortunately, it's still a puzzle why the function
+> tesseract::TessBaseAPI::GetVariableAsString(char const*, std::string*)
+> const fails to load from libtesseract.
+
+That's because libtesseract.so is linked to a different C++ standard
+library. Compare:
+
+> undefined symbol:
+> _ZNK9tesseract11TessBaseAPI19GetVariableAsStringEPKcPNSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEE
+
+c++filt says it's:
+
+tesseract::TessBaseAPI::GetVariableAsString(char const*, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >*) const
+
+The symbol actually exported by libtesseract.so is named differently:
+
+$ nm -gDP /usr/lib/x86_64-linux-gnu/libtesseract.so.5 | grep GetVariableAsString
+_ZNK9tesseract11TessBaseAPI19GetVariableAsStringEPKcPNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE T a4f40 16
+
+c++filt says:
+
+tesseract::TessBaseAPI::GetVariableAsString(char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*) const
+
+What should a package do when it's compiled by clang++ with the libc++
+headers and library, but all system dependencies had been compiled with
+g++ and linked with libstdc++? How to check packages using the clang
+compiler without compiling the rest of the system from source using
+clang? How do other C++ packages solve this problem?
+
+-- 
+Best regards,
+Ivan
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Fri Dec 20 13:45:14 2024
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Fri, 20 Dec 2024 13:45:14 +0100
+Subject: [R-pkg-devel] long user + system time with CRAN special checks
+ clang 19
+In-Reply-To: <20241220120450.12523d0b@Tarkus>
+References: <YT2PPFFFCD7005737251148C5B6926568D7DD072@YT2PPFFFCD70057.CANPRD01.PROD.OUTLOOK.COM>
+ <20241220113004.71a45027@Tarkus> <20241220120450.12523d0b@Tarkus>
+Message-ID: <1d1e4f53-f10e-4072-a16e-67b5f439964b@gmail.com>
+
+
+On 12/20/24 10:04, Ivan Krylov via R-package-devel wrote:
+> ? Fri, 20 Dec 2024 11:30:04 +0300
+> Ivan Krylov via R-package-devel <r-package-devel at r-project.org> ?????:
+>
+>> Unfortunately, it's still a puzzle why the function
+>> tesseract::TessBaseAPI::GetVariableAsString(char const*, std::string*)
+>> const fails to load from libtesseract.
+> That's because libtesseract.so is linked to a different C++ standard
+> library. Compare:
+>
+>> undefined symbol:
+>> _ZNK9tesseract11TessBaseAPI19GetVariableAsStringEPKcPNSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEE
+> c++filt says it's:
+>
+> tesseract::TessBaseAPI::GetVariableAsString(char const*, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >*) const
+>
+> The symbol actually exported by libtesseract.so is named differently:
+>
+> $ nm -gDP /usr/lib/x86_64-linux-gnu/libtesseract.so.5 | grep GetVariableAsString
+> _ZNK9tesseract11TessBaseAPI19GetVariableAsStringEPKcPNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE T a4f40 16
+>
+> c++filt says:
+>
+> tesseract::TessBaseAPI::GetVariableAsString(char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >*) const
+>
+> What should a package do when it's compiled by clang++ with the libc++
+> headers and library, but all system dependencies had been compiled with
+> g++ and linked with libstdc++? How to check packages using the clang
+> compiler without compiling the rest of the system from source using
+> clang? How do other C++ packages solve this problem?
+
+It would say it is the responsibility of the check system/machine that 
+the toolchain and the libraries used to build R packages are compatible, 
+so also use the same C++ library. There is nothing R packages should do 
+about this. R packages only need to make sure their code is portable and 
+that they do not download any pre-compiled code.
+
+Tomas
+
+
+>
+
+
