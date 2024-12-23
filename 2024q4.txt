@@ -15071,3 +15071,214 @@ Tomas
 >
 
 
+From pep|jn@devr|e@ @end|ng |rom out|ook@com  Sat Dec 21 23:34:41 2024
+From: pep|jn@devr|e@ @end|ng |rom out|ook@com (Pepijn de Vries)
+Date: Sat, 21 Dec 2024 22:34:41 +0000
+Subject: [R-pkg-devel] Establishing how a package violated CRAN policies
+Message-ID: <AM8PR10MB46606D3C24D417DCC99B962FA7002@AM8PR10MB4660.EURPRD10.PROD.OUTLOOK.COM>
+
+Hi fellow developers,
+
+By accident I discovered that one of my packages has been archived by CRAN (https://cran.r-project.org/package=CopernicusMarine) because it violates CRAN policies. Can this happen unannounced? If so, how can I discover the specific violation, such that I can fix this, or at least avoid it in my other packages? If not, how could I get a copy of the announcement?
+
+Any suggestions are welcome.
+
+Kind regards,
+
+Pepijn 
+
+From |kw@|mmo @end|ng |rom gm@||@com  Sat Dec 21 23:51:32 2024
+From: |kw@|mmo @end|ng |rom gm@||@com (Iris Simmons)
+Date: Sat, 21 Dec 2024 17:51:32 -0500
+Subject: [R-pkg-devel] Establishing how a package violated CRAN policies
+In-Reply-To: <AM8PR10MB46606D3C24D417DCC99B962FA7002@AM8PR10MB4660.EURPRD10.PROD.OUTLOOK.COM>
+References: <AM8PR10MB46606D3C24D417DCC99B962FA7002@AM8PR10MB4660.EURPRD10.PROD.OUTLOOK.COM>
+Message-ID: <CADNULg_zftotoGqb85zG2=MuSvmG1JWy86Pd1Yy-ZiUrMR+eBw@mail.gmail.com>
+
+You can find those results here:
+
+https://cran.r-project.org/src/contrib/PACKAGES.in
+
+Your package says "Archived on 2024-12-16 from policy violation. On
+Internet Access."
+
+There are additional details from the check result that failed here:
+
+https://www.stats.ox.ac.uk/pub/bdr/donttest/CopernicusMarine.out
+
+
+On Sat, Dec 21, 2024, 17:34 Pepijn de Vries <pepijn.devries at outlook.com>
+wrote:
+
+> Hi fellow developers,
+>
+> By accident I discovered that one of my packages has been archived by CRAN
+> (https://cran.r-project.org/package=CopernicusMarine) because it violates
+> CRAN policies. Can this happen unannounced? If so, how can I discover the
+> specific violation, such that I can fix this, or at least avoid it in my
+> other packages? If not, how could I get a copy of the announcement?
+>
+> Any suggestions are welcome.
+>
+> Kind regards,
+>
+> Pepijn
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From bbo|ker @end|ng |rom gm@||@com  Sat Dec 21 23:58:28 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Sat, 21 Dec 2024 17:58:28 -0500
+Subject: [R-pkg-devel] Establishing how a package violated CRAN policies
+In-Reply-To: <AM8PR10MB46606D3C24D417DCC99B962FA7002@AM8PR10MB4660.EURPRD10.PROD.OUTLOOK.COM>
+References: <AM8PR10MB46606D3C24D417DCC99B962FA7002@AM8PR10MB4660.EURPRD10.PROD.OUTLOOK.COM>
+Message-ID: <21e666d6-5c76-4a86-8722-1e30790aadbd@gmail.com>
+
+     You should have gotten an e-mail to the maintainer address -- check 
+your spam folder?
+
+   The error I see is in 
+https://www.stats.ox.ac.uk/pub/bdr/donttest/CopernicusMarine.out (via 
+the "donttest" link; the details of this test are here 
+<https://www.stats.ox.ac.uk/pub/bdr/donttest/README.txt>, via 
+<https://cran.r-project.org/web/checks/check_issue_kinds.html>.
+
+The policy <https://cran.r-project.org/web/packages/policies.html> that 
+you're violating is probably this one:
+
+* Packages which use Internet resources should fail gracefully with an 
+informative message if the resource is not available or has changed (and 
+not give a check warning nor error).
+
+====
+
+   I am always confused by "\donttest", which *is* tested by CRAN in 
+some cases.
+
+Finally, there is \donttest, used (at the beginning of a separate line) 
+to mark code that should be run by example() but not by R CMD check (by 
+default: the option --run-donttest can be used). This should be needed 
+only occasionally but can be used for code which might fail in 
+circumstances that are hard to test for, for example in some locales. 
+(Use e.g. capabilities() or nzchar(Sys.which("someprogram")) to test for 
+features needed in the examples wherever possible, and you can also use 
+try() or tryCatch(). Use interactive() to condition examples which need 
+someone to interact with.) Note that code included in \donttest must be 
+correct R code, and any packages used should be declared in the 
+DESCRIPTION file. It is good practice to include a comment in the 
+\donttest section explaining why it is needed.
+
+
+For what it's worth, the "additional issues" link seems to be broken:
+
+https://cran-archive.r-project.org/web/checks/2024/check_issue_kinds.html
+
+On 12/21/24 17:34, Pepijn de Vries wrote:
+> Hi fellow developers,
+> 
+> By accident I discovered that one of my packages has been archived by CRAN (https://cran.r-project.org/package=CopernicusMarine) because it violates CRAN policies. Can this happen unannounced? If so, how can I discover the specific violation, such that I can fix this, or at least avoid it in my other packages? If not, how could I get a copy of the announcement?
+> 
+> Any suggestions are welcome.
+> 
+> Kind regards,
+> 
+> Pepijn
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+* E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
+From pep|jn@devr|e@ @end|ng |rom out|ook@com  Sun Dec 22 00:46:36 2024
+From: pep|jn@devr|e@ @end|ng |rom out|ook@com (Pepijn de Vries)
+Date: Sat, 21 Dec 2024 23:46:36 +0000
+Subject: [R-pkg-devel] Establishing how a package violated CRAN policies
+In-Reply-To: <21e666d6-5c76-4a86-8722-1e30790aadbd@gmail.com>
+References: <AM8PR10MB46606D3C24D417DCC99B962FA7002@AM8PR10MB4660.EURPRD10.PROD.OUTLOOK.COM>
+ <21e666d6-5c76-4a86-8722-1e30790aadbd@gmail.com>
+Message-ID: <AM8PR10MB4660C00F2B1FE0E0BA120043A7002@AM8PR10MB4660.EURPRD10.PROD.OUTLOOK.COM>
+
+>      You should have gotten an e-mail to the maintainer address -- check
+> your spam folder?
+
+I did check my spam folder, nothing there. I suspect I'm somehow not receiving
+all mails from the CRAN team.
+
+>
+>    The error I see is in
+> https://www.stats.ox.ac.uk/pub/bdr/donttest/CopernicusMarine.out (via
+> the "donttest" link; the details of this test are here
+> <https://www.stats.ox.ac.uk/pub/bdr/donttest/README.txt>, via
+> <https://cran.r-project.org/web/checks/check_issue_kinds.html>.
+>
+> The policy <https://cran.r-project.org/web/packages/policies.html> that
+> you're violating is probably this one:
+>
+> * Packages which use Internet resources should fail gracefully with an
+> informative message if the resource is not available or has changed (and
+> not give a check warning nor error).
+>
+
+Thanks for pointing this out. Yes this sounds familiar. I thought I had fixed this,
+but the checks trip over an oversight on my behalf.
+
+> ====
+>
+>    I am always confused by "\donttest", which *is* tested by CRAN in
+> some cases.
+>
+> Finally, there is \donttest, used (at the beginning of a separate line)
+> to mark code that should be run by example() but not by R CMD check (by
+> default: the option --run-donttest can be used). This should be needed
+> only occasionally but can be used for code which might fail in
+> circumstances that are hard to test for, for example in some locales.
+> (Use e.g. capabilities() or nzchar(Sys.which("someprogram")) to test for
+> features needed in the examples wherever possible, and you can also use
+> try() or tryCatch(). Use interactive() to condition examples which need
+> someone to interact with.) Note that code included in \donttest must be
+> correct R code, and any packages used should be declared in the
+> DESCRIPTION file. It is good practice to include a comment in the
+> \donttest section explaining why it is needed.
+>
+
+Examples wrapped in \donttest are examples that work fine as long as account details
+are provided as option in the R session. As they are not available on CRAN, these
+should not be tested there. This was not a problem when I first submitted this package.
+
+>
+> For what it's worth, the "additional issues" link seems to be broken:
+>
+> https://cran-archive.r-project.org/web/checks/2024/check_issue_kinds.html
+>
+> On 12/21/24 17:34, Pepijn de Vries wrote:
+> > Hi fellow developers,
+> >
+> > By accident I discovered that one of my packages has been archived by CRAN (https://cran.r-project.org/package=CopernicusMarine) because it violates CRAN policies. Can this happen unannounced? If so, how can I discover the specific violation, such that I can fix this, or at least avoid it in my other packages? If not, how could I get a copy of the announcement?
+> >
+> > Any suggestions are welcome.
+> >
+> > Kind regards,
+> >
+> > Pepijn
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+> --
+> Dr. Benjamin Bolker
+> Professor, Mathematics & Statistics and Biology, McMaster University
+> Director, School of Computational Science and Engineering
+> * E-mail is sent at my convenience; I don't expect replies outside of
+> working hours.
+
