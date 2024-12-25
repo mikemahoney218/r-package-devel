@@ -15282,3 +15282,194 @@ should not be tested there. This was not a problem when I first submitted this p
 > * E-mail is sent at my convenience; I don't expect replies outside of
 > working hours.
 
+From m@rkdonoghoe @end|ng |rom gm@||@com  Sun Dec 22 22:26:41 2024
+From: m@rkdonoghoe @end|ng |rom gm@||@com (Mark Donoghoe)
+Date: Mon, 23 Dec 2024 08:26:41 +1100
+Subject: [R-pkg-devel] Getting summary.glm to use Matrix::chol2inv
+Message-ID: <CAKakjMezD_N0+UwgV62=OV1b1duVJbAjBNy=1tb7ipXQGRK_rQ@mail.gmail.com>
+
+Hi,
+
+I am trying to implement a new method for glm2 which allows the use of
+the Matrix package to work with large data.
+
+I have added Matrix to Suggests, and when the new method is requested,
+the following check is performed:
+
+if (!requireNamespace("Matrix", quietly = TRUE)) {
+      stop("Package \"Matrix\" must be installed to use method =
+\"glm.fit2.Matrix\".",
+           call. = FALSE)
+    }
+
+This works fine. However, I would like the user to be able to use
+summary.glm on the fitted object x, and it effectively calls
+chol2inv(x$qr$qr[1:p,1:p]), which fails if x$qr$qr is not a (small m)
+matrix:
+
+Error in chol2inv(Qr$qr[p1, p1, drop = FALSE]) :
+  'a' must be a numeric matrix
+
+I can return the matrix version of x$qr$qr, but this can be quite
+large and ideally I would like to return the Matrix version, and have
+summary.glm automatically call the Matrix version of chol2inv.
+
+I imagine this would require changing the search path, which I
+understand is not recommended, but I am not even sure how to go about
+it, or if there is another solution that wouldn't require a custom
+version of summary.glm. I also tried attachNamespace in a similar code
+block when glm.fit2.Matrix is called, but that did not work.
+
+Thanks in advance for any suggestions.
+
+Mark
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon Dec 23 18:29:19 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 23 Dec 2024 12:29:19 -0500
+Subject: [R-pkg-devel] Getting summary.glm to use Matrix::chol2inv
+In-Reply-To: <CAKakjMezD_N0+UwgV62=OV1b1duVJbAjBNy=1tb7ipXQGRK_rQ@mail.gmail.com>
+References: <CAKakjMezD_N0+UwgV62=OV1b1duVJbAjBNy=1tb7ipXQGRK_rQ@mail.gmail.com>
+Message-ID: <693264c8-669b-494e-8f1e-720e7f3224dc@gmail.com>
+
+I think the only way to do this is to write your own summary.* method 
+for your objects.  You should modify their class (e.g. to `c("glm2", 
+"glm")` so that your new summary method `summary.glm2` is called instead 
+of `summary.glm`.
+
+Changing the search path wouldn't work.  Search order from within a 
+package looks at locals, then imports, then the base package (where 
+chol2inv would be found), then the search list.
+
+The source for the standard summary.glm function is available, e.g. 
+here: 
+https://github.com/wch/r-source/blob/cfda9838f261b1c77c5ac6a5b0deed88021a2156/src/library/stats/R/glm.R#L687-L773 
+.  You can copy that into your package, then modify it to work with 
+Matrix.  You should list "The R Core Team" as a copyright holder on that 
+file if you do this so you're not violating the R license.
+
+Duncan Murdoch
+
+
+On 2024-12-22 4:26 p.m., Mark Donoghoe wrote:
+> Hi,
+> 
+> I am trying to implement a new method for glm2 which allows the use of
+> the Matrix package to work with large data.
+> 
+> I have added Matrix to Suggests, and when the new method is requested,
+> the following check is performed:
+> 
+> if (!requireNamespace("Matrix", quietly = TRUE)) {
+>        stop("Package \"Matrix\" must be installed to use method =
+> \"glm.fit2.Matrix\".",
+>             call. = FALSE)
+>      }
+> 
+> This works fine. However, I would like the user to be able to use
+> summary.glm on the fitted object x, and it effectively calls
+> chol2inv(x$qr$qr[1:p,1:p]), which fails if x$qr$qr is not a (small m)
+> matrix:
+> 
+> Error in chol2inv(Qr$qr[p1, p1, drop = FALSE]) :
+>    'a' must be a numeric matrix
+> 
+> I can return the matrix version of x$qr$qr, but this can be quite
+> large and ideally I would like to return the Matrix version, and have
+> summary.glm automatically call the Matrix version of chol2inv.
+> 
+> I imagine this would require changing the search path, which I
+> understand is not recommended, but I am not even sure how to go about
+> it, or if there is another solution that wouldn't require a custom
+> version of summary.glm. I also tried attachNamespace in a similar code
+> block when glm.fit2.Matrix is called, but that did not work.
+> 
+> Thanks in advance for any suggestions.
+> 
+> Mark
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From m@rkdonoghoe @end|ng |rom gm@||@com  Mon Dec 23 20:26:25 2024
+From: m@rkdonoghoe @end|ng |rom gm@||@com (Mark Donoghoe)
+Date: Tue, 24 Dec 2024 06:26:25 +1100
+Subject: [R-pkg-devel] Getting summary.glm to use Matrix::chol2inv
+In-Reply-To: <693264c8-669b-494e-8f1e-720e7f3224dc@gmail.com>
+References: <CAKakjMezD_N0+UwgV62=OV1b1duVJbAjBNy=1tb7ipXQGRK_rQ@mail.gmail.com>
+ <693264c8-669b-494e-8f1e-720e7f3224dc@gmail.com>
+Message-ID: <CAKakjMdz7jvWk60SYsrqbRVQBpdBvStT2FbC9Hjv8b5d6_70yw@mail.gmail.com>
+
+Thank you, I was hoping that was not the case but your explanation of
+the search order from within a package makes sense.
+
+Happy holidays,
+Mark
+
+On Tue, 24 Dec 2024 at 04:29, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>
+> I think the only way to do this is to write your own summary.* method
+> for your objects.  You should modify their class (e.g. to `c("glm2",
+> "glm")` so that your new summary method `summary.glm2` is called instead
+> of `summary.glm`.
+>
+> Changing the search path wouldn't work.  Search order from within a
+> package looks at locals, then imports, then the base package (where
+> chol2inv would be found), then the search list.
+>
+> The source for the standard summary.glm function is available, e.g.
+> here:
+> https://github.com/wch/r-source/blob/cfda9838f261b1c77c5ac6a5b0deed88021a2156/src/library/stats/R/glm.R#L687-L773
+> .  You can copy that into your package, then modify it to work with
+> Matrix.  You should list "The R Core Team" as a copyright holder on that
+> file if you do this so you're not violating the R license.
+>
+> Duncan Murdoch
+>
+>
+> On 2024-12-22 4:26 p.m., Mark Donoghoe wrote:
+> > Hi,
+> >
+> > I am trying to implement a new method for glm2 which allows the use of
+> > the Matrix package to work with large data.
+> >
+> > I have added Matrix to Suggests, and when the new method is requested,
+> > the following check is performed:
+> >
+> > if (!requireNamespace("Matrix", quietly = TRUE)) {
+> >        stop("Package \"Matrix\" must be installed to use method =
+> > \"glm.fit2.Matrix\".",
+> >             call. = FALSE)
+> >      }
+> >
+> > This works fine. However, I would like the user to be able to use
+> > summary.glm on the fitted object x, and it effectively calls
+> > chol2inv(x$qr$qr[1:p,1:p]), which fails if x$qr$qr is not a (small m)
+> > matrix:
+> >
+> > Error in chol2inv(Qr$qr[p1, p1, drop = FALSE]) :
+> >    'a' must be a numeric matrix
+> >
+> > I can return the matrix version of x$qr$qr, but this can be quite
+> > large and ideally I would like to return the Matrix version, and have
+> > summary.glm automatically call the Matrix version of chol2inv.
+> >
+> > I imagine this would require changing the search path, which I
+> > understand is not recommended, but I am not even sure how to go about
+> > it, or if there is another solution that wouldn't require a custom
+> > version of summary.glm. I also tried attachNamespace in a similar code
+> > block when glm.fit2.Matrix is called, but that did not work.
+> >
+> > Thanks in advance for any suggestions.
+> >
+> > Mark
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
