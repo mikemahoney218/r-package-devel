@@ -265,3 +265,310 @@ On 2025-01-02 4:29 p.m., Llu?s Revilla wrote:
 >>
 
 
+From ||u|@@rev|||@ @end|ng |rom gm@||@com  Fri Jan  3 16:04:01 2025
+From: ||u|@@rev|||@ @end|ng |rom gm@||@com (=?UTF-8?Q?Llu=C3=ADs_Revilla?=)
+Date: Fri, 3 Jan 2025 16:04:01 +0100
+Subject: [R-pkg-devel] Removing packages files
+In-Reply-To: <CAFDcVCQxDLka17fGx4XzdLUOCV4aV2B8GHRaqzhCvgzsxMHtjg@mail.gmail.com>
+References: <CAN+W6_sjx59W6hGGMyj565smnazws=uasSWbwEHEe7kXT+YLAQ@mail.gmail.com>
+ <fa376599-ff9f-4509-bc41-c5f8c0f8e9c9@gmail.com>
+ <CAN+W6_v3opSqb54GP=uo5O_MpA5Do+m3cR_1GyPdUCxJWRqV3Q@mail.gmail.com>
+ <CAFDcVCQxDLka17fGx4XzdLUOCV4aV2B8GHRaqzhCvgzsxMHtjg@mail.gmail.com>
+Message-ID: <CAN+W6_uipwj9WopA1Dk5VA9aY1=7HM=XoixWUMXrYPtHj9id_Q@mail.gmail.com>
+
+Thanks Henrik for confirming there is nothing similar currently.
+
+Duncan: Letting the user choose when to remove the folder/data at will is easy.
+I was trying to ensure that the system is clean after removing the package.
+Thanks.
+
+On Thu, 2 Jan 2025 at 22:42, Henrik Bengtsson
+<henrik.bengtsson at gmail.com> wrote:
+>
+> As a first step, this sounds like something for the 'tools' package,
+> e.g. tools::cleanup_R_user_dir() that wipes package subfolders of
+> packages no longer installed, or the specified package, iff given.
+> With that in place, one could argue for adding a 'cleanup' argument to
+> remove.packages() that use the former.
+>
+> Agree, it would be neat if a package could clean up after itself when
+> uninstalled.
+>
+> /Henrik
+>
+> On Thu, Jan 2, 2025 at 1:37?PM Llu?s Revilla <lluis.revilla at gmail.com> wrote:
+> >
+> > Dear Duncan,
+> >
+> > Thank you for your answer. I checked again and made a mock package
+> > that removes a file with .onDetach.
+> > The file was not removed upon uninstalling the package.
+> >
+> > Llu?s
+> >
+> > On Thu, 2 Jan 2025 at 17:23, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+> > >
+> > > On 2025-01-02 9:55 a.m., Llu?s Revilla wrote:
+> > > > Hi list,
+> > > >
+> > > > I am developing a package that will download some data, and I'd like
+> > > > to store it locally to not recalculate it often.
+> > > > The CRAN policy requires tools::R_user_dir to be used and "the
+> > > > contents are actively managed (including removing outdated material)"
+> > > > or using TMPDIR but "such usage should be cleaned up".
+> > > >
+> > > > When loading a package there is .onLoad or .onAttach to fill or check
+> > > > those files and other settings required for a package. Is there
+> > > > something for when a package is removed?
+> > > >
+> > > > I found some related functions like .Last or reg.fnalizer and setHook
+> > > > or packageEvent but they are about closing a session or don't have a
+> > > > specific event for when uninstalling packages via (remove.packages). I
+> > > > appreciate any feedback, thanks in advance.
+> > > >
+> > >
+> > > Yes, those are described in section "1.5.3 Load hooks" of writing R
+> > > extensions:
+> > >
+> > > "Packages can use a .onDetach or .Last.lib function (provided the latter
+> > > is exported from the namespace) when detach is called on the package. It
+> > > is called with a single argument, the full path to the installed
+> > > package. There is also a hook .onUnload which is called when the
+> > > namespace is unloaded (via a call to unloadNamespace, perhaps called by
+> > > detach(unload = TRUE)) with argument the full path to the installed
+> > > package?s directory. Functions .onUnload and .onDetach should be defined
+> > > in the namespace and not exported, but .Last.lib does need to be exported."
+> > >
+> > > Duncan Murdoch
+> > >
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Jan  3 17:23:32 2025
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 3 Jan 2025 11:23:32 -0500
+Subject: [R-pkg-devel] Removing packages files
+In-Reply-To: <CAN+W6_uipwj9WopA1Dk5VA9aY1=7HM=XoixWUMXrYPtHj9id_Q@mail.gmail.com>
+References: <CAN+W6_sjx59W6hGGMyj565smnazws=uasSWbwEHEe7kXT+YLAQ@mail.gmail.com>
+ <fa376599-ff9f-4509-bc41-c5f8c0f8e9c9@gmail.com>
+ <CAN+W6_v3opSqb54GP=uo5O_MpA5Do+m3cR_1GyPdUCxJWRqV3Q@mail.gmail.com>
+ <CAFDcVCQxDLka17fGx4XzdLUOCV4aV2B8GHRaqzhCvgzsxMHtjg@mail.gmail.com>
+ <CAN+W6_uipwj9WopA1Dk5VA9aY1=7HM=XoixWUMXrYPtHj9id_Q@mail.gmail.com>
+Message-ID: <7cca8298-6e75-429f-ac89-dba8a7a79929@gmail.com>
+
+On 2025-01-03 10:04 a.m., Llu?s Revilla wrote:
+> Thanks Henrik for confirming there is nothing similar currently.
+> 
+> Duncan: Letting the user choose when to remove the folder/data at will is easy.
+> I was trying to ensure that the system is clean after removing the package.
+> Thanks.
+
+No, I was suggesting that you require the user to explicitly ask for the 
+data.  You don't want CRAN to install the data during testing and then 
+have it left behind at the end.
+
+Duncan Murdoch
+
+> 
+> On Thu, 2 Jan 2025 at 22:42, Henrik Bengtsson
+> <henrik.bengtsson at gmail.com> wrote:
+>>
+>> As a first step, this sounds like something for the 'tools' package,
+>> e.g. tools::cleanup_R_user_dir() that wipes package subfolders of
+>> packages no longer installed, or the specified package, iff given.
+>> With that in place, one could argue for adding a 'cleanup' argument to
+>> remove.packages() that use the former.
+>>
+>> Agree, it would be neat if a package could clean up after itself when
+>> uninstalled.
+>>
+>> /Henrik
+>>
+>> On Thu, Jan 2, 2025 at 1:37?PM Llu?s Revilla <lluis.revilla at gmail.com> wrote:
+>>>
+>>> Dear Duncan,
+>>>
+>>> Thank you for your answer. I checked again and made a mock package
+>>> that removes a file with .onDetach.
+>>> The file was not removed upon uninstalling the package.
+>>>
+>>> Llu?s
+>>>
+>>> On Thu, 2 Jan 2025 at 17:23, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>>>>
+>>>> On 2025-01-02 9:55 a.m., Llu?s Revilla wrote:
+>>>>> Hi list,
+>>>>>
+>>>>> I am developing a package that will download some data, and I'd like
+>>>>> to store it locally to not recalculate it often.
+>>>>> The CRAN policy requires tools::R_user_dir to be used and "the
+>>>>> contents are actively managed (including removing outdated material)"
+>>>>> or using TMPDIR but "such usage should be cleaned up".
+>>>>>
+>>>>> When loading a package there is .onLoad or .onAttach to fill or check
+>>>>> those files and other settings required for a package. Is there
+>>>>> something for when a package is removed?
+>>>>>
+>>>>> I found some related functions like .Last or reg.fnalizer and setHook
+>>>>> or packageEvent but they are about closing a session or don't have a
+>>>>> specific event for when uninstalling packages via (remove.packages). I
+>>>>> appreciate any feedback, thanks in advance.
+>>>>>
+>>>>
+>>>> Yes, those are described in section "1.5.3 Load hooks" of writing R
+>>>> extensions:
+>>>>
+>>>> "Packages can use a .onDetach or .Last.lib function (provided the latter
+>>>> is exported from the namespace) when detach is called on the package. It
+>>>> is called with a single argument, the full path to the installed
+>>>> package. There is also a hook .onUnload which is called when the
+>>>> namespace is unloaded (via a call to unloadNamespace, perhaps called by
+>>>> detach(unload = TRUE)) with argument the full path to the installed
+>>>> package?s directory. Functions .onUnload and .onDetach should be defined
+>>>> in the namespace and not exported, but .Last.lib does need to be exported."
+>>>>
+>>>> Duncan Murdoch
+>>>>
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From edd @end|ng |rom deb|@n@org  Fri Jan  3 17:34:17 2025
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 3 Jan 2025 10:34:17 -0600
+Subject: [R-pkg-devel] Removing packages files
+In-Reply-To: <CAFDcVCQxDLka17fGx4XzdLUOCV4aV2B8GHRaqzhCvgzsxMHtjg@mail.gmail.com>
+References: <CAN+W6_sjx59W6hGGMyj565smnazws=uasSWbwEHEe7kXT+YLAQ@mail.gmail.com>
+ <fa376599-ff9f-4509-bc41-c5f8c0f8e9c9@gmail.com>
+ <CAN+W6_v3opSqb54GP=uo5O_MpA5Do+m3cR_1GyPdUCxJWRqV3Q@mail.gmail.com>
+ <CAFDcVCQxDLka17fGx4XzdLUOCV4aV2B8GHRaqzhCvgzsxMHtjg@mail.gmail.com>
+Message-ID: <26488.4489.589883.44632@rob.eddelbuettel.com>
+
+
+On 2 January 2025 at 13:41, Henrik Bengtsson wrote:
+| Agree, it would be neat if a package could clean up after itself when
+| uninstalled.
+
+Indeed many things could be nicer if we had more package manager integrations
+and hooks besides `cleanup` and `configure`.  Someone would have to start
+with some patches to get the ball rolling.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From ||u|@@rev|||@ @end|ng |rom gm@||@com  Fri Jan  3 17:46:36 2025
+From: ||u|@@rev|||@ @end|ng |rom gm@||@com (=?UTF-8?Q?Llu=C3=ADs_Revilla?=)
+Date: Fri, 3 Jan 2025 17:46:36 +0100
+Subject: [R-pkg-devel] Removing packages files
+In-Reply-To: <7cca8298-6e75-429f-ac89-dba8a7a79929@gmail.com>
+References: <CAN+W6_sjx59W6hGGMyj565smnazws=uasSWbwEHEe7kXT+YLAQ@mail.gmail.com>
+ <fa376599-ff9f-4509-bc41-c5f8c0f8e9c9@gmail.com>
+ <CAN+W6_v3opSqb54GP=uo5O_MpA5Do+m3cR_1GyPdUCxJWRqV3Q@mail.gmail.com>
+ <CAFDcVCQxDLka17fGx4XzdLUOCV4aV2B8GHRaqzhCvgzsxMHtjg@mail.gmail.com>
+ <CAN+W6_uipwj9WopA1Dk5VA9aY1=7HM=XoixWUMXrYPtHj9id_Q@mail.gmail.com>
+ <7cca8298-6e75-429f-ac89-dba8a7a79929@gmail.com>
+Message-ID: <CAN+W6_s4ihi_D65Ph=j7-zDSc+DrgR1J-nOECEPmerROZTJ=4A@mail.gmail.com>
+
+The data is mostly CRAN's own files transformed, I don't expect the
+download to be problematic on CRAN's checks.
+The R core members made the functionality inside tools to use a local
+variable to search for the requested file locally.
+Only if the file is not found they are downloaded from the internet.
+
+Regarding tests, I could disable saving the content to a file (Thanks
+for mentioning, I hadn't thought about it).
+But the functionality/utility of the package is to transform CRAN's data.
+If it is failing to do so, I would like to know.
+
+Llu?s
+
+On Fri, 3 Jan 2025 at 17:23, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>
+> On 2025-01-03 10:04 a.m., Llu?s Revilla wrote:
+> > Thanks Henrik for confirming there is nothing similar currently.
+> >
+> > Duncan: Letting the user choose when to remove the folder/data at will is easy.
+> > I was trying to ensure that the system is clean after removing the package.
+> > Thanks.
+>
+> No, I was suggesting that you require the user to explicitly ask for the
+> data.  You don't want CRAN to install the data during testing and then
+> have it left behind at the end.
+>
+> Duncan Murdoch
+>
+> >
+> > On Thu, 2 Jan 2025 at 22:42, Henrik Bengtsson
+> > <henrik.bengtsson at gmail.com> wrote:
+> >>
+> >> As a first step, this sounds like something for the 'tools' package,
+> >> e.g. tools::cleanup_R_user_dir() that wipes package subfolders of
+> >> packages no longer installed, or the specified package, iff given.
+> >> With that in place, one could argue for adding a 'cleanup' argument to
+> >> remove.packages() that use the former.
+> >>
+> >> Agree, it would be neat if a package could clean up after itself when
+> >> uninstalled.
+> >>
+> >> /Henrik
+> >>
+> >> On Thu, Jan 2, 2025 at 1:37?PM Llu?s Revilla <lluis.revilla at gmail.com> wrote:
+> >>>
+> >>> Dear Duncan,
+> >>>
+> >>> Thank you for your answer. I checked again and made a mock package
+> >>> that removes a file with .onDetach.
+> >>> The file was not removed upon uninstalling the package.
+> >>>
+> >>> Llu?s
+> >>>
+> >>> On Thu, 2 Jan 2025 at 17:23, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+> >>>>
+> >>>> On 2025-01-02 9:55 a.m., Llu?s Revilla wrote:
+> >>>>> Hi list,
+> >>>>>
+> >>>>> I am developing a package that will download some data, and I'd like
+> >>>>> to store it locally to not recalculate it often.
+> >>>>> The CRAN policy requires tools::R_user_dir to be used and "the
+> >>>>> contents are actively managed (including removing outdated material)"
+> >>>>> or using TMPDIR but "such usage should be cleaned up".
+> >>>>>
+> >>>>> When loading a package there is .onLoad or .onAttach to fill or check
+> >>>>> those files and other settings required for a package. Is there
+> >>>>> something for when a package is removed?
+> >>>>>
+> >>>>> I found some related functions like .Last or reg.fnalizer and setHook
+> >>>>> or packageEvent but they are about closing a session or don't have a
+> >>>>> specific event for when uninstalling packages via (remove.packages). I
+> >>>>> appreciate any feedback, thanks in advance.
+> >>>>>
+> >>>>
+> >>>> Yes, those are described in section "1.5.3 Load hooks" of writing R
+> >>>> extensions:
+> >>>>
+> >>>> "Packages can use a .onDetach or .Last.lib function (provided the latter
+> >>>> is exported from the namespace) when detach is called on the package. It
+> >>>> is called with a single argument, the full path to the installed
+> >>>> package. There is also a hook .onUnload which is called when the
+> >>>> namespace is unloaded (via a call to unloadNamespace, perhaps called by
+> >>>> detach(unload = TRUE)) with argument the full path to the installed
+> >>>> package?s directory. Functions .onUnload and .onDetach should be defined
+> >>>> in the namespace and not exported, but .Last.lib does need to be exported."
+> >>>>
+> >>>> Duncan Murdoch
+> >>>>
+> >>>
+> >>> ______________________________________________
+> >>> R-package-devel at r-project.org mailing list
+> >>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
