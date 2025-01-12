@@ -767,3 +767,254 @@ On Thu, 2 Jan 2025, Llu?s Revilla wrote:
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 >
 
+From kent@r|emondy @end|ng |rom gm@||@com  Fri Jan 10 15:45:00 2025
+From: kent@r|emondy @end|ng |rom gm@||@com (Kent Riemondy)
+Date: Fri, 10 Jan 2025 07:45:00 -0700
+Subject: [R-pkg-devel] addressing a CRAN submission pre-test clang-san
+ warning
+Message-ID: <CA+cnB_jbABqxCOsxuCA1-E5sJOf0qZBwrC7t1gNSAH3sHCPKig@mail.gmail.com>
+
+Hi,
+  I maintain a package on CRAN (valr) and recently submitted a new version.
+The package is failing CRAN pre-test checks due to the warning below from
+the clang-san test. The cleancall.c file referenced in the warning isn't in
+valr's source code, nor direct dependencies, but eventually I believe
+tracks back to the purrr package. Does anyone have any advice for how to
+replicate or address this warning?
+
+Flavor: r-devel-linux-x86_64-debian-special-clang-san
+Check: Post-processing issues found for clang-san, Result: WARNING
+  File: valr-Ex.Rout
+  cleancall.c:110:46: runtime error: call to function cb_progress_done
+through pointer to incorrect function type 'void (*)(void *)'
+
+  File: tests/testthat.Rout
+  cleancall.c:110:46: runtime error: call to function cb_progress_done
+through pointer to incorrect function type 'void (*)(void *)'
+
+package source: https://github.com/rnabioco/valr
+pre-test artifacts:
+https://win-builder.r-project.org/incoming_pretest/valr_0.8.3_20250108_153335/specialChecks/clang-san
+/
+
+Thanks in advance,
+Kent
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Jan 10 16:06:52 2025
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 10 Jan 2025 18:06:52 +0300
+Subject: [R-pkg-devel] 
+ [SPAM Warning!] addressing a CRAN submission pre-test
+ clang-san warning
+In-Reply-To: <CA+cnB_jbABqxCOsxuCA1-E5sJOf0qZBwrC7t1gNSAH3sHCPKig@mail.gmail.com>
+References: <CA+cnB_jbABqxCOsxuCA1-E5sJOf0qZBwrC7t1gNSAH3sHCPKig@mail.gmail.com>
+Message-ID: <20250110180652.2d7bbc89@arachnoid>
+
+? Fri, 10 Jan 2025 07:45:00 -0700
+Kent Riemondy <kent.riemondy at gmail.com> ?????:
+
+>   cleancall.c:110:46: runtime error: call to function cb_progress_done
+> through pointer to incorrect function type 'void (*)(void *)'
+
+This is a (mostly harmless) error in the purrr package:
+https://stat.ethz.ch/pipermail/r-package-devel/2024q4/011230.html
+
+It has recently been reported to the package maintainers:
+https://github.com/tidyverse/purrr/issues/1157
+
+Instead of casting the cb_progress_done function pointer to (void
+(*)(void*)), the function needs to accept (void*) and cast the argument
+to SEXP in the function body.
+
+-- 
+Best regards,
+Ivan
+
+
+From kent@r|emondy @end|ng |rom gm@||@com  Fri Jan 10 16:21:27 2025
+From: kent@r|emondy @end|ng |rom gm@||@com (Kent Riemondy)
+Date: Fri, 10 Jan 2025 08:21:27 -0700
+Subject: [R-pkg-devel] 
+ [SPAM Warning!] addressing a CRAN submission pre-test
+ clang-san warning
+In-Reply-To: <20250110180652.2d7bbc89@arachnoid>
+References: <CA+cnB_jbABqxCOsxuCA1-E5sJOf0qZBwrC7t1gNSAH3sHCPKig@mail.gmail.com>
+ <20250110180652.2d7bbc89@arachnoid>
+Message-ID: <CA+cnB_gPGQEDXJHPao2TzQjFzFMg+Akn-Padvn_e1Gd03C=UMg@mail.gmail.com>
+
+Ivan,
+  Many thanks for the prompt and helpful response. I hadn't seen the
+previous r-package-devel message with the same error. I will explain this
+situation to CRAN which hopefully will allow valr to stay on CRAN while I
+work to get the suggested fix implemented in purrr.
+
+Thanks,
+Kent
+
+
+On Fri, Jan 10, 2025 at 8:08?AM Ivan Krylov <ikrylov at disroot.org> wrote:
+
+> ? Fri, 10 Jan 2025 07:45:00 -0700
+> Kent Riemondy <kent.riemondy at gmail.com> ?????:
+>
+> >   cleancall.c:110:46: runtime error: call to function cb_progress_done
+> > through pointer to incorrect function type 'void (*)(void *)'
+>
+> This is a (mostly harmless) error in the purrr package:
+> https://stat.ethz.ch/pipermail/r-package-devel/2024q4/011230.html
+>
+> It has recently been reported to the package maintainers:
+> https://github.com/tidyverse/purrr/issues/1157
+>
+> Instead of casting the cb_progress_done function pointer to (void
+> (*)(void*)), the function needs to accept (void*) and cast the argument
+> to SEXP in the function body.
+>
+> --
+> Best regards,
+> Ivan
+>
+
+	[[alternative HTML version deleted]]
+
+
+From pep|jn@devr|e@ @end|ng |rom out|ook@com  Fri Jan 10 18:00:04 2025
+From: pep|jn@devr|e@ @end|ng |rom out|ook@com (Pepijn de Vries)
+Date: Fri, 10 Jan 2025 17:00:04 +0000
+Subject: [R-pkg-devel] gcc-san check warns for non-portable flags
+Message-ID: <AM8PR10MB4660B3C058C111F115FC8A9DA71C2@AM8PR10MB4660.EURPRD10.PROD.OUTLOOK.COM>
+
+Dear fellow package developers,
+
+There were multiple issues with a package I maintain: @CRAN: <https://cran.r-project.org/package=adfExplorer> @source: <https://github.com/pepijn-devries/adfExplorer/>. As far as I can tell all issues listed @CRAN were fixed in the latest version (available from GitHub and R-Universe). However, when submitting to CRAN, the special gcc san check complains about non-portable flags (see below).
+
+I cannot reproduce this warning myself. As far as I can tell, I don't set these flags myself (neither in the configure script nor in makevars.in). I suspect that these flags are set by the machine that performs the checks. How do I pass this check? Or should I report it to CRAN as a false negative result?
+
+Many thanks for your help.
+
+Kind regards,
+
+Pepijn
+
+> Flavor: r-devel-windows-x86_64, r-devel-linux-x86_64-debian-special-clang-san
+> Check: *, Result: OK
+>  ?
+> Flavor: r-devel-linux-x86_64-debian-special-gcc-san
+> Check: compilation flags used, Result: WARNING
+> ?Compilation used the following non-portable flag(s):
+>  ? ?'-Wno-deprecated-declarations' '-Wno-ignored-attributes'
+>  ? ?'-Wno-stringop-truncation'
+>  ?including flag(s) suppressing warnings
+
+
+From d@v|d@gohe| @end|ng |rom @rd@t@@|r  Fri Jan 10 18:17:39 2025
+From: d@v|d@gohe| @end|ng |rom @rd@t@@|r (David Gohel)
+Date: Fri, 10 Jan 2025 17:17:39 +0000
+Subject: [R-pkg-devel] gcc-san check warns for non-portable flags
+In-Reply-To: <AM8PR10MB4660B3C058C111F115FC8A9DA71C2@AM8PR10MB4660.EURPRD10.PROD.OUTLOOK.COM>
+References: <AM8PR10MB4660B3C058C111F115FC8A9DA71C2@AM8PR10MB4660.EURPRD10.PROD.OUTLOOK.COM>
+Message-ID: <MRXP264MB0328A82A5EB35DFAAB4BAAA0FA1C2@MRXP264MB0328.FRAP264.PROD.OUTLOOK.COM>
+
+I had the same this week.
+
+Yes, you should answer these are false negative results.
+
+KR,
+David
+
+De : R-package-devel <r-package-devel-bounces at r-project.org> de la part de Pepijn de Vries <pepijn.devries at outlook.com>
+Date : vendredi, 10 janvier 2025 ? 18:00
+? : Ivan Krylov via R-package-devel <r-package-devel at r-project.org>
+Objet : [R-pkg-devel] gcc-san check warns for non-portable flags
+Dear fellow package developers,
+
+There were multiple issues with a package I maintain: @CRAN: <https://cran.r-project.org/package=adfExplorer> @source: <https://github.com/pepijn-devries/adfExplorer/>. As far as I can tell all issues listed @CRAN were fixed in the latest version (available from GitHub and R-Universe). However, when submitting to CRAN, the special gcc san check complains about non-portable flags (see below).
+
+I cannot reproduce this warning myself. As far as I can tell, I don't set these flags myself (neither in the configure script nor in makevars.in). I suspect that these flags are set by the machine that performs the checks. How do I pass this check? Or should I report it to CRAN as a false negative result?
+
+Many thanks for your help.
+
+Kind regards,
+
+Pepijn
+
+> Flavor: r-devel-windows-x86_64, r-devel-linux-x86_64-debian-special-clang-san
+> Check: *, Result: OK
+>
+> Flavor: r-devel-linux-x86_64-debian-special-gcc-san
+> Check: compilation flags used, Result: WARNING
+>  Compilation used the following non-portable flag(s):
+>     '-Wno-deprecated-declarations' '-Wno-ignored-attributes'
+>     '-Wno-stringop-truncation'
+>   including flag(s) suppressing warnings
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+	[[alternative HTML version deleted]]
+
+
+From pep|jn@devr|e@ @end|ng |rom out|ook@com  Fri Jan 10 21:19:27 2025
+From: pep|jn@devr|e@ @end|ng |rom out|ook@com (Pepijn de Vries)
+Date: Fri, 10 Jan 2025 20:19:27 +0000
+Subject: [R-pkg-devel] gcc-san check warns for non-portable flags
+In-Reply-To: <MRXP264MB0328A82A5EB35DFAAB4BAAA0FA1C2@MRXP264MB0328.FRAP264.PROD.OUTLOOK.COM>
+References: <AM8PR10MB4660B3C058C111F115FC8A9DA71C2@AM8PR10MB4660.EURPRD10.PROD.OUTLOOK.COM>
+ <MRXP264MB0328A82A5EB35DFAAB4BAAA0FA1C2@MRXP264MB0328.FRAP264.PROD.OUTLOOK.COM>
+Message-ID: <AM8PR10MB4660414895B1D16891E4AEB9A71C2@AM8PR10MB4660.EURPRD10.PROD.OUTLOOK.COM>
+
+Hi David,
+
+Thanks for the quick response. I will report it.
+
+Pepijn
+
+________________________________________
+Van:?R-package-devel <r-package-devel-bounces at r-project.org> namens David Gohel <david.gohel at ardata.fr>
+Verzonden:?vrijdag 10 januari 2025 18:17
+Aan:?r-package-devel at r-project.org <r-package-devel at r-project.org>
+Onderwerp:?Re: [R-pkg-devel] gcc-san check warns for non-portable flags
+?
+I had the same this week.
+
+Yes, you should answer these are false negative results.
+
+KR,
+David
+
+De : R-package-devel <r-package-devel-bounces at r-project.org> de la part de Pepijn de Vries <pepijn.devries at outlook.com>
+Date : vendredi, 10 janvier 2025 ? 18:00
+? : Ivan Krylov via R-package-devel <r-package-devel at r-project.org>
+Objet : [R-pkg-devel] gcc-san check warns for non-portable flags
+Dear fellow package developers,
+
+There were multiple issues with a package I maintain: @CRAN: <https://cran.r-project.org/package=adfExplorer> @source: <https://github.com/pepijn-devries/adfExplorer/>. As far as I can tell all issues listed @CRAN were fixed in the latest version (available from GitHub and R-Universe). However, when submitting to CRAN, the special gcc san check complains about non-portable flags (see below).
+
+I cannot reproduce this warning myself. As far as I can tell, I don't set these flags myself (neither in the configure script nor in makevars.in). I suspect that these flags are set by the machine that performs the checks. How do I pass this check? Or should I report it to CRAN as a false negative result?
+
+Many thanks for your help.
+
+Kind regards,
+
+Pepijn
+
+> Flavor: r-devel-windows-x86_64, r-devel-linux-x86_64-debian-special-clang-san
+> Check: *, Result: OK
+>
+> Flavor: r-devel-linux-x86_64-debian-special-gcc-san
+> Check: compilation flags used, Result: WARNING
+>? Compilation used the following non-portable flag(s):
+>???? '-Wno-deprecated-declarations' '-Wno-ignored-attributes'
+>???? '-Wno-stringop-truncation'
+>?? including flag(s) suppressing warnings
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+??????? [[alternative HTML version deleted]]
+
