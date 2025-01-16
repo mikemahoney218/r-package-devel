@@ -1197,3 +1197,204 @@ Ivan
 [*] https://github.com/Rdatatable/data.table/pull/6642
 
 
+From gr@eme|eeh|ckey @end|ng |rom gm@||@com  Tue Jan 14 08:08:20 2025
+From: gr@eme|eeh|ckey @end|ng |rom gm@||@com (Graeme Hickey)
+Date: Mon, 13 Jan 2025 23:08:20 -0800
+Subject: [R-pkg-devel] Vignette build issue on Debian platform
+Message-ID: <CALvcmje4JO8cfV05o+8dDWTWtCfx4GPGU0zYcxMgw+gTEghqug@mail.gmail.com>
+
+Dear all,
+
+
+I recently made some minor updates to the joineRML R package to squash some
+CRAN CMD check NOTEs that have emerged over the past couple of years.  After
+resubmitting to CRAN, a new NOTE appeared on the Debian platform only:
+
+
+> package joineRML_0.4.7.tar.gz does not pass the incoming checks
+automatically, please see the following pre-tests (additional issue checks):
+
+> Windows: <
+https://win-builder.r-project.org/incoming_pretest/joineRML_0.4.7_20250114_073418/Windows/00check.log
+>
+
+> Status: OK
+
+> Debian: <
+https://win-builder.r-project.org/incoming_pretest/joineRML_0.4.7_20250114_073418/Debian/00check.log
+>
+
+> Status: 1 NOTE
+
+
+The NOTE in particular is:
+
+
+> * checking re-building of vignette outputs ... [116s/30s] NOTE
+
+> Re-building vignettes had CPU time 3.9 times elapsed time
+
+
+I emailed Uwe Ligges and got a reply:
+
+
+> We see
+
+> Flavor: r-devel-linux-x86_64-debian-gcc
+
+> Check: re-building of vignette outputs, Result: NOTE
+
+>    Re-building vignettes had CPU time 3.9 times elapsed time
+
+
+> which suggests you are using more than 2 cores which is not permitted by
+default.
+
+
+There is only one function in my package that uses multiple cores:
+bootSE(). However, this function is not called in any of my vignettes
+because it is computationally expensive. The Rmd code has `eval = FALSE`
+options for all of these cases. Therefore, I am at a loss as to why these
+vignettes would be using more than 2 cores or what is causing this, or why
+it only impacts the CRAN CMD check Debian system.
+
+
+I noticed this has been a common reported issue (e.g.,
+https://github.com/Rdatatable/data.table/issues/5658), but mainly for those
+using data.table or openMP; I use neither. The same issue was showing for
+some examples also, which I dealt with by wrapping in \dontrun{} ? not
+ideal, but seemed quickest way to avoid.
+
+
+I have tried many things to fix this:
+
+   1. Modifying the vignettes to make faster
+   2. Adding various combinations of Sys.setenv("OMP_THREAD_LIMIT" = 1),
+   Sys.setenv("OMP_NUM_THREADS" = 1), options(Ncpus = 1), options(cores = 2)
+   to the Rmd vignettes
+   3. Checked the package builds using r-lib/actions (GitHub actions) and
+   r-hub Debian platform ? I cannot reproduce this CRAN error
+
+
+CRAN will not accept the update to my package until this NOTE is squashed.
+If anyone is able to provide a recommendation on what I might do, I would
+appreciate it.
+
+
+Kind regards,
+
+
+Graeme Hickey
+
+	[[alternative HTML version deleted]]
+
+
+From j|@c@@hu|@m@n @end|ng |rom gm@||@com  Tue Jan 14 17:25:23 2025
+From: j|@c@@hu|@m@n @end|ng |rom gm@||@com (Jisca Huisman)
+Date: Tue, 14 Jan 2025 17:25:23 +0100
+Subject: [R-pkg-devel] Vignette build issue on Debian platform
+In-Reply-To: <CALvcmje4JO8cfV05o+8dDWTWtCfx4GPGU0zYcxMgw+gTEghqug@mail.gmail.com>
+References: <CALvcmje4JO8cfV05o+8dDWTWtCfx4GPGU0zYcxMgw+gTEghqug@mail.gmail.com>
+Message-ID: <852a85b8-0966-43fb-9d0b-b10188eb85fd@gmail.com>
+
+Hi Graeme,
+
+> There is only one function in my package that uses multiple cores:
+> bootSE(). However, this function is not called in any of my vignettes
+> because it is computationally expensive. The Rmd code has `eval = FALSE`
+> options for all of these cases. Therefore, I am at a loss as to why these
+> vignettes would be using more than 2 cores or what is causing this, or why
+> it only impacts the CRAN CMD check Debian system.
+
+CRAN has changed its settings when compiling the vignette, and now 
+*does* run everything in chunks with `eval = FALSE`.? The solution is to 
+also add `purl=FALSE` to each chunk that should not be run.
+
+If you dig through the mailing list archive you should be able to find 
+further details on the why and how of this, or someone else might remember.
+
+Best,
+
+Jisca
+
+
+
+On Tue, 14/01/2025 08:08, Graeme Hickey wrote:
+> Dear all,
+>
+>
+> I recently made some minor updates to the joineRML R package to squash some
+> CRAN CMD check NOTEs that have emerged over the past couple of years.  After
+> resubmitting to CRAN, a new NOTE appeared on the Debian platform only:
+>
+>
+>> package joineRML_0.4.7.tar.gz does not pass the incoming checks
+> automatically, please see the following pre-tests (additional issue checks):
+>
+>> Windows: <
+> https://win-builder.r-project.org/incoming_pretest/joineRML_0.4.7_20250114_073418/Windows/00check.log
+>> Status: OK
+>> Debian: <
+> https://win-builder.r-project.org/incoming_pretest/joineRML_0.4.7_20250114_073418/Debian/00check.log
+>> Status: 1 NOTE
+>
+> The NOTE in particular is:
+>
+>
+>> * checking re-building of vignette outputs ... [116s/30s] NOTE
+>> Re-building vignettes had CPU time 3.9 times elapsed time
+>
+> I emailed Uwe Ligges and got a reply:
+>
+>
+>> We see
+>> Flavor: r-devel-linux-x86_64-debian-gcc
+>> Check: re-building of vignette outputs, Result: NOTE
+>>     Re-building vignettes had CPU time 3.9 times elapsed time
+>
+>> which suggests you are using more than 2 cores which is not permitted by
+> default.
+>
+>
+> There is only one function in my package that uses multiple cores:
+> bootSE(). However, this function is not called in any of my vignettes
+> because it is computationally expensive. The Rmd code has `eval = FALSE`
+> options for all of these cases. Therefore, I am at a loss as to why these
+> vignettes would be using more than 2 cores or what is causing this, or why
+> it only impacts the CRAN CMD check Debian system.
+>
+>
+> I noticed this has been a common reported issue (e.g.,
+> https://github.com/Rdatatable/data.table/issues/5658), but mainly for those
+> using data.table or openMP; I use neither. The same issue was showing for
+> some examples also, which I dealt with by wrapping in \dontrun{} ? not
+> ideal, but seemed quickest way to avoid.
+>
+>
+> I have tried many things to fix this:
+>
+>     1. Modifying the vignettes to make faster
+>     2. Adding various combinations of Sys.setenv("OMP_THREAD_LIMIT" = 1),
+>     Sys.setenv("OMP_NUM_THREADS" = 1), options(Ncpus = 1), options(cores = 2)
+>     to the Rmd vignettes
+>     3. Checked the package builds using r-lib/actions (GitHub actions) and
+>     r-hub Debian platform ? I cannot reproduce this CRAN error
+>
+>
+> CRAN will not accept the update to my package until this NOTE is squashed.
+> If anyone is able to provide a recommendation on what I might do, I would
+> appreciate it.
+>
+>
+> Kind regards,
+>
+>
+> Graeme Hickey
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
