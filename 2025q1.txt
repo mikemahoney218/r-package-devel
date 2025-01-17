@@ -1398,3 +1398,1253 @@ On Tue, 14/01/2025 08:08, Graeme Hickey wrote:
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From @|mon@urb@nek @end|ng |rom R-project@org  Wed Jan 15 03:59:17 2025
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Wed, 15 Jan 2025 15:59:17 +1300
+Subject: [R-pkg-devel] 
+ SystemRequirements & configure check for FFTW with
+ single precision support
+In-Reply-To: <CAHETjtZcmar26ud0s0yn9RGQXwjKtVpkT3gt+o2DGfAyR-T=qg@mail.gmail.com>
+References: <CAHETjtZcmar26ud0s0yn9RGQXwjKtVpkT3gt+o2DGfAyR-T=qg@mail.gmail.com>
+Message-ID: <4D3E0C0F-263C-4B48-91A6-0E9C56D70B27@R-project.org>
+
+Lukas,
+
+I have not seen the communication so I'm not commenting on that specifically, I only looked at the GitHub link.
+
+Although your configure could be improved (more below), it works well enough to detect fftw3f.
+
+Unfortunately, SystemRequirements don't have a well-defined structure, but there are two commonly used notations:
+
+a) library name and version so in your case that would be something like
+libfftw3f (>=3.3.0)
+
+b) deb/rpm package names
+libfftw3-dev (deb), fftw3-devel (rpm)
+
+fftw is a bit of a mess, because Debian ships the single-precision static library in libfftw3-dev, but also has libfftw3-single3 which is the dynamic version of the same, while RH does not distinguish. macOS recipe names are usually included only if they are non-obvious, but that would be the case here since installing fftw recipe does not work for you, so mentioning fftw-s is probably a good idea (there are community scripts that try to extract that information from the packages so that the dependencies can be installed).
+
+As for your configure, my main objection would be that it ignores CPPFLAGS (they are not substituted at all even though they *are* used in the tests) and doesn't use pkg-config to get the correct flags. (Also the brew part should go - it's makes unwarranted assumptions [see below] and is entirely superfluous if you use pkg-config instead.) To illustrate what I mean, you get
+
+$ pkg-config --cflags fftw3f
+-I/opt/R/x86_64/include
+$ pkg-config --libs fftw3f
+-L/opt/R/x86_64/lib -lfftw3f -lm
+
+while fCWTr on GitHub only uses
+
+  Configuration for fCWTr 0.2.9000
+
+    cppflags:    
+    cxxflags:    
+    ldflags:   
+    libs:     -lfftw3f    
+
+It actually works despite that, because R will inject the other flags for you, but that will only work is fftw is installed in the same location as the other libraries used by R (which is common, but not guaranteed). I wouldn't say it is dealbreaker, but it would recommend it for robustness.
+
+FWIW with homebrew the correct flags are obtainable from pkg-config:
+
+$ pkg-config --libs fftw3f
+-L/opt/brew/Cellar/fftw/3.3.8_1/lib -lfftw3f
+$ pkg-config --cflags fftw3f
+-I/opt/brew/Cellar/fftw/3.3.8_1/include
+
+Cheers,
+Simon
+
+
+
+> On Jan 11, 2025, at 10:37 PM, Lukas Schneiderbauer <lukas.schneiderbauer at gmail.com> wrote:
+> 
+> Hi list,
+> 
+> I am working on getting a package <https://github.com/lschneiderbauer/fCWTr> to
+> CRAN. It depends on the FFTW library <https://www.fftw.org/> that is built
+> with single precision support. I am stuck in the submission process and I
+> require your help.
+> 
+> Before I come to my questions, some key facts about the package:
+> 
+> The package has an autoconf configure script that uses (among other things,
+> like OpenMP checks, etc..) AC_SEARCH_LIBS to check whether required
+> functions of the library 'fftwf' exist, if yes, it adds the corresponding
+> compiler/linker flags; if no, it errs with a descriptive error message.
+> 
+> The CRAN Windows as well as Linux build service included fftwf in their
+> fftw build out of the box, and so building there was no problem, R CMD
+> Check passes there. In the past, building for MacOS was more trouble, since
+> its fftw package does not include a single-precision build. I reached out
+> to Simon Urbanek, and he was so kind as to add an appropriate new recipe
+> "fftw-s" that provided an fftw version with single precision support. As of
+> now, R CMD check also passes cleanly on the MacOS build service, thanks to
+> Simon Urbanek's efforts.
+> 
+> Now, I am stuck at submission for two reasons:
+> 1. The SystemRequirements specification in the DESCRIPTION file is
+> incorrect.
+> 2. It is said that "the package needs a configure check for fftwf".
+> 
+> Add 1.
+> Initially, I had no mention of the "single precision" version of fftw,
+> because I thought it is included everywhere by default. It was stated that
+> I need to add that information. I naturally complied.
+> This is my current version:
+> "SystemRequirements: fftw3 (including single precision support fftw3f),
+> fftw3f_omp (optional), OpenMP (optional)"
+> In the second subscription run, I was told to add "fftw-s" since I require
+> the fftw-s package on MacOS. This does not make much sense to me since
+> "fftw-s" is only the name of this package on Simon Urbanek's MacOS build
+> service. The library file itself is still called fftwf, like it is on any
+> other platform. If I added "fftw-s", I would also need to explain that this
+> is only valid for MacOS which seems to make the SystemRequirements
+> unnecessary verbose.
+> * Can someone explain the reason behind this request to me?
+> * How exactly should I add "fftw-s" to pass the submission process?
+> 
+> Add 2.
+> I tried to explain now for the second time in the submission notes, that a
+> check is already in place (see the AC_SEARCH_LIBS paragraph above). But my
+> explanation gets ignored.
+> * What am I doing wrong?
+> * What additional configure checks do I need to add to the package?
+> 
+> Thanks a lot for your help!
+> Sincerely, Lukas Schneiderbauer
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From c|yde @end|ng |rom duke@edu  Wed Jan 15 05:26:32 2025
+From: c|yde @end|ng |rom duke@edu (Merlise Clyde, Ph.D.)
+Date: Wed, 15 Jan 2025 04:26:32 +0000
+Subject: [R-pkg-devel] Replacement for SETLENGTH
+Message-ID: <CY8PR05MB100342EF92E6E169CA1067103C8182@CY8PR05MB10034.namprd05.prod.outlook.com>
+
+I am trying to determine the best way to eliminate the use of SETLENGTH to truncate over allocated vectors in my package BAS to eliminate the NOTES about non-API calls in anticipation of R 4.5.0.
+
+>From WRE:  "At times it can be useful to allocate a larger initial result vector and resize it to a shorter length if that is sufficient. The functions Rf_lengthgets and Rf_xlengthgets accomplish this; they are analogous to using length(x) <- n in R. Typically these functions return a freshly allocated object, but in some cases they may re-use the supplied object." 
+
+it looks like using 
+
+    x = Rf_lengthgets(x, newsize);  
+    SET_VECTOR_ELT(result, 0, x); 
+    
+before returning works to resize without a performance hit that incurs with a copy.  (will this always re-use the supplied object if newsize < old size?)
+
+There is no mention in section 5.9.2 about the need for re-protection of the object,  but it seems to be mentioned in some packages as well as a really old thread about SET_LENGTH that looks like a  non-API MACRO to lengthgets, 
+
+indeed if I call gc() and then rerun my test I have had some non-reproducible aborts in R Studio on my M3 Mac (caught once in R -d lldb)  
+
+Do I need to do something more like 
+
+PROTECT_INDEX ipx0;.
+PROTECT_WITH_INDEX(x0 = allocVector(REALSXP, old_size), &ipx0);
+
+PROTECT_INDEX ipx1;.
+PROTECT_WITH_INDEX(x1 = allocVector(REALSXP, old_size), &ipx1);
+
+# fill in values in x0 and  x1up to new_size (random) < old_size
+...
+REPROTECT(x0 = Rf_lengthgets(x0, new_size), ipx0);
+REPROTECT(x1 = Rf_lengthgets(x1, new_size), ipx1);
+
+SET_VECTOR_ELT(result, 0, x0);
+SET_VECTOR_ELT(result, 1, x1);
+...
+UNPROTECT(2);   # or is this 4? 
+return(result);
+
+
+There is also a mention in WRE of R_PreserveObject and R_ReleaseObject -  
+
+looking for advice if this is needed, or which approach is better/more stable to replace SETLENGTH?   (I have many many instances that need to be updated, so trying to get some clarity here before updating and running code through valgrind or other sanitizers to catch any memory issues before submitting an update to CRAN.
+
+best,
+Merlise
+
+
+
+
+
+
+
+
+From |kw@|mmo @end|ng |rom gm@||@com  Wed Jan 15 07:00:02 2025
+From: |kw@|mmo @end|ng |rom gm@||@com (Iris Simmons)
+Date: Wed, 15 Jan 2025 01:00:02 -0500
+Subject: [R-pkg-devel] Replacement for SETLENGTH
+In-Reply-To: <CY8PR05MB100342EF92E6E169CA1067103C8182@CY8PR05MB10034.namprd05.prod.outlook.com>
+References: <CY8PR05MB100342EF92E6E169CA1067103C8182@CY8PR05MB10034.namprd05.prod.outlook.com>
+Message-ID: <CADNULg9fKRf3K6Q062D7X4rUJysO=9cWA1kFEjpSv3J-Oy0bYg@mail.gmail.com>
+
+Hi Merlise!
+
+
+Referring to here:
+
+https://github.com/wch/r-source/blob/8ca367db0c94194f07ee7bcf4b883e9c5dc11e02/src/main/builtin.c#L832
+
+It seems as though the object is only re-used if the new length is
+equal to the old length.
+
+If you use Rf_lengthgets, you will need to protect the return value.
+The code you wrote that uses protect indexes looks correct, and the
+reprotect is good because you no longer need the old object.
+
+2 is the correct amount to unprotect. PROTECT and PROTECT_WITH_INDEX
+(as far as I know) are the only functions that increase the size of
+the protect stack, and so the only calls that need to be unprotected.
+Typically, people define `int nprotect = 0;` at the start of their
+functions, add `nprotect++;` after each PROTECT and PROTECT_WITH_INDEX
+call, and add `UNPROTECT(nprotect);` immediately before each return or
+function end. That makes it easier to keep track.
+
+I typically use R_PreserveObject and R_ReleaseObject to protect
+objects without a need to bind them somewhere in my package's
+namespace. This would be that .onLoad() uses R_PreserveObject to
+protect some objects, and .onUnload uses R_ReleaseObject to release
+the protected objects. I probably would not use that for what you're
+describing.
+
+
+Regards,
+    Iris
+
+On Tue, Jan 14, 2025 at 11:26?PM Merlise Clyde, Ph.D. <clyde at duke.edu> wrote:
+>
+> I am trying to determine the best way to eliminate the use of SETLENGTH to truncate over allocated vectors in my package BAS to eliminate the NOTES about non-API calls in anticipation of R 4.5.0.
+>
+> From WRE:  "At times it can be useful to allocate a larger initial result vector and resize it to a shorter length if that is sufficient. The functions Rf_lengthgets and Rf_xlengthgets accomplish this; they are analogous to using length(x) <- n in R. Typically these functions return a freshly allocated object, but in some cases they may re-use the supplied object."
+>
+> it looks like using
+>
+>     x = Rf_lengthgets(x, newsize);
+>     SET_VECTOR_ELT(result, 0, x);
+>
+> before returning works to resize without a performance hit that incurs with a copy.  (will this always re-use the supplied object if newsize < old size?)
+>
+> There is no mention in section 5.9.2 about the need for re-protection of the object,  but it seems to be mentioned in some packages as well as a really old thread about SET_LENGTH that looks like a  non-API MACRO to lengthgets,
+>
+> indeed if I call gc() and then rerun my test I have had some non-reproducible aborts in R Studio on my M3 Mac (caught once in R -d lldb)
+>
+> Do I need to do something more like
+>
+> PROTECT_INDEX ipx0;.
+> PROTECT_WITH_INDEX(x0 = allocVector(REALSXP, old_size), &ipx0);
+>
+> PROTECT_INDEX ipx1;.
+> PROTECT_WITH_INDEX(x1 = allocVector(REALSXP, old_size), &ipx1);
+>
+> # fill in values in x0 and  x1up to new_size (random) < old_size
+> ...
+> REPROTECT(x0 = Rf_lengthgets(x0, new_size), ipx0);
+> REPROTECT(x1 = Rf_lengthgets(x1, new_size), ipx1);
+>
+> SET_VECTOR_ELT(result, 0, x0);
+> SET_VECTOR_ELT(result, 1, x1);
+> ...
+> UNPROTECT(2);   # or is this 4?
+> return(result);
+>
+>
+> There is also a mention in WRE of R_PreserveObject and R_ReleaseObject -
+>
+> looking for advice if this is needed, or which approach is better/more stable to replace SETLENGTH?   (I have many many instances that need to be updated, so trying to get some clarity here before updating and running code through valgrind or other sanitizers to catch any memory issues before submitting an update to CRAN.
+>
+> best,
+> Merlise
+>
+>
+>
+>
+>
+>
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From tom@@@k@||ber@ @end|ng |rom gm@||@com  Wed Jan 15 09:58:11 2025
+From: tom@@@k@||ber@ @end|ng |rom gm@||@com (Tomas Kalibera)
+Date: Wed, 15 Jan 2025 09:58:11 +0100
+Subject: [R-pkg-devel] Replacement for SETLENGTH
+In-Reply-To: <CY8PR05MB100342EF92E6E169CA1067103C8182@CY8PR05MB10034.namprd05.prod.outlook.com>
+References: <CY8PR05MB100342EF92E6E169CA1067103C8182@CY8PR05MB10034.namprd05.prod.outlook.com>
+Message-ID: <0be66c5f-1fc1-448e-82b7-90ac17321af9@gmail.com>
+
+
+On 1/15/25 05:26, Merlise Clyde, Ph.D. wrote:
+> I am trying to determine the best way to eliminate the use of SETLENGTH to truncate over allocated vectors in my package BAS to eliminate the NOTES about non-API calls in anticipation of R 4.5.0.
+>
+>  From WRE:  "At times it can be useful to allocate a larger initial result vector and resize it to a shorter length if that is sufficient. The functions Rf_lengthgets and Rf_xlengthgets accomplish this; they are analogous to using length(x) <- n in R. Typically these functions return a freshly allocated object, but in some cases they may re-use the supplied object."
+>
+> it looks like using
+>
+>      x = Rf_lengthgets(x, newsize);
+>      SET_VECTOR_ELT(result, 0, x);
+>      
+> before returning works to resize without a performance hit that incurs with a copy.  (will this always re-use the supplied object if newsize < old size?)
+>
+> There is no mention in section 5.9.2 about the need for re-protection of the object,  but it seems to be mentioned in some packages as well as a really old thread about SET_LENGTH that looks like a  non-API MACRO to lengthgets,
+>
+> indeed if I call gc() and then rerun my test I have had some non-reproducible aborts in R Studio on my M3 Mac (caught once in R -d lldb)
+
+The important part for protection is that Rf_lengthgets _may_ return a 
+freshly allocated object. This means that the object needs protection 
+from garbage collection, implicit or explicit - and that is covered in 
+section "Handling the effects of garbage collection".? There are? many 
+functions in the? R API that return freshly allocated objects, so don't 
+expect that documentation of every such function would give advice on 
+how to protect, that is covered in that special section.
+
+So, you are right, some protection is needed _if_ the return value of 
+Rf_lengthgets may be exposed to gc().
+
+>
+> Do I need to do something more like
+>
+> PROTECT_INDEX ipx0;.
+> PROTECT_WITH_INDEX(x0 = allocVector(REALSXP, old_size), &ipx0);
+>
+> PROTECT_INDEX ipx1;.
+> PROTECT_WITH_INDEX(x1 = allocVector(REALSXP, old_size), &ipx1);
+>
+> # fill in values in x0 and  x1up to new_size (random) < old_size
+> ...
+> REPROTECT(x0 = Rf_lengthgets(x0, new_size), ipx0);
+> REPROTECT(x1 = Rf_lengthgets(x1, new_size), ipx1);
+>
+> SET_VECTOR_ELT(result, 0, x0);
+> SET_VECTOR_ELT(result, 1, x1);
+> ...
+> UNPROTECT(2);   # or is this 4?
+
+You have protected two objects here, one was in x0 and one in x1 
+(REPROTECT doesn't change the depth of the protection stack). Some 
+people put that into a comment:
+
+UNPROTECT(2); /* x1, x0 */
+
+The code above is ok. In some cases, you can shuffle it around a bit or 
+rely on implicit protection if you want to reduce the need for explicit 
+protection. But perfomance-wise it doesn't matter given code that is 
+allocating, etc, that takes much more time - it is more about readability.
+
+For instance,
+
+result = PROTECT(allocVector(...))
+x0 = allocVector()
+SET_VECTOR_ELT(result, 0, x0);
+// now x0 is implicitly protected via result
+...
+
+x0 = Rf_lengthgets(..)
+SET_VECTOR_ELT(result, 0, x0);
+/// now the new value of x0 is implicitly protected via result (the old 
+value may not be)
+
+UNPROTECT(1)? // result
+return result
+
+> return(result);
+>
+>
+> There is also a mention in WRE of R_PreserveObject and R_ReleaseObject -
+>
+> looking for advice if this is needed, or which approach is better/more stable to replace SETLENGTH?   (I have many many instances that need to be updated, so trying to get some clarity here before updating and running code through valgrind or other sanitizers to catch any memory issues before submitting an update to CRAN.
+
+PreserveObject/ReleaseObject is good e.g. for global structures, 
+probably not in this case. The difficulty there is making sure 
+ReleaseObject() does execute in case of error, a non-local return. On 
+the other hand, protection via PROTECT/UNPROTECT is automatically robust 
+to non-local returns (automatic unprotection).
+
+There is nothing specific about Rf_lengthgets wrt to protection here - 
+the same rules apply to any other R API function that returns an SEXP.
+
+For finding protection bugs in code, one can use an R build with barrier 
+checking enabled and gctorture or rchk tool. Some bugs may lead to 
+crashes or incorrect outputs even in normaln builds. Some bugs may be 
+found by UBSAN. But none of this is a verification tool, one can only 
+find some bugs in some cases, correctness remains the responsibility of 
+the programmer.
+
+Best
+Tomas
+
+>
+> best,
+> Merlise
+>
+>
+>
+>
+>
+>
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From c|yde @end|ng |rom duke@edu  Wed Jan 15 16:30:36 2025
+From: c|yde @end|ng |rom duke@edu (Merlise Clyde, Ph.D.)
+Date: Wed, 15 Jan 2025 15:30:36 +0000
+Subject: [R-pkg-devel] Replacement for SETLENGTH
+In-Reply-To: <CADNULg9fKRf3K6Q062D7X4rUJysO=9cWA1kFEjpSv3J-Oy0bYg@mail.gmail.com>
+References: <CY8PR05MB100342EF92E6E169CA1067103C8182@CY8PR05MB10034.namprd05.prod.outlook.com>
+ <CADNULg9fKRf3K6Q062D7X4rUJysO=9cWA1kFEjpSv3J-Oy0bYg@mail.gmail.com>
+Message-ID: <CY8PR05MB10034614E651AB601A74968AFC8192@CY8PR05MB10034.namprd05.prod.outlook.com>
+
+Thanks for the added explanation Iris and Tomas!
+
+So looking at the code for xlengthgets, it does appear that I may take a memory hit for multiple large objects due to the second allocation before the old objects are possibly garbage collected.     There are about 12 such instances per function that are returned (I do use a counter for keeping track of the number of PROTECTED and to UNPROTECT for bookkeeping :-).   For memory limited machines, the alloc/copy was a problem for memory usage - and if I recall was one of the reasons in 2008 I switched to SETLENGTH, which doesn't seem to do an allocation ???  If there is going to be an absolute ban on SETLENGTH  in packages I'll probably need to address memory management differently for those cases.
+
+I did see a note before the function def'n of xlengthgets:
+
+/* (if it is vectorizable). We could probably be fairly */
+/* clever with memory here if we wanted to. */
+
+It would seem that memcpy would be more efficient for at least some of the types  (REALSPX, INTSPX) unless I am missing something - but any way to be more clever with VECSPX ?
+
+best,
+Merlise
+
+
+
+Merlise Clyde (she/her/hers)
+Professor of Statistical Science and Director of Graduate Studies
+Duke University
+
+________________________________________
+From:?Iris Simmons <ikwsimmo at gmail.com>
+Sent:?Wednesday, January 15, 2025 1:00 AM
+To:?Merlise Clyde, Ph.D. <clyde at duke.edu>
+Cc:?r-package-devel at r-project.org <r-package-devel at r-project.org>
+Subject:?Re: [R-pkg-devel] Replacement for SETLENGTH
+?
+Hi Merlise!
+
+
+Referring to here:
+
+https://github.com/wch/r-source/blob/bb5a829466f77a3e1d03541747d149d65e900f2b/src/main/builtin.c#L834
+
+It seems as though the object is only re-used if the new length is
+equal to the old length.
+
+If you use Rf_lengthgets, you will need to protect the return value.
+The code you wrote that uses protect indexes looks correct, and the
+reprotect is good because you no longer need the old object.
+
+2 is the correct amount to unprotect. PROTECT and PROTECT_WITH_INDEX
+(as far as I know) are the only functions that increase the size of
+the protect stack, and so the only calls that need to be unprotected.
+Typically, people define `int nprotect = 0;` at the start of their
+functions, add `nprotect++;` after each PROTECT and PROTECT_WITH_INDEX
+call, and add `UNPROTECT(nprotect);` immediately before each return or
+function end. That makes it easier to keep track.
+
+I typically use R_PreserveObject and R_ReleaseObject to protect
+objects without a need to bind them somewhere in my package's
+namespace. This would be that .onLoad() uses R_PreserveObject to
+protect some objects, and .onUnload uses R_ReleaseObject to release
+the protected objects. I probably would not use that for what you're
+describing.
+
+
+Regards,
+??? Iris
+
+On Tue, Jan 14, 2025 at 11:26?PM Merlise Clyde, Ph.D. <clyde at duke.edu> wrote:
+>
+> I am trying to determine the best way to eliminate the use of SETLENGTH to truncate over allocated vectors in my package BAS to eliminate the NOTES about non-API calls in anticipation of R 4.5.0.
+>
+> From WRE:? "At times it can be useful to allocate a larger initial result vector and resize it to a shorter length if that is sufficient. The functions Rf_lengthgets and Rf_xlengthgets accomplish this; they are analogous to using length(x) <- n in R. Typically these functions return a freshly allocated object, but in some cases they may re-use the supplied object."
+>
+> it looks like using
+>
+>???? x = Rf_lengthgets(x, newsize);
+>???? SET_VECTOR_ELT(result, 0, x);
+>
+> before returning works to resize without a performance hit that incurs with a copy.? (will this always re-use the supplied object if newsize < old size?)
+>
+> There is no mention in section 5.9.2 about the need for re-protection of the object,? but it seems to be mentioned in some packages as well as a really old thread about SET_LENGTH that looks like a? non-API MACRO to lengthgets,
+>
+> indeed if I call gc() and then rerun my test I have had some non-reproducible aborts in R Studio on my M3 Mac (caught once in R -d lldb)
+>
+> Do I need to do something more like
+>
+> PROTECT_INDEX ipx0;.
+> PROTECT_WITH_INDEX(x0 = allocVector(REALSXP, old_size), &ipx0);
+>
+> PROTECT_INDEX ipx1;.
+> PROTECT_WITH_INDEX(x1 = allocVector(REALSXP, old_size), &ipx1);
+>
+> # fill in values in x0 and? x1up to new_size (random) < old_size
+> ...
+> REPROTECT(x0 = Rf_lengthgets(x0, new_size), ipx0);
+> REPROTECT(x1 = Rf_lengthgets(x1, new_size), ipx1);
+>
+> SET_VECTOR_ELT(result, 0, x0);
+> SET_VECTOR_ELT(result, 1, x1);
+> ...
+> UNPROTECT(2);?? # or is this 4?
+> return(result);
+>
+>
+> There is also a mention in WRE of R_PreserveObject and R_ReleaseObject -
+>
+> looking for advice if this is needed, or which approach is better/more stable to replace SETLENGTH??? (I have many many instances that need to be updated, so trying to get some clarity here before updating and running code through valgrind or other sanitizers to catch any memory issues before submitting an update to CRAN.
+>
+> best,
+> Merlise
+>
+>
+>
+>
+>
+>
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!OToaGQ!ohDoxcAn5uIC25d42XhBz8Kd4YftOJDBoEW1NK9FOmgZpcmv0XIy5fQRm24-s_D8m9O_lR6jo6FcKiA$
+
+From |kw@|mmo @end|ng |rom gm@||@com  Wed Jan 15 16:51:28 2025
+From: |kw@|mmo @end|ng |rom gm@||@com (Iris Simmons)
+Date: Wed, 15 Jan 2025 10:51:28 -0500
+Subject: [R-pkg-devel] Replacement for SETLENGTH
+In-Reply-To: <CY8PR05MB10034614E651AB601A74968AFC8192@CY8PR05MB10034.namprd05.prod.outlook.com>
+References: <CY8PR05MB100342EF92E6E169CA1067103C8182@CY8PR05MB10034.namprd05.prod.outlook.com>
+ <CADNULg9fKRf3K6Q062D7X4rUJysO=9cWA1kFEjpSv3J-Oy0bYg@mail.gmail.com>
+ <CY8PR05MB10034614E651AB601A74968AFC8192@CY8PR05MB10034.namprd05.prod.outlook.com>
+Message-ID: <CADNULg-ws6Atf6s-=TrHAHhXE=NDt+ij8+s9j5YUhV9KsA7Ggw@mail.gmail.com>
+
+I don't think memcpy works well for VECSXP. The elements being overwritten
+need to have their reference counts decreased and the new elements need to
+have theirs increased.
+
+Also, I don't entirely know how accurate everything I'm about to say is,
+but I think you need to be using SET_TRUELENGTH and SET_GROWABLE_BIT along
+with SETLENGTH. There's an example here:
+
+https://github.com/wch/r-source/blob/744b5d34e1b8eb839e5d49d91ab21c1fe6800856/src/main/subassign.c#L257
+
+
+The example uses SET_STDVEC_LENGTH which shouldn't be used, just replace it
+with SETLENGTH.
+
+So in your code, I'd replace:
+
+SETLENGTH(modelspace, nUnique);
+
+with
+
+SET_GROWABLE_BIT(modelspace);
+SET_TRUELENGTH(modelspace, nModels);
+SETLENGTH(modelspace, nUnique);
+
+On Wed, Jan 15, 2025, 10:30 Merlise Clyde, Ph.D. <clyde at duke.edu> wrote:
+
+> Thanks for the added explanation Iris and Tomas!
+>
+> So looking at the code for xlengthgets, it does appear that I may take a
+> memory hit for multiple large objects due to the second allocation before
+> the old objects are possibly garbage collected.     There are about 12 such
+> instances per function that are returned (I do use a counter for keeping
+> track of the number of PROTECTED and to UNPROTECT for bookkeeping :-).
+>  For memory limited machines, the alloc/copy was a problem for memory usage
+> - and if I recall was one of the reasons in 2008 I switched to SETLENGTH,
+> which doesn't seem to do an allocation ???  If there is going to be an
+> absolute ban on SETLENGTH  in packages I'll probably need to address memory
+> management differently for those cases.
+>
+> I did see a note before the function def'n of xlengthgets:
+>
+> /* (if it is vectorizable). We could probably be fairly */
+> /* clever with memory here if we wanted to. */
+>
+> It would seem that memcpy would be more efficient for at least some of the
+> types  (REALSPX, INTSPX) unless I am missing something - but any way to be
+> more clever with VECSPX ?
+>
+> best,
+> Merlise
+>
+>
+>
+> Merlise Clyde (she/her/hers)
+> Professor of Statistical Science and Director of Graduate Studies
+> Duke University
+>
+> ________________________________________
+> From: Iris Simmons <ikwsimmo at gmail.com>
+> Sent: Wednesday, January 15, 2025 1:00 AM
+> To: Merlise Clyde, Ph.D. <clyde at duke.edu>
+> Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+> Subject: Re: [R-pkg-devel] Replacement for SETLENGTH
+>
+> Hi Merlise!
+>
+>
+> Referring to here:
+>
+>
+> https://github.com/wch/r-source/blob/bb5a829466f77a3e1d03541747d149d65e900f2b/src/main/builtin.c#L834
+>
+> It seems as though the object is only re-used if the new length is
+> equal to the old length.
+>
+> If you use Rf_lengthgets, you will need to protect the return value.
+> The code you wrote that uses protect indexes looks correct, and the
+> reprotect is good because you no longer need the old object.
+>
+> 2 is the correct amount to unprotect. PROTECT and PROTECT_WITH_INDEX
+> (as far as I know) are the only functions that increase the size of
+> the protect stack, and so the only calls that need to be unprotected.
+> Typically, people define `int nprotect = 0;` at the start of their
+> functions, add `nprotect++;` after each PROTECT and PROTECT_WITH_INDEX
+> call, and add `UNPROTECT(nprotect);` immediately before each return or
+> function end. That makes it easier to keep track.
+>
+> I typically use R_PreserveObject and R_ReleaseObject to protect
+> objects without a need to bind them somewhere in my package's
+> namespace. This would be that .onLoad() uses R_PreserveObject to
+> protect some objects, and .onUnload uses R_ReleaseObject to release
+> the protected objects. I probably would not use that for what you're
+> describing.
+>
+>
+> Regards,
+>     Iris
+>
+> On Tue, Jan 14, 2025 at 11:26?PM Merlise Clyde, Ph.D. <clyde at duke.edu>
+> wrote:
+> >
+> > I am trying to determine the best way to eliminate the use of SETLENGTH
+> to truncate over allocated vectors in my package BAS to eliminate the NOTES
+> about non-API calls in anticipation of R 4.5.0.
+> >
+> > From WRE:  "At times it can be useful to allocate a larger initial
+> result vector and resize it to a shorter length if that is sufficient. The
+> functions Rf_lengthgets and Rf_xlengthgets accomplish this; they are
+> analogous to using length(x) <- n in R. Typically these functions return a
+> freshly allocated object, but in some cases they may re-use the supplied
+> object."
+> >
+> > it looks like using
+> >
+> >     x = Rf_lengthgets(x, newsize);
+> >     SET_VECTOR_ELT(result, 0, x);
+> >
+> > before returning works to resize without a performance hit that incurs
+> with a copy.  (will this always re-use the supplied object if newsize < old
+> size?)
+> >
+> > There is no mention in section 5.9.2 about the need for re-protection of
+> the object,  but it seems to be mentioned in some packages as well as a
+> really old thread about SET_LENGTH that looks like a  non-API MACRO to
+> lengthgets,
+> >
+> > indeed if I call gc() and then rerun my test I have had some
+> non-reproducible aborts in R Studio on my M3 Mac (caught once in R -d lldb)
+> >
+> > Do I need to do something more like
+> >
+> > PROTECT_INDEX ipx0;.
+> > PROTECT_WITH_INDEX(x0 = allocVector(REALSXP, old_size), &ipx0);
+> >
+> > PROTECT_INDEX ipx1;.
+> > PROTECT_WITH_INDEX(x1 = allocVector(REALSXP, old_size), &ipx1);
+> >
+> > # fill in values in x0 and  x1up to new_size (random) < old_size
+> > ...
+> > REPROTECT(x0 = Rf_lengthgets(x0, new_size), ipx0);
+> > REPROTECT(x1 = Rf_lengthgets(x1, new_size), ipx1);
+> >
+> > SET_VECTOR_ELT(result, 0, x0);
+> > SET_VECTOR_ELT(result, 1, x1);
+> > ...
+> > UNPROTECT(2);   # or is this 4?
+> > return(result);
+> >
+> >
+> > There is also a mention in WRE of R_PreserveObject and R_ReleaseObject -
+> >
+> > looking for advice if this is needed, or which approach is better/more
+> stable to replace SETLENGTH?   (I have many many instances that need to be
+> updated, so trying to get some clarity here before updating and running
+> code through valgrind or other sanitizers to catch any memory issues before
+> submitting an update to CRAN.
+> >
+> > best,
+> > Merlise
+> >
+> >
+> >
+> >
+> >
+> >
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> >
+> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!OToaGQ!ohDoxcAn5uIC25d42XhBz8Kd4YftOJDBoEW1NK9FOmgZpcmv0XIy5fQRm24-s_D8m9O_lR6jo6FcKiA$
+
+	[[alternative HTML version deleted]]
+
+
+From iuke-tier@ey m@iii@g oii uiow@@edu  Wed Jan 15 18:34:20 2025
+From: iuke-tier@ey m@iii@g oii uiow@@edu (iuke-tier@ey m@iii@g oii uiow@@edu)
+Date: Wed, 15 Jan 2025 11:34:20 -0600 (CST)
+Subject: [R-pkg-devel] [External] Re:  Replacement for SETLENGTH
+In-Reply-To: <CADNULg-ws6Atf6s-=TrHAHhXE=NDt+ij8+s9j5YUhV9KsA7Ggw@mail.gmail.com>
+References: <CY8PR05MB100342EF92E6E169CA1067103C8182@CY8PR05MB10034.namprd05.prod.outlook.com>
+ <CADNULg9fKRf3K6Q062D7X4rUJysO=9cWA1kFEjpSv3J-Oy0bYg@mail.gmail.com>
+ <CY8PR05MB10034614E651AB601A74968AFC8192@CY8PR05MB10034.namprd05.prod.outlook.com>
+ <CADNULg-ws6Atf6s-=TrHAHhXE=NDt+ij8+s9j5YUhV9KsA7Ggw@mail.gmail.com>
+Message-ID: <a424ea59-f51e-a0c9-9887-799d66b50e4@uiowa.edu>
+
+On Wed, 15 Jan 2025, Iris Simmons wrote:
+
+> I don't think memcpy works well for VECSXP. The elements being overwritten
+> need to have their reference counts decreased and the new elements need to
+> have theirs increased.
+
+You do not want to use memcpy or inanyother way try to write to the
+locations in a VECSXP. It is not jus the reference counts but also the
+integrity of the GC write barrier that you would be damaging.
+
+>
+> Also, I don't entirely know how accurate everything I'm about to say is,
+> but I think you need to be using SET_TRUELENGTH and SET_GROWABLE_BIT along
+> with SETLENGTH. There's an example here:
+>
+> https://github.com/wch/r-source/blob/744b5d34e1b8eb839e5d49d91ab21c1fe6800856/src/main/subassign.c#L257
+>
+>
+> The example uses SET_STDVEC_LENGTH which shouldn't be used, just replace it
+> with SETLENGTH.
+>
+> So in your code, I'd replace:
+>
+> SETLENGTH(modelspace, nUnique);
+>
+> with
+>
+> SET_GROWABLE_BIT(modelspace);
+> SET_TRUELENGTH(modelspace, nModels);
+> SETLENGTH(modelspace, nUnique);
+
+These are not part of the API.
+
+Support for growable vectors maybe added to the API in the future, but
+probably with a more robust interface.
+
+In any case, this mechanism is intended for growing, not shrinking,
+vectors.
+
+Initially over-allocating and returning a smaller result is a
+reasonable strategy, but the right way to do it is to allocate a new
+shorter result. xlengthgets is a convenient way to do this. Tholonger
+vector will be subject to garbage collecion once there are no
+remaining references to it.
+
+Attempting to keep alive a longer allocation but pretending it is
+shorter is mis-guided: it would keep alive a larger object than is
+needed and so waste memory.
+
+Best,
+
+luke
+
+> On Wed, Jan 15, 2025, 10:30 Merlise Clyde, Ph.D. <clyde at duke.edu> wrote:
+>
+>> Thanks for the added explanation Iris and Tomas!
+>>
+>> So looking at the code for xlengthgets, it does appear that I may take a
+>> memory hit for multiple large objects due to the second allocation before
+>> the old objects are possibly garbage collected.     There are about 12 such
+>> instances per function that are returned (I do use a counter for keeping
+>> track of the number of PROTECTED and to UNPROTECT for bookkeeping :-).
+>>  For memory limited machines, the alloc/copy was a problem for memory usage
+>> - and if I recall was one of the reasons in 2008 I switched to SETLENGTH,
+>> which doesn't seem to do an allocation ???  If there is going to be an
+>> absolute ban on SETLENGTH  in packages I'll probably need to address memory
+>> management differently for those cases.
+>>
+>> I did see a note before the function def'n of xlengthgets:
+>>
+>> /* (if it is vectorizable). We could probably be fairly */
+>> /* clever with memory here if we wanted to. */
+>>
+>> It would seem that memcpy would be more efficient for at least some of the
+>> types  (REALSPX, INTSPX) unless I am missing something - but any way to be
+>> more clever with VECSPX ?
+>>
+>> best,
+>> Merlise
+>>
+>>
+>>
+>> Merlise Clyde (she/her/hers)
+>> Professor of Statistical Science and Director of Graduate Studies
+>> Duke University
+>>
+>> ________________________________________
+>> From: Iris Simmons <ikwsimmo at gmail.com>
+>> Sent: Wednesday, January 15, 2025 1:00 AM
+>> To: Merlise Clyde, Ph.D. <clyde at duke.edu>
+>> Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+>> Subject: Re: [R-pkg-devel] Replacement for SETLENGTH
+>>
+>> Hi Merlise!
+>>
+>>
+>> Referring to here:
+>>
+>>
+>> https://github.com/wch/r-source/blob/bb5a829466f77a3e1d03541747d149d65e900f2b/src/main/builtin.c#L834
+>>
+>> It seems as though the object is only re-used if the new length is
+>> equal to the old length.
+>>
+>> If you use Rf_lengthgets, you will need to protect the return value.
+>> The code you wrote that uses protect indexes looks correct, and the
+>> reprotect is good because you no longer need the old object.
+>>
+>> 2 is the correct amount to unprotect. PROTECT and PROTECT_WITH_INDEX
+>> (as far as I know) are the only functions that increase the size of
+>> the protect stack, and so the only calls that need to be unprotected.
+>> Typically, people define `int nprotect = 0;` at the start of their
+>> functions, add `nprotect++;` after each PROTECT and PROTECT_WITH_INDEX
+>> call, and add `UNPROTECT(nprotect);` immediately before each return or
+>> function end. That makes it easier to keep track.
+>>
+>> I typically use R_PreserveObject and R_ReleaseObject to protect
+>> objects without a need to bind them somewhere in my package's
+>> namespace. This would be that .onLoad() uses R_PreserveObject to
+>> protect some objects, and .onUnload uses R_ReleaseObject to release
+>> the protected objects. I probably would not use that for what you're
+>> describing.
+>>
+>>
+>> Regards,
+>>     Iris
+>>
+>> On Tue, Jan 14, 2025 at 11:26?PM Merlise Clyde, Ph.D. <clyde at duke.edu>
+>> wrote:
+>>>
+>>> I am trying to determine the best way to eliminate the use of SETLENGTH
+>> to truncate over allocated vectors in my package BAS to eliminate the NOTES
+>> about non-API calls in anticipation of R 4.5.0.
+>>>
+>>> From WRE:  "At times it can be useful to allocate a larger initial
+>> result vector and resize it to a shorter length if that is sufficient. The
+>> functions Rf_lengthgets and Rf_xlengthgets accomplish this; they are
+>> analogous to using length(x) <- n in R. Typically these functions return a
+>> freshly allocated object, but in some cases they may re-use the supplied
+>> object."
+>>>
+>>> it looks like using
+>>>
+>>>     x = Rf_lengthgets(x, newsize);
+>>>     SET_VECTOR_ELT(result, 0, x);
+>>>
+>>> before returning works to resize without a performance hit that incurs
+>> with a copy.  (will this always re-use the supplied object if newsize < old
+>> size?)
+>>>
+>>> There is no mention in section 5.9.2 about the need for re-protection of
+>> the object,  but it seems to be mentioned in some packages as well as a
+>> really old thread about SET_LENGTH that looks like a  non-API MACRO to
+>> lengthgets,
+>>>
+>>> indeed if I call gc() and then rerun my test I have had some
+>> non-reproducible aborts in R Studio on my M3 Mac (caught once in R -d lldb)
+>>>
+>>> Do I need to do something more like
+>>>
+>>> PROTECT_INDEX ipx0;.
+>>> PROTECT_WITH_INDEX(x0 = allocVector(REALSXP, old_size), &ipx0);
+>>>
+>>> PROTECT_INDEX ipx1;.
+>>> PROTECT_WITH_INDEX(x1 = allocVector(REALSXP, old_size), &ipx1);
+>>>
+>>> # fill in values in x0 and  x1up to new_size (random) < old_size
+>>> ...
+>>> REPROTECT(x0 = Rf_lengthgets(x0, new_size), ipx0);
+>>> REPROTECT(x1 = Rf_lengthgets(x1, new_size), ipx1);
+>>>
+>>> SET_VECTOR_ELT(result, 0, x0);
+>>> SET_VECTOR_ELT(result, 1, x1);
+>>> ...
+>>> UNPROTECT(2);   # or is this 4?
+>>> return(result);
+>>>
+>>>
+>>> There is also a mention in WRE of R_PreserveObject and R_ReleaseObject -
+>>>
+>>> looking for advice if this is needed, or which approach is better/more
+>> stable to replace SETLENGTH?   (I have many many instances that need to be
+>> updated, so trying to get some clarity here before updating and running
+>> code through valgrind or other sanitizers to catch any memory issues before
+>> submitting an update to CRAN.
+>>>
+>>> best,
+>>> Merlise
+>>>
+>>>
+>>>
+>>>
+>>>
+>>>
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>>
+>> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!OToaGQ!ohDoxcAn5uIC25d42XhBz8Kd4YftOJDBoEW1NK9FOmgZpcmv0XIy5fQRm24-s_D8m9O_lR6jo6FcKiA$
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+-- 
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa                  Phone:             319-335-3386
+Department of Statistics and        Fax:               319-335-3017
+    Actuarial Science
+241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu/
+
+From |kry|ov @end|ng |rom d|@root@org  Wed Jan 15 21:13:00 2025
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Wed, 15 Jan 2025 23:13:00 +0300
+Subject: [R-pkg-devel] Replacement for SETLENGTH
+In-Reply-To: <CY8PR05MB10034614E651AB601A74968AFC8192@CY8PR05MB10034.namprd05.prod.outlook.com>
+References: <CY8PR05MB100342EF92E6E169CA1067103C8182@CY8PR05MB10034.namprd05.prod.outlook.com>
+ <CADNULg9fKRf3K6Q062D7X4rUJysO=9cWA1kFEjpSv3J-Oy0bYg@mail.gmail.com>
+ <CY8PR05MB10034614E651AB601A74968AFC8192@CY8PR05MB10034.namprd05.prod.outlook.com>
+Message-ID: <20250115231300.2b5ba55b@Tarkus>
+
+On Wed, 15 Jan 2025 15:30:36 +0000
+"Merlise Clyde, Ph.D." <clyde at duke.edu> wrote:
+
+> For memory limited machines, the alloc/copy was a problem for memory
+> usage - and if I recall was one of the reasons in 2008 I switched to
+> SETLENGTH, which doesn't seem to do an allocation ???  If there is
+> going to be an absolute ban on SETLENGTH  in packages I'll probably
+> need to address memory management differently for those cases.
+
+If you need to adjust the xlength() of your vectors without causing
+reallocations, I'm afraid the only API-compliant way to do that for now
+is ALTREP [1]. It's a lot of typing because the code will need to
+register an ALTREP class for every vector type that needs to be
+shrinkable. Moreover, since some of those vectors are of type VECSXP
+and "altlist" classes only appeared in R-4.3.0, you will probably
+prefer to leave the old implementation based on SETLENGTH() behind #if
+R_VERSION < R_Version(4, 3, 0) to avoid requiring your users to upgrade
+from R >= 3.0.
+
+A work-in-progress implementation of shrinkable vectors for data.table
+can be found at [2]. The real problem is not implementing the same
+simple API using SETLENGTH() and ALTREP, but in refactoring the rest of
+the code not to violate its assumptions. (Total control over the
+allocation of your shrinkable vectors is required: nothing good will
+happen if the code tries to call ALTREP methods on an object that is
+not of the exact ALTREP class it needs to be.)
+
+My own notes on the use of ALTREP can be found at [3]. I will do my
+best to keep them correct, but patches are always welcome.
+
+And now a question:
+
+Would R benefit from a patch to make xlengthgets() more like
+EnlargeVector() [4] and sometimes return vectors with GROWABLE_BIT set?
+(EnlargeVector() is currently only reachable from the `[<-` operation.)
+It wouldn't be a deviation from the currently documented behaviour if
+the function tested for NO_REFERENCES() and then used SETLENGTH() when,
+say, reducing the length of a vector to 1/2 of its length or more.
+
+-- 
+Best regards,
+Ivan
+
+[1]
+https://rdatatable-community.github.io/The-Raft/posts/2025-01-13-non-api-use/index.html#growable-vectors
+
+[2]
+https://github.com/Rdatatable/data.table/blob/growable_refactor/src/growable.c
+Everyone is welcome to use this under the terms of GPL-2 or a later
+version, or MPL-2, at their choice.
+
+[3]
+https://aitap.codeberg.page/R-api/#ALTREP
+
+[4]
+https://github.com/r-devel/r-svn/blob/59df414b844eea27c09b352ad30fd82e66764d2d/src/main/subassign.c#L256-L260
+
+
+From c|yde @end|ng |rom duke@edu  Wed Jan 15 21:53:19 2025
+From: c|yde @end|ng |rom duke@edu (Merlise Clyde, Ph.D.)
+Date: Wed, 15 Jan 2025 20:53:19 +0000
+Subject: [R-pkg-devel] [External] Re:  Replacement for SETLENGTH
+In-Reply-To: <a424ea59-f51e-a0c9-9887-799d66b50e4@uiowa.edu>
+References: <CY8PR05MB100342EF92E6E169CA1067103C8182@CY8PR05MB10034.namprd05.prod.outlook.com>
+ <CADNULg9fKRf3K6Q062D7X4rUJysO=9cWA1kFEjpSv3J-Oy0bYg@mail.gmail.com>
+ <CY8PR05MB10034614E651AB601A74968AFC8192@CY8PR05MB10034.namprd05.prod.outlook.com>
+ <CADNULg-ws6Atf6s-=TrHAHhXE=NDt+ij8+s9j5YUhV9KsA7Ggw@mail.gmail.com>
+ <a424ea59-f51e-a0c9-9887-799d66b50e4@uiowa.edu>
+Message-ID: <CY8PR05MB100349ABE1DB2CE78F0D79F06C8192@CY8PR05MB10034.namprd05.prod.outlook.com>
+
+
+Thanks Luke !   I had seen the usage and discussion of growable vectors, as well as using SET_TRUELENGTH with SETLENGTH and didn't necessarily want to get even more out of API compliance :-). but if that looks like it will allowed (subject to perhaps changes) that seems like the better way forward to handle the different SEXPs.    And switching to smaller vectors and enlarging would be much more efficient in terms of memory.    I'll need to play around with how much to expand by as the enlargement would need to be in the loop with a final resizing before returning.
+
+So if I understand the suggestion the use of xlengthgets basically handles the body of the code in EnlargeVector function  for allocation and copying (but now smaller vectors) with then the extra step to SETLENGTH and SET_TRUELENGTH
+If done within a loop over MCMC iterations, then I would need to use SET_GROWABLE_BIT before the loop or when I encounter the need to enlarge.   (so basically a local implementation of EnlargeVector)
+
+For my non-VECSXP objects (REALSXP, INTSXP)  it might be more efficient to use Realloc on a working array within loops and only allocate and assign after determining the final length (nUnique), and freeing the memory myself...  That way I avoid SETLENGTH altogether for those types.
+
+best,
+Merlise
+
+
+
+Merlise Clyde (she/her/hers)
+Professor of Statistical Science and Director of Graduate Studies
+Duke University
+
+
+________________________________________
+From:?luke-tierney at uiowa.edu <luke-tierney at uiowa.edu>
+Sent:?Wednesday, January 15, 2025 12:34 PM
+To:?Iris Simmons <ikwsimmo at gmail.com>
+Cc:?Merlise Clyde, Ph.D. <clyde at duke.edu>; List r-package-devel <r-package-devel at r-project.org>
+Subject:?Re: [External] Re: [R-pkg-devel] Replacement for SETLENGTH
+?
+On Wed, 15 Jan 2025, Iris Simmons wrote:
+
+> I don't think memcpy works well for VECSXP. The elements being overwritten
+> need to have their reference counts decreased and the new elements need to
+> have theirs increased.
+
+You do not want to use memcpy or inanyother way try to write to the
+locations in a VECSXP. It is not jus the reference counts but also the
+integrity of the GC write barrier that you would be damaging.
+
+>
+> Also, I don't entirely know how accurate everything I'm about to say is,
+> but I think you need to be using SET_TRUELENGTH and SET_GROWABLE_BIT along
+> with SETLENGTH. There's an example here:
+>
+> https://urldefense.com/v3/__https://github.com/wch/r-source/blob/744b5d34e1b8eb839e5d49d91ab21c1fe6800856/src/main/subassign.c*L257__;Iw!!OToaGQ!uACtQIEun1eC8hwn-FzFogXQoPl1wETg9EUSV1NzAif9u15KlRTctzEq1RSA5rcbeVGv0n3geb8UexFngaonYos$
+>
+>
+> The example uses SET_STDVEC_LENGTH which shouldn't be used, just replace it
+> with SETLENGTH.
+>
+> So in your code, I'd replace:
+>
+> SETLENGTH(modelspace, nUnique);
+>
+> with
+>
+> SET_GROWABLE_BIT(modelspace);
+> SET_TRUELENGTH(modelspace, nModels);
+> SETLENGTH(modelspace, nUnique);
+
+These are not part of the API.
+
+Support for growable vectors maybe added to the API in the future, but
+probably with a more robust interface.
+
+In any case, this mechanism is intended for growing, not shrinking,
+vectors.
+
+Initially over-allocating and returning a smaller result is a
+reasonable strategy, but the right way to do it is to allocate a new
+shorter result. xlengthgets is a convenient way to do this. Tholonger
+vector will be subject to garbage collecion once there are no
+remaining references to it.
+
+Attempting to keep alive a longer allocation but pretending it is
+shorter is mis-guided: it would keep alive a larger object than is
+needed and so waste memory.
+
+Best,
+
+luke
+
+> On Wed, Jan 15, 2025, 10:30 Merlise Clyde, Ph.D. <clyde at duke.edu> wrote:
+>
+>> Thanks for the added explanation Iris and Tomas!
+>>
+>> So looking at the code for xlengthgets, it does appear that I may take a
+>> memory hit for multiple large objects due to the second allocation before
+>> the old objects are possibly garbage collected.???? There are about 12 such
+>> instances per function that are returned (I do use a counter for keeping
+>> track of the number of PROTECTED and to UNPROTECT for bookkeeping :-).
+>>? For memory limited machines, the alloc/copy was a problem for memory usage
+>> - and if I recall was one of the reasons in 2008 I switched to SETLENGTH,
+>> which doesn't seem to do an allocation ???? If there is going to be an
+>> absolute ban on SETLENGTH? in packages I'll probably need to address memory
+>> management differently for those cases.
+>>
+>> I did see a note before the function def'n of xlengthgets:
+>>
+>> /* (if it is vectorizable). We could probably be fairly */
+>> /* clever with memory here if we wanted to. */
+>>
+>> It would seem that memcpy would be more efficient for at least some of the
+>> types? (REALSPX, INTSPX) unless I am missing something - but any way to be
+>> more clever with VECSPX ?
+>>
+>> best,
+>> Merlise
+>>
+>>
+>>
+>> Merlise Clyde (she/her/hers)
+>> Professor of Statistical Science and Director of Graduate Studies
+>> Duke University
+>>
+>> ________________________________________
+>> From: Iris Simmons <ikwsimmo at gmail.com>
+>> Sent: Wednesday, January 15, 2025 1:00 AM
+>> To: Merlise Clyde, Ph.D. <clyde at duke.edu>
+>> Cc: r-package-devel at r-project.org <r-package-devel at r-project.org>
+>> Subject: Re: [R-pkg-devel] Replacement for SETLENGTH
+>>
+>> Hi Merlise!
+>>
+>>
+>> Referring to here:
+>>
+>>
+>> https://urldefense.com/v3/__https://github.com/wch/r-source/blob/bb5a829466f77a3e1d03541747d149d65e900f2b/src/main/builtin.c*L834__;Iw!!OToaGQ!uACtQIEun1eC8hwn-FzFogXQoPl1wETg9EUSV1NzAif9u15KlRTctzEq1RSA5rcbeVGv0n3geb8UexFnr_0lCLM$
+>>
+>> It seems as though the object is only re-used if the new length is
+>> equal to the old length.
+>>
+>> If you use Rf_lengthgets, you will need to protect the return value.
+>> The code you wrote that uses protect indexes looks correct, and the
+>> reprotect is good because you no longer need the old object.
+>>
+>> 2 is the correct amount to unprotect. PROTECT and PROTECT_WITH_INDEX
+>> (as far as I know) are the only functions that increase the size of
+>> the protect stack, and so the only calls that need to be unprotected.
+>> Typically, people define `int nprotect = 0;` at the start of their
+>> functions, add `nprotect++;` after each PROTECT and PROTECT_WITH_INDEX
+>> call, and add `UNPROTECT(nprotect);` immediately before each return or
+>> function end. That makes it easier to keep track.
+>>
+>> I typically use R_PreserveObject and R_ReleaseObject to protect
+>> objects without a need to bind them somewhere in my package's
+>> namespace. This would be that .onLoad() uses R_PreserveObject to
+>> protect some objects, and .onUnload uses R_ReleaseObject to release
+>> the protected objects. I probably would not use that for what you're
+>> describing.
+>>
+>>
+>> Regards,
+>>???? Iris
+>>
+>> On Tue, Jan 14, 2025 at 11:26?PM Merlise Clyde, Ph.D. <clyde at duke.edu>
+>> wrote:
+>>>
+>>> I am trying to determine the best way to eliminate the use of SETLENGTH
+>> to truncate over allocated vectors in my package BAS to eliminate the NOTES
+>> about non-API calls in anticipation of R 4.5.0.
+>>>
+>>> From WRE:? "At times it can be useful to allocate a larger initial
+>> result vector and resize it to a shorter length if that is sufficient. The
+>> functions Rf_lengthgets and Rf_xlengthgets accomplish this; they are
+>> analogous to using length(x) <- n in R. Typically these functions return a
+>> freshly allocated object, but in some cases they may re-use the supplied
+>> object."
+>>>
+>>> it looks like using
+>>>
+>>>???? x = Rf_lengthgets(x, newsize);
+>>>???? SET_VECTOR_ELT(result, 0, x);
+>>>
+>>> before returning works to resize without a performance hit that incurs
+>> with a copy.? (will this always re-use the supplied object if newsize < old
+>> size?)
+>>>
+>>> There is no mention in section 5.9.2 about the need for re-protection of
+>> the object,? but it seems to be mentioned in some packages as well as a
+>> really old thread about SET_LENGTH that looks like a? non-API MACRO to
+>> lengthgets,
+>>>
+>>> indeed if I call gc() and then rerun my test I have had some
+>> non-reproducible aborts in R Studio on my M3 Mac (caught once in R -d lldb)
+>>>
+>>> Do I need to do something more like
+>>>
+>>> PROTECT_INDEX ipx0;.
+>>> PROTECT_WITH_INDEX(x0 = allocVector(REALSXP, old_size), &ipx0);
+>>>
+>>> PROTECT_INDEX ipx1;.
+>>> PROTECT_WITH_INDEX(x1 = allocVector(REALSXP, old_size), &ipx1);
+>>>
+>>> # fill in values in x0 and? x1up to new_size (random) < old_size
+>>> ...
+>>> REPROTECT(x0 = Rf_lengthgets(x0, new_size), ipx0);
+>>> REPROTECT(x1 = Rf_lengthgets(x1, new_size), ipx1);
+>>>
+>>> SET_VECTOR_ELT(result, 0, x0);
+>>> SET_VECTOR_ELT(result, 1, x1);
+>>> ...
+>>> UNPROTECT(2);?? # or is this 4?
+>>> return(result);
+>>>
+>>>
+>>> There is also a mention in WRE of R_PreserveObject and R_ReleaseObject -
+>>>
+>>> looking for advice if this is needed, or which approach is better/more
+>> stable to replace SETLENGTH??? (I have many many instances that need to be
+>> updated, so trying to get some clarity here before updating and running
+>> code through valgrind or other sanitizers to catch any memory issues before
+>> submitting an update to CRAN.
+>>>
+>>> best,
+>>> Merlise
+>>>
+>>>
+>>>
+>>>
+>>>
+>>>
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>>
+>> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!OToaGQ!ohDoxcAn5uIC25d42XhBz8Kd4YftOJDBoEW1NK9FOmgZpcmv0XIy5fQRm24-s_D8m9O_lR6jo6FcKiA$
+>
+>??????? [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-package-devel__;!!OToaGQ!uACtQIEun1eC8hwn-FzFogXQoPl1wETg9EUSV1NzAif9u15KlRTctzEq1RSA5rcbeVGv0n3geb8UexFnYd-1ZB4$
+>
+
+--
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa????????????????? Phone:???????????? 319-335-3386
+Department of Statistics and??????? Fax:?????????????? 319-335-3017
+??? Actuarial Science
+241 Schaeffer Hall????????????????? email:?? luke-tierney at uiowa.edu
+Iowa City, IA 52242???????????????? WWW:? https://urldefense.com/v3/__http://www.stat.uiowa.edu/__;!!OToaGQ!uACtQIEun1eC8hwn-FzFogXQoPl1wETg9EUSV1NzAif9u15KlRTctzEq1RSA5rcbeVGv0n3geb8UexFnFDCXgK0$
+
