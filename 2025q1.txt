@@ -3070,3 +3070,537 @@ Department of Statistics and        Fax:               319-335-3017
 241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
 Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu/
 
+From joh@nnp||tz|nger @end|ng |rom goog|em@||@com  Fri Jan 17 09:01:33 2025
+From: joh@nnp||tz|nger @end|ng |rom goog|em@||@com (Johann Pfitzinger)
+Date: Fri, 17 Jan 2025 09:01:33 +0100
+Subject: [R-pkg-devel] 
+ Help with clang-san warnings for package "tidyfit"
+In-Reply-To: <20250116233048.030ef17e@Tarkus>
+References: <01db66c4$Blat.v3.2.22$368863fe$19b4445fe@mail.statistik.tu-dortmund.de>
+ <aa1193b5-7921-42d8-83a7-bab58f3f7903@gmail.com>
+ <20250116233048.030ef17e@Tarkus>
+Message-ID: <dd026412-b763-4d6b-b2e5-b81e030404d4@gmail.com>
+
+Hi Ivan,
+
+thanks for your helpful response and for the background info! Much 
+appreciated!
+
+I'll reply-all as you suggested.
+
+Best regards,
+Johann
+
+On 16.01.25 21:30, Ivan Krylov wrote:
+> ? Wed, 15 Jan 2025 22:13:36 +0100
+> Johann Pfitzinger <johannpfitzinger at googlemail.com> ?????:
+>
+>> I have, so far, failed to reproduce this or to find any useful
+>> information on how to fix it. My best guess based on the output.txt
+>> is that it originates in "purrr" (which I depend on).
+> This is, indeed, a purrr bug:
+> https://github.com/tidyverse/purrr/issues/1157
+>
+> Since the bug is very minor (R's own .C() and .Fortran() currently do
+> similar things), a fix for purrr has already been suggested, and
+> another package with the same problem (valr) has been recently
+> approved, you have a good chance of your package too being approved if
+> you reply-all and explain the situation.
+>
+
+
+From p@kr|v|t@ky @end|ng |rom un@w@edu@@u  Fri Jan 17 11:21:27 2025
+From: p@kr|v|t@ky @end|ng |rom un@w@edu@@u (Pavel Krivitsky)
+Date: Fri, 17 Jan 2025 10:21:27 +0000
+Subject: [R-pkg-devel] Best practices for built version checking in packages
+ LinkingTo others?
+Message-ID: <98a863d7814e843ef600bfb67e742109edc8fa15.camel@unsw.edu.au>
+
+Dear All,
+
+I maintain a package ('ergm') that exports a C API via /inst/include/
+that includes header files with data structures, macros, and inline
+functions, as well as a number of functions exported in a stubs file
+(that use R_FindSymbol() and/or R_GetCCallable() to locate the
+functions in 'ergm') that the linking package #includes to access them.
+
+I've recently had an update stall because a source-compatible change in
+one of the structs changed the ABI---that is, packages LinkingTo 'ergm'
+needs to be rebuilt, and one of them was Suggested by 'ergm' precisely
+in order to test the exported C API. As
+https://cloud.r-project.org/doc/manuals/r-devel/R-exts.html#Linking-to-native-routines-in-other-packages
+suggests, LinkingTo packages should either depend on an exact version
+(which is impractical) or test whether the version matches at runtime.
+
+Thus, the questions are:
+
+   1. What is the best way to save this information? I have a
+      rudimentary implementation [1], but R already has a mechanism to
+      store the build-time R version since it warns about that; can it
+      be used for packages as well?
+      
+   2. How to best test the C API without making updates impossible?
+      Obviously, I have my own continuous integration setups, so I
+      could simply disable the tests on CRAN, but there is some benefit
+      to having tests on CRAN as well [2]. That is, should the testing
+      be conditional ABI versions not mismatching, or is this more
+      trouble than it's worth?
+      
+   3. What should be done in case of a mismatch?
+      
+         1. Is there a way for 'ergm' to detect when a package LinkingTo it
+            is being loaded? Checking and handling can be put into .onLoad()
+            of the LinkingTo packages, but there is some benefit to putting
+            as little code into the LinkingTo package. However, as far as I
+            can tell, hooks can only be set for specific packages. Is this
+            correct?
+            
+         2. What should happen if a mismatch is detected? Should the loading
+            be blocked (e.g., by having .onLoad() throw an error), or should
+            it lead to a "use at your own risk" type warning?
+
+Thanks in advance,
+Pavel
+
+[1]
+
+This can be implemented by defining macros with the ABI version in
+'ergm', e.g.,
+
+ergm_version.h:
+
+#define ERGM_API_MAJOR 4
+#define ERGM_API_MINOR 8
+
+typedef struct {unsigned int major, minor;} APIVersion;
+
+then
+
+ergm_stubs.c (#included from every LinkingTo package into a C file):
+
+#include "ergm_version.h"
+
+APIVersion GetBuiltErgmAPIVersion(void){
+  return (APIVersion) {ERGM_API_MAJOR, ERGM_API_MINOR};
+}
+
+Then, at compile time, the macros will be resolved so
+GetBuiltErgmAPIVersion() will return the build-time 'ergm' version.
+R_FindSymbol() could be used to obtain a pointer to
+GetBuiltErgmAPIVersion() from a given package and hence its 'ergm'
+build version, which can then be returned to R.
+
+[2]
+
+For example (and this actually happened several versions ago) the
+package might do something with computational cost that depends on the
+number of installed packages.
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Jan 17 14:50:57 2025
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 17 Jan 2025 16:50:57 +0300
+Subject: [R-pkg-devel] 
+ Best practices for built version checking in packages
+ LinkingTo others?
+In-Reply-To: <98a863d7814e843ef600bfb67e742109edc8fa15.camel@unsw.edu.au>
+References: <98a863d7814e843ef600bfb67e742109edc8fa15.camel@unsw.edu.au>
+Message-ID: <20250117165057.7d994670@arachnoid>
+
+? Fri, 17 Jan 2025 10:21:27 +0000
+Pavel Krivitsky via R-package-devel <r-package-devel at r-project.org>
+?????:
+
+>    1. What is the best way to save this information? I have a
+>       rudimentary implementation [1]
+
+For now, this is the best way we have. Export the ABI version as an
+include-time constant and as a registered callable. The LinkingTo
+reverse dependencies can give the include-time constant to the
+registered callable to compare the two versions.
+
+I agree that we could do better and introduce an ABIversion: field to
+the DESCRIPTION file. R CMD INSTALL would write down the current
+ABIversion of every package that the current package is LinkingTo (into
+the installed package's DESCRIPTION or Meta/features.rds). Later, the
+namespace loader would check the ABI versions and provide an
+informative message in case a LinkingTo dependency is updated with an
+incremented ABI version. A machine-readable list of ABI-level
+dependencies should simplify the lives of the binary package
+maintainers as well.
+
+(Related may be a problem with S4, where packages may end up caching
+parts of the classes from other packages they depend upon, which also
+breaks binary installations but self-heals upon reinstalling from
+source [1]. This still happens under R-devel. R could store and check
+some sort of hash when caching these classes and either reload them in
+full or prompt for the package to be reinstalled.)
+
+>    2. How to best test the C API without making updates impossible?
+
+Would abi-compliance-checker [2] have helped there?
+
+It's not exactly designed for static functions and R_GetCCallable(),
+but with abi-dumper -all or -dump-static it is possible to use it to
+demonstrate incompatibilities between (for example) Matrix_1.6-1.1 and
+Matrix_1.7. With either a separate build that exports the functions
+destined for R_RegisterCCallable() or some sort of filter for public
+symbols, this tool may help detect ABI incompatibilities early.
+
+>    3. What should be done in case of a mismatch?
+
+It's hard to guarantee anything when the ABI is broken. Maybe it's
+completely harmless because your code will know that the new structure
+member is not initialised. Maybe the wrong stack layout will crash the
+process due to a return address mismatch, dooming the process from the
+first function call.
+
+>          1. Is there a way for 'ergm' to detect when a package
+> LinkingTo it is being loaded?
+
+With inline functions, you could make your every API call perform ABI
+version checking, but that obviously comes with potential performance
+problems:
+
+// public header in mypackage
+#define MYPACKAGE_ABI_VERSION 2
+static R_INLINE SEXP mypackage_frobnicate(SEXP arg) {
+ (
+  (void (*)(int))R_GetCCallable("mypackage", "check_abi_version")
+ )(MYPACKAGE_ABI_VERSION); // signals an error on mismatch
+ return (
+  (SEXP (*)(SEXP))R_GetCCallable("mypackage", "frobnicate")
+ )(arg);
+}
+
+>          2. What should happen if a mismatch is detected? Should the
+> loading be blocked (e.g., by having .onLoad() throw an error), or
+> should it lead to a "use at your own risk" type warning?
+
+The safest option would be to signal an error before any of the
+potentially incompatible functions are called. It's probably pragmatic
+to provide an "I know what I'm doing, void my warranty" emergency
+override.
+
+-- 
+Best regards,
+Ivan
+
+[1] https://stat.ethz.ch/pipermail/r-devel/2023-August/082769.html
+
+[2] https://lvc.github.io/abi-compliance-checker/
+
+
+From bbo|ker @end|ng |rom gm@||@com  Fri Jan 17 15:13:00 2025
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Fri, 17 Jan 2025 09:13:00 -0500
+Subject: [R-pkg-devel] 
+ Best practices for built version checking in packages
+ LinkingTo others?
+In-Reply-To: <20250117165057.7d994670@arachnoid>
+References: <98a863d7814e843ef600bfb67e742109edc8fa15.camel@unsw.edu.au>
+ <20250117165057.7d994670@arachnoid>
+Message-ID: <4467ebb8-205f-4c69-96da-15a5d1b2999b@gmail.com>
+
+   I wouldn't guarantee that it's best practices, but for reference this 
+is what glmmTMB does about checking the Matrix and TMB versions (Matrix 
+has a formal ABI version distinct from its package version; TMB doesn't)
+
+
+https://github.com/glmmTMB/glmmTMB/blob/b7936f4cbe9f26e3d8d5eae727afd83f6ec2b76b/glmmTMB/R/zzz.R#L21-L26
+
+https://github.com/glmmTMB/glmmTMB/blob/b7936f4cbe9f26e3d8d5eae727afd83f6ec2b76b/glmmTMB/R/utils.R#L232-L252
+
+   cheers
+    Ben Bolker
+
+
+> 
+>>     1. What is the best way to save this information? I have a
+>>        rudimentary implementation [1]
+> 
+> For now, this is the best way we have. Export the ABI version as an
+> include-time constant and as a registered callable. The LinkingTo
+> reverse dependencies can give the include-time constant to the
+> registered callable to compare the two versions.
+> 
+> I agree that we could do better and introduce an ABIversion: field to
+> the DESCRIPTION file. R CMD INSTALL would write down the current
+> ABIversion of every package that the current package is LinkingTo (into
+> the installed package's DESCRIPTION or Meta/features.rds). Later, the
+> namespace loader would check the ABI versions and provide an
+> informative message in case a LinkingTo dependency is updated with an
+> incremented ABI version. A machine-readable list of ABI-level
+> dependencies should simplify the lives of the binary package
+> maintainers as well.
+> 
+> (Related may be a problem with S4, where packages may end up caching
+> parts of the classes from other packages they depend upon, which also
+> breaks binary installations but self-heals upon reinstalling from
+> source [1]. This still happens under R-devel. R could store and check
+> some sort of hash when caching these classes and either reload them in
+> full or prompt for the package to be reinstalled.)
+> 
+>>     2. How to best test the C API without making updates impossible?
+> 
+> Would abi-compliance-checker [2] have helped there?
+> 
+> It's not exactly designed for static functions and R_GetCCallable(),
+> but with abi-dumper -all or -dump-static it is possible to use it to
+> demonstrate incompatibilities between (for example) Matrix_1.6-1.1 and
+> Matrix_1.7. With either a separate build that exports the functions
+> destined for R_RegisterCCallable() or some sort of filter for public
+> symbols, this tool may help detect ABI incompatibilities early.
+> 
+>>     3. What should be done in case of a mismatch?
+> 
+> It's hard to guarantee anything when the ABI is broken. Maybe it's
+> completely harmless because your code will know that the new structure
+> member is not initialised. Maybe the wrong stack layout will crash the
+> process due to a return address mismatch, dooming the process from the
+> first function call.
+> 
+>>           1. Is there a way for 'ergm' to detect when a package
+>> LinkingTo it is being loaded?
+> 
+> With inline functions, you could make your every API call perform ABI
+> version checking, but that obviously comes with potential performance
+> problems:
+> 
+> // public header in mypackage
+> #define MYPACKAGE_ABI_VERSION 2
+> static R_INLINE SEXP mypackage_frobnicate(SEXP arg) {
+>   (
+>    (void (*)(int))R_GetCCallable("mypackage", "check_abi_version")
+>   )(MYPACKAGE_ABI_VERSION); // signals an error on mismatch
+>   return (
+>    (SEXP (*)(SEXP))R_GetCCallable("mypackage", "frobnicate")
+>   )(arg);
+> }
+> 
+>>           2. What should happen if a mismatch is detected? Should the
+>> loading be blocked (e.g., by having .onLoad() throw an error), or
+>> should it lead to a "use at your own risk" type warning?
+> 
+> The safest option would be to signal an error before any of the
+> potentially incompatible functions are called. It's probably pragmatic
+> to provide an "I know what I'm doing, void my warranty" emergency
+> override.
+> 
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+* E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
+From |uk@@@@chne|derb@uer @end|ng |rom gm@||@com  Sat Jan 18 00:05:10 2025
+From: |uk@@@@chne|derb@uer @end|ng |rom gm@||@com (Lukas Schneiderbauer)
+Date: Sat, 18 Jan 2025 00:05:10 +0100
+Subject: [R-pkg-devel] 
+ SystemRequirements & configure check for FFTW with
+ single precision support
+In-Reply-To: <20250111220957.6f839b0d@Tarkus>
+References: <CAHETjtZcmar26ud0s0yn9RGQXwjKtVpkT3gt+o2DGfAyR-T=qg@mail.gmail.com>
+ <20250111220957.6f839b0d@Tarkus>
+Message-ID: <CAHETjtao+kQMLOG3aoktqAy1GY75jQ+9XMqjhosDG3wKzDc0NA@mail.gmail.com>
+
+Thanks for the feedback and advice!
+I removed the omp.h test, I guess using AC_OPENMP should do the trick
+anyways.
+
+I will also try your suggestion regarding the SystemRequirements. Let's see
+if it will be accepted this time.
+
+I'm sorry for asking this admittedly thick question, but are you sure
+> it's not just R CMD check --as-cran repeating the X-CRAN-Comment: field
+> (which includes the phrase about not testing for single-precision
+> FFTW)? Does the rejection e-mail say "please fix and resubmit", list
+> specific problems, or ask for specific actions?
+
+
+I am pretty confident it was also a personal response, not only the
+X-CRAN-Comment: field. But let's see how the next run goes.
+
+Best regards,
+Lukas
+
+	[[alternative HTML version deleted]]
+
+
+From |uk@@@@chne|derb@uer @end|ng |rom gm@||@com  Sat Jan 18 00:15:36 2025
+From: |uk@@@@chne|derb@uer @end|ng |rom gm@||@com (Lukas Schneiderbauer)
+Date: Sat, 18 Jan 2025 00:15:36 +0100
+Subject: [R-pkg-devel] 
+ SystemRequirements & configure check for FFTW with
+ single precision support
+In-Reply-To: <4D3E0C0F-263C-4B48-91A6-0E9C56D70B27@R-project.org>
+References: <CAHETjtZcmar26ud0s0yn9RGQXwjKtVpkT3gt+o2DGfAyR-T=qg@mail.gmail.com>
+ <4D3E0C0F-263C-4B48-91A6-0E9C56D70B27@R-project.org>
+Message-ID: <CAHETjtYdNBA1cR-=GMcxsLfmi7xdvWYAGREjL_=o=gRMKxR3xQ@mail.gmail.com>
+
+Hi Simon,
+
+Thank you for your detailed feedback!
+I rebuilt the configure script to use pkg-config, removed the extra
+brew-check, fixed the CPPFLAGS issue you mentioned, and included "fftw-s"
+in SystemRequirements.
+The package is building fine again on all platforms (using rhub tests and
+the `devtools::check_win_devel()` test).
+
+Hopefully it will get accepted soon. :)
+
+Best regards,
+Lukas
+
+
+On Wed, Jan 15, 2025 at 3:59?AM Simon Urbanek <simon.urbanek at r-project.org>
+wrote:
+
+> Lukas,
+>
+> I have not seen the communication so I'm not commenting on that
+> specifically, I only looked at the GitHub link.
+>
+> Although your configure could be improved (more below), it works well
+> enough to detect fftw3f.
+>
+> Unfortunately, SystemRequirements don't have a well-defined structure, but
+> there are two commonly used notations:
+>
+> a) library name and version so in your case that would be something like
+> libfftw3f (>=3.3.0)
+>
+> b) deb/rpm package names
+> libfftw3-dev (deb), fftw3-devel (rpm)
+>
+> fftw is a bit of a mess, because Debian ships the single-precision static
+> library in libfftw3-dev, but also has libfftw3-single3 which is the dynamic
+> version of the same, while RH does not distinguish. macOS recipe names are
+> usually included only if they are non-obvious, but that would be the case
+> here since installing fftw recipe does not work for you, so mentioning
+> fftw-s is probably a good idea (there are community scripts that try to
+> extract that information from the packages so that the dependencies can be
+> installed).
+>
+> As for your configure, my main objection would be that it ignores CPPFLAGS
+> (they are not substituted at all even though they *are* used in the tests)
+> and doesn't use pkg-config to get the correct flags. (Also the brew part
+> should go - it's makes unwarranted assumptions [see below] and is entirely
+> superfluous if you use pkg-config instead.) To illustrate what I mean, you
+> get
+>
+> $ pkg-config --cflags fftw3f
+> -I/opt/R/x86_64/include
+> $ pkg-config --libs fftw3f
+> -L/opt/R/x86_64/lib -lfftw3f -lm
+>
+> while fCWTr on GitHub only uses
+>
+>   Configuration for fCWTr 0.2.9000
+>
+>     cppflags:
+>     cxxflags:
+>     ldflags:
+>     libs:     -lfftw3f
+>
+> It actually works despite that, because R will inject the other flags for
+> you, but that will only work is fftw is installed in the same location as
+> the other libraries used by R (which is common, but not guaranteed). I
+> wouldn't say it is dealbreaker, but it would recommend it for robustness.
+>
+> FWIW with homebrew the correct flags are obtainable from pkg-config:
+>
+> $ pkg-config --libs fftw3f
+> -L/opt/brew/Cellar/fftw/3.3.8_1/lib -lfftw3f
+> $ pkg-config --cflags fftw3f
+> -I/opt/brew/Cellar/fftw/3.3.8_1/include
+>
+> Cheers,
+> Simon
+>
+>
+>
+> > On Jan 11, 2025, at 10:37 PM, Lukas Schneiderbauer <
+> lukas.schneiderbauer at gmail.com> wrote:
+> >
+> > Hi list,
+> >
+> > I am working on getting a package <
+> https://github.com/lschneiderbauer/fCWTr> to
+> > CRAN. It depends on the FFTW library <https://www.fftw.org/> that is
+> built
+> > with single precision support. I am stuck in the submission process and I
+> > require your help.
+> >
+> > Before I come to my questions, some key facts about the package:
+> >
+> > The package has an autoconf configure script that uses (among other
+> things,
+> > like OpenMP checks, etc..) AC_SEARCH_LIBS to check whether required
+> > functions of the library 'fftwf' exist, if yes, it adds the corresponding
+> > compiler/linker flags; if no, it errs with a descriptive error message.
+> >
+> > The CRAN Windows as well as Linux build service included fftwf in their
+> > fftw build out of the box, and so building there was no problem, R CMD
+> > Check passes there. In the past, building for MacOS was more trouble,
+> since
+> > its fftw package does not include a single-precision build. I reached out
+> > to Simon Urbanek, and he was so kind as to add an appropriate new recipe
+> > "fftw-s" that provided an fftw version with single precision support. As
+> of
+> > now, R CMD check also passes cleanly on the MacOS build service, thanks
+> to
+> > Simon Urbanek's efforts.
+> >
+> > Now, I am stuck at submission for two reasons:
+> > 1. The SystemRequirements specification in the DESCRIPTION file is
+> > incorrect.
+> > 2. It is said that "the package needs a configure check for fftwf".
+> >
+> > Add 1.
+> > Initially, I had no mention of the "single precision" version of fftw,
+> > because I thought it is included everywhere by default. It was stated
+> that
+> > I need to add that information. I naturally complied.
+> > This is my current version:
+> > "SystemRequirements: fftw3 (including single precision support fftw3f),
+> > fftw3f_omp (optional), OpenMP (optional)"
+> > In the second subscription run, I was told to add "fftw-s" since I
+> require
+> > the fftw-s package on MacOS. This does not make much sense to me since
+> > "fftw-s" is only the name of this package on Simon Urbanek's MacOS build
+> > service. The library file itself is still called fftwf, like it is on any
+> > other platform. If I added "fftw-s", I would also need to explain that
+> this
+> > is only valid for MacOS which seems to make the SystemRequirements
+> > unnecessary verbose.
+> > * Can someone explain the reason behind this request to me?
+> > * How exactly should I add "fftw-s" to pass the submission process?
+> >
+> > Add 2.
+> > I tried to explain now for the second time in the submission notes, that
+> a
+> > check is already in place (see the AC_SEARCH_LIBS paragraph above). But
+> my
+> > explanation gets ignored.
+> > * What am I doing wrong?
+> > * What additional configure checks do I need to add to the package?
+> >
+> > Thanks a lot for your help!
+> > Sincerely, Lukas Schneiderbauer
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
