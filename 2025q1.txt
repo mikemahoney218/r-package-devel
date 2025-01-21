@@ -3604,3 +3604,464 @@ wrote:
 	[[alternative HTML version deleted]]
 
 
+From p@kr|v|t@ky @end|ng |rom un@w@edu@@u  Sun Jan 19 06:31:15 2025
+From: p@kr|v|t@ky @end|ng |rom un@w@edu@@u (Pavel Krivitsky)
+Date: Sun, 19 Jan 2025 05:31:15 +0000
+Subject: [R-pkg-devel] 
+ Best practices for built version checking in packages
+ LinkingTo others?
+In-Reply-To: <20250117165057.7d994670@arachnoid>
+References: <98a863d7814e843ef600bfb67e742109edc8fa15.camel@unsw.edu.au>
+ <20250117165057.7d994670@arachnoid>
+Message-ID: <8d9b8f509ae8ea4dc65928d0285e939ef9272442.camel@unsw.edu.au>
+
+Thanks, Ivan! Replies below.
+
+On Fri, 2025-01-17 at 16:50 +0300, Ivan Krylov wrote:
+> ? Fri, 17 Jan 2025 10:21:27 +0000
+> Pavel Krivitsky via R-package-devel <r-package-devel at r-project.org>
+> ?????:
+> 
+> > ?? 1. What is the best way to save this information? I have a
+> > ????? rudimentary implementation [1]
+> 
+> For now, this is the best way we have. Export the ABI version as an
+> include-time constant and as a registered callable. The LinkingTo
+> reverse dependencies can give the include-time constant to the
+> registered callable to compare the two versions.
+
+Ben Bolker pointed out that since the code in R/ is executed at build-
+time, it is also possible to store the build-time ABI information
+entirely in R; the downside of this approach is that it requires
+instrumenting every client package rather than just the library
+package.
+
+> I agree that we could do better and introduce an ABIversion: field to
+> the DESCRIPTION file. R CMD INSTALL would write down the current
+> ABIversion of every package that the current package is LinkingTo
+> (into the installed package's DESCRIPTION or Meta/features.rds).
+> Later, the namespace loader would check the ABI versions and provide
+> an informative message in case a LinkingTo dependency is updated with
+> an incremented ABI version. A machine-readable list of ABI-level
+> dependencies should simplify the lives of the binary package
+> maintainers as well.
+
+Yes, that would be great to have. (One nitpick: not just incremented,
+but different in either direction.)
+
+AFAIK, for those platforms that use binaries, there is already a
+mechanism for downloading a different ZIP for a different version of R,
+but I believe it's accomplished simply by having a directory for every
+version of R with a potentially different ABI.
+
+I suppose this could be generalised along the lines of a directory
+hierarchy of the form
+
+/bin/windows/contrib/RVERSION/PKG_ABIVERSION/.../PKG_ABIVERSION/PKG_PKGVERSION.zip
+
+with a nesting level for every LinkingTo package, in lexicographic
+order. Then, given the installed R version and the installed versions
+of each package in the LinkingTo list, a unique URL can be constructed.
+However, I don't know how practical this is and how likely to be
+implemented in the foreseeable future.
+
+> > ?? 2. How to best test the C API without making updates impossible?
+> 
+> Would abi-compliance-checker [2] have helped there?
+
+I meant specifically in the context of R CMD check; the only want to
+fully test the C API and associated facilities is to actually install
+the client package and see if it works.
+
+That having been said, 'ergm' may be unusual in this, since the API is
+mostly used as a way for others to implement calculation of graph
+statistics that are then operated on by functions in 'ergm'. That is,
+rather than simply offering C functions for the client packages to use,
+'ergm' calls C functions from those packages that it locates via
+R_FindSymbol(). Thus, it is helpful to test it as a part of 'ergm'
+itself rather than just reverse-dependency checks.
+
+> > ?? 3. What should be done in case of a mismatch?
+> 
+> It's hard to guarantee anything when the ABI is broken. Maybe it's
+> completely harmless because your code will know that the new
+> structure member is not initialised. Maybe the wrong stack layout
+> will crash the process due to a return address mismatch, dooming the
+> process from the first function call.k
+> 
+> > ???????? 1. Is there a way for 'ergm' to detect when a package
+> > LinkingTo it is being loaded?
+> 
+> With inline functions, you could make your every API call perform ABI
+> version checking, but that obviously comes with potential performance
+> problems:
+
+The reason I ask is that the best time to inform the user of an ABI
+change is when the client package is loaded, and it would be helpful if
+this could be done without modifying the client package.
+
+Is there a mechanism for the library package to monitor packages being
+loaded, and for each one check if it's LinkingTo it to do the version
+check?
+
+> > ???????? 2. What should happen if a mismatch is detected? Should
+> > the
+> > loading be blocked (e.g., by having .onLoad() throw an error), or
+> > should it lead to a "use at your own risk" type warning?
+> 
+> The safest option would be to signal an error before any of the
+> potentially incompatible functions are called. It's probably
+> pragmatic to provide an "I know what I'm doing, void my warranty"
+> emergency override.
+
+Probably an options() setting.
+
+				Best,
+				Pavel
+
+
+From pep|jn@devr|e@ @end|ng |rom out|ook@com  Sun Jan 19 18:07:51 2025
+From: pep|jn@devr|e@ @end|ng |rom out|ook@com (Pepijn de Vries)
+Date: Sun, 19 Jan 2025 17:07:51 +0000
+Subject: [R-pkg-devel] Package builds on all systems except on Fedora with
+ clang
+Message-ID: <AS8PR10MB4663D3B455E96FE0A05C7640A7E42@AS8PR10MB4663.EURPRD10.PROD.OUTLOOK.COM>
+
+Dear fellow developers,
+
+Recently I've submitted a package to CRAN which builds without problems on most systems:
+
+https://cran.r-project.org/web/checks/check_results_openmpt.html
+
+Except for Fedora with clang:
+
+https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-fedora-clang/openmpt-00install.html
+
+There are some valgrind and ASAN issues, but most of them are solved at https://github.com/pepijn-devries/openmpt
+
+At first I thought that the problem was caused by a missing system requirement (i.e., the libopenmpt library). However, Prof. Ripley reported that all system requirements are installed on the Fedora machine. He also mentioned that I "need to check in your configure script that the external library you need is available *and* usable with the compilers used to compile R and packages." As I'm new to including static libraries in an R package, I'm not sure how to fix this. Does anyone have a clue to get this fixed?
+
+Kind regards,
+
+Pepijn
+
+From |kry|ov @end|ng |rom d|@root@org  Sun Jan 19 20:40:22 2025
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sun, 19 Jan 2025 22:40:22 +0300
+Subject: [R-pkg-devel] 
+ Package builds on all systems except on Fedora with clang
+In-Reply-To: <AS8PR10MB4663D3B455E96FE0A05C7640A7E42@AS8PR10MB4663.EURPRD10.PROD.OUTLOOK.COM>
+References: <AS8PR10MB4663D3B455E96FE0A05C7640A7E42@AS8PR10MB4663.EURPRD10.PROD.OUTLOOK.COM>
+Message-ID: <20250119224022.49a80684@Tarkus>
+
+? Sun, 19 Jan 2025 17:07:51 +0000
+Pepijn de Vries <pepijn.devries at outlook.com> ?????:
+
+> He also mentioned that I "need to check in your configure script that
+> the external library you need is available *and* usable with the
+> compilers used to compile R and packages."
+
+The Fedora-clang test fails with a symbol lookup error:
+
+>> /data/gannet/ripley/R/packages/tests-clang/openmpt.Rcheck/00LOCK-openmpt/00new/openmpt/libs/openmpt.so:
+>> undefined symbol:
+>> _ZNK7openmpt6module15ctl_get_integerENSt3__117basic_string_viewIcNS1_11char_traitsIcEEEE
+
+Translated using 'c++filt', the missing function turns out to be
+openmpt::module::ctl_get_integer(std::__1::basic_string_view<char,
+std::__1::char_traits<char> >) const. Why would libopenmpt.so be
+missing a method for an std::string_view?
+
+The problem here is that the Clang checks compile C++ code with the
+"libc++" standard library that belongs to the LLVM project (same people
+who develop Clang). The openmpt library, on the other hand, comes from
+Fedora and is compiled and linked with the GNU "libstdc++" standard
+library. The two standard libraries have very different internals and
+can't be mixed. There's nothing you should do as a package developer to
+make it work [1] (thank you Tomas for the clarification!).
+
+I think that Prof. Ripley is asking you to make a configure test that
+fails in these circumstances. Here's one that should work:
+
+1. Write a C++ source file that includes OpenMPT headers and exports a
+single function that calls the problematic OpenMPT function.
+
+2. During ./configure, export the environment variables PKG_CPPFLAGS,
+PKG_LIBS with the same contents that you intend to give to Makevars.
+
+3. From the same ./configure script, call ${R_HOME}/bin/R CMD SHLIB to
+compile the source file from (1) and link it into a shared library.
+
+4. Call R again to dyn.load() the shared library. (Use
+.Platform$dynlib.ext to figure out the file extension.)
+
+-- 
+Best regards,
+Ivan
+
+[1] https://stat.ethz.ch/pipermail/r-package-devel/2024q4/011326.html
+
+
+From @jenk|n@ @end|ng |rom @tud|oj@u@  Sat Jan 18 17:37:27 2025
+From: @jenk|n@ @end|ng |rom @tud|oj@u@ (Steven Jenkins)
+Date: Sat, 18 Jan 2025 11:37:27 -0500
+Subject: [R-pkg-devel] LaTeX Error: Unicode character not set up for use
+ with LaTeX
+Message-ID: <8E4AEA76-0732-4D74-95DC-C11C702857CC@studioj.us>
+
+Longtime R user, first-time packager. Devtools are great; it?s pretty easy.
+
+I?m trying to submit a package (https://github.com/jsjuni/massProps) that calculates mass properties and uncertainties for assembly trees. Very standard mechanical engineering stuff. The data are represented in a data frame and a tree.
+
+It is customary in this and other fields to name an uncertainty parameter with ??? subscripted by the symbol of the parameter it characterizes. My code assumes a data frame with column names including ?_mass, ?_Cx, ?_Cy, ?_Ixx, etc. (If you can?t see it in your locale, it?s GREEK SMALL LETTER SIGMA, U+03C3.)
+
+At least in my locale, these are valid names in R, so I used expressions like result$?_mass and input[row, ??_mass?] liberally. Everything works.
+
+Unfortunately, CRAN doesn?t like that. check() complains about Unicode characters. Easy enough to fix. Putting escapes in the R names made the computation code ugly, so I replaced all the internals as, e.g., result$sigma_mass. Read and update operations on the data frame are isolated, so it was fairly straightforward to fix those as input[row, "\u03c3_mass?].
+
+Again, all good. All unit tests pass, check() produces no errors, no warnings, no notes. Doxygen contents documenting the columns (which retain the Unicode character) render perfectly.
+
+Then I get to check(manual = TRUE). LaTeX issues many complaints:
+
+  ! LaTeX Error: Unicode character ? (U+03C3)
+                 not set up for use with LaTeX.
+
+After a good bit of searching, I can't find a fix. Bookdown suggests setting the LaTeX engine to ?xelatex?, but I don?t know whether that?s applicable (or possible) here.
+
+So, two questions: (1) Is it bad practice to name columns like this in external serialization? Obviously, I can just use ?sigma_? everywhere, but I prefer it the way it is. (2) Is there some way to change either the Doxygen input or the LaTeX configuration to correct the problem? (Escaping the Doxygen input doesn?t work.)
+
+Thanks in advance for your guidance.
+
+Steve
+	[[alternative HTML version deleted]]
+
+
+From pep|jn@devr|e@ @end|ng |rom out|ook@com  Sun Jan 19 21:42:17 2025
+From: pep|jn@devr|e@ @end|ng |rom out|ook@com (Pepijn de Vries)
+Date: Sun, 19 Jan 2025 20:42:17 +0000
+Subject: [R-pkg-devel] 
+ Package builds on all systems except on Fedora with clang
+In-Reply-To: <20250119224022.49a80684@Tarkus>
+References: <AS8PR10MB4663D3B455E96FE0A05C7640A7E42@AS8PR10MB4663.EURPRD10.PROD.OUTLOOK.COM>
+ <20250119224022.49a80684@Tarkus>
+Message-ID: <AM8PR10MB46602CEED17D226A6520A93FA7E42@AM8PR10MB4660.EURPRD10.PROD.OUTLOOK.COM>
+
+Hi Ivan,
+
+Thank you for the quick response. The linked discussion thread was also helpful.
+
+I think I could write a similar test as used by `cpp11tesseract`:
+
+https://github.com/pachadotdev/cpp11tesseract/blob/2ea8287ef2c27901446bafa402728014d99904d4/configure#L66-L85
+
+Kind regards,
+
+Pepijn
+
+________________________________________
+Van:?Ivan Krylov <ikrylov at disroot.org>
+Verzonden:?zondag 19 januari 2025 20:40
+Aan:?Pepijn de Vries <pepijn.devries at outlook.com>
+CC:?Ivan Krylov via R-package-devel <r-package-devel at r-project.org>
+Onderwerp:?Re: [R-pkg-devel] Package builds on all systems except on Fedora with clang
+?
+? Sun, 19 Jan 2025 17:07:51 +0000
+Pepijn de Vries <pepijn.devries at outlook.com> ?????:
+
+> He also mentioned that I "need to check in your configure script that
+> the external library you need is available *and* usable with the
+> compilers used to compile R and packages."
+
+The Fedora-clang test fails with a symbol lookup error:
+
+>> /data/gannet/ripley/R/packages/tests-clang/openmpt.Rcheck/00LOCK-openmpt/00new/openmpt/libs/openmpt.so:
+>> undefined symbol:
+>> _ZNK7openmpt6module15ctl_get_integerENSt3__117basic_string_viewIcNS1_11char_traitsIcEEEE
+
+Translated using 'c++filt', the missing function turns out to be
+openmpt::module::ctl_get_integer(std::__1::basic_string_view<char,
+std::__1::char_traits<char> >) const. Why would libopenmpt.so be
+missing a method for an std::string_view?
+
+The problem here is that the Clang checks compile C++ code with the
+"libc++" standard library that belongs to the LLVM project (same people
+who develop Clang). The openmpt library, on the other hand, comes from
+Fedora and is compiled and linked with the GNU "libstdc++" standard
+library. The two standard libraries have very different internals and
+can't be mixed. There's nothing you should do as a package developer to
+make it work [1] (thank you Tomas for the clarification!).
+
+I think that Prof. Ripley is asking you to make a configure test that
+fails in these circumstances. Here's one that should work:
+
+1. Write a C++ source file that includes OpenMPT headers and exports a
+single function that calls the problematic OpenMPT function.
+
+2. During ./configure, export the environment variables PKG_CPPFLAGS,
+PKG_LIBS with the same contents that you intend to give to Makevars.
+
+3. From the same ./configure script, call ${R_HOME}/bin/R CMD SHLIB to
+compile the source file from (1) and link it into a shared library.
+
+4. Call R again to dyn.load() the shared library. (Use
+.Platform$dynlib.ext to figure out the file extension.)
+
+--
+Best regards,
+Ivan
+
+[1] https://stat.ethz.ch/pipermail/r-package-devel/2024q4/011326.html
+
+From |kry|ov @end|ng |rom d|@root@org  Sun Jan 19 22:23:17 2025
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 20 Jan 2025 00:23:17 +0300
+Subject: [R-pkg-devel] 
+ Package builds on all systems except on Fedora with clang
+In-Reply-To: <AM8PR10MB46602CEED17D226A6520A93FA7E42@AM8PR10MB4660.EURPRD10.PROD.OUTLOOK.COM>
+References: <AS8PR10MB4663D3B455E96FE0A05C7640A7E42@AS8PR10MB4663.EURPRD10.PROD.OUTLOOK.COM>
+ <20250119224022.49a80684@Tarkus>
+ <AM8PR10MB46602CEED17D226A6520A93FA7E42@AM8PR10MB4660.EURPRD10.PROD.OUTLOOK.COM>
+Message-ID: <20250120002317.36e351e0@Tarkus>
+
+? Sun, 19 Jan 2025 20:42:17 +0000
+Pepijn de Vries <pepijn.devries at outlook.com> ?????:
+
+> I think I could write a similar test as used by `cpp11tesseract`:
+> 
+> https://github.com/pachadotdev/cpp11tesseract/blob/2ea8287ef2c27901446bafa402728014d99904d4/configure#L66-L85
+
+I should have replied to that thread too, but got swamped. If the
+compiler flags are right, $CXX -c conftest.cpp will succeed the same way
+that the individual object files currently successfully compile on
+Fedora-clang [1]:
+
+>> /usr/local/clang19/bin/clang++ -stdlib=libc++ -std=gnu++17
+>> -I"/data/gannet/ripley/R/R-clang/include" -DNDEBUG -pthread
+>> -I'/data/gannet/ripley/R/test-clang/cpp11/include' -isystem
+>> /usr/local/clang19/include -I/usr/local/clang/include    -fpic  -O3
+>> -Wall -pedantic -frtti -Wp,-D_FORTIFY_SOURCE=3
+>> -Wno-missing-template-arg-list-after-template-kw  -DR_NO_REMAP -c
+>> audio.cpp -o audio.o
+
+Even linking the shared library is not enough, because that step
+succeeds on Fedora-clang too:
+
+>> /usr/local/clang19/bin/clang++ -stdlib=libc++ -std=gnu++17 -shared
+>> -L/usr/local/clang/lib64 -L/usr/local/clang19/lib
+>> -L/usr/local/clang19/lib/x86_64-unknown-linux-gnu
+>> -L/usr/local/gcc14/lib64 -L/usr/local/lib64 -o openmpt.so audio.o
+>> cpp11.o ctl.o format.o get_mod.o helpers.o info.o io.o module_ext.o
+>> names.o render.o render_params.o repeat.o setpos.o state.o subsong.o
+>> -lopenmpt -lportaudiocpp -lportaudio -lm -lpthread -lasound
+
+Testing only the previous two steps will succeed during ./configure on
+the Fedora-clang check and then fail to load the shared library during
+package installation, like it currently does. Using R CMD SHLIB, on the
+other hand, spares the effort of trying to figure out the right
+compiler and giving it all the right flags.
+
+Unrelated, but speaking of the default linker flags,
+
+>> PKG_LIBS="-llibportaudio -llibportaudiocpp -llibopenmpt"
+
+These are a bit counter-intuitive. When you ask the linker to link with
+-lfoo, it tries to link with libfoo.a or libfoo.so, i.e. it prepends
+the "lib" by itself.
+
+Also unrelated, but is there OpenMPT in the macOS 'recipes' system? I
+think it's the recommended way of making use of third-party code in
+CRAN packages [2].
+
+-- 
+Best regards,
+Ivan
+
+[1]
+https://www.r-project.org/nosvn/R.check/r-devel-linux-x86_64-fedora-clang/openmpt-00install.html
+
+[2]
+https://cran.r-project.org/web/packages/external_libs.html
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Mon Jan 20 01:48:15 2025
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Mon, 20 Jan 2025 13:48:15 +1300
+Subject: [R-pkg-devel] LaTeX Error: Unicode character not set up for use
+ with LaTeX
+In-Reply-To: <8E4AEA76-0732-4D74-95DC-C11C702857CC@studioj.us>
+References: <8E4AEA76-0732-4D74-95DC-C11C702857CC@studioj.us>
+Message-ID: <8B0AEBA4-24D0-40C0-BBD6-850D9C116342@R-project.org>
+
+Steven,
+
+
+> On 19 Jan 2025, at 05:37, Steven Jenkins <sjenkins at studioj.us> wrote:
+> 
+> Longtime R user, first-time packager. Devtools are great; it?s pretty easy.
+> 
+> I?m trying to submit a package (https://github.com/jsjuni/massProps) that calculates mass properties and uncertainties for assembly trees. Very standard mechanical engineering stuff. The data are represented in a data frame and a tree.
+> 
+> It is customary in this and other fields to name an uncertainty parameter with ??? subscripted by the symbol of the parameter it characterizes. My code assumes a data frame with column names including ?_mass, ?_Cx, ?_Cy, ?_Ixx, etc. (If you can?t see it in your locale, it?s GREEK SMALL LETTER SIGMA, U+03C3.)
+> 
+> At least in my locale, these are valid names in R, so I used expressions like result$?_mass and input[row, ??_mass?] liberally. Everything works.
+> 
+> Unfortunately, CRAN doesn?t like that. check() complains about Unicode characters. Easy enough to fix. Putting escapes in the R names made the computation code ugly, so I replaced all the internals as, e.g., result$sigma_mass. Read and update operations on the data frame are isolated, so it was fairly straightforward to fix those as input[row, "\u03c3_mass?].
+> 
+> Again, all good. All unit tests pass, check() produces no errors, no warnings, no notes. Doxygen contents documenting the columns (which retain the Unicode character) render perfectly.
+> 
+> Then I get to check(manual = TRUE). LaTeX issues many complaints:
+> 
+>  ! LaTeX Error: Unicode character ? (U+03C3)
+>                 not set up for use with LaTeX.
+> 
+> After a good bit of searching, I can't find a fix. Bookdown suggests setting the LaTeX engine to ?xelatex?, but I don?t know whether that?s applicable (or possible) here.
+> 
+
+
+No, it is not, it has to work with pdflatex.
+
+
+> So, two questions: (1) Is it bad practice to name columns like this in external serialization?
+
+
+Yes. See R-exts 1.6.3:
+"First, consider carefully if you really need non-ASCII text. Some users of R will only be able to view correctly text in their native language group (e.g. Western European, Eastern European, Simplified Chinese) and ASCII. Other characters may not be rendered at all, rendered incorrectly, or cause your R code to give an error. "
+
+> m
+     sigma_mass
+[1,]  -2.173881
+[2,]   1.184118
+[3,]  -1.295566
+
+is a lot more readable and usable than 
+
+> m
+            <U+03C3>_mass
+[1,]     -2.173881
+[2,]      1.184118
+[3,]     -1.295566
+
+
+> Obviously, I can just use ?sigma_? everywhere, but I prefer it the way it is.
+
+
+I suspect you may be the a very small minority as non-ASCII characters are really problematic in code as they require special input methods, making your symbols mostly unusable. Unicode has its place in data as text, e.g. when rendering names or words in other languages, but even there they require careful handling (e.g., still won't work in LaTeX output). Row names are fine as long as they reflect real data (e.g. names/words), but in your case it?s just an unnecessarily awkward use of a symbol so it does not fall into that category.
+
+Cheers,
+Simon
+
+
+
+> (2) Is there some way to change either the Doxygen input or the LaTeX configuration to correct the problem? (Escaping the Doxygen input doesn?t work.)
+> 
+> Thanks in advance for your guidance.
+> 
+> Steve
+> [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
