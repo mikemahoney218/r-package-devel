@@ -4065,3 +4065,152 @@ Simon
 > 
 
 
+From @jenk|n@ @end|ng |rom @tud|oj@u@  Mon Jan 20 04:13:57 2025
+From: @jenk|n@ @end|ng |rom @tud|oj@u@ (Steven Jenkins)
+Date: Sun, 19 Jan 2025 22:13:57 -0500
+Subject: [R-pkg-devel] LaTeX Error: Unicode character not set up for use
+ with LaTeX
+In-Reply-To: <8B0AEBA4-24D0-40C0-BBD6-850D9C116342@R-project.org>
+References: <8E4AEA76-0732-4D74-95DC-C11C702857CC@studioj.us>
+ <8B0AEBA4-24D0-40C0-BBD6-850D9C116342@R-project.org>
+Message-ID: <B716A48E-0DB7-49DD-B298-7EC91DAAA465@studioj.us>
+
+Simon,
+
+Thanks for the clear and direct answer. I was prepared for that to be the case :-).
+
+Steve
+
+> On Jan 19, 2025, at 7:48?PM, Simon Urbanek <simon.urbanek at R-project.org> wrote:
+> 
+> Steven,
+> 
+> 
+>> On 19 Jan 2025, at 05:37, Steven Jenkins <sjenkins at studioj.us> wrote:
+>> 
+>> Longtime R user, first-time packager. Devtools are great; it?s pretty easy.
+>> 
+>> I?m trying to submit a package (https://github.com/jsjuni/massProps) that calculates mass properties and uncertainties for assembly trees. Very standard mechanical engineering stuff. The data are represented in a data frame and a tree.
+>> 
+>> It is customary in this and other fields to name an uncertainty parameter with ??? subscripted by the symbol of the parameter it characterizes. My code assumes a data frame with column names including ?_mass, ?_Cx, ?_Cy, ?_Ixx, etc. (If you can?t see it in your locale, it?s GREEK SMALL LETTER SIGMA, U+03C3.)
+>> 
+>> At least in my locale, these are valid names in R, so I used expressions like result$?_mass and input[row, ??_mass?] liberally. Everything works.
+>> 
+>> Unfortunately, CRAN doesn?t like that. check() complains about Unicode characters. Easy enough to fix. Putting escapes in the R names made the computation code ugly, so I replaced all the internals as, e.g., result$sigma_mass. Read and update operations on the data frame are isolated, so it was fairly straightforward to fix those as input[row, "\u03c3_mass?].
+>> 
+>> Again, all good. All unit tests pass, check() produces no errors, no warnings, no notes. Doxygen contents documenting the columns (which retain the Unicode character) render perfectly.
+>> 
+>> Then I get to check(manual = TRUE). LaTeX issues many complaints:
+>> 
+>> ! LaTeX Error: Unicode character ? (U+03C3)
+>>                not set up for use with LaTeX.
+>> 
+>> After a good bit of searching, I can't find a fix. Bookdown suggests setting the LaTeX engine to ?xelatex?, but I don?t know whether that?s applicable (or possible) here.
+>> 
+> 
+> 
+> No, it is not, it has to work with pdflatex.
+> 
+> 
+>> So, two questions: (1) Is it bad practice to name columns like this in external serialization?
+> 
+> 
+> Yes. See R-exts 1.6.3:
+> "First, consider carefully if you really need non-ASCII text. Some users of R will only be able to view correctly text in their native language group (e.g. Western European, Eastern European, Simplified Chinese) and ASCII. Other characters may not be rendered at all, rendered incorrectly, or cause your R code to give an error. "
+> 
+>> m
+>     sigma_mass
+> [1,]  -2.173881
+> [2,]   1.184118
+> [3,]  -1.295566
+> 
+> is a lot more readable and usable than 
+> 
+>> m
+>            <U+03C3>_mass
+> [1,]     -2.173881
+> [2,]      1.184118
+> [3,]     -1.295566
+> 
+> 
+>> Obviously, I can just use ?sigma_? everywhere, but I prefer it the way it is.
+> 
+> 
+> I suspect you may be the a very small minority as non-ASCII characters are really problematic in code as they require special input methods, making your symbols mostly unusable. Unicode has its place in data as text, e.g. when rendering names or words in other languages, but even there they require careful handling (e.g., still won't work in LaTeX output). Row names are fine as long as they reflect real data (e.g. names/words), but in your case it?s just an unnecessarily awkward use of a symbol so it does not fall into that category.
+> 
+> Cheers,
+> Simon
+> 
+> 
+> 
+>> (2) Is there some way to change either the Doxygen input or the LaTeX configuration to correct the problem? (Escaping the Doxygen input doesn?t work.)
+>> 
+>> Thanks in advance for your guidance.
+>> 
+>> Steve
+>> [[alternative HTML version deleted]]
+>> 
+>> ______________________________________________
+>> R-package-devel at r-project.org <mailto:R-package-devel at r-project.org> mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Mon Jan 20 16:03:36 2025
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Mon, 20 Jan 2025 09:03:36 -0600
+Subject: [R-pkg-devel] 
+ Package builds on all systems except on Fedora with clang
+In-Reply-To: <AM8PR10MB46602CEED17D226A6520A93FA7E42@AM8PR10MB4660.EURPRD10.PROD.OUTLOOK.COM>
+References: <AS8PR10MB4663D3B455E96FE0A05C7640A7E42@AS8PR10MB4663.EURPRD10.PROD.OUTLOOK.COM>
+ <20250119224022.49a80684@Tarkus>
+ <AM8PR10MB46602CEED17D226A6520A93FA7E42@AM8PR10MB4660.EURPRD10.PROD.OUTLOOK.COM>
+Message-ID: <26510.26056.951900.698722@rob.eddelbuettel.com>
+
+
+On 19 January 2025 at 20:42, Pepijn de Vries wrote:
+| I think I could write a similar test as used by `cpp11tesseract`:
+| 
+| https://github.com/pachadotdev/cpp11tesseract/blob/2ea8287ef2c27901446bafa402728014d99904d4/configure#L66-L85
+
+Taking an example from a package not on CRAN 'for policy violations' may not
+be the safest best.
+
+`autoconf` has included the ability to conduction these tests for a long
+time. Here is an (old) snippet from RProtoBuf which uses a test file to
+assert we have a recent enough version:
+
+   ## also check for minimum version
+   AC_MSG_CHECKING([if ProtoBuf version >= 2.2.0])
+   AC_RUN_IFELSE([AC_LANG_SOURCE([[
+   #include <google/protobuf/stubs/common.h>
+   int main() {
+      if (GOOGLE_PROTOBUF_VERSION >= 2001000) {
+           exit (0);
+      } else {
+           exit(1);
+      }
+   }
+   ]])],
+   [pb_version_ok=yes],
+   [pb_version_ok=no],
+   [pb_version_ok=yes])
+   if test x"${pb_version_ok}" = x"no"; then
+       AC_MSG_ERROR([Need ProtoBuf version >= 2.2.0])
+   else
+       AC_MSG_RESULT([yes])
+   fi
+
+Note that this happens after we found suitable compiler and linker switches.
+And of course, switching to `autoconf` is no small task either. But getting
+an external library to build reliably on all platforms is one of the harder
+things to set up at CRAN.
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
