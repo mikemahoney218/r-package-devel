@@ -4214,3 +4214,79 @@ Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From john@c|@rke @end|ng |rom corner@tonenw@com  Tue Jan 21 11:57:46 2025
+From: john@c|@rke @end|ng |rom corner@tonenw@com (John Clarke)
+Date: Tue, 21 Jan 2025 11:57:46 +0100
+Subject: [R-pkg-devel] Rcpp: how best to include source from another Github
+ repository
+Message-ID: <CAF0e1n9yrb+M+csGMeYpfFm35-fe4s4B5-8H0fQ-ov8yckEqZQ@mail.gmail.com>
+
+Hi folks,
+
+I have an Rcpp package I'm developing. All but one of the cpp source code
+files are pulled from the original/authoritative (CLI) version of the
+application. The only unique cpp source code to the Rcpp package is my
+wrapper.cpp which contains the Rcpp interface. This approach works fine,
+but every time we make changes to the original CLI repository, it requires
+a manual (and duplicate) commit to my Rcpp repo. This is not ideal from a
+source tracking perspective and is a DRY violation.
+
+What is the recommended way of maintaining the shared cpp code in a Rcpp
+repo? Ideally, it would be nice to be able to pull the files from the
+source repo using a tag/hash so that the only code change in the Rcpp repo
+would be that reference rather than all the changes to the shared source.
+It would also be nice to use some sort of symlinkish setup during
+development to allow quick testing before making commits in the original
+CLI repo. Is this possible? Recommended? (we can assume dev is on MacOS or
+Linux)
+
+Thanks,
+
+-John
+
+John Clarke | Senior Technical Advisor |
+Cornerstone Systems Northwest | john.clarke at cornerstonenw.com
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Tue Jan 21 13:04:53 2025
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 21 Jan 2025 15:04:53 +0300
+Subject: [R-pkg-devel] 
+ Rcpp: how best to include source from another Github repository
+In-Reply-To: <CAF0e1n9yrb+M+csGMeYpfFm35-fe4s4B5-8H0fQ-ov8yckEqZQ@mail.gmail.com>
+References: <CAF0e1n9yrb+M+csGMeYpfFm35-fe4s4B5-8H0fQ-ov8yckEqZQ@mail.gmail.com>
+Message-ID: <20250121150453.6d63147a@arachnoid>
+
+? Tue, 21 Jan 2025 11:57:46 +0100
+John Clarke <john.clarke at cornerstonenw.com> ?????:
+
+> Ideally, it would be nice to be able to pull the files from the
+> source repo using a tag/hash so that the only code change in the Rcpp
+> repo would be that reference rather than all the changes to the
+> shared source.
+
+I've been using Git submodules for this purpose:
+
+https://codeberg.org/aitap/Ropj/src/branch/master/src
+
+https://git-scm.com/book/en/v2/Git-Tools-Submodules
+
+Every time the upstream changes I have to update the commit pointer in
+my repository too, but other than that, it's been working fine. My
+.Rbuildignore filters out all the unnecessary files included in the
+upstream repository, leaving only the relevant source code in the
+resulting source package.
+
+The resulting repository must be cloned with --recurse-submodules (or,
+if forgotten, must be initialised with git submodule update --init);
+further updates to the tracked commit pointer must be applied with git
+submodule update. If the referenced repository becomes unavailable, it
+will be impossible to build the package.
+
+-- 
+Best regards,
+Ivan
+
+
