@@ -4290,3 +4290,288 @@ Best regards,
 Ivan
 
 
+From p@kr|v|t@ky @end|ng |rom un@w@edu@@u  Wed Jan 22 13:20:38 2025
+From: p@kr|v|t@ky @end|ng |rom un@w@edu@@u (Pavel Krivitsky)
+Date: Wed, 22 Jan 2025 12:20:38 +0000
+Subject: [R-pkg-devel] 
+ Best practices for built version checking in packages
+ LinkingTo others?
+In-Reply-To: <8d9b8f509ae8ea4dc65928d0285e939ef9272442.camel@unsw.edu.au>
+References: <98a863d7814e843ef600bfb67e742109edc8fa15.camel@unsw.edu.au>
+ <20250117165057.7d994670@arachnoid>
+ <8d9b8f509ae8ea4dc65928d0285e939ef9272442.camel@unsw.edu.au>
+Message-ID: <8db72b652984d133b6189786a095d35633f5420b.camel@unsw.edu.au>
+
+Dear All,
+
+I think I have something that works and may even work as a more general
+API for checking for LinkingTo ABI compatibility.
+
+It's in 'ergm' 4.8.1 on CRAN, but would it be useful to anyone else if
+I posted an explanation of how it works somewhere? Would a package that
+provides this API for saving and checking ABI versions be useful to
+anyone?
+
+				Best,
+				Pavel
+
+On Sun, 2025-01-19 at 05:31 +0000, Pavel Krivitsky via R-package-devel
+wrote:
+> Thanks, Ivan! Replies below.
+> 
+> On Fri, 2025-01-17 at 16:50 +0300, Ivan Krylov wrote:
+> > ? Fri, 17 Jan 2025 10:21:27 +0000
+> > Pavel Krivitsky via R-package-devel <r-package-devel at r-project.org>
+> > ?????:
+> > 
+> > > ?? 1. What is the best way to save this information? I have a
+> > > ????? rudimentary implementation [1]
+> > 
+> > For now, this is the best way we have. Export the ABI version as an
+> > include-time constant and as a registered callable. The LinkingTo
+> > reverse dependencies can give the include-time constant to the
+> > registered callable to compare the two versions.
+> 
+> Ben Bolker pointed out that since the code in R/ is executed at
+> build-
+> time, it is also possible to store the build-time ABI information
+> entirely in R; the downside of this approach is that it requires
+> instrumenting every client package rather than just the library
+> package.
+> 
+> > I agree that we could do better and introduce an ABIversion: field
+> > to
+> > the DESCRIPTION file. R CMD INSTALL would write down the current
+> > ABIversion of every package that the current package is LinkingTo
+> > (into the installed package's DESCRIPTION or Meta/features.rds).
+> > Later, the namespace loader would check the ABI versions and
+> > provide
+> > an informative message in case a LinkingTo dependency is updated
+> > with
+> > an incremented ABI version. A machine-readable list of ABI-level
+> > dependencies should simplify the lives of the binary package
+> > maintainers as well.
+> 
+> Yes, that would be great to have. (One nitpick: not just incremented,
+> but different in either direction.)
+> 
+> AFAIK, for those platforms that use binaries, there is already a
+> mechanism for downloading a different ZIP for a different version of
+> R,
+> but I believe it's accomplished simply by having a directory for
+> every
+> version of R with a potentially different ABI.
+> 
+> I suppose this could be generalised along the lines of a directory
+> hierarchy of the form
+> 
+> /bin/windows/contrib/RVERSION/PKG_ABIVERSION/.../PKG_ABIVERSION/PKG_P
+> KGVERSION.zip
+> 
+> with a nesting level for every LinkingTo package, in lexicographic
+> order. Then, given the installed R version and the installed versions
+> of each package in the LinkingTo list, a unique URL can be
+> constructed.
+> However, I don't know how practical this is and how likely to be
+> implemented in the foreseeable future.
+> 
+> > > ?? 2. How to best test the C API without making updates
+> > > impossible?
+> > 
+> > Would abi-compliance-checker [2] have helped there?
+> 
+> I meant specifically in the context of R CMD check; the only want to
+> fully test the C API and associated facilities is to actually install
+> the client package and see if it works.
+> 
+> That having been said, 'ergm' may be unusual in this, since the API
+> is
+> mostly used as a way for others to implement calculation of graph
+> statistics that are then operated on by functions in 'ergm'. That is,
+> rather than simply offering C functions for the client packages to
+> use,
+> 'ergm' calls C functions from those packages that it locates via
+> R_FindSymbol(). Thus, it is helpful to test it as a part of 'ergm'
+> itself rather than just reverse-dependency checks.
+> 
+> > > ?? 3. What should be done in case of a mismatch?
+> > 
+> > It's hard to guarantee anything when the ABI is broken. Maybe it's
+> > completely harmless because your code will know that the new
+> > structure member is not initialised. Maybe the wrong stack layout
+> > will crash the process due to a return address mismatch, dooming
+> > the
+> > process from the first function call.k
+> > 
+> > > ???????? 1. Is there a way for 'ergm' to detect when a package
+> > > LinkingTo it is being loaded?
+> > 
+> > With inline functions, you could make your every API call perform
+> > ABI
+> > version checking, but that obviously comes with potential
+> > performance
+> > problems:
+> 
+> The reason I ask is that the best time to inform the user of an ABI
+> change is when the client package is loaded, and it would be helpful
+> if
+> this could be done without modifying the client package.
+> 
+> Is there a mechanism for the library package to monitor packages
+> being
+> loaded, and for each one check if it's LinkingTo it to do the version
+> check?
+> 
+> > > ???????? 2. What should happen if a mismatch is detected? Should
+> > > the
+> > > loading be blocked (e.g., by having .onLoad() throw an error), or
+> > > should it lead to a "use at your own risk" type warning?
+> > 
+> > The safest option would be to signal an error before any of the
+> > potentially incompatible functions are called. It's probably
+> > pragmatic to provide an "I know what I'm doing, void my warranty"
+> > emergency override.
+> 
+> Probably an options() setting.
+> 
+> 				Best,
+> 				Pavel
+> 
+> ______________________________________________
+> R-package-devel at r-project.org?mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From john@c|@rke @end|ng |rom corner@tonenw@com  Wed Jan 22 14:33:22 2025
+From: john@c|@rke @end|ng |rom corner@tonenw@com (John Clarke)
+Date: Wed, 22 Jan 2025 14:33:22 +0100
+Subject: [R-pkg-devel] 
+ Rcpp: how best to include source from another Github repository
+In-Reply-To: <20250121150453.6d63147a@arachnoid>
+References: <CAF0e1n9yrb+M+csGMeYpfFm35-fe4s4B5-8H0fQ-ov8yckEqZQ@mail.gmail.com>
+ <20250121150453.6d63147a@arachnoid>
+Message-ID: <CAF0e1n_tG0BJe-Gs1tL5ah-Zx0A+VB2ZW_+i3L-0c3gaf=nV=g@mail.gmail.com>
+
+Thanks Ivan, this is helpful. I'll do some more research. It would be nice
+to have an Rcpp standard/recommended way to do this. I don't want to have a
+non-standard ./src or ./data folder structure for my Rcpp package, but
+these are the two relevant folders in my original repository. Maybe with
+some sort of synlinking I could achieve this 'custom' folder/file mapping.
+-John
+
+On Tue, Jan 21, 2025 at 1:05?PM Ivan Krylov <ikrylov at disroot.org> wrote:
+
+> ? Tue, 21 Jan 2025 11:57:46 +0100
+> John Clarke <john.clarke at cornerstonenw.com> ?????:
+>
+> > Ideally, it would be nice to be able to pull the files from the
+> > source repo using a tag/hash so that the only code change in the Rcpp
+> > repo would be that reference rather than all the changes to the
+> > shared source.
+>
+> I've been using Git submodules for this purpose:
+>
+> https://codeberg.org/aitap/Ropj/src/branch/master/src
+>
+> https://git-scm.com/book/en/v2/Git-Tools-Submodules
+>
+> Every time the upstream changes I have to update the commit pointer in
+> my repository too, but other than that, it's been working fine. My
+> .Rbuildignore filters out all the unnecessary files included in the
+> upstream repository, leaving only the relevant source code in the
+> resulting source package.
+>
+> The resulting repository must be cloned with --recurse-submodules (or,
+> if forgotten, must be initialised with git submodule update --init);
+> further updates to the tracked commit pointer must be applied with git
+> submodule update. If the referenced repository becomes unavailable, it
+> will be impossible to build the package.
+>
+> --
+> Best regards,
+> Ivan
+>
+
+	[[alternative HTML version deleted]]
+
+
+From th|b@u|t@v@tter @end|ng |rom gm@||@com  Wed Jan 22 20:53:08 2025
+From: th|b@u|t@v@tter @end|ng |rom gm@||@com (Thibault Vatter)
+Date: Wed, 22 Jan 2025 20:53:08 +0100
+Subject: [R-pkg-devel] 
+ Rcpp: how best to include source from another Github repository
+In-Reply-To: <CAF0e1n_tG0BJe-Gs1tL5ah-Zx0A+VB2ZW_+i3L-0c3gaf=nV=g@mail.gmail.com>
+References: <CAF0e1n9yrb+M+csGMeYpfFm35-fe4s4B5-8H0fQ-ov8yckEqZQ@mail.gmail.com>
+ <20250121150453.6d63147a@arachnoid>
+ <CAF0e1n_tG0BJe-Gs1tL5ah-Zx0A+VB2ZW_+i3L-0c3gaf=nV=g@mail.gmail.com>
+Message-ID: <CAFyih6DGV-08Zej6+F=wwS_8HC7x7tNiCi_X+R+isJjqBAkYPw@mail.gmail.com>
+
+There is balance between DRY, safety, and customization needs. The
+symlinkish approach would be "dangerous" imo, because you can't guarantee
+the wrapper.cpp will stay compatible with changes in the underlying C++
+library.
+
+The submodule approach works well. Alternatives that I know of are:
+
+
+   - a script that pulls the latest sources in the standalone C++ library
+   and does things like adding a preprocessor macro, see e.g. rvinecopulib
+   - a "patches" folder with patch files in diff format (.patch or .diff),
+   see e.g. RcppEigen
+
+Either way, such scripts or patches folders have to be excluded from being
+put into the package via the .Rbuildignore.
+
+On Wed, Jan 22, 2025, 2:33?PM John Clarke <john.clarke at cornerstonenw.com>
+wrote:
+
+> Thanks Ivan, this is helpful. I'll do some more research. It would be nice
+> to have an Rcpp standard/recommended way to do this. I don't want to have a
+> non-standard ./src or ./data folder structure for my Rcpp package, but
+> these are the two relevant folders in my original repository. Maybe with
+> some sort of synlinking I could achieve this 'custom' folder/file mapping.
+> -John
+>
+> On Tue, Jan 21, 2025 at 1:05?PM Ivan Krylov <ikrylov at disroot.org> wrote:
+>
+> > ? Tue, 21 Jan 2025 11:57:46 +0100
+> > John Clarke <john.clarke at cornerstonenw.com> ?????:
+> >
+> > > Ideally, it would be nice to be able to pull the files from the
+> > > source repo using a tag/hash so that the only code change in the Rcpp
+> > > repo would be that reference rather than all the changes to the
+> > > shared source.
+> >
+> > I've been using Git submodules for this purpose:
+> >
+> > https://codeberg.org/aitap/Ropj/src/branch/master/src
+> >
+> > https://git-scm.com/book/en/v2/Git-Tools-Submodules
+> >
+> > Every time the upstream changes I have to update the commit pointer in
+> > my repository too, but other than that, it's been working fine. My
+> > .Rbuildignore filters out all the unnecessary files included in the
+> > upstream repository, leaving only the relevant source code in the
+> > resulting source package.
+> >
+> > The resulting repository must be cloned with --recurse-submodules (or,
+> > if forgotten, must be initialised with git submodule update --init);
+> > further updates to the tracked commit pointer must be applied with git
+> > submodule update. If the referenced repository becomes unavailable, it
+> > will be impossible to build the package.
+> >
+> > --
+> > Best regards,
+> > Ivan
+> >
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
