@@ -4575,3 +4575,428 @@ wrote:
 	[[alternative HTML version deleted]]
 
 
+From john@c|@rke @end|ng |rom corner@tonenw@com  Thu Jan 23 14:21:18 2025
+From: john@c|@rke @end|ng |rom corner@tonenw@com (John Clarke)
+Date: Thu, 23 Jan 2025 14:21:18 +0100
+Subject: [R-pkg-devel] 
+ Rcpp: how best to include source from another Github repository
+In-Reply-To: <CAFyih6DGV-08Zej6+F=wwS_8HC7x7tNiCi_X+R+isJjqBAkYPw@mail.gmail.com>
+References: <CAF0e1n9yrb+M+csGMeYpfFm35-fe4s4B5-8H0fQ-ov8yckEqZQ@mail.gmail.com>
+ <20250121150453.6d63147a@arachnoid>
+ <CAF0e1n_tG0BJe-Gs1tL5ah-Zx0A+VB2ZW_+i3L-0c3gaf=nV=g@mail.gmail.com>
+ <CAFyih6DGV-08Zej6+F=wwS_8HC7x7tNiCi_X+R+isJjqBAkYPw@mail.gmail.com>
+Message-ID: <CAF0e1n_daqkBaAUsWKTJsXhqzTudQUu4Oqt37djrtc+E++btvA@mail.gmail.com>
+
+Thank you Dirk and Thibault for your additional tips and ideas.
+
+I took a look at the vignette for *rcppcorels* and noted that this is
+exactly the model/pattern I used to create my package. And it appears that
+the /src files are simply copied from the external *corels* C++ library
+into the rcppcorel's /src folder. And committed twice: once in the external
+C++ repo and again in the rcppcorels repo. That is what I do now, but I
+wasn't satisfied with the double commits and also I'd really like users of
+the R package to have a reference/version/tag to confirm that what they
+have in the R package is the same as a particular release of the C++ repo.
+
+But in the end, it appears that there is no easy (and robust) way to do
+this other than copy the files (via script or manually) and re-commit
+changes in both repos. I suppose I could add a reference to the tag from
+the C++ library, but this step can easily get lost/forgotten and is a
+definite DRY violation. Maybe an import/copy script could help with that.
+
+Thanks again for your help and suggestions.
+
+-John
+
+
+
+
+
+
+
+
+
+
+
+On Wed, Jan 22, 2025 at 8:53?PM Thibault Vatter <thibault.vatter at gmail.com>
+wrote:
+
+> There is balance between DRY, safety, and customization needs. The
+> symlinkish approach would be "dangerous" imo, because you can't guarantee
+> the wrapper.cpp will stay compatible with changes in the underlying C++
+> library.
+>
+> The submodule approach works well. Alternatives that I know of are:
+>
+>
+>    - a script that pulls the latest sources in the standalone C++ library
+>    and does things like adding a preprocessor macro, see e.g. rvinecopulib
+>    - a "patches" folder with patch files in diff format (.patch or
+>    .diff), see e.g. RcppEigen
+>
+> Either way, such scripts or patches folders have to be excluded from being
+> put into the package via the .Rbuildignore.
+>
+> On Wed, Jan 22, 2025, 2:33?PM John Clarke <john.clarke at cornerstonenw.com>
+> wrote:
+>
+>> Thanks Ivan, this is helpful. I'll do some more research. It would be nice
+>> to have an Rcpp standard/recommended way to do this. I don't want to have
+>> a
+>> non-standard ./src or ./data folder structure for my Rcpp package, but
+>> these are the two relevant folders in my original repository. Maybe with
+>> some sort of synlinking I could achieve this 'custom' folder/file mapping.
+>> -John
+>>
+>> On Tue, Jan 21, 2025 at 1:05?PM Ivan Krylov <ikrylov at disroot.org> wrote:
+>>
+>> > ? Tue, 21 Jan 2025 11:57:46 +0100
+>> > John Clarke <john.clarke at cornerstonenw.com> ?????:
+>> >
+>> > > Ideally, it would be nice to be able to pull the files from the
+>> > > source repo using a tag/hash so that the only code change in the Rcpp
+>> > > repo would be that reference rather than all the changes to the
+>> > > shared source.
+>> >
+>> > I've been using Git submodules for this purpose:
+>> >
+>> > https://codeberg.org/aitap/Ropj/src/branch/master/src
+>> >
+>> > https://git-scm.com/book/en/v2/Git-Tools-Submodules
+>> >
+>> > Every time the upstream changes I have to update the commit pointer in
+>> > my repository too, but other than that, it's been working fine. My
+>> > .Rbuildignore filters out all the unnecessary files included in the
+>> > upstream repository, leaving only the relevant source code in the
+>> > resulting source package.
+>> >
+>> > The resulting repository must be cloned with --recurse-submodules (or,
+>> > if forgotten, must be initialised with git submodule update --init);
+>> > further updates to the tracked commit pointer must be applied with git
+>> > submodule update. If the referenced repository becomes unavailable, it
+>> > will be impossible to build the package.
+>> >
+>> > --
+>> > Best regards,
+>> > Ivan
+>> >
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From jon@th@n @end|ng |rom berr|@ch@b|z  Tue Jan 21 12:04:52 2025
+From: jon@th@n @end|ng |rom berr|@ch@b|z (Jonathan Berrisch)
+Date: Tue, 21 Jan 2025 12:04:52 +0100
+Subject: [R-pkg-devel] 
+ Rcpp: how best to include source from another Github repository
+In-Reply-To: <CAF0e1n9yrb+M+csGMeYpfFm35-fe4s4B5-8H0fQ-ov8yckEqZQ@mail.gmail.com>
+References: <CAF0e1n9yrb+M+csGMeYpfFm35-fe4s4B5-8H0fQ-ov8yckEqZQ@mail.gmail.com>
+Message-ID: <e800be15-576a-477a-8de5-69cf9733e244@berrisch.biz>
+
+Hi John,
+
+first of all: I'm not an expert on this and don't really know if there 
+is a recommended way.
+
+However, you may look at my 'rcpptimer' package and how it includes 
+'cpptimer' as a submodule.
+
+You can find the repository here: https://github.com/BerriJ/rcpptimer
+
+And here you can see 'cpptimer' which is included as a submodule: 
+https://github.com/BerriJ/rcpptimer/tree/main/inst/include
+
+Whenever I make commits to 'cpptimer' I have to update the submodule 
+(basically changing at what commit I want to have that submodule 
+included 'git submodule update --remote'). You'll find good 
+documentation about submodules online.
+
+Maybe that helps.
+
+Best Regards,
+
+Jonathan / BerriJ
+
+
+On 1/21/25 11:57, John Clarke wrote:
+> Hi folks,
+>
+> I have an Rcpp package I'm developing. All but one of the cpp source code
+> files are pulled from the original/authoritative (CLI) version of the
+> application. The only unique cpp source code to the Rcpp package is my
+> wrapper.cpp which contains the Rcpp interface. This approach works fine,
+> but every time we make changes to the original CLI repository, it requires
+> a manual (and duplicate) commit to my Rcpp repo. This is not ideal from a
+> source tracking perspective and is a DRY violation.
+>
+> What is the recommended way of maintaining the shared cpp code in a Rcpp
+> repo? Ideally, it would be nice to be able to pull the files from the
+> source repo using a tag/hash so that the only code change in the Rcpp repo
+> would be that reference rather than all the changes to the shared source.
+> It would also be nice to use some sort of symlinkish setup during
+> development to allow quick testing before making commits in the original
+> CLI repo. Is this possible? Recommended? (we can assume dev is on MacOS or
+> Linux)
+>
+> Thanks,
+>
+> -John
+>
+> John Clarke | Senior Technical Advisor |
+> Cornerstone Systems Northwest | john.clarke at cornerstonenw.com
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+From john@c|@rke @end|ng |rom corner@tonenw@com  Thu Jan 23 15:22:09 2025
+From: john@c|@rke @end|ng |rom corner@tonenw@com (John Clarke)
+Date: Thu, 23 Jan 2025 15:22:09 +0100
+Subject: [R-pkg-devel] 
+ Rcpp: how best to include source from another Github repository
+In-Reply-To: <e800be15-576a-477a-8de5-69cf9733e244@berrisch.biz>
+References: <CAF0e1n9yrb+M+csGMeYpfFm35-fe4s4B5-8H0fQ-ov8yckEqZQ@mail.gmail.com>
+ <e800be15-576a-477a-8de5-69cf9733e244@berrisch.biz>
+Message-ID: <CAF0e1n_0UQOv2PejP7hky1c0bo7Ke+G8zvBxVs+BUR5yUOsw4Q@mail.gmail.com>
+
+Thanks Jonathan, this is helpful. I'm just a bit concerned based on other
+comments that submodules might not be compatible with CRAN and/or other CI
+runners. Plus, I only want a few cpp files copied over.
+
+On Thu, Jan 23, 2025 at 3:19?PM Jonathan Berrisch <jonathan at berrisch.biz>
+wrote:
+
+> Hi John,
+>
+> first of all: I'm not an expert on this and don't really know if there
+> is a recommended way.
+>
+> However, you may look at my 'rcpptimer' package and how it includes
+> 'cpptimer' as a submodule.
+>
+> You can find the repository here: https://github.com/BerriJ/rcpptimer
+>
+> And here you can see 'cpptimer' which is included as a submodule:
+> https://github.com/BerriJ/rcpptimer/tree/main/inst/include
+>
+> Whenever I make commits to 'cpptimer' I have to update the submodule
+> (basically changing at what commit I want to have that submodule
+> included 'git submodule update --remote'). You'll find good
+> documentation about submodules online.
+>
+> Maybe that helps.
+>
+> Best Regards,
+>
+> Jonathan / BerriJ
+>
+>
+> On 1/21/25 11:57, John Clarke wrote:
+> > Hi folks,
+> >
+> > I have an Rcpp package I'm developing. All but one of the cpp source code
+> > files are pulled from the original/authoritative (CLI) version of the
+> > application. The only unique cpp source code to the Rcpp package is my
+> > wrapper.cpp which contains the Rcpp interface. This approach works fine,
+> > but every time we make changes to the original CLI repository, it
+> requires
+> > a manual (and duplicate) commit to my Rcpp repo. This is not ideal from a
+> > source tracking perspective and is a DRY violation.
+> >
+> > What is the recommended way of maintaining the shared cpp code in a Rcpp
+> > repo? Ideally, it would be nice to be able to pull the files from the
+> > source repo using a tag/hash so that the only code change in the Rcpp
+> repo
+> > would be that reference rather than all the changes to the shared source.
+> > It would also be nice to use some sort of symlinkish setup during
+> > development to allow quick testing before making commits in the original
+> > CLI repo. Is this possible? Recommended? (we can assume dev is on MacOS
+> or
+> > Linux)
+> >
+> > Thanks,
+> >
+> > -John
+> >
+> > John Clarke | Senior Technical Advisor |
+> > Cornerstone Systems Northwest | john.clarke at cornerstonenw.com
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Thu Jan 23 15:47:49 2025
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Thu, 23 Jan 2025 08:47:49 -0600
+Subject: [R-pkg-devel] 
+ Rcpp: how best to include source from another Github repository
+In-Reply-To: <e800be15-576a-477a-8de5-69cf9733e244@berrisch.biz>
+References: <CAF0e1n9yrb+M+csGMeYpfFm35-fe4s4B5-8H0fQ-ov8yckEqZQ@mail.gmail.com>
+ <e800be15-576a-477a-8de5-69cf9733e244@berrisch.biz>
+Message-ID: <26514.22165.946108.992254@rob.eddelbuettel.com>
+
+
+On 21 January 2025 at 12:04, Jonathan Berrisch wrote:
+| first of all: I'm not an expert on this and don't really know if there 
+| is a recommended way.
+| 
+| However, you may look at my 'rcpptimer' package and how it includes 
+| 'cpptimer' as a submodule.
+| 
+| You can find the repository here: https://github.com/BerriJ/rcpptimer
+
+I had written a longer (private) email to John expressing the view that git
+submodules "were once more 'en vogue'" but one sees them less these days.
+One reason is that they break some (somewhat standard) workflows, see below.
+
+Overall, this is "no win" situation. You can include the files in the package
+as a copy [2] enlarging the package, build process, etc but arguably making
+it more robust, or you can keep it external which is cleaner -- but harder as
+you now have to ensure users (and CRAN !) can get / have that library.
+
+So it is all tradeoffs one has to make.
+
+Dirk
+
+
+[1] Log from a standard r2u Ubuntu container, `git` and `ssh` added as needed:
+
+root at 4163d5544547:/# installGithub.r https://github.com/BerriJ/rcpptimer
+Downloading GitHub repo BerriJ/rcpptimer at HEAD
+'/usr/bin/git' clone --depth 1 --no-hardlinks --recurse-submodules git at github.com:BerriJ/cpptimer.git /tmp/remotes257564d64e0/BerriJ-rcpptimer-35ca024/inst/include/cpptimer
+Cloning into '/tmp/remotes257564d64e0/BerriJ-rcpptimer-35ca024/inst/include/cpptimer'...
+The authenticity of host 'github.com (140.82.113.3)' can't be established.
+ED25519 key fingerprint is SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU.
+This key is not known by any other names.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added 'github.com' (ED25519) to the list of known hosts.
+git at github.com: Permission denied (publickey).
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+Error: Failed to install 'rcpptimer' from GitHub:
+  Command failed (128)
+In addition: Warning message:
+In system(full, intern = TRUE, ignore.stderr = quiet) :
+  running command ''/usr/bin/git' clone --depth 1 --no-hardlinks --recurse-submodules git at github.com:BerriJ/cpptimer.git /tmp/remotes257564d64e0/BerriJ-rcpptimer-35ca024/inst/include/cpptimer' had status 128 and error message 'Function not implemented'
+root at 4163d5544547:/# 
+exit
+
+
+[2] The "Rcpp-library" vignette John refers to also mentions (IIRC) that this
+is preferable for smaller libraries; its 'corels' example fits that
+description.  These days other authors also vendor entire applications such
+as whole SQL engines: ?\_(?)_/?  I just updated qlcal on CRAN, it explicitly
+copies the calendaring (subset) from QuantLib as I learned over 20 years that
+users have difficulties with that large library. Tradeoffs.
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From murr@y@e||ord @end|ng |rom ot@go@@c@nz  Fri Jan 24 02:13:44 2025
+From: murr@y@e||ord @end|ng |rom ot@go@@c@nz (Murray Efford)
+Date: Fri, 24 Jan 2025 01:13:44 +0000
+Subject: [R-pkg-devel] Pre-test failure with RcppParallel on Windows R-devel
+Message-ID: <SY2PR01MB2539F7680A28FE027A7BF77EACE32@SY2PR01MB2539.ausprd01.prod.outlook.com>
+
+Submitting secr 5.2.0 I get this pre-test installation ERROR which is opaque to me. I haven't changed the relevant code, and the package passes checks on Winbuilder (below) and other systems (with a false positive URL fail NOTE).
+
+* checking whether package 'secr' can be installed ... ERROR Installation failed. See 'd:/RCompile/CRANincoming/R-devel/secr.Rcheck/00install.out' for details.
+which includes
+undefined reference to `RcppParallel::tbbParallelFor(unsigned long long, unsigned long long, RcppParallel::Worker&, unsigned long long, int)'
+
+Winbuilder and the CRAN precheck appear to use identical settings:
+
+* using log directory 'd:/RCompile/CRANguest/R-devel/secr.Rcheck'
+* using R Under development (unstable) (2025-01-22 r87618 ucrt)
+* using platform: x86_64-w64-mingw32
+* R was compiled by
+    gcc.exe (GCC) 13.3.0
+    GNU Fortran (GCC) 13.3.0
+* running under: Windows Server 2022 x64 (build 20348)
+
+Any ideas? I'm guessing it's a transient CRAN problem.
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From kev|nu@hey @end|ng |rom gm@||@com  Fri Jan 24 03:10:35 2025
+From: kev|nu@hey @end|ng |rom gm@||@com (Kevin Ushey)
+Date: Thu, 23 Jan 2025 18:10:35 -0800
+Subject: [R-pkg-devel] 
+ Pre-test failure with RcppParallel on Windows R-devel
+In-Reply-To: <SY2PR01MB2539F7680A28FE027A7BF77EACE32@SY2PR01MB2539.ausprd01.prod.outlook.com>
+References: <SY2PR01MB2539F7680A28FE027A7BF77EACE32@SY2PR01MB2539.ausprd01.prod.outlook.com>
+Message-ID: <CAJXgQP1Bb1KFA4wH9+P3hNu1yLPus_aBgtzJktVOfCadA5S1QA@mail.gmail.com>
+
+Hi Murray,
+
+(repeating some of the conversation we had off-list)
+
+Sorry for the trouble -- I was just in the process of submitting
+RcppParallel to CRAN, and the first submission I made had this same
+issue. That should now be fixed up with RcppParallel 5.1.10, which is
+now on CRAN. Hopefully your next submission should go smoothly.
+
+Thanks,
+Kevin
+
+On Thu, Jan 23, 2025 at 5:14?PM Murray Efford via R-package-devel
+<r-package-devel at r-project.org> wrote:
+>
+> Submitting secr 5.2.0 I get this pre-test installation ERROR which is opaque to me. I haven't changed the relevant code, and the package passes checks on Winbuilder (below) and other systems (with a false positive URL fail NOTE).
+>
+> * checking whether package 'secr' can be installed ... ERROR Installation failed. See 'd:/RCompile/CRANincoming/R-devel/secr.Rcheck/00install.out' for details.
+> which includes
+> undefined reference to `RcppParallel::tbbParallelFor(unsigned long long, unsigned long long, RcppParallel::Worker&, unsigned long long, int)'
+>
+> Winbuilder and the CRAN precheck appear to use identical settings:
+>
+> * using log directory 'd:/RCompile/CRANguest/R-devel/secr.Rcheck'
+> * using R Under development (unstable) (2025-01-22 r87618 ucrt)
+> * using platform: x86_64-w64-mingw32
+> * R was compiled by
+>     gcc.exe (GCC) 13.3.0
+>     GNU Fortran (GCC) 13.3.0
+> * running under: Windows Server 2022 x64 (build 20348)
+>
+> Any ideas? I'm guessing it's a transient CRAN problem.
+>
+>
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
