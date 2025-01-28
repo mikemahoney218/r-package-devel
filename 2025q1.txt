@@ -5322,3 +5322,268 @@ not when building from sources.
 	[[alternative HTML version deleted]]
 
 
+From @|mon@urb@nek @end|ng |rom R-project@org  Sun Jan 26 04:59:26 2025
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Sun, 26 Jan 2025 16:59:26 +1300
+Subject: [R-pkg-devel] 
+ Reliably detecting FLIBS on source build of R (w.r.t Rust packages)
+In-Reply-To: <8ae0cb4e-1ae3-42d3-b35e-9d47c3e5cb68@stanford.edu>
+References: <8ae0cb4e-1ae3-42d3-b35e-9d47c3e5cb68@stanford.edu>
+Message-ID: <9637F162-414B-4738-A196-366854D29619@R-project.org>
+
+Naras,
+
+sorry, but since this involves some Rust code, I fear that you'll have to discuss it with Brian directly. FWIW on the CRAN M1 build machine it seems to use the correct flags:
+
+$ grep fortran/lib /Volumes/Builds/packages/big-sur-arm64/results/4.5/clarabel.Rcheck/00install.out 
+clang -arch arm64 -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -L/Library/Frameworks/R.framework/Resources/lib -L/opt/R/arm64/lib -o clarabel.so init.o -L/Volumes/Builds/packages/big-sur-arm64/results/4.5/clarabel.Rcheck/00_pkg_src/clarabel/src/rust/target/release -lclarabel -L/Library/Frameworks/R.framework/Resources/lib -lRlapack -L/Library/Frameworks/R.framework/Resources/lib -lRblas -L/opt/gfortran/lib/gcc/aarch64-apple-darwin20.0/14.2.0 -L/opt/gfortran/lib -lemutls_w -lheapt_w -lgfortran -lquadmath -F/Library/Frameworks/R.framework/.. -framework R -Wl,-framework -Wl,CoreFoundation
+$ R CMD config FLIBS
+-L/opt/gfortran/lib/gcc/aarch64-apple-darwin20.0/14.2.0 -L/opt/gfortran/lib -lemutls_w -lheapt_w -lgfortran -lquadmath
+
+I have no idea why it would drop the arch+version specific path (which is the crucial one here - the /opt/gfortran/lib is just a generic fall-back that doesn't have any libraries in our setup).
+
+Cheers,
+Simon
+
+
+> On Jan 26, 2025, at 5:54 AM, Balasubramanian Narasimhan <naras at stanford.edu> wrote:
+> 
+> I got the note below from Prof. Ripley on my package 'clarabel' failing 
+> M1mac checks.
+> 
+> This puzzles me because I am using FLIBS determined via`R CMD config 
+> FLIBS` using the crate I wrote for this very purpose 
+> (https://github.com/blas-lapack-rs/r-src/blob/966266425b1a21a1e979f767c6023e6bf00616fc/build.rs#L160). 
+> 
+> 
+> The only thing I can think of is that FLIBS is being set outside 
+> config.site or Makevars during the R build.
+> 
+> What could I be missing? (As is remarked, the M1Mac/README.txt may not 
+> be up to date re: toolchain details.)
+> 
+> Thank you.
+> 
+> -Naras
+> 
+>> Dear maintainer,
+>> 
+>> Please see the problems shown on
+>> <https://cran.r-project.org/web/checks/check_results_clarabel.html>.
+>> 
+>> Please correct before 2025-02-08 to safely retain your package on CRAN.
+>> 
+>> There is a check service for M1mac issues: see
+>> https://www.stats.ox.ac.uk/pub/bdr/M1mac/README.txt .
+>> However, it is running a much older version of the OS
+>> and toolchain -- and the latter often matters.
+>> 
+>> The CRAN Team
+> 
+> gfortran is not a system library everywhere so you need to use FLIBS. On 
+> my macOS box that is
+> 
+> FLIBS =  -L/opt/gfortran/lib/gcc/aarch64-apple-darwin20.0/14.2.0 
+> -L/opt/gfortran/lib -lemutls_w -lheapt_w -lgfortran -lquadmath
+> 
+> On CRAN distributions these libraries may be found in R_HOME/lib, but 
+> not when building from sources.
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
+From |kry|ov @end|ng |rom d|@root@org  Sun Jan 26 08:55:48 2025
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sun, 26 Jan 2025 10:55:48 +0300
+Subject: [R-pkg-devel] 
+ Reliably detecting FLIBS on source build of R (w.r.t Rust packages)
+In-Reply-To: <8ae0cb4e-1ae3-42d3-b35e-9d47c3e5cb68@stanford.edu>
+References: <8ae0cb4e-1ae3-42d3-b35e-9d47c3e5cb68@stanford.edu>
+Message-ID: <20250126105548.4291f45e@Tarkus>
+
+? Sat, 25 Jan 2025 08:54:45 -0800
+Balasubramanian Narasimhan <naras at stanford.edu> ?????:
+
+> (https://github.com/blas-lapack-rs/r-src/blob/966266425b1a21a1e979f767c6023e6bf00616fc/build.rs#L160). 
+
+Thank you for providing the link to the code!
+ 
+> The only thing I can think of is that FLIBS is being set outside 
+> config.site or Makevars during the R build.
+
+I think this is happening because the r-src crate is running the wrong
+R executable to determine the linker flags. The check system is running
+/Users/ripley/R/R-devel/bin/R, while there's also a different R (for
+example, /usr/local/bin/R) visible on the $PATH. The code ends up
+getting the linker flags from the latter when it runs "R" [1].
+
+I think it should be possible to sidestep this issue altogether if you
+only enable the static library at [2] and then have R link the package
+shared library for you from the static library produced by Rust using
+the flags you're correctly setting in Makevars [3].
+
+If you do need Rust to determine the linker flags by itself, make sure
+to run ${R_HOME}/bin/R, not just R [4].
+
+Unrelated but probably important: having 'all' or $(SHLIB) depend on a
+target that removes the files you've built [5] is a bad idea because
+Make is allowed to run independent recipes in undefined order,
+including rm -Rf $(SHLIB) $(STATLIB) $(OBJECTS) while $(STATLIB) is
+being built [6]. Note how 'rm -Rf ...' is the first command being run
+in [7], before any compilation happens. The files you're removing as
+part of the $(STATLIB) recipe should be enough; there shouldn't be any
+need for the 'C_clean' recipe.
+
+-- 
+Best regards,
+Ivan
+
+[1]
+https://github.com/blas-lapack-rs/r-src/blob/966266425b1a21a1e979f767c6023e6bf00616fc/build.rs#L112
+
+[2]
+https://github.com/oxfordcontrol/clarabel-r/blob/13219b94cfa018091cb3ea31c51dff2116704e0a/src/rust/Cargo.toml#L7
+see also
+https://github.com/r-rust/hellorust/blob/master/src/myrustlib/Cargo.toml
+
+[3]
+https://github.com/oxfordcontrol/clarabel-r/blob/13219b94cfa018091cb3ea31c51dff2116704e0a/src/Makevars.in#L12
+
+[4]
+https://cran.r-project.org/doc/manuals/R-exts.html#Configure-and-cleanup
+
+[5]
+https://github.com/oxfordcontrol/clarabel-r/blob/13219b94cfa018091cb3ea31c51dff2116704e0a/src/Makevars.in#L17
+
+[6]
+https://cran.r-project.org/doc/manuals/R-exts.html#Using-Makevars
+
+[7]
+https://www.stats.ox.ac.uk/pub/bdr/M1mac/clarabel.log
+
+
+From n@r@@ @end|ng |rom @t@n|ord@edu  Sun Jan 26 17:22:02 2025
+From: n@r@@ @end|ng |rom @t@n|ord@edu (Balasubramanian Narasimhan)
+Date: Sun, 26 Jan 2025 08:22:02 -0800
+Subject: [R-pkg-devel] 
+ Reliably detecting FLIBS on source build of R (w.r.t Rust packages)
+In-Reply-To: <20250126105548.4291f45e@Tarkus>
+References: <8ae0cb4e-1ae3-42d3-b35e-9d47c3e5cb68@stanford.edu>
+ <20250126105548.4291f45e@Tarkus>
+Message-ID: <7bd01f7b-d059-4f3c-ab35-f19f5054f8f2@stanford.edu>
+
+Thank you, Simon and Ivan.? And further thanks to Ivan for R sleuthing 
+of the first order!
+
+That I'm picking up the wrong R makes sense.? I will incorporate your 
+suggestions
+
+Best wishes,
+
+-Naras
+
+On 1/25/25 11:55 PM, Ivan Krylov wrote:
+> ? Sat, 25 Jan 2025 08:54:45 -0800
+> Balasubramanian Narasimhan <naras at stanford.edu> ?????:
+>
+>> (https://github.com/blas-lapack-rs/r-src/blob/966266425b1a21a1e979f767c6023e6bf00616fc/build.rs#L160).
+> Thank you for providing the link to the code!
+>   
+>> The only thing I can think of is that FLIBS is being set outside
+>> config.site or Makevars during the R build.
+> I think this is happening because the r-src crate is running the wrong
+> R executable to determine the linker flags. The check system is running
+> /Users/ripley/R/R-devel/bin/R, while there's also a different R (for
+> example, /usr/local/bin/R) visible on the $PATH. The code ends up
+> getting the linker flags from the latter when it runs "R" [1].
+>
+> I think it should be possible to sidestep this issue altogether if you
+> only enable the static library at [2] and then have R link the package
+> shared library for you from the static library produced by Rust using
+> the flags you're correctly setting in Makevars [3].
+>
+> If you do need Rust to determine the linker flags by itself, make sure
+> to run ${R_HOME}/bin/R, not just R [4].
+>
+> Unrelated but probably important: having 'all' or $(SHLIB) depend on a
+> target that removes the files you've built [5] is a bad idea because
+> Make is allowed to run independent recipes in undefined order,
+> including rm -Rf $(SHLIB) $(STATLIB) $(OBJECTS) while $(STATLIB) is
+> being built [6]. Note how 'rm -Rf ...' is the first command being run
+> in [7], before any compilation happens. The files you're removing as
+> part of the $(STATLIB) recipe should be enough; there shouldn't be any
+> need for the 'C_clean' recipe.
+>
+
+
+From n@r@@ @end|ng |rom @t@n|ord@edu  Sun Jan 26 17:24:32 2025
+From: n@r@@ @end|ng |rom @t@n|ord@edu (Balasubramanian Narasimhan)
+Date: Sun, 26 Jan 2025 08:24:32 -0800
+Subject: [R-pkg-devel] 
+ Reliably detecting FLIBS on source build of R (w.r.t Rust packages)
+In-Reply-To: <7bd01f7b-d059-4f3c-ab35-f19f5054f8f2@stanford.edu>
+References: <8ae0cb4e-1ae3-42d3-b35e-9d47c3e5cb68@stanford.edu>
+ <20250126105548.4291f45e@Tarkus>
+ <7bd01f7b-d059-4f3c-ab35-f19f5054f8f2@stanford.edu>
+Message-ID: <8bbf5f8e-2eef-4159-addc-6ae1d786158c@stanford.edu>
+
+Also, to further clarify, yes I need Rust to determine the linker flags 
+since the underlying Clarabel.rs links against BLAS.
+
+-N
+
+On 1/26/25 8:22 AM, Balasubramanian Narasimhan wrote:
+> Thank you, Simon and Ivan.? And further thanks to Ivan for R sleuthing 
+> of the first order!
+>
+> That I'm picking up the wrong R makes sense.? I will incorporate your 
+> suggestions
+>
+> Best wishes,
+>
+> -Naras
+>
+> On 1/25/25 11:55 PM, Ivan Krylov wrote:
+>> ? Sat, 25 Jan 2025 08:54:45 -0800
+>> Balasubramanian Narasimhan <naras at stanford.edu> ?????:
+>>
+>>> (https://github.com/blas-lapack-rs/r-src/blob/966266425b1a21a1e979f767c6023e6bf00616fc/build.rs#L160). 
+>>>
+>> Thank you for providing the link to the code!
+>>> The only thing I can think of is that FLIBS is being set outside
+>>> config.site or Makevars during the R build.
+>> I think this is happening because the r-src crate is running the wrong
+>> R executable to determine the linker flags. The check system is running
+>> /Users/ripley/R/R-devel/bin/R, while there's also a different R (for
+>> example, /usr/local/bin/R) visible on the $PATH. The code ends up
+>> getting the linker flags from the latter when it runs "R" [1].
+>>
+>> I think it should be possible to sidestep this issue altogether if you
+>> only enable the static library at [2] and then have R link the package
+>> shared library for you from the static library produced by Rust using
+>> the flags you're correctly setting in Makevars [3].
+>>
+>> If you do need Rust to determine the linker flags by itself, make sure
+>> to run ${R_HOME}/bin/R, not just R [4].
+>>
+>> Unrelated but probably important: having 'all' or $(SHLIB) depend on a
+>> target that removes the files you've built [5] is a bad idea because
+>> Make is allowed to run independent recipes in undefined order,
+>> including rm -Rf $(SHLIB) $(STATLIB) $(OBJECTS) while $(STATLIB) is
+>> being built [6]. Note how 'rm -Rf ...' is the first command being run
+>> in [7], before any compilation happens. The files you're removing as
+>> part of the $(STATLIB) recipe should be enough; there shouldn't be any
+>> need for the 'C_clean' recipe.
+>>
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
