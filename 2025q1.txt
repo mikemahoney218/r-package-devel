@@ -5587,3 +5587,136 @@ On 1/26/25 8:22 AM, Balasubramanian Narasimhan wrote:
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From gu|||ermov|nue @end|ng |rom gm@||@com  Mon Jan 27 19:26:10 2025
+From: gu|||ermov|nue @end|ng |rom gm@||@com (Guillermo Vinue)
+Date: Mon, 27 Jan 2025 19:26:10 +0100
+Subject: [R-pkg-devel] CRAN Debian error installation time
+Message-ID: <CA+hm8HkNfS=YTVw5M2Cp0Ak-sDEP+mxdkEeOGV2xznS1YLGuNg@mail.gmail.com>
+
+Dear All,
+
+I am writing to you because I am getting this NOTE from the CRAN Debian
+machine that is not allowing CRAN acceptance: "Installation took CPU time
+2.9 times elapsed time". Uwe Ligges told me that this means that I am using
+more than 2 cores, but I must not use more than 2 by default.
+
+In order to overcome this issue, I have included an R script inside the R
+folder named with my package name and this content:
+
+.onLoad <- function(libname, pkgname) {
+  if (Sys.getenv("OMP_THREAD_LIMIT") == "") {
+    Sys.setenv(OMP_THREAD_LIMIT = "2")
+  }
+}
+
+In addition, I have included explicitly the parameter numThreads
+setThreadOptions(numThreads = 1) in the function where I use the
+setThreadOptions from the RcppParallel package. However, the CRAN NOTE
+persists.
+
+Do you know how to fix that?
+
+Many thanks in advance.
+
+Kind regards,
+
+Guillermo
+
+	[[alternative HTML version deleted]]
+
+
+From bbo|ker @end|ng |rom gm@||@com  Mon Jan 27 20:57:00 2025
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Mon, 27 Jan 2025 14:57:00 -0500
+Subject: [R-pkg-devel] CRAN Debian error installation time
+In-Reply-To: <CA+hm8HkNfS=YTVw5M2Cp0Ak-sDEP+mxdkEeOGV2xznS1YLGuNg@mail.gmail.com>
+References: <CA+hm8HkNfS=YTVw5M2Cp0Ak-sDEP+mxdkEeOGV2xznS1YLGuNg@mail.gmail.com>
+Message-ID: <29af71d4-812b-430d-93a5-cc1c40fe04ab@gmail.com>
+
+   May have been mentioned up-thread, but perhaps you also need to 
+control BLAS parallelization? 
+https://stackoverflow.com/questions/72669579/c-how-to-set-environment-variable-so-openblas-runs-multithreaded 
+(also see the RhpcBLASctl package; hopefully you don't need it, but 
+worth knowing about)
+
+On 2025-01-27 1:26 p.m., Guillermo Vinue wrote:
+> Dear All,
+> 
+> I am writing to you because I am getting this NOTE from the CRAN Debian
+> machine that is not allowing CRAN acceptance: "Installation took CPU time
+> 2.9 times elapsed time". Uwe Ligges told me that this means that I am using
+> more than 2 cores, but I must not use more than 2 by default.
+> 
+> In order to overcome this issue, I have included an R script inside the R
+> folder named with my package name and this content:
+> 
+> .onLoad <- function(libname, pkgname) {
+>    if (Sys.getenv("OMP_THREAD_LIMIT") == "") {
+>      Sys.setenv(OMP_THREAD_LIMIT = "2")
+>    }
+> }
+> 
+> In addition, I have included explicitly the parameter numThreads
+> setThreadOptions(numThreads = 1) in the function where I use the
+> setThreadOptions from the RcppParallel package. However, the CRAN NOTE
+> persists.
+> 
+> Do you know how to fix that?
+> 
+> Many thanks in advance.
+> 
+> Kind regards,
+> 
+> Guillermo
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+ > E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
+From |kry|ov @end|ng |rom d|@root@org  Mon Jan 27 21:36:26 2025
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 27 Jan 2025 23:36:26 +0300
+Subject: [R-pkg-devel] CRAN Debian error installation time
+In-Reply-To: <CA+hm8HkNfS=YTVw5M2Cp0Ak-sDEP+mxdkEeOGV2xznS1YLGuNg@mail.gmail.com>
+References: <CA+hm8HkNfS=YTVw5M2Cp0Ak-sDEP+mxdkEeOGV2xznS1YLGuNg@mail.gmail.com>
+Message-ID: <20250127233626.7fd9bbb6@Tarkus>
+
+Dear Guillermo,
+
+Welcome to R-package-devel!
+
+? Mon, 27 Jan 2025 19:26:10 +0100
+Guillermo Vinue <guillermovinue at gmail.com> ?????:
+
+> I am writing to you because I am getting this NOTE from the CRAN
+> Debian machine that is not allowing CRAN acceptance: "Installation
+> took CPU time 2.9 times elapsed time". Uwe Ligges told me that this
+> means that I am using more than 2 cores, but I must not use more than
+> 2 by default.
+
+The key word here is "installation". Check your configure/build
+scripts. Are you using CMake, Ninja, or Cargo? Does it default to using
+as many parallel processes as feasible? Most build systems nowadays
+accept the -j flag to control that. Make sure to give it the flag that
+limits it to two processes (most likely -j 2) when running on CRAN:
+http://contributor.r-project.org/cran-cookbook/code_issues.html#using-more-than-2-cores
+
+The above advice is very general and may completely miss the mark. If
+you provide the links to the latest CRAN pre-test logs and the package
+source code, someone will be able to give more precise advice.
+
+-- 
+Best regards,
+Ivan
+
+
