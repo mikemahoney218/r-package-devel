@@ -7296,3 +7296,428 @@ Uwe Ligges
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From wo||g@ng@ro|ke @end|ng |rom upr@edu  Fri Jan 31 16:02:34 2025
+From: wo||g@ng@ro|ke @end|ng |rom upr@edu (Wolfgang Rolke)
+Date: Fri, 31 Jan 2025 15:02:34 +0000
+Subject: [R-pkg-devel] Rcpp in vignette
+Message-ID: <BN7PR03MB3649C5E36F55FD09F91FCF099BE82@BN7PR03MB3649.namprd03.prod.outlook.com>
+
+In the vignette of my package Rgof I create a function written in Rcpp, which is then passed and executed in some of the routines included in Rgof. The package passes all the checks on the various platform without errors, warnings or notes except on atlas and gcc13. There I get an error about not being able to find this function. For details see
+
+https://github.com/r-hub2/productive-joking-manatee-Rgof/actions
+[https://opengraph.githubassets.com/b40e189207ca774a60d2c41f7b3410850dddf9a6816238d771e042279edbac03/r-hub2/productive-joking-manatee-Rgof]<https://github.com/r-hub2/productive-joking-manatee-Rgof/actions>
+Workflow runs ? r-hub2/productive-joking-manatee-Rgof ? GitHub<https://github.com/r-hub2/productive-joking-manatee-Rgof/actions>
+Created by R-hub. Contribute to r-hub2/productive-joking-manatee-Rgof development by creating an account on GitHub.
+github.com
+
+Is this a known issue? Is there a workaround? I have not tested the package on all 20+ machines, which other ones have the same issue?
+
+The package is already on CRAN, so this error does not lead to it to not being accepted. Still, I would like to know what the problem is and if there is a better way than just to ignore it.
+
+Thanks
+Wolfgang
+
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Fri Jan 31 16:22:59 2025
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Fri, 31 Jan 2025 09:22:59 -0600
+Subject: [R-pkg-devel] Rcpp in vignette
+In-Reply-To: <BN7PR03MB3649C5E36F55FD09F91FCF099BE82@BN7PR03MB3649.namprd03.prod.outlook.com>
+References: <BN7PR03MB3649C5E36F55FD09F91FCF099BE82@BN7PR03MB3649.namprd03.prod.outlook.com>
+Message-ID: <26524.60115.18775.249566@rob.eddelbuettel.com>
+
+
+Hi Wolfgang,
+
+On 31 January 2025 at 15:02, Wolfgang Rolke via R-package-devel wrote:
+| In the vignette of my package Rgof I create a function written in Rcpp, which is then passed and executed in some of the routines included in Rgof. The package passes all the checks on the various platform without errors, warnings or notes except on atlas and gcc13. There I get an error about not being able to find this function. For details see
+| 
+| https://github.com/r-hub2/productive-joking-manatee-Rgof/actions
+| [https://opengraph.githubassets.com/b40e189207ca774a60d2c41f7b3410850dddf9a6816238d771e042279edbac03/r-hub2/productive-joking-manatee-Rgof]<https://github.com/r-hub2/productive-joking-manatee-Rgof/actions>
+| Workflow runs ? r-hub2/productive-joking-manatee-Rgof ? GitHub<https://github.com/r-hub2/productive-joking-manatee-Rgof/actions>
+| Created by R-hub. Contribute to r-hub2/productive-joking-manatee-Rgof development by creating an account on GitHub.
+| github.com
+| 
+| Is this a known issue? Is there a workaround? I have not tested the package on all 20+ machines, which other ones have the same issue?
+| 
+| The package is already on CRAN, so this error does not lead to it to not being accepted. Still, I would like to know what the problem is and if there is a better way than just to ignore it.
+
+I only glanced at it via the CRAN mirror repo [1] so some really quick thoughts:
+
+- If the package is in such good standing at CRAN [2] but fails at r-hub, is
+  the issue with CRAN or possibly with r-hub?  Can you reproduce locally?
+  
+- If the Rcpp chunk gives you trouble there after knitting, why not add the
+  function to the package itself to call it like a regular package function?
+
+- There is always the workaround of precomputing the call result and
+  including it as static output if dynamically computed content gives you issues
+
+- I think you have a mistatement about Rcpp on line 503, many of us have long
+  used Rcpp function in multicore/multicpu settings
+
+As always, if you think the question is specific enough to Rcpp you could ask
+also on the Rcpp-devel mailing list that exists for such questions as several
+experienced users and developers follow it.
+
+Dirk
+
+[1] https://github.com/cran/Rgof/blob/master/vignettes/Rgof.Rmd
+[2] https://cloud.r-project.org/web/checks/check_results_Rgof.html
+
+| 
+| Thanks
+| Wolfgang
+| 
+| 
+| 	[[alternative HTML version deleted]]
+| 
+| ______________________________________________
+| R-package-devel at r-project.org mailing list
+| https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Fri Jan 31 17:44:24 2025
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Fri, 31 Jan 2025 17:44:24 +0100
+Subject: [R-pkg-devel] Date of CRAN checks
+In-Reply-To: <D5364A6D-A336-4AA9-BED6-3EDED61AE9D9@R-project.org>
+References: <CAN+W6_uBLsOtqf43FoTTJPhEFMp4GviCXwNXJskmqKep8KkRbA@mail.gmail.com>
+ <D5364A6D-A336-4AA9-BED6-3EDED61AE9D9@R-project.org>
+Message-ID: <1c538758-e7ba-4274-902b-3f366e783c80@statistik.tu-dortmund.de>
+
+
+
+On 29.01.2025 20:08, Simon Urbanek wrote:
+> Llu?s,
+> 
+> the timestamps are generated by the CRAN server when it updates webpage from the actual check reports so it does not reflect the date/time of the check itself (neither does the timestamp of the URL as it is often re-generated). So in short, no, there is no way to know the timestamp of the check. I think it may be useful, so I'll see if we can add it.
+> 
+> That said, checks are not re-run 
+
+That is true for Mac flavours. All others get regularly updated 
+(R-devel), or at least if any dependency in the hierarchy is updated 
+(Windows R-release/oldrelease).
+
+Best,
+Uwe Ligges
+
+
+ > unless you update the version of your package (or there is an error 
+caused by another package whose update will fix it), so in most cases 
+waiting won't fix anything. If there is a problem you have to report it 
+to the corresponding CRAN maintainer so for macOS that would be me.>
+> Cheers,
+> Simon
+> 
+> 
+>> On Jan 30, 2025, at 5:10 AM, Llu?s Revilla <lluis.revilla at gmail.com> wrote:
+>>
+>> Dear list,
+>>
+>> Recently after a package update I noticed an ERROR on one flavor.
+>> I believe this is some problem with the r-release-macos-x86_64 flavor.
+>> But I'm not sure if this is fixed on the system or not.
+>> I was waiting to see if this got fixed with time (and thanks to the CRAN
+>> volunteers).
+>>
+>> A check landing page on CRAN had a date "Last updated on 2025-01-29
+>> 08:49:42 CET." then it changed to "2025-01-29 15:49:25 CET.". Because there
+>> are some checks that are still from the old version of the package and the
+>> failing check is still failing, I'm not sure which checks were updated. Is
+>> this the date of the landing page of all the checks, or all the checks are
+>> updated up to that date?
+>>
+>> Bioconductor provides the time with two fields: StartedAt and EndedAt for
+>> each flavor (and step).
+>> I hoped to find a date on the check logs. It would make it easier to know
+>> when it is updated and it has the same result as previously.
+>> Is there a way to know when a given check was run on CRAN?
+>>
+>> Best regards,
+>>
+>> Llu?s
+>>
+>> PS:  The problem is shared by many packages (>50), the vignette can be
+>> built but not rebuilt and it raises an error message about not finding
+>> pandoc.
+>>
+>> 	[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From kev|n@r@coombe@ @end|ng |rom gm@||@com  Fri Jan 31 17:48:33 2025
+From: kev|n@r@coombe@ @end|ng |rom gm@||@com (Kevin R. Coombes)
+Date: Fri, 31 Jan 2025 11:48:33 -0500
+Subject: [R-pkg-devel] test script output
+Message-ID: <da6db759-689d-4207-9734-4e8869e9fb07@gmail.com>
+
+Hi,h
+
+I have a package that has been in CRAN for years and is now failing 
+checks because some of the output of a test script is differing on some 
+machines in the fifth or sixth decimal place. I have managed to fix most 
+of these issues (by using the "digits" argument in calls to "summary" to 
+hide the differences). the only one that remains yields this R CMD check 
+report:
+
+   Comparing ?testDiff.Rout? to ?testDiff.Rout.save? ...52c52
+< 2.600e-06 1.328e-01 4.666e-01 1.060e+00 1.369e+00 1.091e+01
+---
+>  0.000003  0.132800  0.466600  1.060000  1.369000 10.910000 
+
+Here the digit-limited output is the same (to a human mathematician, though not to a string-matching computer), but one machine has decided to report the output in scientific notation. Both versions were produced by a command equivalent to
+    print(summary(x, digits = 4))
+What is the best cross-platform way to ensure that the output gets printed in the same format? Set "options(scipen=999)"? Pass some argument to "print" as well as to "summary"? (The other alternative I am considering is to just delete the script from the "tests" directory.)
+
+Thanks,
+    Kevin
+
+	[[alternative HTML version deleted]]
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Fri Jan 31 18:23:54 2025
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Fri, 31 Jan 2025 18:23:54 +0100
+Subject: [R-pkg-devel] test script output
+In-Reply-To: <da6db759-689d-4207-9734-4e8869e9fb07@gmail.com>
+References: <da6db759-689d-4207-9734-4e8869e9fb07@gmail.com>
+Message-ID: <26525.1834.134177.766980@stat.math.ethz.ch>
+
+>>>>> Kevin R Coombes 
+>>>>>     on Fri, 31 Jan 2025 11:48:33 -0500 writes:
+
+    > Hi,
+
+    > I have a package that has been in CRAN for years and is now failing 
+    > checks because some of the output of a test script is differing on some 
+    > machines in the fifth or sixth decimal place. I have managed to fix most 
+    > of these issues (by using the "digits" argument in calls to "summary" to 
+    > hide the differences). the only one that remains yields this R CMD check 
+    > report:
+
+    > Comparing ?testDiff.Rout? to ?testDiff.Rout.save? ...52c52
+    > < 2.600e-06 1.328e-01 4.666e-01 1.060e+00 1.369e+00 1.091e+01
+    > ---
+    > > 0.000003  0.132800  0.466600  1.060000  1.369000 10.910000 
+
+    > Here the digit-limited output is the same (to a human mathematician, though not to a string-matching computer), but one machine has decided to report the output in scientific notation.
+
+I'm guessing you are slightly off here:
+Almost surely it's *not* a difference in machine/platform but only in versions
+of R-devel.
+
+My guess comes from the fact that I've been the R core member
+who committed this change to R-devel :
+  ------------------------------------------------------------------------
+  r87625 | maechler | 2025-01-24 16:58:25 +0100 (Fri, 24 Jan 2025)
+
+  parametrize & improve accuracy in print(summary(<numbers>))
+  ------------------------------------------------------------------------
+
+a week ago.
+... and BTW, if you look carefully, for the first entry, the new
+output *is* slightly more accurate also in your example.
+
+I agree that the switch from fixed point to
+exponential/scientific format is "unlucky" in this case
+[and even unnecessary: in this case, keeping fixed format and
+ showing one digit more (using the same amount of characters),
+ one could also have shown the 0.0000026 ...]
+
+A workaround for you may be to set something like
+
+   options(scipen = 2) # default is 0
+
+in your testDiff.R  script  before printing
+
+All this is only in R-devel, the development version of R...
+and I have contemplated to add more tweaks to
+print.summaryDefault()  for that upcoming version of R.
+
+The fear stopping me to do more tweaking was that the
+consequence could be even *more* (still small) changes in such
+summary() printing output.
+
+    >  Both versions were produced by a command equivalent to
+    > print(summary(x, digits = 4))
+
+As you may (or may not ..;-) guess from the above commit message ("parametrize")
+is that  print(summary(<numbers>)) got a new argument zdigits.
+
+So, instead of     print(summary(x, digits = 4))
+you can, from R version 4.5 (currently only in the development
+version of R) on use
+
+    print(summary(x, digits = 4), digits = .., zdigits = ..)
+
+but you could also --- already in current versions of R ---
+tweak the output using
+
+    print(summary(x, digits = 4), digits = <n>)
+
+where you can play to see if  n=3 , n=4, or n=5
+help you getting better results ..
+... actually *not* 'digits = 4'  for summary() at all,
+but only the digits argument to print(.)   {where you'll get a
+the new 'zdigits' argument *additionally* in R-devel and future
+R version's}.
+
+
+    > What is the best cross-platform way to ensure that the output gets printed in the same format? Set "options(scipen=999)"? 
+
+That's clearly too extreme to generally,
+(I mentioned `scipen = 2` earlier).
+
+> Alternatively, pass some argument to "print" as well as to  "summary"?
+
+yes, see above.
+
+> (The other alternative I am considering is to just delete the script from the "tests" directory.)
+
+(I don't think that would be a good idea, .. but rather a very b.. one)
+
+
+    > Thanks,
+    > Kevin
+Best,
+Martin
+
+
+From kev|n@r@coombe@ @end|ng |rom gm@||@com  Fri Jan 31 19:07:30 2025
+From: kev|n@r@coombe@ @end|ng |rom gm@||@com (Kevin R. Coombes)
+Date: Fri, 31 Jan 2025 13:07:30 -0500
+Subject: [R-pkg-devel] test script output
+In-Reply-To: <26525.1834.134177.766980@stat.math.ethz.ch>
+References: <da6db759-689d-4207-9734-4e8869e9fb07@gmail.com>
+ <26525.1834.134177.766980@stat.math.ethz.ch>
+Message-ID: <074f1e4a-6a54-4c6e-9051-cf0fdd47b28b@gmail.com>
+
+Thanks for the quick (detailed) response.
+
+On 1/31/2025 12:23 PM, Martin Maechler wrote:
+>>>>>> Kevin R Coombes
+>>>>>>      on Fri, 31 Jan 2025 11:48:33 -0500 writes:
+>      > Hi,
+>
+>      > I have a package that has been in CRAN for years and is now failing
+>      > checks because some of the output of a test script is differing on some
+>      > machines in the fifth or sixth decimal place. I have managed to fix most
+>      > of these issues (by using the "digits" argument in calls to "summary" to
+>      > hide the differences). the only one that remains yields this R CMD check
+>      > report:
+>
+>      > Comparing ?testDiff.Rout? to ?testDiff.Rout.save? ...52c52
+>      > < 2.600e-06 1.328e-01 4.666e-01 1.060e+00 1.369e+00 1.091e+01
+>      > ---
+>      > > 0.000003  0.132800  0.466600  1.060000  1.369000 10.910000
+>
+>      > Here the digit-limited output is the same (to a human mathematician, though not to a string-matching computer), but one machine has decided to report the output in scientific notation.
+>
+> I'm guessing you are slightly off here:
+> Almost surely it's *not* a difference in machine/platform but only in versions
+> of R-devel.
+The original issues *were* platform dependent, where the fifth digit was 
+off-by-one on some platforms. You are correct that what is left is 
+because of your change in R-devel.
+>
+> My guess comes from the fact that I've been the R core member
+> who committed this change to R-devel :
+>    ------------------------------------------------------------------------
+>    r87625 | maechler | 2025-01-24 16:58:25 +0100 (Fri, 24 Jan 2025)
+>
+>    parametrize & improve accuracy in print(summary(<numbers>))
+>    ------------------------------------------------------------------------
+>
+> a week ago.
+> ... and BTW, if you look carefully, for the first entry, the new
+> output *is* slightly more accurate also in your example.
+Certainly, it is more accurate. But less accurate (in the form of fewer 
+digits) was what I needed to solve the cross-platform issues in the 
+current release.
+> I agree that the switch from fixed point to
+> exponential/scientific format is "unlucky" in this case
+> [and even unnecessary: in this case, keeping fixed format and
+>   showing one digit more (using the same amount of characters),
+>   one could also have shown the 0.0000026 ...]
+>
+> A workaround for you may be to set something like
+>
+>     options(scipen = 2) # default is 0
+>
+> in your testDiff.R  script  before printing
+>
+> All this is only in R-devel, the development version of R...
+> and I have contemplated to add more tweaks to
+> print.summaryDefault()  for that upcoming version of R.
+>
+> The fear stopping me to do more tweaking was that the
+> consequence could be even *more* (still small) changes in such
+> summary() printing output.
+>
+>      >  Both versions were produced by a command equivalent to
+>      > print(summary(x, digits = 4))
+>
+> As you may (or may not ..;-) guess from the above commit message ("parametrize")
+> is that  print(summary(<numbers>)) got a new argument zdigits.
+Yes. But I can't use the new devel-version argument to fix the problem 
+in the current release...
+> So, instead of     print(summary(x, digits = 4))
+> you can, from R version 4.5 (currently only in the development
+> version of R) on use
+>
+>      print(summary(x, digits = 4), digits = .., zdigits = ..)
+>
+> but you could also --- already in current versions of R ---
+> tweak the output using
+>
+>      print(summary(x, digits = 4), digits = <n>)
+>
+> where you can play to see if  n=3 , n=4, or n=5
+> help you getting better results ..
+> ... actually *not* 'digits = 4'  for summary() at all,
+> but only the digits argument to print(.)   {where you'll get a
+> the new 'zdigits' argument *additionally* in R-devel and future
+> R version's}.
+>
+>
+>      > What is the best cross-platform way to ensure that the output gets printed in the same format? Set "options(scipen=999)"?
+>
+> That's clearly too extreme to generally,
+> (I mentioned `scipen = 2` earlier).
+>
+>> Alternatively, pass some argument to "print" as well as to  "summary"?
+> yes, see above.
+>
+>> (The other alternative I am considering is to just delete the script from the "tests" directory.)
+> (I don't think that would be a good idea, .. but rather a very b.. one)
+
+Ah, but it may have helped someone who knew what they were talking about 
+to answer more rapidly to avoid the bad solution. Thanks again.
+
+I will try the options(scipen) fix for now, and keep the new zdigts 
+argument in mind going forward.
+
+>
+>
+>      > Thanks,
+>      > Kevin
+> Best,
+> Martin
+>
+
+
