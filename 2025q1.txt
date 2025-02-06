@@ -8249,3 +8249,1427 @@ On Tue, Jan 28, 2025 at 3:37?PM Ivan Krylov <ikrylov at disroot.org> wrote:
 	[[alternative HTML version deleted]]
 
 
+From |kry|ov @end|ng |rom d|@root@org  Tue Feb  4 12:30:03 2025
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 4 Feb 2025 14:30:03 +0300
+Subject: [R-pkg-devel] Additional issue clang-ASAN, gcc-ASAN
+In-Reply-To: <ME3PR01MB7944A3A9807CADA986349B4CD4EA2@ME3PR01MB7944.ausprd01.prod.outlook.com>
+References: <mailman.11256.10.1738407601.11304.r-package-devel@r-project.org>
+ <ME3PR01MB7944A3A9807CADA986349B4CD4EA2@ME3PR01MB7944.ausprd01.prod.outlook.com>
+Message-ID: <20250204143003.22982e7b@arachnoid>
+
+? Sun, 2 Feb 2025 22:56:47 +0000
+Bernd.Gruber <Bernd.Gruber at canberra.edu.au> ?????:
+
+> READ of size 16 at 0x518000697ff0 thread T0
+>     #0 0x7f2e873ccfdf in bytesToDouble
+> /tmp/RtmpNNPUz9/R.INSTALL3cef1f2b1bd39c/adegenet/src/snpbin.c:225:19
+> #1 0x7f2e873ceca5 in snpbin2freq
+> /tmp/RtmpNNPUz9/R.INSTALL3cef1f2b1bd39c/adegenet/src/snpbin.c:332:5
+> #2 0x7f2e873ceca5 in snpbin_dotprod_freq
+> /tmp/RtmpNNPUz9/R.INSTALL3cef1f2b1bd39c/adegenet/src/snpbin.c:447:5
+> #3 0x7f2e873bba42 in GLdotProd
+> /tmp/RtmpNNPUz9/R.INSTALL3cef1f2b1bd39c/adegenet/src/GLfunctions.c:42:14
+
+Ben Bolker is exactly right; the problem happens in the 'adegenet'
+code. Why?
+
+bytesToDouble() is asked to unpack the bytes from the 'vecbytes' array
+(26 bytes) into individual bits stored as doubles in the 'out' array.
+The latter was allocated by the snpbin_dotprod_freq() function to
+contain 199 elements [1]. Every byte must be unpacked into 8 bits, and
+199 is less than 26*8 = 208. Where did the values come from?
+
+The C function GLsumFreq() stores them unchanged from its arguments
+[2], and those come from the SNPbin objects passed by R code [3] from
+nLoc(x) and length(x$gen[[1]]@snp[[1]]). Where do they originate?
+
+The R traceback at the point of the crash is dartR.base::gl.pcoa ->
+adegenet::glPca -> adegenet::glDotProd. The object 'possums.gl' of S4
+class 'dartR' exported by 'dartR.base' appears valid: its .$n.loc is
+exactly equal to length(.$gen[[1]]@snp[[1]]) * 8, so the allocation size
+matches the packed binary content.
+
+The subset possums.gl[1:50,] that is used to perform PCA, on the other
+hand, is invalid: length(possums.gl[1:50,]$gen[[1]]@snp[[1]]) is 26
+instead of 25, which later causes bytesToDouble() to try to write extra
+8 doubles (64 bytes) into the buffer.
+
+This happens because trying to extract all SNPs from an SNPbin object
+introduces an extra byte:
+
+possums.gl at gen[[1]] |> _ at snp |> lengths()
+# [1] 25 25
+
+possums.gl at gen[[1]][rep(TRUE, nLoc(possums.gl at gen[[1]]))] |>
+ _ at snp |> lengths()
+# 26 26
+
+This can be traced to a bug in adegenet:::.subsetbin:
+
+.subsetbin(as.raw(0xff), 1:8)
+# [1] ff 00 # <-- should be just 'ff'
+
+xint <- as.integer(rawToBits(x)[i]) # may be not divisible by 8
+# so introduce padding: the following line gives 8 bits of padding
+# instead of 0 when length(xint) is divisible by 8
+zeroes <- 8 - (length(xint)%%8)
+# instead use something like:
+# zeroes <- (8 - (length(xint)%%8)) * (length(xint)%%8 > 0)
+# (could probably be golfed further)
+return(packBits(c(xint, rep(0L, zeroes))))
+
+But we're getting two bugs for the price of one, because even with a
+25-byte buffer, nLoc(.) == 199 would still result in an 8-byte
+overflow. This is solely on the bytesToDouble() C function: it ought to
+know to stop after writing *reslength elements into the 'vecres' array.
+
+I'm afraid there is no easy way to work around either of the bugs in
+the dartR.base code.
+
+-- 
+Best regards,
+Ivan
+
+[1]
+https://github.com/thibautjombart/adegenet/blob/c7287597155ab18989d892a72eff33cf8c288958/src/snpbin.c#L443-L444
+
+[2]
+https://github.com/thibautjombart/adegenet/blob/c7287597155ab18989d892a72eff33cf8c288958/src/GLfunctions.c#L124
+
+[3]
+https://github.com/thibautjombart/adegenet/blob/c7287597155ab18989d892a72eff33cf8c288958/R/glFunctions.R#L215-L216
+
+
+From |uc@r @end|ng |rom |edor@project@org  Tue Feb  4 12:46:04 2025
+From: |uc@r @end|ng |rom |edor@project@org (=?UTF-8?Q?I=C3=B1aki_Ucar?=)
+Date: Tue, 4 Feb 2025 12:46:04 +0100
+Subject: [R-pkg-devel] Additional issue clang-ASAN, gcc-ASAN
+In-Reply-To: <20250204143003.22982e7b@arachnoid>
+References: <mailman.11256.10.1738407601.11304.r-package-devel@r-project.org>
+ <ME3PR01MB7944A3A9807CADA986349B4CD4EA2@ME3PR01MB7944.ausprd01.prod.outlook.com>
+ <20250204143003.22982e7b@arachnoid>
+Message-ID: <CALEXWq3_vDeJHNVLgFjdKAMcmAYPT32yLvDN=i3bhOjJnwu=Lw@mail.gmail.com>
+
+@Ivan: Excellent anaylsis as always.
+
+@Bernd: So what can **you** do about it? You are using adegenet
+correctly as Ivan pointed out, so IMHO CRAN should have requested
+adegenet's maintainer to fix this. But since it's your package that is
+on the line here, I would put that example inside a dontrun{} chunk
+for now, to avoid triggering this issue on CRAN, and I would report
+Ivan's analysis upstream.
+
+I?aki
+
+
+On Tue, 4 Feb 2025 at 12:30, Ivan Krylov via R-package-devel
+<r-package-devel at r-project.org> wrote:
+>
+> ? Sun, 2 Feb 2025 22:56:47 +0000
+> Bernd.Gruber <Bernd.Gruber at canberra.edu.au> ?????:
+>
+> > READ of size 16 at 0x518000697ff0 thread T0
+> >     #0 0x7f2e873ccfdf in bytesToDouble
+> > /tmp/RtmpNNPUz9/R.INSTALL3cef1f2b1bd39c/adegenet/src/snpbin.c:225:19
+> > #1 0x7f2e873ceca5 in snpbin2freq
+> > /tmp/RtmpNNPUz9/R.INSTALL3cef1f2b1bd39c/adegenet/src/snpbin.c:332:5
+> > #2 0x7f2e873ceca5 in snpbin_dotprod_freq
+> > /tmp/RtmpNNPUz9/R.INSTALL3cef1f2b1bd39c/adegenet/src/snpbin.c:447:5
+> > #3 0x7f2e873bba42 in GLdotProd
+> > /tmp/RtmpNNPUz9/R.INSTALL3cef1f2b1bd39c/adegenet/src/GLfunctions.c:42:14
+>
+> Ben Bolker is exactly right; the problem happens in the 'adegenet'
+> code. Why?
+>
+> bytesToDouble() is asked to unpack the bytes from the 'vecbytes' array
+> (26 bytes) into individual bits stored as doubles in the 'out' array.
+> The latter was allocated by the snpbin_dotprod_freq() function to
+> contain 199 elements [1]. Every byte must be unpacked into 8 bits, and
+> 199 is less than 26*8 = 208. Where did the values come from?
+>
+> The C function GLsumFreq() stores them unchanged from its arguments
+> [2], and those come from the SNPbin objects passed by R code [3] from
+> nLoc(x) and length(x$gen[[1]]@snp[[1]]). Where do they originate?
+>
+> The R traceback at the point of the crash is dartR.base::gl.pcoa ->
+> adegenet::glPca -> adegenet::glDotProd. The object 'possums.gl' of S4
+> class 'dartR' exported by 'dartR.base' appears valid: its .$n.loc is
+> exactly equal to length(.$gen[[1]]@snp[[1]]) * 8, so the allocation size
+> matches the packed binary content.
+>
+> The subset possums.gl[1:50,] that is used to perform PCA, on the other
+> hand, is invalid: length(possums.gl[1:50,]$gen[[1]]@snp[[1]]) is 26
+> instead of 25, which later causes bytesToDouble() to try to write extra
+> 8 doubles (64 bytes) into the buffer.
+>
+> This happens because trying to extract all SNPs from an SNPbin object
+> introduces an extra byte:
+>
+> possums.gl at gen[[1]] |> _ at snp |> lengths()
+> # [1] 25 25
+>
+> possums.gl at gen[[1]][rep(TRUE, nLoc(possums.gl at gen[[1]]))] |>
+>  _ at snp |> lengths()
+> # 26 26
+>
+> This can be traced to a bug in adegenet:::.subsetbin:
+>
+> .subsetbin(as.raw(0xff), 1:8)
+> # [1] ff 00 # <-- should be just 'ff'
+>
+> xint <- as.integer(rawToBits(x)[i]) # may be not divisible by 8
+> # so introduce padding: the following line gives 8 bits of padding
+> # instead of 0 when length(xint) is divisible by 8
+> zeroes <- 8 - (length(xint)%%8)
+> # instead use something like:
+> # zeroes <- (8 - (length(xint)%%8)) * (length(xint)%%8 > 0)
+> # (could probably be golfed further)
+> return(packBits(c(xint, rep(0L, zeroes))))
+>
+> But we're getting two bugs for the price of one, because even with a
+> 25-byte buffer, nLoc(.) == 199 would still result in an 8-byte
+> overflow. This is solely on the bytesToDouble() C function: it ought to
+> know to stop after writing *reslength elements into the 'vecres' array.
+>
+> I'm afraid there is no easy way to work around either of the bugs in
+> the dartR.base code.
+>
+> --
+> Best regards,
+> Ivan
+>
+> [1]
+> https://github.com/thibautjombart/adegenet/blob/c7287597155ab18989d892a72eff33cf8c288958/src/snpbin.c#L443-L444
+>
+> [2]
+> https://github.com/thibautjombart/adegenet/blob/c7287597155ab18989d892a72eff33cf8c288958/src/GLfunctions.c#L124
+>
+> [3]
+> https://github.com/thibautjombart/adegenet/blob/c7287597155ab18989d892a72eff33cf8c288958/R/glFunctions.R#L215-L216
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+
+-- 
+I?aki ?car
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Tue Feb  4 12:56:28 2025
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Tue, 4 Feb 2025 12:56:28 +0100
+Subject: [R-pkg-devel] Additional issue clang-ASAN, gcc-ASAN
+In-Reply-To: <CALEXWq3_vDeJHNVLgFjdKAMcmAYPT32yLvDN=i3bhOjJnwu=Lw@mail.gmail.com>
+References: <mailman.11256.10.1738407601.11304.r-package-devel@r-project.org>
+ <ME3PR01MB7944A3A9807CADA986349B4CD4EA2@ME3PR01MB7944.ausprd01.prod.outlook.com>
+ <20250204143003.22982e7b@arachnoid>
+ <CALEXWq3_vDeJHNVLgFjdKAMcmAYPT32yLvDN=i3bhOjJnwu=Lw@mail.gmail.com>
+Message-ID: <79394630-e305-4c3a-8781-01135867d508@statistik.tu-dortmund.de>
+
+
+
+On 04.02.2025 12:46, I?aki Ucar wrote:
+> @Ivan: Excellent anaylsis as always.
+> 
+> @Bernd: So what can **you** do about it? You are using adegenet
+> correctly as Ivan pointed out, so IMHO CRAN should have requested
+> adegenet's maintainer to fix this. But since it's your package that is
+> on the line here, I would put that example inside a dontrun{} chunk
+> for now, to avoid triggering this issue on CRAN, and I would report
+> Ivan's analysis upstream.
+
+Putting it in dontrun is the wrong advise in any case, as we like to 
+track whether the underlying issue has been fixed. And both Professor 
+Ripley and I already asked to liase with the adegenet maintainer to get 
+this fixed. So I wonder why the most relevant person (Zhian N. Kamvar) 
+was not included here (CCIng now).
+Ivan's analysis is as always extremely helpful, particularly for the 
+adegenet maintainer.
+
+Best,
+Uwe
+
+
+
+> I?aki
+> 
+> 
+> On Tue, 4 Feb 2025 at 12:30, Ivan Krylov via R-package-devel
+> <r-package-devel at r-project.org> wrote:
+>>
+>> ? Sun, 2 Feb 2025 22:56:47 +0000
+>> Bernd.Gruber <Bernd.Gruber at canberra.edu.au> ?????:
+>>
+>>> READ of size 16 at 0x518000697ff0 thread T0
+>>>      #0 0x7f2e873ccfdf in bytesToDouble
+>>> /tmp/RtmpNNPUz9/R.INSTALL3cef1f2b1bd39c/adegenet/src/snpbin.c:225:19
+>>> #1 0x7f2e873ceca5 in snpbin2freq
+>>> /tmp/RtmpNNPUz9/R.INSTALL3cef1f2b1bd39c/adegenet/src/snpbin.c:332:5
+>>> #2 0x7f2e873ceca5 in snpbin_dotprod_freq
+>>> /tmp/RtmpNNPUz9/R.INSTALL3cef1f2b1bd39c/adegenet/src/snpbin.c:447:5
+>>> #3 0x7f2e873bba42 in GLdotProd
+>>> /tmp/RtmpNNPUz9/R.INSTALL3cef1f2b1bd39c/adegenet/src/GLfunctions.c:42:14
+>>
+>> Ben Bolker is exactly right; the problem happens in the 'adegenet'
+>> code. Why?
+>>
+>> bytesToDouble() is asked to unpack the bytes from the 'vecbytes' array
+>> (26 bytes) into individual bits stored as doubles in the 'out' array.
+>> The latter was allocated by the snpbin_dotprod_freq() function to
+>> contain 199 elements [1]. Every byte must be unpacked into 8 bits, and
+>> 199 is less than 26*8 = 208. Where did the values come from?
+>>
+>> The C function GLsumFreq() stores them unchanged from its arguments
+>> [2], and those come from the SNPbin objects passed by R code [3] from
+>> nLoc(x) and length(x$gen[[1]]@snp[[1]]). Where do they originate?
+>>
+>> The R traceback at the point of the crash is dartR.base::gl.pcoa ->
+>> adegenet::glPca -> adegenet::glDotProd. The object 'possums.gl' of S4
+>> class 'dartR' exported by 'dartR.base' appears valid: its .$n.loc is
+>> exactly equal to length(.$gen[[1]]@snp[[1]]) * 8, so the allocation size
+>> matches the packed binary content.
+>>
+>> The subset possums.gl[1:50,] that is used to perform PCA, on the other
+>> hand, is invalid: length(possums.gl[1:50,]$gen[[1]]@snp[[1]]) is 26
+>> instead of 25, which later causes bytesToDouble() to try to write extra
+>> 8 doubles (64 bytes) into the buffer.
+>>
+>> This happens because trying to extract all SNPs from an SNPbin object
+>> introduces an extra byte:
+>>
+>> possums.gl at gen[[1]] |> _ at snp |> lengths()
+>> # [1] 25 25
+>>
+>> possums.gl at gen[[1]][rep(TRUE, nLoc(possums.gl at gen[[1]]))] |>
+>>   _ at snp |> lengths()
+>> # 26 26
+>>
+>> This can be traced to a bug in adegenet:::.subsetbin:
+>>
+>> .subsetbin(as.raw(0xff), 1:8)
+>> # [1] ff 00 # <-- should be just 'ff'
+>>
+>> xint <- as.integer(rawToBits(x)[i]) # may be not divisible by 8
+>> # so introduce padding: the following line gives 8 bits of padding
+>> # instead of 0 when length(xint) is divisible by 8
+>> zeroes <- 8 - (length(xint)%%8)
+>> # instead use something like:
+>> # zeroes <- (8 - (length(xint)%%8)) * (length(xint)%%8 > 0)
+>> # (could probably be golfed further)
+>> return(packBits(c(xint, rep(0L, zeroes))))
+>>
+>> But we're getting two bugs for the price of one, because even with a
+>> 25-byte buffer, nLoc(.) == 199 would still result in an 8-byte
+>> overflow. This is solely on the bytesToDouble() C function: it ought to
+>> know to stop after writing *reslength elements into the 'vecres' array.
+>>
+>> I'm afraid there is no easy way to work around either of the bugs in
+>> the dartR.base code.
+>>
+>> --
+>> Best regards,
+>> Ivan
+>>
+>> [1]
+>> https://github.com/thibautjombart/adegenet/blob/c7287597155ab18989d892a72eff33cf8c288958/src/snpbin.c#L443-L444
+>>
+>> [2]
+>> https://github.com/thibautjombart/adegenet/blob/c7287597155ab18989d892a72eff33cf8c288958/src/GLfunctions.c#L124
+>>
+>> [3]
+>> https://github.com/thibautjombart/adegenet/blob/c7287597155ab18989d892a72eff33cf8c288958/R/glFunctions.R#L215-L216
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+> 
+> 
+
+
+From |uc@r @end|ng |rom |edor@project@org  Tue Feb  4 13:01:26 2025
+From: |uc@r @end|ng |rom |edor@project@org (=?UTF-8?Q?I=C3=B1aki_Ucar?=)
+Date: Tue, 4 Feb 2025 13:01:26 +0100
+Subject: [R-pkg-devel] Additional issue clang-ASAN, gcc-ASAN
+In-Reply-To: <79394630-e305-4c3a-8781-01135867d508@statistik.tu-dortmund.de>
+References: <mailman.11256.10.1738407601.11304.r-package-devel@r-project.org>
+ <ME3PR01MB7944A3A9807CADA986349B4CD4EA2@ME3PR01MB7944.ausprd01.prod.outlook.com>
+ <20250204143003.22982e7b@arachnoid>
+ <CALEXWq3_vDeJHNVLgFjdKAMcmAYPT32yLvDN=i3bhOjJnwu=Lw@mail.gmail.com>
+ <79394630-e305-4c3a-8781-01135867d508@statistik.tu-dortmund.de>
+Message-ID: <CALEXWq0rdWVpPyBmb_JDmw-2289zNhpDQ7GodK5Q2vDjO_vQdw@mail.gmail.com>
+
+On Tue, 4 Feb 2025 at 12:56, Uwe Ligges <ligges at statistik.tu-dortmund.de> wrote:
+>
+>
+>
+> On 04.02.2025 12:46, I?aki Ucar wrote:
+> > @Ivan: Excellent anaylsis as always.
+> >
+> > @Bernd: So what can **you** do about it? You are using adegenet
+> > correctly as Ivan pointed out, so IMHO CRAN should have requested
+> > adegenet's maintainer to fix this. But since it's your package that is
+> > on the line here, I would put that example inside a dontrun{} chunk
+> > for now, to avoid triggering this issue on CRAN, and I would report
+> > Ivan's analysis upstream.
+>
+> Putting it in dontrun is the wrong advise in any case, as we like to
+> track whether the underlying issue has been fixed. And both Professor
+> Ripley and I already asked to liase with the adegenet maintainer to get
+> this fixed.
+
+Great, we obviously didn't know this, but only that Bernd's package is
+scheduled to be archived soon, thus my advice.
+
+I?aki
+
+> So I wonder why the most relevant person (Zhian N. Kamvar)
+> was not included here (CCIng now).
+> Ivan's analysis is as always extremely helpful, particularly for the
+> adegenet maintainer.
+>
+> Best,
+> Uwe
+>
+>
+>
+> > I?aki
+> >
+> >
+> > On Tue, 4 Feb 2025 at 12:30, Ivan Krylov via R-package-devel
+> > <r-package-devel at r-project.org> wrote:
+> >>
+> >> ? Sun, 2 Feb 2025 22:56:47 +0000
+> >> Bernd.Gruber <Bernd.Gruber at canberra.edu.au> ?????:
+> >>
+> >>> READ of size 16 at 0x518000697ff0 thread T0
+> >>>      #0 0x7f2e873ccfdf in bytesToDouble
+> >>> /tmp/RtmpNNPUz9/R.INSTALL3cef1f2b1bd39c/adegenet/src/snpbin.c:225:19
+> >>> #1 0x7f2e873ceca5 in snpbin2freq
+> >>> /tmp/RtmpNNPUz9/R.INSTALL3cef1f2b1bd39c/adegenet/src/snpbin.c:332:5
+> >>> #2 0x7f2e873ceca5 in snpbin_dotprod_freq
+> >>> /tmp/RtmpNNPUz9/R.INSTALL3cef1f2b1bd39c/adegenet/src/snpbin.c:447:5
+> >>> #3 0x7f2e873bba42 in GLdotProd
+> >>> /tmp/RtmpNNPUz9/R.INSTALL3cef1f2b1bd39c/adegenet/src/GLfunctions.c:42:14
+> >>
+> >> Ben Bolker is exactly right; the problem happens in the 'adegenet'
+> >> code. Why?
+> >>
+> >> bytesToDouble() is asked to unpack the bytes from the 'vecbytes' array
+> >> (26 bytes) into individual bits stored as doubles in the 'out' array.
+> >> The latter was allocated by the snpbin_dotprod_freq() function to
+> >> contain 199 elements [1]. Every byte must be unpacked into 8 bits, and
+> >> 199 is less than 26*8 = 208. Where did the values come from?
+> >>
+> >> The C function GLsumFreq() stores them unchanged from its arguments
+> >> [2], and those come from the SNPbin objects passed by R code [3] from
+> >> nLoc(x) and length(x$gen[[1]]@snp[[1]]). Where do they originate?
+> >>
+> >> The R traceback at the point of the crash is dartR.base::gl.pcoa ->
+> >> adegenet::glPca -> adegenet::glDotProd. The object 'possums.gl' of S4
+> >> class 'dartR' exported by 'dartR.base' appears valid: its .$n.loc is
+> >> exactly equal to length(.$gen[[1]]@snp[[1]]) * 8, so the allocation size
+> >> matches the packed binary content.
+> >>
+> >> The subset possums.gl[1:50,] that is used to perform PCA, on the other
+> >> hand, is invalid: length(possums.gl[1:50,]$gen[[1]]@snp[[1]]) is 26
+> >> instead of 25, which later causes bytesToDouble() to try to write extra
+> >> 8 doubles (64 bytes) into the buffer.
+> >>
+> >> This happens because trying to extract all SNPs from an SNPbin object
+> >> introduces an extra byte:
+> >>
+> >> possums.gl at gen[[1]] |> _ at snp |> lengths()
+> >> # [1] 25 25
+> >>
+> >> possums.gl at gen[[1]][rep(TRUE, nLoc(possums.gl at gen[[1]]))] |>
+> >>   _ at snp |> lengths()
+> >> # 26 26
+> >>
+> >> This can be traced to a bug in adegenet:::.subsetbin:
+> >>
+> >> .subsetbin(as.raw(0xff), 1:8)
+> >> # [1] ff 00 # <-- should be just 'ff'
+> >>
+> >> xint <- as.integer(rawToBits(x)[i]) # may be not divisible by 8
+> >> # so introduce padding: the following line gives 8 bits of padding
+> >> # instead of 0 when length(xint) is divisible by 8
+> >> zeroes <- 8 - (length(xint)%%8)
+> >> # instead use something like:
+> >> # zeroes <- (8 - (length(xint)%%8)) * (length(xint)%%8 > 0)
+> >> # (could probably be golfed further)
+> >> return(packBits(c(xint, rep(0L, zeroes))))
+> >>
+> >> But we're getting two bugs for the price of one, because even with a
+> >> 25-byte buffer, nLoc(.) == 199 would still result in an 8-byte
+> >> overflow. This is solely on the bytesToDouble() C function: it ought to
+> >> know to stop after writing *reslength elements into the 'vecres' array.
+> >>
+> >> I'm afraid there is no easy way to work around either of the bugs in
+> >> the dartR.base code.
+> >>
+> >> --
+> >> Best regards,
+> >> Ivan
+> >>
+> >> [1]
+> >> https://github.com/thibautjombart/adegenet/blob/c7287597155ab18989d892a72eff33cf8c288958/src/snpbin.c#L443-L444
+> >>
+> >> [2]
+> >> https://github.com/thibautjombart/adegenet/blob/c7287597155ab18989d892a72eff33cf8c288958/src/GLfunctions.c#L124
+> >>
+> >> [3]
+> >> https://github.com/thibautjombart/adegenet/blob/c7287597155ab18989d892a72eff33cf8c288958/R/glFunctions.R#L215-L216
+> >>
+> >> ______________________________________________
+> >> R-package-devel at r-project.org mailing list
+> >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >>
+> >
+> >
+>
+
+
+-- 
+I?aki ?car
+
+
+From gr@eme|eeh|ckey @end|ng |rom gm@||@com  Tue Feb  4 17:13:10 2025
+From: gr@eme|eeh|ckey @end|ng |rom gm@||@com (Graeme Hickey)
+Date: Tue, 4 Feb 2025 16:13:10 +0000
+Subject: [R-pkg-devel] Vignette build issue on Debian platform
+In-Reply-To: <852a85b8-0966-43fb-9d0b-b10188eb85fd@gmail.com>
+References: <CALvcmje4JO8cfV05o+8dDWTWtCfx4GPGU0zYcxMgw+gTEghqug@mail.gmail.com>
+ <852a85b8-0966-43fb-9d0b-b10188eb85fd@gmail.com>
+Message-ID: <CALvcmjc0y1tjDY13cXO8E3J-pCsPKapMnvRu=mOHtag3PgEArQ@mail.gmail.com>
+
+Thank you, Jisca. I learned something new. Unfortunately the NOTE was not
+being triggered by this, but rather somehow the package was using OpenMP. I
+found the trick was to throttle the number of OpenMP threads courtesy of
+Dirk Edubuettel's post here: https://dirk.eddelbuettel.com/blog/2023/10/31/.
+
+On Tue, 14 Jan 2025 at 16:34, Jisca Huisman <jisca.huisman at gmail.com> wrote:
+
+> Hi Graeme,
+>
+> > There is only one function in my package that uses multiple cores:
+> > bootSE(). However, this function is not called in any of my vignettes
+> > because it is computationally expensive. The Rmd code has `eval = FALSE`
+> > options for all of these cases. Therefore, I am at a loss as to why these
+> > vignettes would be using more than 2 cores or what is causing this, or
+> why
+> > it only impacts the CRAN CMD check Debian system.
+>
+> CRAN has changed its settings when compiling the vignette, and now
+> *does* run everything in chunks with `eval = FALSE`.  The solution is to
+> also add `purl=FALSE` to each chunk that should not be run.
+>
+> If you dig through the mailing list archive you should be able to find
+> further details on the why and how of this, or someone else might remember.
+>
+> Best,
+>
+> Jisca
+>
+>
+>
+> On Tue, 14/01/2025 08:08, Graeme Hickey wrote:
+> > Dear all,
+> >
+> >
+> > I recently made some minor updates to the joineRML R package to squash
+> some
+> > CRAN CMD check NOTEs that have emerged over the past couple of years.
+> After
+> > resubmitting to CRAN, a new NOTE appeared on the Debian platform only:
+> >
+> >
+> >> package joineRML_0.4.7.tar.gz does not pass the incoming checks
+> > automatically, please see the following pre-tests (additional issue
+> checks):
+> >
+> >> Windows: <
+> >
+> https://win-builder.r-project.org/incoming_pretest/joineRML_0.4.7_20250114_073418/Windows/00check.log
+> >> Status: OK
+> >> Debian: <
+> >
+> https://win-builder.r-project.org/incoming_pretest/joineRML_0.4.7_20250114_073418/Debian/00check.log
+> >> Status: 1 NOTE
+> >
+> > The NOTE in particular is:
+> >
+> >
+> >> * checking re-building of vignette outputs ... [116s/30s] NOTE
+> >> Re-building vignettes had CPU time 3.9 times elapsed time
+> >
+> > I emailed Uwe Ligges and got a reply:
+> >
+> >
+> >> We see
+> >> Flavor: r-devel-linux-x86_64-debian-gcc
+> >> Check: re-building of vignette outputs, Result: NOTE
+> >>     Re-building vignettes had CPU time 3.9 times elapsed time
+> >
+> >> which suggests you are using more than 2 cores which is not permitted by
+> > default.
+> >
+> >
+> > There is only one function in my package that uses multiple cores:
+> > bootSE(). However, this function is not called in any of my vignettes
+> > because it is computationally expensive. The Rmd code has `eval = FALSE`
+> > options for all of these cases. Therefore, I am at a loss as to why these
+> > vignettes would be using more than 2 cores or what is causing this, or
+> why
+> > it only impacts the CRAN CMD check Debian system.
+> >
+> >
+> > I noticed this has been a common reported issue (e.g.,
+> > https://github.com/Rdatatable/data.table/issues/5658), but mainly for
+> those
+> > using data.table or openMP; I use neither. The same issue was showing for
+> > some examples also, which I dealt with by wrapping in \dontrun{} ? not
+> > ideal, but seemed quickest way to avoid.
+> >
+> >
+> > I have tried many things to fix this:
+> >
+> >     1. Modifying the vignettes to make faster
+> >     2. Adding various combinations of Sys.setenv("OMP_THREAD_LIMIT" = 1),
+> >     Sys.setenv("OMP_NUM_THREADS" = 1), options(Ncpus = 1), options(cores
+> = 2)
+> >     to the Rmd vignettes
+> >     3. Checked the package builds using r-lib/actions (GitHub actions)
+> and
+> >     r-hub Debian platform ? I cannot reproduce this CRAN error
+> >
+> >
+> > CRAN will not accept the update to my package until this NOTE is
+> squashed.
+> > If anyone is able to provide a recommendation on what I might do, I would
+> > appreciate it.
+> >
+> >
+> > Kind regards,
+> >
+> >
+> > Graeme Hickey
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From gr@eme|eeh|ckey @end|ng |rom gm@||@com  Tue Feb  4 17:16:38 2025
+From: gr@eme|eeh|ckey @end|ng |rom gm@||@com (Graeme Hickey)
+Date: Tue, 4 Feb 2025 16:16:38 +0000
+Subject: [R-pkg-devel] [SPAM Warning!]Re: CRAN Debian error installation
+ time
+In-Reply-To: <26521.3699.981063.369921@rob.eddelbuettel.com>
+References: <CA+hm8HkNfS=YTVw5M2Cp0Ak-sDEP+mxdkEeOGV2xznS1YLGuNg@mail.gmail.com>
+ <20250127233626.7fd9bbb6@Tarkus>
+ <CA+hm8HnWWF7nje8V_S7FH_Qze=sHzfkOeAHEBL=5toL0EL5dGA@mail.gmail.com>
+ <20250128190945.095fd961@arachnoid>
+ <26521.3699.981063.369921@rob.eddelbuettel.com>
+Message-ID: <CALvcmjeTn4CSVzPG=7h8U7p0UWU64u4_tWMMiCbJfd6P7YD1-w@mail.gmail.com>
+
+Having spent the best part of a month troubleshooting an almost
+identical issue, I came across Dirk's blog post here:
+https://dirk.eddelbuettel.com/blog/2023/10/31/. He discusses how to
+throttle the number of threads, and exports 2 handy functions in the
+RcppArmadillo package, which you can use with tests, examples, and
+vignettes. Thank you, Dirk... your trick just saved me!
+
+On Tue, 28 Jan 2025 at 17:06, Dirk Eddelbuettel <edd at debian.org> wrote:
+
+>
+> Excellent (as usual) sleuthing by Ivan -- colour me impressed (again).
+>
+> As an aside, your package makes wide use of the excellent resources
+> provided
+> by other CRAN packages.  But with this comes added complexity.  Depending
+> on
+> over sixty (!!) other packages (when counting recursively, over seventy
+> when
+> we add Suggests:) can make your overall setup fragile, and debugging
+> challenging.
+>
+> > db <- tools::CRAN_package_db()
+> > deps <- tools::package_dependencies(c("dplyr", "ggplot2", "ggpubr",
+> + "ggtext", "janitor", "magrittr", "polite", "purrr", "RcppParallel",
+> + "RhpcBLASctl", "readr", "robotstxt", "rvest", "stringr", "text2vec",
+> "tidyr",
+> + "tidytext"))
+> > unique(sort(do.call(c, deps)))
+>  [1] "cli"          "clipr"        "cowplot"      "cpp11"
+>  [5] "crayon"       "data.table"   "digest"       "dplyr"
+>  [9] "future.apply" "generics"     "ggplot2"      "ggrepel"
+> [13] "ggsci"        "ggsignif"     "glue"         "grDevices"
+> [17] "grid"         "gridExtra"    "gridtext"     "gtable"
+> [21] "hms"          "httr"         "isoband"      "janeaustenr"
+> [25] "lgr"          "lifecycle"    "lubridate"    "magrittr"
+> [29] "MASS"         "Matrix"       "memoise"      "methods"
+> [33] "mgcv"         "mlapi"        "pillar"       "polynom"
+> [37] "purrr"        "R6"           "ratelimitr"   "Rcpp"
+> [41] "rlang"        "robotstxt"    "rsparse"      "rstatix"
+> [45] "rvest"        "scales"       "selectr"      "snakecase"
+> [49] "spiderbar"    "stats"        "stringi"      "stringr"
+> [53] "tibble"       "tidyr"        "tidyselect"   "tokenizers"
+> [57] "tzdb"         "usethis"      "utils"        "vctrs"
+> [61] "vroom"        "withr"        "xml2"
+> >
+>
+> Dirk
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Tue Feb  4 17:47:46 2025
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Tue, 4 Feb 2025 10:47:46 -0600
+Subject: [R-pkg-devel] [SPAM Warning!]Re: CRAN Debian error installation
+ time
+In-Reply-To: <CALvcmjeTn4CSVzPG=7h8U7p0UWU64u4_tWMMiCbJfd6P7YD1-w@mail.gmail.com>
+References: <CA+hm8HkNfS=YTVw5M2Cp0Ak-sDEP+mxdkEeOGV2xznS1YLGuNg@mail.gmail.com>
+ <20250127233626.7fd9bbb6@Tarkus>
+ <CA+hm8HnWWF7nje8V_S7FH_Qze=sHzfkOeAHEBL=5toL0EL5dGA@mail.gmail.com>
+ <20250128190945.095fd961@arachnoid>
+ <26521.3699.981063.369921@rob.eddelbuettel.com>
+ <CALvcmjeTn4CSVzPG=7h8U7p0UWU64u4_tWMMiCbJfd6P7YD1-w@mail.gmail.com>
+Message-ID: <26530.17586.810752.840564@rob.eddelbuettel.com>
+
+
+On 4 February 2025 at 16:16, Graeme Hickey wrote:
+| Having spent the best part of a month troubleshooting an almost
+| identical?issue, I came across Dirk's blog post here:?https://
+| dirk.eddelbuettel.com/blog/2023/10/31/. He discusses how to throttle the number
+| of threads, and exports 2 handy functions in the RcppArmadillo package,?which
+| you can?use with tests,?examples, and vignettes. Thank you, Dirk... your trick
+| just saved me!
+
+Yay, glad to hear that, and happy it helped!
+
+There is in fact an example package with just the throttling example:
+https://github.com/eddelbuettel/rcpparmadilloopenmpex
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Tue Feb  4 22:11:10 2025
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Tue, 4 Feb 2025 13:11:10 -0800
+Subject: [R-pkg-devel] Failed: Future File Timestamp Check
+Message-ID: <CAL3ufUJxydcAAJTFVJKEFuTzzfjPST-hBcKG0h3s_35YtofqHQ@mail.gmail.com>
+
+I'm running R CMD check for my package {calcite} (source:
+https://github.com/r-arcGIS/calcite) which is failing due to what *looks* like
+a bug.
+
+R CMD check fails at "checking for future file timestamps"
+
+I get this error:  ...Error in if (abs(unclass(now_local) -
+unclass(now)[1]) > 300) missing value where TRUE/FALSE needed.
+
+It seems that an NA is being generated somehow during this check but I'm
+unsure how.
+
+One thing that comes to mind is that the file that contains all of my
+function definitions is generated using writeLines() but the output of `
+file.info()` looks normal to me.
+
+Have others encountered this? I'm on R 4.4.0 Puppy Cup
+
+platform       aarch64-apple-darwin20
+arch           aarch64
+os             darwin20
+system         aarch64, darwin20
+status
+major          4
+minor          4.0
+year           2024
+month          04
+day            24
+svn rev        86474
+language       R
+version.string R version 4.4.0 (2024-04-24)
+nickname       Puppy Cup
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Tue Feb  4 23:54:36 2025
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Tue, 04 Feb 2025 14:54:36 -0800
+Subject: [R-pkg-devel] Failed: Future File Timestamp Check
+In-Reply-To: <CAL3ufUJxydcAAJTFVJKEFuTzzfjPST-hBcKG0h3s_35YtofqHQ@mail.gmail.com>
+References: <CAL3ufUJxydcAAJTFVJKEFuTzzfjPST-hBcKG0h3s_35YtofqHQ@mail.gmail.com>
+Message-ID: <D3452FFB-A24B-4643-B8F5-0737DB9A46C0@dcn.davis.ca.us>
+
+Packages are supposed to work when mounted in a read-only filesystem... using writeLines seems like a very bad idea since you can't assume the package install is writeable when it is run, and running code from tmp is a security hole.
+
+If you absolutely cannot think of a way around running code from generated files, then maybe you should use textConnection to run from internal RAM.
+
+On February 4, 2025 1:11:10 PM PST, Josiah Parry <josiah.parry at gmail.com> wrote:
+>I'm running R CMD check for my package {calcite} (source:
+>https://github.com/r-arcGIS/calcite) which is failing due to what *looks* like
+>a bug.
+>
+>R CMD check fails at "checking for future file timestamps"
+>
+>I get this error:  ...Error in if (abs(unclass(now_local) -
+>unclass(now)[1]) > 300) missing value where TRUE/FALSE needed.
+>
+>It seems that an NA is being generated somehow during this check but I'm
+>unsure how.
+>
+>One thing that comes to mind is that the file that contains all of my
+>function definitions is generated using writeLines() but the output of `
+>file.info()` looks normal to me.
+>
+>Have others encountered this? I'm on R 4.4.0 Puppy Cup
+>
+>platform       aarch64-apple-darwin20
+>arch           aarch64
+>os             darwin20
+>system         aarch64, darwin20
+>status
+>major          4
+>minor          4.0
+>year           2024
+>month          04
+>day            24
+>svn rev        86474
+>language       R
+>version.string R version 4.4.0 (2024-04-24)
+>nickname       Puppy Cup
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-package-devel at r-project.org mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Wed Feb  5 00:27:34 2025
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Tue, 4 Feb 2025 15:27:34 -0800
+Subject: [R-pkg-devel] Failed: Future File Timestamp Check
+In-Reply-To: <D3452FFB-A24B-4643-B8F5-0737DB9A46C0@dcn.davis.ca.us>
+References: <CAL3ufUJxydcAAJTFVJKEFuTzzfjPST-hBcKG0h3s_35YtofqHQ@mail.gmail.com>
+ <D3452FFB-A24B-4643-B8F5-0737DB9A46C0@dcn.davis.ca.us>
+Message-ID: <CAL3ufULzoyPe_35-JvJhD4JODvf8BqiB+gKAizdeJX7=Hro20Q@mail.gmail.com>
+
+The file was written using writeLines() but it is just a normal R script
+with normal function definitions and is included in the R/ directory. The
+source code is just programmatically generated.
+
+
+On Tue, Feb 4, 2025 at 14:54 Jeff Newmiller <jdnewmil at dcn.davis.ca.us>
+wrote:
+
+> Packages are supposed to work when mounted in a read-only filesystem...
+> using writeLines seems like a very bad idea since you can't assume the
+> package install is writeable when it is run, and running code from tmp is a
+> security hole.
+>
+> If you absolutely cannot think of a way around running code from generated
+> files, then maybe you should use textConnection to run from internal RAM.
+>
+> On February 4, 2025 1:11:10 PM PST, Josiah Parry <josiah.parry at gmail.com>
+> wrote:
+> >I'm running R CMD check for my package {calcite} (source:
+> >https://github.com/r-arcGIS/calcite) which is failing due to what
+> *looks* like
+> >a bug.
+> >
+> >R CMD check fails at "checking for future file timestamps"
+> >
+> >I get this error:  ...Error in if (abs(unclass(now_local) -
+> >unclass(now)[1]) > 300) missing value where TRUE/FALSE needed.
+> >
+> >It seems that an NA is being generated somehow during this check but I'm
+> >unsure how.
+> >
+> >One thing that comes to mind is that the file that contains all of my
+> >function definitions is generated using writeLines() but the output of `
+> >file.info()` looks normal to me.
+> >
+> >Have others encountered this? I'm on R 4.4.0 Puppy Cup
+> >
+> >platform       aarch64-apple-darwin20
+> >arch           aarch64
+> >os             darwin20
+> >system         aarch64, darwin20
+> >status
+> >major          4
+> >minor          4.0
+> >year           2024
+> >month          04
+> >day            24
+> >svn rev        86474
+> >language       R
+> >version.string R version 4.4.0 (2024-04-24)
+> >nickname       Puppy Cup
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> >______________________________________________
+> >R-package-devel at r-project.org mailing list
+> >https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+> --
+> Sent from my phone. Please excuse my brevity.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Wed Feb  5 01:04:56 2025
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Tue, 04 Feb 2025 16:04:56 -0800
+Subject: [R-pkg-devel] Failed: Future File Timestamp Check
+In-Reply-To: <CAL3ufULzoyPe_35-JvJhD4JODvf8BqiB+gKAizdeJX7=Hro20Q@mail.gmail.com>
+References: <CAL3ufUJxydcAAJTFVJKEFuTzzfjPST-hBcKG0h3s_35YtofqHQ@mail.gmail.com>
+ <D3452FFB-A24B-4643-B8F5-0737DB9A46C0@dcn.davis.ca.us>
+ <CAL3ufULzoyPe_35-JvJhD4JODvf8BqiB+gKAizdeJX7=Hro20Q@mail.gmail.com>
+Message-ID: <A96FB475-2453-474C-A7E7-7DB890EDA5A6@dcn.davis.ca.us>
+
+That was clear to me, and changes nothing about my comments.
+
+On February 4, 2025 3:27:34 PM PST, Josiah Parry <josiah.parry at gmail.com> wrote:
+>The file was written using writeLines() but it is just a normal R script
+>with normal function definitions and is included in the R/ directory. The
+>source code is just programmatically generated.
+>
+>
+>On Tue, Feb 4, 2025 at 14:54 Jeff Newmiller <jdnewmil at dcn.davis.ca.us>
+>wrote:
+>
+>> Packages are supposed to work when mounted in a read-only filesystem...
+>> using writeLines seems like a very bad idea since you can't assume the
+>> package install is writeable when it is run, and running code from tmp is a
+>> security hole.
+>>
+>> If you absolutely cannot think of a way around running code from generated
+>> files, then maybe you should use textConnection to run from internal RAM.
+>>
+>> On February 4, 2025 1:11:10 PM PST, Josiah Parry <josiah.parry at gmail.com>
+>> wrote:
+>> >I'm running R CMD check for my package {calcite} (source:
+>> >https://github.com/r-arcGIS/calcite) which is failing due to what
+>> *looks* like
+>> >a bug.
+>> >
+>> >R CMD check fails at "checking for future file timestamps"
+>> >
+>> >I get this error:  ...Error in if (abs(unclass(now_local) -
+>> >unclass(now)[1]) > 300) missing value where TRUE/FALSE needed.
+>> >
+>> >It seems that an NA is being generated somehow during this check but I'm
+>> >unsure how.
+>> >
+>> >One thing that comes to mind is that the file that contains all of my
+>> >function definitions is generated using writeLines() but the output of `
+>> >file.info()` looks normal to me.
+>> >
+>> >Have others encountered this? I'm on R 4.4.0 Puppy Cup
+>> >
+>> >platform       aarch64-apple-darwin20
+>> >arch           aarch64
+>> >os             darwin20
+>> >system         aarch64, darwin20
+>> >status
+>> >major          4
+>> >minor          4.0
+>> >year           2024
+>> >month          04
+>> >day            24
+>> >svn rev        86474
+>> >language       R
+>> >version.string R version 4.4.0 (2024-04-24)
+>> >nickname       Puppy Cup
+>> >
+>> >       [[alternative HTML version deleted]]
+>> >
+>> >______________________________________________
+>> >R-package-devel at r-project.org mailing list
+>> >https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>> --
+>> Sent from my phone. Please excuse my brevity.
+>>
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Feb  5 02:19:25 2025
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 4 Feb 2025 20:19:25 -0500
+Subject: [R-pkg-devel] Failed: Future File Timestamp Check
+In-Reply-To: <CAL3ufULzoyPe_35-JvJhD4JODvf8BqiB+gKAizdeJX7=Hro20Q@mail.gmail.com>
+References: <CAL3ufUJxydcAAJTFVJKEFuTzzfjPST-hBcKG0h3s_35YtofqHQ@mail.gmail.com>
+ <D3452FFB-A24B-4643-B8F5-0737DB9A46C0@dcn.davis.ca.us>
+ <CAL3ufULzoyPe_35-JvJhD4JODvf8BqiB+gKAizdeJX7=Hro20Q@mail.gmail.com>
+Message-ID: <ddb92b2a-0140-421f-b38a-cf9993f0ed34@gmail.com>
+
+One question is when that file is produced.  Do you produce it before 
+preparing the tarball, or is it produced as part of the installation 
+process?
+
+Duncan Murdoch
+
+On 2025-02-04 6:27 p.m., Josiah Parry wrote:
+> The file was written using writeLines() but it is just a normal R script
+> with normal function definitions and is included in the R/ directory. The
+> source code is just programmatically generated.
+> 
+> 
+> On Tue, Feb 4, 2025 at 14:54 Jeff Newmiller <jdnewmil at dcn.davis.ca.us>
+> wrote:
+> 
+>> Packages are supposed to work when mounted in a read-only filesystem...
+>> using writeLines seems like a very bad idea since you can't assume the
+>> package install is writeable when it is run, and running code from tmp is a
+>> security hole.
+>>
+>> If you absolutely cannot think of a way around running code from generated
+>> files, then maybe you should use textConnection to run from internal RAM.
+>>
+>> On February 4, 2025 1:11:10 PM PST, Josiah Parry <josiah.parry at gmail.com>
+>> wrote:
+>>> I'm running R CMD check for my package {calcite} (source:
+>>> https://github.com/r-arcGIS/calcite) which is failing due to what
+>> *looks* like
+>>> a bug.
+>>>
+>>> R CMD check fails at "checking for future file timestamps"
+>>>
+>>> I get this error:  ...Error in if (abs(unclass(now_local) -
+>>> unclass(now)[1]) > 300) missing value where TRUE/FALSE needed.
+>>>
+>>> It seems that an NA is being generated somehow during this check but I'm
+>>> unsure how.
+>>>
+>>> One thing that comes to mind is that the file that contains all of my
+>>> function definitions is generated using writeLines() but the output of `
+>>> file.info()` looks normal to me.
+>>>
+>>> Have others encountered this? I'm on R 4.4.0 Puppy Cup
+>>>
+>>> platform       aarch64-apple-darwin20
+>>> arch           aarch64
+>>> os             darwin20
+>>> system         aarch64, darwin20
+>>> status
+>>> major          4
+>>> minor          4.0
+>>> year           2024
+>>> month          04
+>>> day            24
+>>> svn rev        86474
+>>> language       R
+>>> version.string R version 4.4.0 (2024-04-24)
+>>> nickname       Puppy Cup
+>>>
+>>>        [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-package-devel at r-project.org mailing list
+>>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>> --
+>> Sent from my phone. Please excuse my brevity.
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Wed Feb  5 02:29:46 2025
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Tue, 4 Feb 2025 17:29:46 -0800
+Subject: [R-pkg-devel] Failed: Future File Timestamp Check
+In-Reply-To: <ddb92b2a-0140-421f-b38a-cf9993f0ed34@gmail.com>
+References: <CAL3ufUJxydcAAJTFVJKEFuTzzfjPST-hBcKG0h3s_35YtofqHQ@mail.gmail.com>
+ <D3452FFB-A24B-4643-B8F5-0737DB9A46C0@dcn.davis.ca.us>
+ <CAL3ufULzoyPe_35-JvJhD4JODvf8BqiB+gKAizdeJX7=Hro20Q@mail.gmail.com>
+ <ddb92b2a-0140-421f-b38a-cf9993f0ed34@gmail.com>
+Message-ID: <CAL3ufULwxVHzhQJcRD+_Rg893jehghughMWty1cSVNMJsufSow@mail.gmail.com>
+
+Thanks, Duncan!
+
+It is produced before preparing the tarball. It?s just a way to automate
+defining many 100ish  functions that have the same structure.  l run the
+script manually when I want to update definitions.
+
+There is not any auto-magical process that creates a file before the build
+or install step. This would be the equivalent of something like running the
+following once during the development process
+
+writeLines(?hello_world <- function() { ?Hello, world!? }?,
+?R/hello-world.R?)
+
+
+On Tue, Feb 4, 2025 at 17:19 Duncan Murdoch <murdoch.duncan at gmail.com>
+wrote:
+
+> One question is when that file is produced.  Do you produce it before
+> preparing the tarball, or is it produced as part of the installation
+> process?
+>
+> Duncan Murdoch
+>
+> On 2025-02-04 6:27 p.m., Josiah Parry wrote:
+> > The file was written using writeLines() but it is just a normal R script
+> > with normal function definitions and is included in the R/ directory. The
+> > source code is just programmatically generated.
+> >
+> >
+> > On Tue, Feb 4, 2025 at 14:54 Jeff Newmiller <jdnewmil at dcn.davis.ca.us>
+> > wrote:
+> >
+> >> Packages are supposed to work when mounted in a read-only filesystem...
+> >> using writeLines seems like a very bad idea since you can't assume the
+> >> package install is writeable when it is run, and running code from tmp
+> is a
+> >> security hole.
+> >>
+> >> If you absolutely cannot think of a way around running code from
+> generated
+> >> files, then maybe you should use textConnection to run from internal
+> RAM.
+> >>
+> >> On February 4, 2025 1:11:10 PM PST, Josiah Parry <
+> josiah.parry at gmail.com>
+> >> wrote:
+> >>> I'm running R CMD check for my package {calcite} (source:
+> >>> https://github.com/r-arcGIS/calcite) which is failing due to what
+> >> *looks* like
+> >>> a bug.
+> >>>
+> >>> R CMD check fails at "checking for future file timestamps"
+> >>>
+> >>> I get this error:  ...Error in if (abs(unclass(now_local) -
+> >>> unclass(now)[1]) > 300) missing value where TRUE/FALSE needed.
+> >>>
+> >>> It seems that an NA is being generated somehow during this check but
+> I'm
+> >>> unsure how.
+> >>>
+> >>> One thing that comes to mind is that the file that contains all of my
+> >>> function definitions is generated using writeLines() but the output of
+> `
+> >>> file.info()` looks normal to me.
+> >>>
+> >>> Have others encountered this? I'm on R 4.4.0 Puppy Cup
+> >>>
+> >>> platform       aarch64-apple-darwin20
+> >>> arch           aarch64
+> >>> os             darwin20
+> >>> system         aarch64, darwin20
+> >>> status
+> >>> major          4
+> >>> minor          4.0
+> >>> year           2024
+> >>> month          04
+> >>> day            24
+> >>> svn rev        86474
+> >>> language       R
+> >>> version.string R version 4.4.0 (2024-04-24)
+> >>> nickname       Puppy Cup
+> >>>
+> >>>        [[alternative HTML version deleted]]
+> >>>
+> >>> ______________________________________________
+> >>> R-package-devel at r-project.org mailing list
+> >>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >>
+> >> --
+> >> Sent from my phone. Please excuse my brevity.
+> >>
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From zk@mv@r @end|ng |rom gm@||@com  Wed Feb  5 02:32:31 2025
+From: zk@mv@r @end|ng |rom gm@||@com (Zhian Kamvar)
+Date: Tue, 4 Feb 2025 17:32:31 -0800
+Subject: [R-pkg-devel] Additional issue clang-ASAN, gcc-ASAN
+In-Reply-To: <CALEXWq0rdWVpPyBmb_JDmw-2289zNhpDQ7GodK5Q2vDjO_vQdw@mail.gmail.com>
+References: <mailman.11256.10.1738407601.11304.r-package-devel@r-project.org>
+ <ME3PR01MB7944A3A9807CADA986349B4CD4EA2@ME3PR01MB7944.ausprd01.prod.outlook.com>
+ <20250204143003.22982e7b@arachnoid>
+ <CALEXWq3_vDeJHNVLgFjdKAMcmAYPT32yLvDN=i3bhOjJnwu=Lw@mail.gmail.com>
+ <79394630-e305-4c3a-8781-01135867d508@statistik.tu-dortmund.de>
+ <CALEXWq0rdWVpPyBmb_JDmw-2289zNhpDQ7GodK5Q2vDjO_vQdw@mail.gmail.com>
+Message-ID: <CAPsXksKbbg1d0JM1VgWUkLOWZsJ3Wss-mcgmaNX3s0qnbc8HmQ@mail.gmail.com>
+
+Thank you, Uwe for tagging me in. Huge thank you to Ivan for the detailed
+analysis. This reflects what Max Coulter found in
+https://github.com/thibautjombart/adegenet/issues/363. I just merged in
+https://github.com/thibautjombart/adegenet/issues/363 yesterday and I
+believe that should fix the issue.
+
+I am going to run a test using the
+https://hub.docker.com/r/rocker/r-devel-san/ to confirm that this is fixed
+before I send it off to CRAN.
+
+Best,
+Zhian
+
+
+On Tue, Feb 4, 2025 at 4:01?AM I?aki Ucar <iucar at fedoraproject.org> wrote:
+
+> On Tue, 4 Feb 2025 at 12:56, Uwe Ligges <ligges at statistik.tu-dortmund.de>
+> wrote:
+> >
+> >
+> >
+> > On 04.02.2025 12:46, I?aki Ucar wrote:
+> > > @Ivan: Excellent anaylsis as always.
+> > >
+> > > @Bernd: So what can **you** do about it? You are using adegenet
+> > > correctly as Ivan pointed out, so IMHO CRAN should have requested
+> > > adegenet's maintainer to fix this. But since it's your package that is
+> > > on the line here, I would put that example inside a dontrun{} chunk
+> > > for now, to avoid triggering this issue on CRAN, and I would report
+> > > Ivan's analysis upstream.
+> >
+> > Putting it in dontrun is the wrong advise in any case, as we like to
+> > track whether the underlying issue has been fixed. And both Professor
+> > Ripley and I already asked to liase with the adegenet maintainer to get
+> > this fixed.
+>
+> Great, we obviously didn't know this, but only that Bernd's package is
+> scheduled to be archived soon, thus my advice.
+>
+> I?aki
+>
+> > So I wonder why the most relevant person (Zhian N. Kamvar)
+> > was not included here (CCIng now).
+> > Ivan's analysis is as always extremely helpful, particularly for the
+> > adegenet maintainer.
+> >
+> > Best,
+> > Uwe
+> >
+> >
+> >
+> > > I?aki
+> > >
+> > >
+> > > On Tue, 4 Feb 2025 at 12:30, Ivan Krylov via R-package-devel
+> > > <r-package-devel at r-project.org> wrote:
+> > >>
+> > >> ? Sun, 2 Feb 2025 22:56:47 +0000
+> > >> Bernd.Gruber <Bernd.Gruber at canberra.edu.au> ?????:
+> > >>
+> > >>> READ of size 16 at 0x518000697ff0 thread T0
+> > >>>      #0 0x7f2e873ccfdf in bytesToDouble
+> > >>> /tmp/RtmpNNPUz9/R.INSTALL3cef1f2b1bd39c/adegenet/src/snpbin.c:225:19
+> > >>> #1 0x7f2e873ceca5 in snpbin2freq
+> > >>> /tmp/RtmpNNPUz9/R.INSTALL3cef1f2b1bd39c/adegenet/src/snpbin.c:332:5
+> > >>> #2 0x7f2e873ceca5 in snpbin_dotprod_freq
+> > >>> /tmp/RtmpNNPUz9/R.INSTALL3cef1f2b1bd39c/adegenet/src/snpbin.c:447:5
+> > >>> #3 0x7f2e873bba42 in GLdotProd
+> > >>>
+> /tmp/RtmpNNPUz9/R.INSTALL3cef1f2b1bd39c/adegenet/src/GLfunctions.c:42:14
+> > >>
+> > >> Ben Bolker is exactly right; the problem happens in the 'adegenet'
+> > >> code. Why?
+> > >>
+> > >> bytesToDouble() is asked to unpack the bytes from the 'vecbytes' array
+> > >> (26 bytes) into individual bits stored as doubles in the 'out' array.
+> > >> The latter was allocated by the snpbin_dotprod_freq() function to
+> > >> contain 199 elements [1]. Every byte must be unpacked into 8 bits, and
+> > >> 199 is less than 26*8 = 208. Where did the values come from?
+> > >>
+> > >> The C function GLsumFreq() stores them unchanged from its arguments
+> > >> [2], and those come from the SNPbin objects passed by R code [3] from
+> > >> nLoc(x) and length(x$gen[[1]]@snp[[1]]). Where do they originate?
+> > >>
+> > >> The R traceback at the point of the crash is dartR.base::gl.pcoa ->
+> > >> adegenet::glPca -> adegenet::glDotProd. The object 'possums.gl' of S4
+> > >> class 'dartR' exported by 'dartR.base' appears valid: its .$n.loc is
+> > >> exactly equal to length(.$gen[[1]]@snp[[1]]) * 8, so the allocation
+> size
+> > >> matches the packed binary content.
+> > >>
+> > >> The subset possums.gl[1:50,] that is used to perform PCA, on the
+> other
+> > >> hand, is invalid: length(possums.gl[1:50,]$gen[[1]]@snp[[1]]) is 26
+> > >> instead of 25, which later causes bytesToDouble() to try to write
+> extra
+> > >> 8 doubles (64 bytes) into the buffer.
+> > >>
+> > >> This happens because trying to extract all SNPs from an SNPbin object
+> > >> introduces an extra byte:
+> > >>
+> > >> possums.gl at gen[[1]] |> _ at snp |> lengths()
+> > >> # [1] 25 25
+> > >>
+> > >> possums.gl at gen[[1]][rep(TRUE, nLoc(possums.gl at gen[[1]]))] |>
+> > >>   _ at snp |> lengths()
+> > >> # 26 26
+> > >>
+> > >> This can be traced to a bug in adegenet:::.subsetbin:
+> > >>
+> > >> .subsetbin(as.raw(0xff), 1:8)
+> > >> # [1] ff 00 # <-- should be just 'ff'
+> > >>
+> > >> xint <- as.integer(rawToBits(x)[i]) # may be not divisible by 8
+> > >> # so introduce padding: the following line gives 8 bits of padding
+> > >> # instead of 0 when length(xint) is divisible by 8
+> > >> zeroes <- 8 - (length(xint)%%8)
+> > >> # instead use something like:
+> > >> # zeroes <- (8 - (length(xint)%%8)) * (length(xint)%%8 > 0)
+> > >> # (could probably be golfed further)
+> > >> return(packBits(c(xint, rep(0L, zeroes))))
+> > >>
+> > >> But we're getting two bugs for the price of one, because even with a
+> > >> 25-byte buffer, nLoc(.) == 199 would still result in an 8-byte
+> > >> overflow. This is solely on the bytesToDouble() C function: it ought
+> to
+> > >> know to stop after writing *reslength elements into the 'vecres'
+> array.
+> > >>
+> > >> I'm afraid there is no easy way to work around either of the bugs in
+> > >> the dartR.base code.
+> > >>
+> > >> --
+> > >> Best regards,
+> > >> Ivan
+> > >>
+> > >> [1]
+> > >>
+> https://github.com/thibautjombart/adegenet/blob/c7287597155ab18989d892a72eff33cf8c288958/src/snpbin.c#L443-L444
+> > >>
+> > >> [2]
+> > >>
+> https://github.com/thibautjombart/adegenet/blob/c7287597155ab18989d892a72eff33cf8c288958/src/GLfunctions.c#L124
+> > >>
+> > >> [3]
+> > >>
+> https://github.com/thibautjombart/adegenet/blob/c7287597155ab18989d892a72eff33cf8c288958/R/glFunctions.R#L215-L216
+> > >>
+> > >> ______________________________________________
+> > >> R-package-devel at r-project.org mailing list
+> > >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> > >>
+> > >
+> > >
+> >
+>
+>
+> --
+> I?aki ?car
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Wed Feb  5 02:44:51 2025
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Wed, 5 Feb 2025 14:44:51 +1300
+Subject: [R-pkg-devel] Failed: Future File Timestamp Check
+In-Reply-To: <CAL3ufUJxydcAAJTFVJKEFuTzzfjPST-hBcKG0h3s_35YtofqHQ@mail.gmail.com>
+References: <CAL3ufUJxydcAAJTFVJKEFuTzzfjPST-hBcKG0h3s_35YtofqHQ@mail.gmail.com>
+Message-ID: <94DC06FD-5C10-406E-83D0-78D5902BA6ED@R-project.org>
+
+Josiah,
+
+that test tests the accuracy of the system clock by querying https://worldtimeapi.org/api/timezone/etc/UTC so my guess would be that you have either network or proxy issues which cause that request to fail by providing garbage instead of the actual response. 
+
+The call to test yourself is
+> readLines("http://worldtimeapi.org/api/timezone/etc/UTC", warn=FALSE)
+[1] "{\"utc_offset\":\"+00:00\",\"timezone\":\"Etc/UTC\",\"day_of_week\":3,\"day_of_year\":36,\"datetime\":\"2025-02-05T01:42:19.272728+00:00\",\"utc_datetime\":\"2025-02-05T01:42:19.272728+00:00\",\"unixtime\":1738719739,\"raw_offset\":0,\"week_number\":6,\"dst\":false,\"abbreviation\":\"UTC\",\"dst_offset\":0,\"dst_from\":null,\"dst_until\":null,\"client_ip\":\"121.98.39.155\"}"
+
+It has to have the "datetime" entry. If you can't fix your network you can skip that test with
+
+_R_CHECK_FUTURE_FILE_TIMESTAMPS_=FALSE
+
+Cheers,
+Simon
+
+
+> On Feb 5, 2025, at 10:11 AM, Josiah Parry <josiah.parry at gmail.com> wrote:
+> 
+> I'm running R CMD check for my package {calcite} (source:
+> https://github.com/r-arcGIS/calcite) which is failing due to what *looks* like
+> a bug.
+> 
+> R CMD check fails at "checking for future file timestamps"
+> 
+> I get this error:  ...Error in if (abs(unclass(now_local) -
+> unclass(now)[1]) > 300) missing value where TRUE/FALSE needed.
+> 
+> It seems that an NA is being generated somehow during this check but I'm
+> unsure how.
+> 
+> One thing that comes to mind is that the file that contains all of my
+> function definitions is generated using writeLines() but the output of `
+> file.info()` looks normal to me.
+> 
+> Have others encountered this? I'm on R 4.4.0 Puppy Cup
+> 
+> platform       aarch64-apple-darwin20
+> arch           aarch64
+> os             darwin20
+> system         aarch64, darwin20
+> status
+> major          4
+> minor          4.0
+> year           2024
+> month          04
+> day            24
+> svn rev        86474
+> language       R
+> version.string R version 4.4.0 (2024-04-24)
+> nickname       Puppy Cup
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> 
+
+
