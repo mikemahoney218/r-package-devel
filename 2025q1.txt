@@ -9940,3 +9940,383 @@ Steve
 	[[alternative HTML version deleted]]
 
 
+From zk@mv@r @end|ng |rom gm@||@com  Thu Feb  6 04:52:57 2025
+From: zk@mv@r @end|ng |rom gm@||@com (Zhian Kamvar)
+Date: Wed, 5 Feb 2025 19:52:57 -0800
+Subject: [R-pkg-devel] S3 generic/method consistency NOTE
+Message-ID: <CAPsXksKyQyMntOdN40yiDeDwqfcPQJYxBs-j2Jhg9=Nz4tqFLw@mail.gmail.com>
+
+I'm getting this warning in an old package and im not quite sure how to fix
+it. I've always understood the is.thing sort of functions as always taking
+a single argument, which is usually "x"
+
+Do I have to update the is.genind etc signature to take two arguments?
+
+Note below
+
+Check: S3 generic/method consistency, Result: NOTE
+  Mismatches for methods registered for non-generic:
+  is:
+    function(object, class2)
+  is.genind:
+    function(x)
+
+  is:
+    function(object, class2)
+  is.genpop:
+    function(x)
+
+  sample:
+    function(x, size, replace, prob)
+  sample.haploGen:
+    function(x, n)
+  See section 'Registering S3 methods' in the 'Writing R Extensions'
+  manual.
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Thu Feb  6 09:10:19 2025
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 6 Feb 2025 11:10:19 +0300
+Subject: [R-pkg-devel] S3 generic/method consistency NOTE
+In-Reply-To: <CAPsXksKyQyMntOdN40yiDeDwqfcPQJYxBs-j2Jhg9=Nz4tqFLw@mail.gmail.com>
+References: <CAPsXksKyQyMntOdN40yiDeDwqfcPQJYxBs-j2Jhg9=Nz4tqFLw@mail.gmail.com>
+Message-ID: <20250206111019.679e89f1@Tarkus>
+
+? Wed, 5 Feb 2025 19:52:57 -0800
+Zhian Kamvar <zkamvar at gmail.com> ?????:
+
+>   Mismatches for methods registered for non-generic:
+>   is:
+>     function(object, class2)
+>   is.genind:
+>     function(x)
+> 
+>   is:
+>     function(object, class2)
+>   is.genpop:
+>     function(x)
+> 
+>   sample:
+>     function(x, size, replace, prob)
+>   sample.haploGen:
+>     function(x, n)
+
+Neither methods::is nor base::sample are S3 generics, so these S3
+method registrations are not needed:
+
+https://github.com/thibautjombart/adegenet/blob/e4874e73f0d39ebdddeca05b7eb1359fab771aaf/NAMESPACE#L50-L51
+https://github.com/thibautjombart/adegenet/blob/e4874e73f0d39ebdddeca05b7eb1359fab771aaf/NAMESPACE#L73
+
+In other words, calling is(new("genind", ...)) or sample(haploGen(...))
+won't dispatch to is.genind() or sample.haploGen() anyway; these
+functions are probably intended to be called by their full names.
+
+Removing these lines and re-generating NAMESPACE should help:
+
+https://github.com/thibautjombart/adegenet/blob/e4874e73f0d39ebdddeca05b7eb1359fab771aaf/R/basicMethods.R#L546
+https://github.com/thibautjombart/adegenet/blob/e4874e73f0d39ebdddeca05b7eb1359fab771aaf/R/basicMethods.R#L553
+https://github.com/thibautjombart/adegenet/blob/e4874e73f0d39ebdddeca05b7eb1359fab771aaf/R/haploGen.R#L529
+
+-- 
+Best regards,
+Ivan
+
+
+From zk@mv@r @end|ng |rom gm@||@com  Thu Feb  6 23:42:34 2025
+From: zk@mv@r @end|ng |rom gm@||@com (Zhian Kamvar)
+Date: Thu, 6 Feb 2025 14:42:34 -0800
+Subject: [R-pkg-devel] S3 generic/method consistency NOTE
+In-Reply-To: <20250206111019.679e89f1@Tarkus>
+References: <CAPsXksKyQyMntOdN40yiDeDwqfcPQJYxBs-j2Jhg9=Nz4tqFLw@mail.gmail.com>
+ <20250206111019.679e89f1@Tarkus>
+Message-ID: <CAPsXks+AHM1wo4GsH6e9TsFQomSyV0XELn7+5=p6pG1EKDyj0w@mail.gmail.com>
+
+This was the correct answer, thank you!
+
+On Thu, Feb 6, 2025 at 00:10 Ivan Krylov <ikrylov at disroot.org> wrote:
+
+> ? Wed, 5 Feb 2025 19:52:57 -0800
+> Zhian Kamvar <zkamvar at gmail.com> ?????:
+>
+> >   Mismatches for methods registered for non-generic:
+> >   is:
+> >     function(object, class2)
+> >   is.genind:
+> >     function(x)
+> >
+> >   is:
+> >     function(object, class2)
+> >   is.genpop:
+> >     function(x)
+> >
+> >   sample:
+> >     function(x, size, replace, prob)
+> >   sample.haploGen:
+> >     function(x, n)
+>
+> Neither methods::is nor base::sample are S3 generics, so these S3
+> method registrations are not needed:
+>
+>
+> https://github.com/thibautjombart/adegenet/blob/e4874e73f0d39ebdddeca05b7eb1359fab771aaf/NAMESPACE#L50-L51
+>
+> https://github.com/thibautjombart/adegenet/blob/e4874e73f0d39ebdddeca05b7eb1359fab771aaf/NAMESPACE#L73
+>
+> In other words, calling is(new("genind", ...)) or sample(haploGen(...))
+> won't dispatch to is.genind() or sample.haploGen() anyway; these
+> functions are probably intended to be called by their full names.
+>
+> Removing these lines and re-generating NAMESPACE should help:
+>
+>
+> https://github.com/thibautjombart/adegenet/blob/e4874e73f0d39ebdddeca05b7eb1359fab771aaf/R/basicMethods.R#L546
+>
+> https://github.com/thibautjombart/adegenet/blob/e4874e73f0d39ebdddeca05b7eb1359fab771aaf/R/basicMethods.R#L553
+>
+> https://github.com/thibautjombart/adegenet/blob/e4874e73f0d39ebdddeca05b7eb1359fab771aaf/R/haploGen.R#L529
+>
+> --
+> Best regards,
+> Ivan
+>
+
+	[[alternative HTML version deleted]]
+
+
+From zk@mv@r @end|ng |rom gm@||@com  Fri Feb  7 00:23:15 2025
+From: zk@mv@r @end|ng |rom gm@||@com (Zhian Kamvar)
+Date: Thu, 6 Feb 2025 15:23:15 -0800
+Subject: [R-pkg-devel] Additional issue clang-ASAN, gcc-ASAN
+In-Reply-To: <970789b4-451d-4d36-8b40-d970983c8192@statistik.tu-dortmund.de>
+References: <mailman.11256.10.1738407601.11304.r-package-devel@r-project.org>
+ <ME3PR01MB7944A3A9807CADA986349B4CD4EA2@ME3PR01MB7944.ausprd01.prod.outlook.com>
+ <20250204143003.22982e7b@arachnoid>
+ <CALEXWq3_vDeJHNVLgFjdKAMcmAYPT32yLvDN=i3bhOjJnwu=Lw@mail.gmail.com>
+ <79394630-e305-4c3a-8781-01135867d508@statistik.tu-dortmund.de>
+ <CALEXWq0rdWVpPyBmb_JDmw-2289zNhpDQ7GodK5Q2vDjO_vQdw@mail.gmail.com>
+ <CAPsXksKbbg1d0JM1VgWUkLOWZsJ3Wss-mcgmaNX3s0qnbc8HmQ@mail.gmail.com>
+ <970789b4-451d-4d36-8b40-d970983c8192@statistik.tu-dortmund.de>
+Message-ID: <CAPsXksKo6fjE0z7WBvBp08L58V0DM1bQhkmPb4OrntVx=Mqcng@mail.gmail.com>
+
+The new version of adegenet is on CRAN now. Thank you all for your help.
+
+I am curious: what happens with dartR.base? Will the removal notice go away
+in a few days?
+
+On Wed, Feb 5, 2025 at 00:44 Uwe Ligges <ligges at statistik.tu-dortmund.de>
+wrote:
+
+> Great, thanks,
+> Uwe
+>
+>
+> On 05.02.2025 02:32, Zhian Kamvar wrote:
+> > Thank you, Uwe for tagging me in. Huge thank you to Ivan for the
+> > detailed analysis. This reflects what Max Coulter found in https://
+> > github.com/thibautjombart/adegenet/issues/363 <https://github.com/
+> > thibautjombart/adegenet/issues/363>. I just merged in https://
+> > github.com/thibautjombart/adegenet/issues/363 <https://github.com/
+> > thibautjombart/adegenet/issues/363> yesterday and I believe that should
+> > fix the issue.
+> >
+> > I am going to run a test using the https://hub.docker.com/r/rocker/r-
+> > devel-san/ <https://hub.docker.com/r/rocker/r-devel-san/> to confirm
+> > that this is fixed before I send it off to CRAN.
+> >
+> > Best,
+> > Zhian
+> >
+> >
+> > On Tue, Feb 4, 2025 at 4:01?AM I?aki Ucar <iucar at fedoraproject.org
+> > <mailto:iucar at fedoraproject.org>> wrote:
+> >
+> >     On Tue, 4 Feb 2025 at 12:56, Uwe Ligges <ligges at statistik.tu-
+> >     dortmund.de <mailto:ligges at statistik.tu-dortmund.de>> wrote:
+> >      >
+> >      >
+> >      >
+> >      > On 04.02.2025 12:46, I?aki Ucar wrote:
+> >      > > @Ivan: Excellent anaylsis as always.
+> >      > >
+> >      > > @Bernd: So what can **you** do about it? You are using adegenet
+> >      > > correctly as Ivan pointed out, so IMHO CRAN should have
+> requested
+> >      > > adegenet's maintainer to fix this. But since it's your package
+> >     that is
+> >      > > on the line here, I would put that example inside a dontrun{}
+> chunk
+> >      > > for now, to avoid triggering this issue on CRAN, and I would
+> report
+> >      > > Ivan's analysis upstream.
+> >      >
+> >      > Putting it in dontrun is the wrong advise in any case, as we like
+> to
+> >      > track whether the underlying issue has been fixed. And both
+> Professor
+> >      > Ripley and I already asked to liase with the adegenet maintainer
+> >     to get
+> >      > this fixed.
+> >
+> >     Great, we obviously didn't know this, but only that Bernd's package
+> is
+> >     scheduled to be archived soon, thus my advice.
+> >
+> >     I?aki
+> >
+> >      > So I wonder why the most relevant person (Zhian N. Kamvar)
+> >      > was not included here (CCIng now).
+> >      > Ivan's analysis is as always extremely helpful, particularly for
+> the
+> >      > adegenet maintainer.
+> >      >
+> >      > Best,
+> >      > Uwe
+> >      >
+> >      >
+> >      >
+> >      > > I?aki
+> >      > >
+> >      > >
+> >      > > On Tue, 4 Feb 2025 at 12:30, Ivan Krylov via R-package-devel
+> >      > > <r-package-devel at r-project.org <mailto:r-package-devel at r-
+> >     project.org>> wrote:
+> >      > >>
+> >      > >> ? Sun, 2 Feb 2025 22:56:47 +0000
+> >      > >> Bernd.Gruber <Bernd.Gruber at canberra.edu.au
+> >     <mailto:Bernd.Gruber at canberra.edu.au>> ?????:
+> >      > >>
+> >      > >>> READ of size 16 at 0x518000697ff0 thread T0
+> >      > >>>      #0 0x7f2e873ccfdf in bytesToDouble
+> >      > >>> /tmp/RtmpNNPUz9/R.INSTALL3cef1f2b1bd39c/adegenet/src/
+> >     snpbin.c:225:19
+> >      > >>> #1 0x7f2e873ceca5 in snpbin2freq
+> >      > >>> /tmp/RtmpNNPUz9/R.INSTALL3cef1f2b1bd39c/adegenet/src/
+> >     snpbin.c:332:5
+> >      > >>> #2 0x7f2e873ceca5 in snpbin_dotprod_freq
+> >      > >>> /tmp/RtmpNNPUz9/R.INSTALL3cef1f2b1bd39c/adegenet/src/
+> >     snpbin.c:447:5
+> >      > >>> #3 0x7f2e873bba42 in GLdotProd
+> >      > >>> /tmp/RtmpNNPUz9/R.INSTALL3cef1f2b1bd39c/adegenet/src/
+> >     GLfunctions.c:42:14
+> >      > >>
+> >      > >> Ben Bolker is exactly right; the problem happens in the
+> 'adegenet'
+> >      > >> code. Why?
+> >      > >>
+> >      > >> bytesToDouble() is asked to unpack the bytes from the
+> >     'vecbytes' array
+> >      > >> (26 bytes) into individual bits stored as doubles in the 'out'
+> >     array.
+> >      > >> The latter was allocated by the snpbin_dotprod_freq() function
+> to
+> >      > >> contain 199 elements [1]. Every byte must be unpacked into 8
+> >     bits, and
+> >      > >> 199 is less than 26*8 = 208. Where did the values come from?
+> >      > >>
+> >      > >> The C function GLsumFreq() stores them unchanged from its
+> >     arguments
+> >      > >> [2], and those come from the SNPbin objects passed by R code
+> >     [3] from
+> >      > >> nLoc(x) and length(x$gen[[1]]@snp[[1]]). Where do they
+> originate?
+> >      > >>
+> >      > >> The R traceback at the point of the crash is
+> >     dartR.base::gl.pcoa ->
+> >      > >> adegenet::glPca -> adegenet::glDotProd. The object 'possums.gl
+> >     <http://possums.gl>' of S4
+> >      > >> class 'dartR' exported by 'dartR.base' appears valid: its .
+> >     $n.loc is
+> >      > >> exactly equal to length(.$gen[[1]]@snp[[1]]) * 8, so the
+> >     allocation size
+> >      > >> matches the packed binary content.
+> >      > >>
+> >      > >> The subset possums.gl <http://possums.gl>[1:50,] that is used
+> >     to perform PCA, on the other
+> >      > >> hand, is invalid: length(possums.gl <http://
+> >     possums.gl>[1:50,]$gen[[1]]@snp[[1]]) is 26
+> >      > >> instead of 25, which later causes bytesToDouble() to try to
+> >     write extra
+> >      > >> 8 doubles (64 bytes) into the buffer.
+> >      > >>
+> >      > >> This happens because trying to extract all SNPs from an SNPbin
+> >     object
+> >      > >> introduces an extra byte:
+> >      > >>
+> >      > >> possums.gl at gen[[1]] |> _ at snp |> lengths()
+> >      > >> # [1] 25 25
+> >      > >>
+> >      > >> possums.gl at gen[[1]][rep(TRUE, nLoc(possums.gl at gen[[1]]))] |>
+> >      > >>   _ at snp |> lengths()
+> >      > >> # 26 26
+> >      > >>
+> >      > >> This can be traced to a bug in adegenet:::.subsetbin:
+> >      > >>
+> >      > >> .subsetbin(as.raw(0xff), 1:8)
+> >      > >> # [1] ff 00 # <-- should be just 'ff'
+> >      > >>
+> >      > >> xint <- as.integer(rawToBits(x)[i]) # may be not divisible by 8
+> >      > >> # so introduce padding: the following line gives 8 bits of
+> padding
+> >      > >> # instead of 0 when length(xint) is divisible by 8
+> >      > >> zeroes <- 8 - (length(xint)%%8)
+> >      > >> # instead use something like:
+> >      > >> # zeroes <- (8 - (length(xint)%%8)) * (length(xint)%%8 > 0)
+> >      > >> # (could probably be golfed further)
+> >      > >> return(packBits(c(xint, rep(0L, zeroes))))
+> >      > >>
+> >      > >> But we're getting two bugs for the price of one, because even
+> >     with a
+> >      > >> 25-byte buffer, nLoc(.) == 199 would still result in an 8-byte
+> >      > >> overflow. This is solely on the bytesToDouble() C function: it
+> >     ought to
+> >      > >> know to stop after writing *reslength elements into the
+> >     'vecres' array.
+> >      > >>
+> >      > >> I'm afraid there is no easy way to work around either of the
+> >     bugs in
+> >      > >> the dartR.base code.
+> >      > >>
+> >      > >> --
+> >      > >> Best regards,
+> >      > >> Ivan
+> >      > >>
+> >      > >> [1]
+> >      > >> https://github.com/thibautjombart/adegenet/blob/
+> >     c7287597155ab18989d892a72eff33cf8c288958/src/snpbin.c#L443-L444
+> >     <https://github.com/thibautjombart/adegenet/blob/
+> >     c7287597155ab18989d892a72eff33cf8c288958/src/snpbin.c#L443-L444>
+> >      > >>
+> >      > >> [2]
+> >      > >> https://github.com/thibautjombart/adegenet/blob/
+> >     c7287597155ab18989d892a72eff33cf8c288958/src/GLfunctions.c#L124
+> >     <https://github.com/thibautjombart/adegenet/blob/
+> >     c7287597155ab18989d892a72eff33cf8c288958/src/GLfunctions.c#L124>
+> >      > >>
+> >      > >> [3]
+> >      > >> https://github.com/thibautjombart/adegenet/blob/
+> >     c7287597155ab18989d892a72eff33cf8c288958/R/glFunctions.R#L215-L216
+> >     <https://github.com/thibautjombart/adegenet/blob/
+> >     c7287597155ab18989d892a72eff33cf8c288958/R/glFunctions.R#L215-L216>
+> >      > >>
+> >      > >> ______________________________________________
+> >      > >> R-package-devel at r-project.org <mailto:R-package-devel at r-
+> >     project.org> mailing list
+> >      > >> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >     <https://stat.ethz.ch/mailman/listinfo/r-package-devel>
+> >      > >>
+> >      > >
+> >      > >
+> >      >
+> >
+> >
+> >     --
+> >     I?aki ?car
+> >
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
