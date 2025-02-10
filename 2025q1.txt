@@ -11064,3 +11064,155 @@ On Fri, Feb 7, 2025 at 1:54?PM Greg Hunt <greg at firmansyah.com> wrote:
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From ||u|@@rev|||@ @end|ng |rom gm@||@com  Sat Feb  8 19:18:59 2025
+From: ||u|@@rev|||@ @end|ng |rom gm@||@com (=?UTF-8?Q?Llu=C3=ADs_Revilla?=)
+Date: Sat, 8 Feb 2025 19:18:59 +0100
+Subject: [R-pkg-devel] Registering methods conditionally
+Message-ID: <CAN+W6_s7j-mwDfYG=-gorpdNMGuMz8dWpgk5LhiiqPAysyOq9A@mail.gmail.com>
+
+Dear list,
+
+Checks of the package BaseSet I maintain are failing on r-devel with:
+  Error in UseMethod("tidy") : no applicable method for 'tidy' applied to
+an object of class "GeneSet" Calls: tidy Execution halted
+Surprisingly, similar code on tests pass without errors.
+
+This GeneSet is a S4 class exported by GSEABase and has been exported for
+several years [1]. tidy is a S3 method defined on the package.
+
+As this package is a suggested package, following WRE recommendations [2] I
+tried to register the method conditionally under requireNamespace:
+
+if (requireNamespace("GSEABase", quietly = TRUE)) {
+importClassesFrom(GSEABase, GeneSetCollection)
+S3method(tidy, GeneSetCollection)
+importClassesFrom(GSEABase, GeneSet)
+S3method(tidy, GeneSet)
+importClassesFrom(GSEABase, CollectionType)
+S3method(tidy, CollectionType)
+}
+
+However, the new NAMESPACE doesn't pass checks:
+* checking package dependencies ... ERROR
+Namespace dependency missing from DESCRIPTION Imports/Depends entries:
+?GSEABase?
+
+There have been some threads on r-devel about registering dependencies to
+classes defined in other packages [3]. I also saw some packages that
+register the S3 method via .onLoad [4]. In this package I defined several
+S3 methods for an S4 class. Should I define S4 methods for S4 classes not
+defined in my package?
+
+I would appreciate some advice on how to proceed,
+
+Llu?s
+
+
+[1]: https://code.bioconductor.org/browse/GSEABase/blob/devel/NAMESPACE#L66
+[2]:
+https://cran.r-project.org/doc/manuals/R-exts.html#Specifying-imports-and-exports
+[3]: https://stat.ethz.ch/pipermail/r-devel/2025-January/083780.html
+[4]: https://vctrs.r-lib.org/reference/s3_register.html
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Sat Feb  8 21:07:26 2025
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sat, 8 Feb 2025 23:07:26 +0300
+Subject: [R-pkg-devel] Registering methods conditionally
+In-Reply-To: <CAN+W6_s7j-mwDfYG=-gorpdNMGuMz8dWpgk5LhiiqPAysyOq9A@mail.gmail.com>
+References: <CAN+W6_s7j-mwDfYG=-gorpdNMGuMz8dWpgk5LhiiqPAysyOq9A@mail.gmail.com>
+Message-ID: <20250208230726.67d344b3@Tarkus>
+
+? Sat, 8 Feb 2025 19:18:59 +0100
+Llu?s Revilla <lluis.revilla at gmail.com> ?????:
+
+> Error in UseMethod("tidy") : no applicable method for 'tidy' applied
+> to an object of class "GeneSet"
+
+This seems to be a distant consequence of
+<https://github.com/Bioconductor/BiocGenerics/issues/20>.
+
+The example for BaseSet::tidy starts with
+
+>> if (requireNamespace("GSEABase", quietly = TRUE)) {
+
+which produces the following messages:
+
+Loading required package: BiocGenerics
+Loading required package: generics 
+Attaching package: ?generics? 
+The following objects are masked from ?package:BaseSet?:         
+   tidy, union                    # <-- BaseSet::tidy now shadowed
+
+Indeed, at the point of the error, 'tidy' is
+
+Browse[1]> tidy
+function (x, ...) 
+{
+    UseMethod("tidy")
+}
+<bytecode: 0x5615feed95c0>
+<environment: namespace:generics>
+
+...which is different from your own 'tidy' generic:
+
+Browse[1]> BaseSet::tidy
+function (object) 
+{
+    UseMethod("tidy")
+}
+<bytecode: 0x5615eed320c8>
+<environment: namespace:BaseSet>
+
+...and the method is registered for the BaseSet::tidy generic, not the
+generics::tidy generic:
+
+Browse[1]> 'tidy.GeneSet' %in% ls(BaseSet:::.__S3MethodsTable__.)
+[1] TRUE
+Browse[1]> 'tidy.GeneSet' %in% ls(generics:::.__S3MethodsTable__.)
+[1] FALSE
+
+The problem only appears on R-devel because only the development
+version of 'BiocGenerics' has the Depends: relationship with 'generics'.
+
+This one is easier to diagnose than to cure. The example seems to work
+fine if the methods are registered for the other generic at runtime:
+
+library(BaseSet)
+# these are undocumented, use .S3method() in more normal circumstances
+registerS3method("tidy", "GeneSet", BaseSet:::tidy.GeneSet,
+                 loadNamespace("generics"))
+registerS3method("tidy", "GeneSetCollection",
+                 BaseSet:::tidy.GeneSetCollection,
+                 loadNamespace("generics"))
+example("tidy") # doesn't crash
+
+Since BaseSet depends on a new enough R version, it could in theory use
+delayed S3 method registration in its NAMESPACE file [1] in addition to
+registering a method for BaseSet::tidy, but I think that you're now
+expected to importFrom(generics, tidy) and export(tidy) to register S3
+methods on it. It's unfortunate that generics::tidy has a different
+documented purpose. Perhaps the people better-versed in Bioconductor
+have a better suggestion?
+
+Not sure where S4 method dispatch comes into play in your example, but
+conditional import of S4 classes may be hard to implement. NAMESPACE
+files use R syntax but different semantics. Testing for getRversion()
+works because that doesn't usually change for the lifetime of the
+package library. Testing for requireNamespace() wouldn't have worked
+because the results are normally cached at installation time. Maybe
+there's a way using load hooks, but we'd need an S4 wizard to implement
+that correctly. Thankfully, 'BaseSet' seems to only call setMethod()
+for its own classes, so there are no copies of foreign classes creating
+binary dependencies in its namespace.
+
+-- 
+Best regards,
+Ivan
+
+[1]
+https://cran.r-project.org/doc/manuals/R-exts.html#Registering-S3-methods
+
+
