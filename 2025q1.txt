@@ -11688,3 +11688,779 @@ wrote:
 	[[alternative HTML version deleted]]
 
 
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Fri Feb 14 09:47:38 2025
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Fri, 14 Feb 2025 09:47:38 +0100
+Subject: [R-pkg-devel] how to notify users of obsolete and new package
+In-Reply-To: <20250211224029.5a6d3e2b@new-hp>
+References: <ME3PR01MB7944C5F281053D6D917BCBF2D4F22@ME3PR01MB7944.ausprd01.prod.outlook.com>
+ <20250211224029.5a6d3e2b@new-hp>
+Message-ID: <6cbc2d92-889d-42d1-946b-2c9844d4f03d@statistik.tu-dortmund.de>
+
+
+
+On 11.02.2025 10:40, Rolf Turner wrote:
+> 
+> On Mon, 10 Feb 2025 21:55:07 +0000
+> Bernd.Gruber <Bernd.Gruber at canberra.edu.au> wrote:
+> 
+>> Hi,
+>>
+>> I have a quick question. I have an older package (dartR) that is now
+>> superseded by a series of new packages.
+>>
+>> Still we noticed that several users have not updated yet and moved to
+>> the new package. Hence the question:
+>>
+>> Is it okay to submit a "shell" package under the name of the old
+>> package that does nothing else than telling the user to install the
+>> new package (and a link/code how to do that)?
+>>
+>> There would only be one function which is updating some legacy data
+>> to a new format.
+
+You can do that and then let that package be archived after a while.
+
+
+>>
+>> Is that accepted or is there another way to let user know (e.g. via
+>> the CRAN package pages)?
+
+Yes, we can archive a package and report on the web page of the package 
+that it has been superseded.
+Some example:
+<https://cran.r-project.org/package=eodhd>
+
+
+Note that CRAN does not like the idea of retiring a package and 
+replacing it by another one. This should only be a very exceptional 
+action and CRAN will decide case based.
+Ideally a new version of the old package should do.
+
+Best,
+Uwe Ligges
+
+
+
+
+>
+>> Thanks and regards, Bernd
+> 
+> I am sympathetic to the points made by Kevin Coombes, who has also
+> replied to you.  OTOH I am obsessive about redundancy and clutter.  So
+> I dunno.
+> 
+> Some while back I put a package "hse" (standing for "hope springs
+> eternal" ??) up on CRAN.  Then later I wrote a paper about the ideas
+> implemented in hse.  A referee objected to the name, so I changed the
+> name to "dbd" ("discretised beta distribution").  But I left a skeleton
+> of hse on CRAN.  It just consists of the .onAttach() function.  If you
+> install and load hse you just get the message:
+> 
+>       This package, "hse" is now deprecated.   Users
+>       should install and use its successor "dbd".
+> 
+> So far no-one has yelled at me ....  But maybe no-one ever used hse.
+> 
+> cheers,
+> 
+> Rolf Turner
+> 
+
+
+From john@c|@rke @end|ng |rom corner@tonenw@com  Fri Feb 14 15:54:39 2025
+From: john@c|@rke @end|ng |rom corner@tonenw@com (John Clarke)
+Date: Fri, 14 Feb 2025 15:54:39 +0100
+Subject: [R-pkg-devel] Retrieving versioned csv datasets for use in an R
+ package
+Message-ID: <CAF0e1n-ZzgkqT-zcVUJjaWXpART7QmPe-94b6xiqQMA2pjpv1w@mail.gmail.com>
+
+Hi folks,
+
+I've looked around for this particular question, but haven't found a good
+answer. I have a versioned dataset that includes about 6 csv files that
+total about 15MB for each version. The versions get updated every few years
+or so and are used to drive the model which was written in C++ but is now
+inside an Rcpp wrapper. Apart from the fact that CRAN does not permit large
+files, I want to have a better way for users to access particular versions
+of the dataset.
+
+Usage idea:
+ # The following would hopefully also download default/most recent version
+of the csv files from CRAN (if allowed) or Github or some other repository
+for academic open source data.
+install.packages("MyPackage")
+mypackage = new(MyPackage)
+
+Then, if necessary, the user could change the dataset used with something
+like:
+mypackage.dataset("2.1.0") which would retrieve new csv files if they
+haven't already been downloaded and update the data_folder path internally
+to point to 2.1.0 directory.
+
+Requirements:
+- The dataset is csv (not a R data object) and the Rcpp MyPackage expects
+this format
+- Would be nice to properly include citations for the data as they will
+likely be initially released through a journal publication
+
+What is the best practice for this sort of dataset management for a package
+in R? Is it okay to use Github to store and version the data? Or
+preferred to use an R package (ignoring the file size limit). Or some other
+open source data hosting? I see https://r-universe.dev/ as an option as
+well. In any case, what is the proper mechanism for retrieving/caching the
+data?
+
+Thanks,
+
+-John
+
+John Clarke | Senior Technical Advisor |
+Cornerstone Systems Northwest | john.clarke at cornerstonenw.com
+
+	[[alternative HTML version deleted]]
+
+
+From r@|@@pere|r@@br @end|ng |rom gm@||@com  Fri Feb 14 16:08:01 2025
+From: r@|@@pere|r@@br @end|ng |rom gm@||@com (Rafael H. M. Pereira)
+Date: Fri, 14 Feb 2025 12:08:01 -0300
+Subject: [R-pkg-devel] Retrieving versioned csv datasets for use in an R
+ package
+In-Reply-To: <CAF0e1n-ZzgkqT-zcVUJjaWXpART7QmPe-94b6xiqQMA2pjpv1w@mail.gmail.com>
+References: <CAF0e1n-ZzgkqT-zcVUJjaWXpART7QmPe-94b6xiqQMA2pjpv1w@mail.gmail.com>
+Message-ID: <CAA42DG=iDrRshdJfyZSequGGaB=SELJWRYHb-zFoHiooHgWh1w@mail.gmail.com>
+
+Hi John,
+
+There are different alternatives on where to host the data (e.g. OSF, a
+proprietary server, Github etc). The solution I've been adopting in most of
+my packages is to use a combination of  a  proprietary server and Github.
+So the data is first downloaded from our own server and only if our server
+is offline, then the download is redirected to Github. This is what I try
+to do so our packages do not overload Github. Of course, this creates some
+additional work from our side to make sure the files in our server are
+always mirrored on github.
+
+A key point to pay attention to when hosting the data on Github is to host
+it as an attachment to a *release* . A good way to manage the files and
+releases is using the {piggyback} package, by Carl Boettiger et al at
+ROpenSci. The documentation of the package is a really great guide on how
+to host data on github and it has some really convenient functions to
+create releases, upload and download files. Kudos to them !
+https://docs.ropensci.org/piggyback/
+
+Best,
+
+Rafael Pereira
+
+On Fri, Feb 14, 2025 at 11:55?AM John Clarke <john.clarke at cornerstonenw.com>
+wrote:
+
+> Hi folks,
+>
+> I've looked around for this particular question, but haven't found a good
+> answer. I have a versioned dataset that includes about 6 csv files that
+> total about 15MB for each version. The versions get updated every few years
+> or so and are used to drive the model which was written in C++ but is now
+> inside an Rcpp wrapper. Apart from the fact that CRAN does not permit large
+> files, I want to have a better way for users to access particular versions
+> of the dataset.
+>
+> Usage idea:
+>  # The following would hopefully also download default/most recent version
+> of the csv files from CRAN (if allowed) or Github or some other repository
+> for academic open source data.
+> install.packages("MyPackage")
+> mypackage = new(MyPackage)
+>
+> Then, if necessary, the user could change the dataset used with something
+> like:
+> mypackage.dataset("2.1.0") which would retrieve new csv files if they
+> haven't already been downloaded and update the data_folder path internally
+> to point to 2.1.0 directory.
+>
+> Requirements:
+> - The dataset is csv (not a R data object) and the Rcpp MyPackage expects
+> this format
+> - Would be nice to properly include citations for the data as they will
+> likely be initially released through a journal publication
+>
+> What is the best practice for this sort of dataset management for a package
+> in R? Is it okay to use Github to store and version the data? Or
+> preferred to use an R package (ignoring the file size limit). Or some other
+> open source data hosting? I see https://r-universe.dev/ as an option as
+> well. In any case, what is the proper mechanism for retrieving/caching the
+> data?
+>
+> Thanks,
+>
+> -John
+>
+> John Clarke | Senior Technical Advisor |
+> Cornerstone Systems Northwest | john.clarke at cornerstonenw.com
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From john@c|@rke @end|ng |rom corner@tonenw@com  Fri Feb 14 16:28:19 2025
+From: john@c|@rke @end|ng |rom corner@tonenw@com (John Clarke)
+Date: Fri, 14 Feb 2025 16:28:19 +0100
+Subject: [R-pkg-devel] Retrieving versioned csv datasets for use in an R
+ package
+In-Reply-To: <CAA42DG=iDrRshdJfyZSequGGaB=SELJWRYHb-zFoHiooHgWh1w@mail.gmail.com>
+References: <CAF0e1n-ZzgkqT-zcVUJjaWXpART7QmPe-94b6xiqQMA2pjpv1w@mail.gmail.com>
+ <CAA42DG=iDrRshdJfyZSequGGaB=SELJWRYHb-zFoHiooHgWh1w@mail.gmail.com>
+Message-ID: <CAF0e1n9LdbaPYfLFRAHmzQySanKOopGqDqUwnjzit-f=dSYxrw@mail.gmail.com>
+
+Thanks so much Rafael, I think piggyback is exactly what I was looking for.
+I wonder if it is possible/best practice to include a call to it during the
+install.packages('MyPackage') process so that the data is available prior
+to running tests in the R CMD build Github Action (and also for users to
+have the default/most recent dataset) downloaded alongside the package.
+-John
+
+On Fri, Feb 14, 2025 at 4:08?PM Rafael H. M. Pereira <
+rafa.pereira.br at gmail.com> wrote:
+
+> Hi John,
+>
+> There are different alternatives on where to host the data (e.g. OSF, a
+> proprietary server, Github etc). The solution I've been adopting in most of
+> my packages is to use a combination of  a  proprietary server and Github.
+> So the data is first downloaded from our own server and only if our server
+> is offline, then the download is redirected to Github. This is what I try
+> to do so our packages do not overload Github. Of course, this creates some
+> additional work from our side to make sure the files in our server are
+> always mirrored on github.
+>
+> A key point to pay attention to when hosting the data on Github is to host
+> it as an attachment to a *release* . A good way to manage the files and
+> releases is using the {piggyback} package, by Carl Boettiger et al at
+> ROpenSci. The documentation of the package is a really great guide on how
+> to host data on github and it has some really convenient functions to
+> create releases, upload and download files. Kudos to them !
+> https://docs.ropensci.org/piggyback/
+>
+> Best,
+>
+> Rafael Pereira
+>
+> On Fri, Feb 14, 2025 at 11:55?AM John Clarke <
+> john.clarke at cornerstonenw.com> wrote:
+>
+>> Hi folks,
+>>
+>> I've looked around for this particular question, but haven't found a good
+>> answer. I have a versioned dataset that includes about 6 csv files that
+>> total about 15MB for each version. The versions get updated every few
+>> years
+>> or so and are used to drive the model which was written in C++ but is now
+>> inside an Rcpp wrapper. Apart from the fact that CRAN does not permit
+>> large
+>> files, I want to have a better way for users to access particular versions
+>> of the dataset.
+>>
+>> Usage idea:
+>>  # The following would hopefully also download default/most recent version
+>> of the csv files from CRAN (if allowed) or Github or some other repository
+>> for academic open source data.
+>> install.packages("MyPackage")
+>> mypackage = new(MyPackage)
+>>
+>> Then, if necessary, the user could change the dataset used with something
+>> like:
+>> mypackage.dataset("2.1.0") which would retrieve new csv files if they
+>> haven't already been downloaded and update the data_folder path internally
+>> to point to 2.1.0 directory.
+>>
+>> Requirements:
+>> - The dataset is csv (not a R data object) and the Rcpp MyPackage expects
+>> this format
+>> - Would be nice to properly include citations for the data as they will
+>> likely be initially released through a journal publication
+>>
+>> What is the best practice for this sort of dataset management for a
+>> package
+>> in R? Is it okay to use Github to store and version the data? Or
+>> preferred to use an R package (ignoring the file size limit). Or some
+>> other
+>> open source data hosting? I see https://r-universe.dev/ as an option as
+>> well. In any case, what is the proper mechanism for retrieving/caching the
+>> data?
+>>
+>> Thanks,
+>>
+>> -John
+>>
+>> John Clarke | Senior Technical Advisor |
+>> Cornerstone Systems Northwest | john.clarke at cornerstonenw.com
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From rhe|p @end|ng |rom eoo@@dd@@n|  Fri Feb 14 17:10:58 2025
+From: rhe|p @end|ng |rom eoo@@dd@@n| (Jan van der Laan)
+Date: Fri, 14 Feb 2025 17:10:58 +0100
+Subject: [R-pkg-devel] Retrieving versioned csv datasets for use in an R
+ package
+In-Reply-To: <CAF0e1n-ZzgkqT-zcVUJjaWXpART7QmPe-94b6xiqQMA2pjpv1w@mail.gmail.com>
+References: <CAF0e1n-ZzgkqT-zcVUJjaWXpART7QmPe-94b6xiqQMA2pjpv1w@mail.gmail.com>
+Message-ID: <2eefc627-448c-4b55-846a-0dde80a50907@eoos.dds.nl>
+
+
+Not an answer, but a request from someone often working behind firewalls 
+and/or machines not connected to the internet. Please have a way to have 
+the package search for the data at some user specified location such as 
+a local directory.
+
+Best,
+
+Jan
+
+
+
+On 14-02-2025 15:54, John Clarke wrote:
+> Hi folks,
+> 
+> I've looked around for this particular question, but haven't found a good
+> answer. I have a versioned dataset that includes about 6 csv files that
+> total about 15MB for each version. The versions get updated every few years
+> or so and are used to drive the model which was written in C++ but is now
+> inside an Rcpp wrapper. Apart from the fact that CRAN does not permit large
+> files, I want to have a better way for users to access particular versions
+> of the dataset.
+> 
+> Usage idea:
+>   # The following would hopefully also download default/most recent version
+> of the csv files from CRAN (if allowed) or Github or some other repository
+> for academic open source data.
+> install.packages("MyPackage")
+> mypackage = new(MyPackage)
+> 
+> Then, if necessary, the user could change the dataset used with something
+> like:
+> mypackage.dataset("2.1.0") which would retrieve new csv files if they
+> haven't already been downloaded and update the data_folder path internally
+> to point to 2.1.0 directory.
+> 
+> Requirements:
+> - The dataset is csv (not a R data object) and the Rcpp MyPackage expects
+> this format
+> - Would be nice to properly include citations for the data as they will
+> likely be initially released through a journal publication
+> 
+> What is the best practice for this sort of dataset management for a package
+> in R? Is it okay to use Github to store and version the data? Or
+> preferred to use an R package (ignoring the file size limit). Or some other
+> open source data hosting? I see https://r-universe.dev/ as an option as
+> well. In any case, what is the proper mechanism for retrieving/caching the
+> data?
+> 
+> Thanks,
+> 
+> -John
+> 
+> John Clarke | Senior Technical Advisor |
+> Cornerstone Systems Northwest | john.clarke at cornerstonenw.com
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Fri Feb 14 18:02:23 2025
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Fri, 14 Feb 2025 09:02:23 -0800
+Subject: [R-pkg-devel] Retrieving versioned csv datasets for use in an R
+ package
+In-Reply-To: <2eefc627-448c-4b55-846a-0dde80a50907@eoos.dds.nl>
+References: <CAF0e1n-ZzgkqT-zcVUJjaWXpART7QmPe-94b6xiqQMA2pjpv1w@mail.gmail.com>
+ <2eefc627-448c-4b55-846a-0dde80a50907@eoos.dds.nl>
+Message-ID: <6EB9183F-3FAB-4345-925F-5104ECFA49B5@dcn.davis.ca.us>
+
+Seconded... have the support for obtaining the desired file be completely initiated by the user, and explicitly pass the filename into the functions that use the data. It is also easier to trace which file was used in a past analysis this way... auto config seems convenient, but it is hard to record the inputs used that way. You can make the function(s) that retrieve/cache the data as simple as you like, but please no simpler than specifying the data version somewhere in every script that uses the data.
+
+On February 14, 2025 8:10:58 AM PST, Jan van der Laan <rhelp at eoos.dds.nl> wrote:
+>
+>Not an answer, but a request from someone often working behind firewalls and/or machines not connected to the internet. Please have a way to have the package search for the data at some user specified location such as a local directory.
+>
+>Best,
+>
+>Jan
+>
+>
+>
+>On 14-02-2025 15:54, John Clarke wrote:
+>> Hi folks,
+>> 
+>> I've looked around for this particular question, but haven't found a good
+>> answer. I have a versioned dataset that includes about 6 csv files that
+>> total about 15MB for each version. The versions get updated every few years
+>> or so and are used to drive the model which was written in C++ but is now
+>> inside an Rcpp wrapper. Apart from the fact that CRAN does not permit large
+>> files, I want to have a better way for users to access particular versions
+>> of the dataset.
+>> 
+>> Usage idea:
+>>   # The following would hopefully also download default/most recent version
+>> of the csv files from CRAN (if allowed) or Github or some other repository
+>> for academic open source data.
+>> install.packages("MyPackage")
+>> mypackage = new(MyPackage)
+>> 
+>> Then, if necessary, the user could change the dataset used with something
+>> like:
+>> mypackage.dataset("2.1.0") which would retrieve new csv files if they
+>> haven't already been downloaded and update the data_folder path internally
+>> to point to 2.1.0 directory.
+>> 
+>> Requirements:
+>> - The dataset is csv (not a R data object) and the Rcpp MyPackage expects
+>> this format
+>> - Would be nice to properly include citations for the data as they will
+>> likely be initially released through a journal publication
+>> 
+>> What is the best practice for this sort of dataset management for a package
+>> in R? Is it okay to use Github to store and version the data? Or
+>> preferred to use an R package (ignoring the file size limit). Or some other
+>> open source data hosting? I see https://r-universe.dev/ as an option as
+>> well. In any case, what is the proper mechanism for retrieving/caching the
+>> data?
+>> 
+>> Thanks,
+>> 
+>> -John
+>> 
+>> John Clarke | Senior Technical Advisor |
+>> Cornerstone Systems Northwest | john.clarke at cornerstonenw.com
+>> 
+>> 	[[alternative HTML version deleted]]
+>> 
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+>______________________________________________
+>R-package-devel at r-project.org mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From th|erry@onke||nx @end|ng |rom |nbo@be  Fri Feb 14 19:58:55 2025
+From: th|erry@onke||nx @end|ng |rom |nbo@be (Thierry Onkelinx)
+Date: Fri, 14 Feb 2025 19:58:55 +0100
+Subject: [R-pkg-devel] Retrieving versioned csv datasets for use in an R
+ package
+In-Reply-To: <CAF0e1n-ZzgkqT-zcVUJjaWXpART7QmPe-94b6xiqQMA2pjpv1w@mail.gmail.com>
+References: <CAF0e1n-ZzgkqT-zcVUJjaWXpART7QmPe-94b6xiqQMA2pjpv1w@mail.gmail.com>
+Message-ID: <CAJuCY5wpJc=5Np0+igkJ=EBZr_QH1QUnnTN-4UdtTR7wz6FGJQ@mail.gmail.com>
+
+Dear John,
+
+Our workflow for an open and reproducible workflow is to publish the data
+via Zenodo. https://zenodo.org/ is maintained by CERN.
+- The data is freely available.
+- Your data is easy to cite.
+- Every version gets its own DOI + one stable DOI that always points to the
+most recent version. E.g. https://doi.org/10.5281/zenodo.14179531
+
+The zen4R package makes it easy to upload and download the data from within
+R. Our functions assume the data is in a local folder. Only when the data
+is missing, we try to download it from Zenodo.
+
+Best regards,
+
+ir. Thierry Onkelinx
+Statisticus / Statistician
+
+Vlaamse Overheid / Government of Flanders
+INSTITUUT VOOR NATUUR- EN BOSONDERZOEK / RESEARCH INSTITUTE FOR NATURE AND
+FOREST
+Team Biometrie & Kwaliteitszorg / Team Biometrics & Quality Assurance
+thierry.onkelinx at inbo.be
+Havenlaan 88 bus 73, 1000 Brussel
+*Postadres:* Koning Albert II-laan 15 bus 186, 1210 Brussel
+*Poststukken die naar dit adres worden gestuurd, worden ingescand en
+digitaal aan de geadresseerde bezorgd. Zo kan de Vlaamse overheid haar
+dossiers volledig digitaal behandelen. Poststukken met de vermelding
+?vertrouwelijk? worden niet ingescand, maar ongeopend aan de geadresseerde
+bezorgd.*
+www.inbo.be
+
+///////////////////////////////////////////////////////////////////////////////////////////
+To call in the statistician after the experiment is done may be no more
+than asking him to perform a post-mortem examination: he may be able to say
+what the experiment died of. ~ Sir Ronald Aylmer Fisher
+The plural of anecdote is not data. ~ Roger Brinner
+The combination of some data and an aching desire for an answer does not
+ensure that a reasonable answer can be extracted from a given body of data.
+~ John Tukey
+///////////////////////////////////////////////////////////////////////////////////////////
+
+<https://www.inbo.be>
+
+
+Op vr 14 feb 2025 om 15:55 schreef John Clarke <
+john.clarke at cornerstonenw.com>:
+
+> Hi folks,
+>
+> I've looked around for this particular question, but haven't found a good
+> answer. I have a versioned dataset that includes about 6 csv files that
+> total about 15MB for each version. The versions get updated every few years
+> or so and are used to drive the model which was written in C++ but is now
+> inside an Rcpp wrapper. Apart from the fact that CRAN does not permit large
+> files, I want to have a better way for users to access particular versions
+> of the dataset.
+>
+> Usage idea:
+>  # The following would hopefully also download default/most recent version
+> of the csv files from CRAN (if allowed) or Github or some other repository
+> for academic open source data.
+> install.packages("MyPackage")
+> mypackage = new(MyPackage)
+>
+> Then, if necessary, the user could change the dataset used with something
+> like:
+> mypackage.dataset("2.1.0") which would retrieve new csv files if they
+> haven't already been downloaded and update the data_folder path internally
+> to point to 2.1.0 directory.
+>
+> Requirements:
+> - The dataset is csv (not a R data object) and the Rcpp MyPackage expects
+> this format
+> - Would be nice to properly include citations for the data as they will
+> likely be initially released through a journal publication
+>
+> What is the best practice for this sort of dataset management for a package
+> in R? Is it okay to use Github to store and version the data? Or
+> preferred to use an R package (ignoring the file size limit). Or some other
+> open source data hosting? I see https://r-universe.dev/ as an option as
+> well. In any case, what is the proper mechanism for retrieving/caching the
+> data?
+>
+> Thanks,
+>
+> -John
+>
+> John Clarke | Senior Technical Advisor |
+> Cornerstone Systems Northwest | john.clarke at cornerstonenw.com
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @tephen@@br@m@ @end|ng |rom gm@||@com  Fri Feb 14 04:20:50 2025
+From: @tephen@@br@m@ @end|ng |rom gm@||@com (Stephen Abrams)
+Date: Thu, 13 Feb 2025 22:20:50 -0500
+Subject: [R-pkg-devel] R package submission - too many threads error
+Message-ID: <CAE_v-D5aT0Wa8YU-x9QNPoLQJs8X7P3AT3SL=4ecDNTrHCHcRA@mail.gmail.com>
+
+Hi - my submission was rejected with the following error in one of my
+vignettes.
+
+On Debian GNU/Linux trixie/sid:
+
+Error: processing vignette 'modeling_with_binary_classifiers.Rmd'
+failed with diagnostics:
+24 simultaneous processes spawned
+
+On Windows:
+
+Error: processing vignette 'modeling_with_binary_classifiers.Rmd'
+failed with diagnostics:
+72 simultaneous processes spawned
+
+I encountered a similar error while using R CMD check --as-cran on my local
+(windows) machine and solved it by using a suggestion from this thread:
+https://stackoverflow.com/questions/50571325/r-cran-check-fail-when-using-parallel-functions
+
+Specifically, checking for Sys.getenv("_R_CHECK_LIMIT_CORES_", "") and
+forcibly bypassing the parallel processing capability in the package. Is
+there a better way to do this? Should I just skip the vignette altogether
+and try to resolve this after the package is accepted?
+
+For a little more detail, the package (called spect) uses the caret package
+under the hood and takes advantage of parallel processing if the user
+specifies it. The package is located at the github repo below. The bypass
+occurs at line 378 of spect.R:
+https://github.com/dawdawdo/spect
+
+A secondary worry is that even if I resolve this, there might be something
+else causing threads to spin up. How can I test for that when the error
+doesn't trigger when I run R CMD check? I don't want to waste shared
+resources if I can check it myself first.
+
+Any help would be greatly appreciated. Thanks!
+
+
+-- 
+Stephen Abrams
+Divergent Blue <http://www.divergentblue.com/>
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Feb 14 21:48:29 2025
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 14 Feb 2025 23:48:29 +0300
+Subject: [R-pkg-devel] R package submission - too many threads error
+In-Reply-To: <CAE_v-D5aT0Wa8YU-x9QNPoLQJs8X7P3AT3SL=4ecDNTrHCHcRA@mail.gmail.com>
+References: <CAE_v-D5aT0Wa8YU-x9QNPoLQJs8X7P3AT3SL=4ecDNTrHCHcRA@mail.gmail.com>
+Message-ID: <20250214234829.3596ff57@Tarkus>
+
+Dear Stephen Abrams,
+
+Welcome to R-package-devel!
+
+? Thu, 13 Feb 2025 22:20:50 -0500
+Stephen Abrams <stephen.abrams at gmail.com> ?????:
+
+> A secondary worry is that even if I resolve this, there might be
+> something else causing threads to spin up.
+
+Instead of using detectCores() [*] and creating cluster objects
+yourself, how about letting the user provide a cluster object for you
+as a function argument? Yes, it takes slightly more typing for the user,
+but on the other hand it lets the user:
+
+ - choose the number of cores for themselves (currently the code seems
+   to be ignoring the 'cores' argument)
+ - distribute the computation over the network by connecting to the
+   machines they know about
+ - provide a completely custom, non-PSOCK cluster object that
+   'parallel' will nevertheless will work with
+
+Since you're already using doParallel, maybe the right choice is to let
+the user call registerDoParallel()?
+
+Determining the right amount of parallelism in your code is a
+surprisingly hard problem. Especially on shared computers, a program
+naively deciding to use all (or 3/4 of all, or 1/2 of all) processors
+may end up working much worse than a purely sequential one [**].
+
+While rendering the vignette in a CRAN package, create a two-process
+cluster or set use_parallel = FALSE: CRAN needs the rest of the
+processors to check other packages in parallel with yours [***].
+
+Good luck!
+
+-- 
+Best regards,
+Ivan
+
+[*]
+https://github.com/dawdawdo/spect/blob/d48b002332f1a1c2d302afb28e08e7998f416200/R/spect.R#L388
+
+[**]
+https://mastodon.social/@henrikbengtsson/113835651303559942
+
+[***]
+http://contributor.r-project.org/cran-cookbook/code_issues.html#using-more-than-2-cores
+
+
+From @tephen@@br@m@ @end|ng |rom gm@||@com  Sat Feb 15 01:37:56 2025
+From: @tephen@@br@m@ @end|ng |rom gm@||@com (Stephen Abrams)
+Date: Fri, 14 Feb 2025 19:37:56 -0500
+Subject: [R-pkg-devel] R package submission - too many threads error
+In-Reply-To: <20250214234829.3596ff57@Tarkus>
+References: <CAE_v-D5aT0Wa8YU-x9QNPoLQJs8X7P3AT3SL=4ecDNTrHCHcRA@mail.gmail.com>
+ <20250214234829.3596ff57@Tarkus>
+Message-ID: <CAE_v-D5W2WxNPpnkMtwPwmajxjEczuGRi=2=ZF+J_+YV-CKcaw@mail.gmail.com>
+
+I appreciate the welcome! Also - I believe that replying to an email is the
+way to respond here, but please let me know if that's not the case.
+
+In any event - passing in a cluster context is an interesting idea. I will
+think about that. Also, it seems that despite me telling myself to write
+bug-free code, you have correctly identified that I don't actually make use
+of the passed cores parameter - oops! This is where it would have really
+helped me to have a peer reviewer. Thanks!
+
+On Fri, Feb 14, 2025 at 3:48?PM Ivan Krylov <ikrylov at disroot.org> wrote:
+
+> Dear Stephen Abrams,
+>
+> Welcome to R-package-devel!
+>
+> ? Thu, 13 Feb 2025 22:20:50 -0500
+> Stephen Abrams <stephen.abrams at gmail.com> ?????:
+>
+> > A secondary worry is that even if I resolve this, there might be
+> > something else causing threads to spin up.
+>
+> Instead of using detectCores() [*] and creating cluster objects
+> yourself, how about letting the user provide a cluster object for you
+> as a function argument? Yes, it takes slightly more typing for the user,
+> but on the other hand it lets the user:
+>
+>  - choose the number of cores for themselves (currently the code seems
+>    to be ignoring the 'cores' argument)
+>  - distribute the computation over the network by connecting to the
+>    machines they know about
+>  - provide a completely custom, non-PSOCK cluster object that
+>    'parallel' will nevertheless will work with
+>
+> Since you're already using doParallel, maybe the right choice is to let
+> the user call registerDoParallel()?
+>
+> Determining the right amount of parallelism in your code is a
+> surprisingly hard problem. Especially on shared computers, a program
+> naively deciding to use all (or 3/4 of all, or 1/2 of all) processors
+> may end up working much worse than a purely sequential one [**].
+>
+> While rendering the vignette in a CRAN package, create a two-process
+> cluster or set use_parallel = FALSE: CRAN needs the rest of the
+> processors to check other packages in parallel with yours [***].
+>
+> Good luck!
+>
+> --
+> Best regards,
+> Ivan
+>
+> [*]
+>
+> https://github.com/dawdawdo/spect/blob/d48b002332f1a1c2d302afb28e08e7998f416200/R/spect.R#L388
+>
+> [**]
+> https://mastodon.social/@henrikbengtsson/113835651303559942
+>
+> [***]
+>
+> http://contributor.r-project.org/cran-cookbook/code_issues.html#using-more-than-2-cores
+>
+
+
+-- 
+Stephen Abrams
+Divergent Blue <http://www.divergentblue.com/>
+
+	[[alternative HTML version deleted]]
+
+
