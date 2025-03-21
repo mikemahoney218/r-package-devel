@@ -14572,3 +14572,300 @@ Uwe Ligges
 > 
 
 
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Wed Mar 19 16:08:45 2025
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Wed, 19 Mar 2025 08:08:45 -0700
+Subject: [R-pkg-devel] New API in R-devel & minimum version of R
+Message-ID: <CAL3ufUKhG5SALDSH0t0pWvacYb1Mc8J_Nj8dvu3R5CQq51g5fw@mail.gmail.com>
+
+I'm trying to work through some new WARNINGs that I am experiencing *only* in
+R-devel.
+
+ Found non-API calls to R: ?BODY?, ?CLOENV?, ?ENCLOS?, ?FORMALS?
+
+Take FORMALS, for example. IIUC, we should now be using R_ClosureFormals
+instead. However, my understanding is that this is available only in R 4.5
+main trunk.
+
+If migrating to the R_ClosureFormals, should the minimum version of R for
+the package be recorded in the DESCRIPTION as R >= 4.5?
+
+Additionally, I'm somewhat at a loss for how to pass CRAN checks for
+R-release and R-devel while using only R_ClosureFormals to adhere to
+R-devel WARNING.
+
+Should old versions have an upper bound on the supported R version as well
+as a lower one e.g. Depends may have R >=4.1.0 <4.5.0?
+
+Thanks in advance for your advice / insight!
+
+- Josiah
+
+	[[alternative HTML version deleted]]
+
+
+From bbo|ker @end|ng |rom gm@||@com  Wed Mar 19 16:16:41 2025
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Wed, 19 Mar 2025 11:16:41 -0400
+Subject: [R-pkg-devel] New API in R-devel & minimum version of R
+In-Reply-To: <CAL3ufUKhG5SALDSH0t0pWvacYb1Mc8J_Nj8dvu3R5CQq51g5fw@mail.gmail.com>
+References: <CAL3ufUKhG5SALDSH0t0pWvacYb1Mc8J_Nj8dvu3R5CQq51g5fw@mail.gmail.com>
+Message-ID: <6269f256-e669-4250-a4c5-f7189e085d52@gmail.com>
+
+   FWIW  Rcpp handles this (for CLOENV) with an ifdef:
+
+             #if (defined(R_VERSION) && R_VERSION >= R_Version(4,5,0))
+             return R_ClosureEnv(fun);
+             #else
+             return CLOENV(fun);
+             #endif
+
+https://github.com/RcppCore/Rcpp/blob/257e1977cd6e251d0a3d691050ad43fa29cf9666/inst/include/Rcpp/Function.h#L102-L106
+
+On 3/19/25 11:08, Josiah Parry wrote:
+> I'm trying to work through some new WARNINGs that I am experiencing *only* in
+> R-devel.
+> 
+>   Found non-API calls to R: ?BODY?, ?CLOENV?, ?ENCLOS?, ?FORMALS?
+> 
+> Take FORMALS, for example. IIUC, we should now be using R_ClosureFormals
+> instead. However, my understanding is that this is available only in R 4.5
+> main trunk.
+> 
+> If migrating to the R_ClosureFormals, should the minimum version of R for
+> the package be recorded in the DESCRIPTION as R >= 4.5?
+> 
+> Additionally, I'm somewhat at a loss for how to pass CRAN checks for
+> R-release and R-devel while using only R_ClosureFormals to adhere to
+> R-devel WARNING.
+> 
+> Should old versions have an upper bound on the supported R version as well
+> as a lower one e.g. Depends may have R >=4.1.0 <4.5.0?
+> 
+> Thanks in advance for your advice / insight!
+> 
+> - Josiah
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+* E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
+From edd @end|ng |rom deb|@n@org  Wed Mar 19 17:30:27 2025
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 19 Mar 2025 11:30:27 -0500
+Subject: [R-pkg-devel] New API in R-devel & minimum version of R
+In-Reply-To: <6269f256-e669-4250-a4c5-f7189e085d52@gmail.com>
+References: <CAL3ufUKhG5SALDSH0t0pWvacYb1Mc8J_Nj8dvu3R5CQq51g5fw@mail.gmail.com>
+ <6269f256-e669-4250-a4c5-f7189e085d52@gmail.com>
+Message-ID: <26586.61731.296279.266476@rob.eddelbuettel.com>
+
+
+On 19 March 2025 at 11:16, Ben Bolker wrote:
+|    FWIW  Rcpp handles this (for CLOENV) with an ifdef:
+| 
+|              #if (defined(R_VERSION) && R_VERSION >= R_Version(4,5,0))
+|              return R_ClosureEnv(fun);
+|              #else
+|              return CLOENV(fun);
+|              #endif
+| 
+| https://github.com/RcppCore/Rcpp/blob/257e1977cd6e251d0a3d691050ad43fa29cf9666/inst/include/Rcpp/Function.h#L102-L106
+
+Beat me to it while I was away from my desk :-) We added that last week after
+we good the nag from CRAN.
+
+We are to follow the r-devel version R which is accessible e.g. 'as a
+service' at winbuilder and macbuilder, at rhub (v2), and of course by
+compiling locally (as I still do). Or by using one the available containers:
+rocker/r-devel and rocker/drd are two I look after and they get updated
+weekly.
+
+Also note that when I made the update above I spotted a nice section in WRE
+(where one 'of course' needs the r-devel version) which has what I quote
+below. You could make use of that too.
+
+Dirk
+
+
+Quote from WRE follows
+
+6.21.8 Some backports ?
+
+This section lists backports of recently added definitions that can be used
+in packages that need to be compiled under older versions of R that do not
+yet contain these entry points.
+
+    #if R_VERSION < R_Version(4, 4, 1)
+    #define allocLang Rf_allocLang
+    
+    SEXP Rf_allocLang(int n)
+    {
+        if (n > 0)
+              return LCONS(R_NilValue, Rf_allocList(n - 1));
+        else
+              return R_NilValue;
+    }
+    #endif
+    
+    #if R_VERSION < R_Version(4, 5, 0)
+    # define isDataFrame(x) Rf_isFrame(x)
+    # define R_ClosureFormals(x) FORMALS(x)
+    # define R_ClosureEnv(x) CLOENV(x)
+    # define R_ParentEnv(x) ENCLOS(x)
+    
+    SEXP R_mkClosure(SEXP formals, SEXP body, SEXP env)
+    {
+        SEXP fun = Rf_allocSExp(CLOSXP);
+        SET_FORMALS(fun, formals);
+        SET_BODY(fun, body);
+        SET_CLOENV(fun, env);
+        return fun;
+    }
+    
+    void CLEAR_ATTRIB(SEXP x)
+    {
+        SET_ATTRIB(x, R_NilValue);
+        SET_OBJECT(x, 0);
+        UNSET_S4_OBJECT(x);
+    }
+    #endif
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From m|ch@e|ch|r|co4 @end|ng |rom gm@||@com  Wed Mar 19 17:29:46 2025
+From: m|ch@e|ch|r|co4 @end|ng |rom gm@||@com (Michael Chirico)
+Date: Wed, 19 Mar 2025 09:29:46 -0700
+Subject: [R-pkg-devel] New API in R-devel & minimum version of R
+In-Reply-To: <6269f256-e669-4250-a4c5-f7189e085d52@gmail.com>
+References: <CAL3ufUKhG5SALDSH0t0pWvacYb1Mc8J_Nj8dvu3R5CQq51g5fw@mail.gmail.com>
+ <6269f256-e669-4250-a4c5-f7189e085d52@gmail.com>
+Message-ID: <CAPRVBcwkqa5T9bdJepFKyqiPgQqPY4J5dJCM67NbPJOd7XAR7Q@mail.gmail.com>
+
+data.table is doing the same in a number of places, Ivan even went so far
+as to pin down a specific SVN commit for those as well:
+
+#if R_VERSION < R_Version(4, 5, 0) || R_SVN_REVISION < 86702
+#  define isDataFrame(x) isFrame(x) // #6180
+#endif
+
+https://github.com/Rdatatable/data.table/blob/0909048017d35f8b8a910c74549650f5de5a74a9/src/data.table.h#L21-L23
+
+Sneaking onto my soapbox to complain that it really seems incorrect that R
+CMD check started complaining about these issues before the API-compliant
+functions were included in an R release. I was really surprised to see
+these functions were not included in the most recent past release, for
+example.
+
+Anyway, 4.5.0 is due for release in a few weeks so this will become moot
+momentarily.
+
+On Wed, Mar 19, 2025 at 8:19?AM Ben Bolker <bbolker at gmail.com> wrote:
+
+>    FWIW  Rcpp handles this (for CLOENV) with an ifdef:
+>
+>              #if (defined(R_VERSION) && R_VERSION >= R_Version(4,5,0))
+>              return R_ClosureEnv(fun);
+>              #else
+>              return CLOENV(fun);
+>              #endif
+>
+>
+> https://github.com/RcppCore/Rcpp/blob/257e1977cd6e251d0a3d691050ad43fa29cf9666/inst/include/Rcpp/Function.h#L102-L106
+>
+> On 3/19/25 11:08, Josiah Parry wrote:
+> > I'm trying to work through some new WARNINGs that I am experiencing
+> *only* in
+> > R-devel.
+> >
+> >   Found non-API calls to R: ?BODY?, ?CLOENV?, ?ENCLOS?, ?FORMALS?
+> >
+> > Take FORMALS, for example. IIUC, we should now be using R_ClosureFormals
+> > instead. However, my understanding is that this is available only in R
+> 4.5
+> > main trunk.
+> >
+> > If migrating to the R_ClosureFormals, should the minimum version of R for
+> > the package be recorded in the DESCRIPTION as R >= 4.5?
+> >
+> > Additionally, I'm somewhat at a loss for how to pass CRAN checks for
+> > R-release and R-devel while using only R_ClosureFormals to adhere to
+> > R-devel WARNING.
+> >
+> > Should old versions have an upper bound on the supported R version as
+> well
+> > as a lower one e.g. Depends may have R >=4.1.0 <4.5.0?
+> >
+> > Thanks in advance for your advice / insight!
+> >
+> > - Josiah
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+> --
+> Dr. Benjamin Bolker
+> Professor, Mathematics & Statistics and Biology, McMaster University
+> Director, School of Computational Science and Engineering
+> * E-mail is sent at my convenience; I don't expect replies outside of
+> working hours.
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Wed Mar 19 17:50:39 2025
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 19 Mar 2025 11:50:39 -0500
+Subject: [R-pkg-devel] New API in R-devel & minimum version of R
+In-Reply-To: <CAPRVBcwkqa5T9bdJepFKyqiPgQqPY4J5dJCM67NbPJOd7XAR7Q@mail.gmail.com>
+References: <CAL3ufUKhG5SALDSH0t0pWvacYb1Mc8J_Nj8dvu3R5CQq51g5fw@mail.gmail.com>
+ <6269f256-e669-4250-a4c5-f7189e085d52@gmail.com>
+ <CAPRVBcwkqa5T9bdJepFKyqiPgQqPY4J5dJCM67NbPJOd7XAR7Q@mail.gmail.com>
+Message-ID: <26586.62943.274198.692155@rob.eddelbuettel.com>
+
+
+On 19 March 2025 at 09:29, Michael Chirico wrote:
+| data.table is doing the same in a number of places, Ivan even went so far
+| as to pin down a specific SVN commit for those as well:
+| 
+| #if R_VERSION < R_Version(4, 5, 0) || R_SVN_REVISION < 86702
+| #  define isDataFrame(x) isFrame(x) // #6180
+| #endif
+| 
+| https://github.com/Rdatatable/data.table/blob/0909048017d35f8b8a910c74549650f5de5a74a9/src/data.table.h#L21-L23
+| 
+| Sneaking onto my soapbox to complain that it really seems incorrect that R
+| CMD check started complaining about these issues before the API-compliant
+| functions were included in an R release. I was really surprised to see
+| these functions were not included in the most recent past release, for
+| example.
+
+Seconded.  
+
+(Also I was wrong in them previous email: we learned from Ben as lme4 got the nag.)
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
