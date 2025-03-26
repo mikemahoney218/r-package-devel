@@ -15472,3 +15472,266 @@ Simon
 > 
 
 
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Mon Mar 24 17:10:02 2025
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Mon, 24 Mar 2025 09:10:02 -0700
+Subject: [R-pkg-devel] R CMD build segfault (r88038)
+Message-ID: <CAL3ufU+ZQj07n_tfd1qYowTca6TkJhjU0Yq3uBSSnr9Lj0-sVQ@mail.gmail.com>
+
+In trying to address new WARNINGs on R-devel I'm trying to rebuild my
+package environment on R 4.6 (r88038) so I can try and remediate. However,
+I'm encountering a segfault when doing so which doesn't occur for R 4.5.0
+alpha (2025-03-18 r87991).
+
+Is there a known change to building using R CMD build that we have to
+address?
+
+rextendr ? R CMD build .
+* checking for file ?./DESCRIPTION? ... OK
+* preparing ?rextendr?:
+* checking DESCRIPTION meta-information ... OK
+* installing the package to build vignettes
+      -----------------------------------
+* installing *source* package ?rextendr? ...
+** this is package ?rextendr? version ?0.3.1.9001?
+** using staged installation
+** R
+** inst
+** byte-compile and prepare package for lazy loading
+sh: line 1: 20659 Segmentation fault: 11  R_TESTS=
+'/Library/Frameworks/R.framework/Versions/4.6-arm64/Resources/bin/R'
+--no-save --no-restore --no-echo 2>&1 <
+'/var/folders/wd/xq999jjj3bx2w8cpg7lkfxlm0000gn/T//RtmpkyfWsl/file50adcb72e68'
+
+	[[alternative HTML version deleted]]
+
+
+From edd @end|ng |rom deb|@n@org  Mon Mar 24 17:48:13 2025
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Mon, 24 Mar 2025 11:48:13 -0500
+Subject: [R-pkg-devel] R CMD build segfault (r88038)
+In-Reply-To: <CAL3ufU+ZQj07n_tfd1qYowTca6TkJhjU0Yq3uBSSnr9Lj0-sVQ@mail.gmail.com>
+References: <CAL3ufU+ZQj07n_tfd1qYowTca6TkJhjU0Yq3uBSSnr9Lj0-sVQ@mail.gmail.com>
+Message-ID: <26593.36045.602357.325585@rob.eddelbuettel.com>
+
+
+On 24 March 2025 at 09:10, Josiah Parry wrote:
+| In trying to address new WARNINGs on R-devel I'm trying to rebuild my
+| package environment on R 4.6 (r88038) so I can try and remediate. However,
+| I'm encountering a segfault when doing so which doesn't occur for R 4.5.0
+| alpha (2025-03-18 r87991).
+| 
+| Is there a known change to building using R CMD build that we have to
+| address?
+| 
+| rextendr ? R CMD build .
+| * checking for file ?./DESCRIPTION? ... OK
+| * preparing ?rextendr?:
+| * checking DESCRIPTION meta-information ... OK
+| * installing the package to build vignettes
+|       -----------------------------------
+| * installing *source* package ?rextendr? ...
+| ** this is package ?rextendr? version ?0.3.1.9001?
+| ** using staged installation
+| ** R
+| ** inst
+| ** byte-compile and prepare package for lazy loading
+| sh: line 1: 20659 Segmentation fault: 11  R_TESTS=
+| '/Library/Frameworks/R.framework/Versions/4.6-arm64/Resources/bin/R'
+| --no-save --no-restore --no-echo 2>&1 <
+| '/var/folders/wd/xq999jjj3bx2w8cpg7lkfxlm0000gn/T//RtmpkyfWsl/file50adcb72e68'
+
+It's been a while since I have seen such a segfault, but I have encountered
+plenty in both the earlier days of Rcpp, or when working with for example the
+geospatial satck. And it almost always traced back to different (binary,
+i.e. 'native' code containing) packages requiring a rebuild.  While I haven't
+seen it lately, my suggestion would still be to see if it persists if you
+rebuild everything touched by that package / if it happens for subsets of
+these packages. Subsetting to the other native packages may suffice. From a
+quick check (see below) that is still 16 packages.
+
+Dirk
+
+> db <- data.table(tools::CRAN_package_db())
+> pkgs <- data.table(Package=tools::package_dependencies("rextendr", db=db, recursive=TRUE)[[1]])
+> pkgs[,Package]
+ [1] "brio"       "callr"      "cli"        "desc"       "dplyr"     
+ [6] "glue"       "jsonlite"   "pkgbuild"   "processx"   "purrr"     
+[11] "rlang"      "rprojroot"  "stringi"    "tibble"     "vctrs"     
+[16] "withr"      "R6"         "utils"      "generics"   "lifecycle" 
+[21] "magrittr"   "methods"    "pillar"     "tidyselect" "ps"        
+[26] "tools"      "stats"      "fansi"      "pkgconfig"  "graphics"  
+[31] "grDevices"  "utf8"      
+> db[pkgs, on="Package"][NeedsCompilation=="yes", Package]
+ [1] "brio"       "cli"        "dplyr"      "glue"       "jsonlite"  
+ [6] "processx"   "purrr"      "rlang"      "stringi"    "tibble"    
+[11] "vctrs"      "magrittr"   "tidyselect" "ps"         "fansi"     
+[16] "utf8"      
+> 
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Mon Mar 24 18:10:30 2025
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Mon, 24 Mar 2025 10:10:30 -0700
+Subject: [R-pkg-devel] R CMD build segfault (r88038)
+In-Reply-To: <26593.36045.602357.325585@rob.eddelbuettel.com>
+References: <CAL3ufU+ZQj07n_tfd1qYowTca6TkJhjU0Yq3uBSSnr9Lj0-sVQ@mail.gmail.com>
+ <26593.36045.602357.325585@rob.eddelbuettel.com>
+Message-ID: <CAL3ufUJHTu+wHpvLQ8Y7SHQ7iqfn42AQ8y7aXZBV5A-edE1yUg@mail.gmail.com>
+
+?
+
+Josiah Parry reacted via Gmail
+<https://www.google.com/gmail/about/?utm_source=gmail-in-product&utm_medium=et&utm_campaign=emojireactionemail#app>
+
+On Mon, Mar 24, 2025 at 9:48?AM Dirk Eddelbuettel <edd at debian.org> wrote:
+
+>
+> On 24 March 2025 at 09:10, Josiah Parry wrote:
+> | In trying to address new WARNINGs on R-devel I'm trying to rebuild my
+> | package environment on R 4.6 (r88038) so I can try and remediate.
+> However,
+> | I'm encountering a segfault when doing so which doesn't occur for R 4.5.0
+> | alpha (2025-03-18 r87991).
+> |
+> | Is there a known change to building using R CMD build that we have to
+> | address?
+> |
+> | rextendr ? R CMD build .
+> | * checking for file ?./DESCRIPTION? ... OK
+> | * preparing ?rextendr?:
+> | * checking DESCRIPTION meta-information ... OK
+> | * installing the package to build vignettes
+> |       -----------------------------------
+> | * installing *source* package ?rextendr? ...
+> | ** this is package ?rextendr? version ?0.3.1.9001?
+> | ** using staged installation
+> | ** R
+> | ** inst
+> | ** byte-compile and prepare package for lazy loading
+> | sh: line 1: 20659 Segmentation fault: 11  R_TESTS=
+> | '/Library/Frameworks/R.framework/Versions/4.6-arm64/Resources/bin/R'
+> | --no-save --no-restore --no-echo 2>&1 <
+> |
+> '/var/folders/wd/xq999jjj3bx2w8cpg7lkfxlm0000gn/T//RtmpkyfWsl/file50adcb72e68'
+>
+> It's been a while since I have seen such a segfault, but I have encountered
+> plenty in both the earlier days of Rcpp, or when working with for example
+> the
+> geospatial satck. And it almost always traced back to different (binary,
+> i.e. 'native' code containing) packages requiring a rebuild.  While I
+> haven't
+> seen it lately, my suggestion would still be to see if it persists if you
+> rebuild everything touched by that package / if it happens for subsets of
+> these packages. Subsetting to the other native packages may suffice. From a
+> quick check (see below) that is still 16 packages.
+>
+> Dirk
+>
+> > db <- data.table(tools::CRAN_package_db())
+> > pkgs <- data.table(Package=tools::package_dependencies("rextendr",
+> db=db, recursive=TRUE)[[1]])
+> > pkgs[,Package]
+>  [1] "brio"       "callr"      "cli"        "desc"       "dplyr"
+>  [6] "glue"       "jsonlite"   "pkgbuild"   "processx"   "purrr"
+> [11] "rlang"      "rprojroot"  "stringi"    "tibble"     "vctrs"
+> [16] "withr"      "R6"         "utils"      "generics"   "lifecycle"
+> [21] "magrittr"   "methods"    "pillar"     "tidyselect" "ps"
+> [26] "tools"      "stats"      "fansi"      "pkgconfig"  "graphics"
+> [31] "grDevices"  "utf8"
+> > db[pkgs, on="Package"][NeedsCompilation=="yes", Package]
+>  [1] "brio"       "cli"        "dplyr"      "glue"       "jsonlite"
+>  [6] "processx"   "purrr"      "rlang"      "stringi"    "tibble"
+> [11] "vctrs"      "magrittr"   "tidyselect" "ps"         "fansi"
+> [16] "utf8"
+> >
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+
+From jo@|@h@p@rry @end|ng |rom gm@||@com  Mon Mar 24 18:19:46 2025
+From: jo@|@h@p@rry @end|ng |rom gm@||@com (Josiah Parry)
+Date: Mon, 24 Mar 2025 10:19:46 -0700
+Subject: [R-pkg-devel] R CMD build segfault (r88038)
+In-Reply-To: <26593.36045.602357.325585@rob.eddelbuettel.com>
+References: <CAL3ufU+ZQj07n_tfd1qYowTca6TkJhjU0Yq3uBSSnr9Lj0-sVQ@mail.gmail.com>
+ <26593.36045.602357.325585@rob.eddelbuettel.com>
+Message-ID: <CAL3ufULNDdJ8nvH6hNJ0hEY_saPsvG2FfnCu_z8ZCDMTNT3s5Q@mail.gmail.com>
+
+Thank you! I suspect it is because I installed stringi from a binary
+created on r-universe and it may not have been compatible with my machine
+or version of R-devel.
+
+On Mon, Mar 24, 2025 at 9:48?AM Dirk Eddelbuettel <edd at debian.org> wrote:
+
+>
+> On 24 March 2025 at 09:10, Josiah Parry wrote:
+> | In trying to address new WARNINGs on R-devel I'm trying to rebuild my
+> | package environment on R 4.6 (r88038) so I can try and remediate.
+> However,
+> | I'm encountering a segfault when doing so which doesn't occur for R 4.5.0
+> | alpha (2025-03-18 r87991).
+> |
+> | Is there a known change to building using R CMD build that we have to
+> | address?
+> |
+> | rextendr ? R CMD build .
+> | * checking for file ?./DESCRIPTION? ... OK
+> | * preparing ?rextendr?:
+> | * checking DESCRIPTION meta-information ... OK
+> | * installing the package to build vignettes
+> |       -----------------------------------
+> | * installing *source* package ?rextendr? ...
+> | ** this is package ?rextendr? version ?0.3.1.9001?
+> | ** using staged installation
+> | ** R
+> | ** inst
+> | ** byte-compile and prepare package for lazy loading
+> | sh: line 1: 20659 Segmentation fault: 11  R_TESTS=
+> | '/Library/Frameworks/R.framework/Versions/4.6-arm64/Resources/bin/R'
+> | --no-save --no-restore --no-echo 2>&1 <
+> |
+> '/var/folders/wd/xq999jjj3bx2w8cpg7lkfxlm0000gn/T//RtmpkyfWsl/file50adcb72e68'
+>
+> It's been a while since I have seen such a segfault, but I have encountered
+> plenty in both the earlier days of Rcpp, or when working with for example
+> the
+> geospatial satck. And it almost always traced back to different (binary,
+> i.e. 'native' code containing) packages requiring a rebuild.  While I
+> haven't
+> seen it lately, my suggestion would still be to see if it persists if you
+> rebuild everything touched by that package / if it happens for subsets of
+> these packages. Subsetting to the other native packages may suffice. From a
+> quick check (see below) that is still 16 packages.
+>
+> Dirk
+>
+> > db <- data.table(tools::CRAN_package_db())
+> > pkgs <- data.table(Package=tools::package_dependencies("rextendr",
+> db=db, recursive=TRUE)[[1]])
+> > pkgs[,Package]
+>  [1] "brio"       "callr"      "cli"        "desc"       "dplyr"
+>  [6] "glue"       "jsonlite"   "pkgbuild"   "processx"   "purrr"
+> [11] "rlang"      "rprojroot"  "stringi"    "tibble"     "vctrs"
+> [16] "withr"      "R6"         "utils"      "generics"   "lifecycle"
+> [21] "magrittr"   "methods"    "pillar"     "tidyselect" "ps"
+> [26] "tools"      "stats"      "fansi"      "pkgconfig"  "graphics"
+> [31] "grDevices"  "utf8"
+> > db[pkgs, on="Package"][NeedsCompilation=="yes", Package]
+>  [1] "brio"       "cli"        "dplyr"      "glue"       "jsonlite"
+>  [6] "processx"   "purrr"      "rlang"      "stringi"    "tibble"
+> [11] "vctrs"      "magrittr"   "tidyselect" "ps"         "fansi"
+> [16] "utf8"
+> >
+>
+> --
+> dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+>
+
+	[[alternative HTML version deleted]]
+
+
