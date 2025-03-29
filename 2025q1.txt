@@ -15814,3 +15814,157 @@ Simon
 > 
 
 
+From jw||ey@p@ych @end|ng |rom gm@||@com  Thu Mar 27 05:23:20 2025
+From: jw||ey@p@ych @end|ng |rom gm@||@com (Joshua Wiley)
+Date: Thu, 27 Mar 2025 15:23:20 +1100
+Subject: [R-pkg-devel] error on r-release-macos-arm64
+In-Reply-To: <37400FC3-E42B-4463-8CFC-1481AD3EBC0B@R-project.org>
+References: <CANz9Z_JwFpG-LuuwwzHENFFbOVc0dhh6W=15+uzo0rnnLFp8Cw@mail.gmail.com>
+ <37400FC3-E42B-4463-8CFC-1481AD3EBC0B@R-project.org>
+Message-ID: <CANz9Z_+Yhb0FuPkP4UhWB1nxxO4uwXQsen=-QnNXwqUiDE6V=g@mail.gmail.com>
+
+Hi Simon,
+
+Wow thank you so much for the detailed exploration and reply.
+I really appreciate it and all you do for the community!
+
+Josh
+
+On Thu, 27 Mar 2025 at 12:49, Simon Urbanek <simon.urbanek at r-project.org>
+wrote:
+
+> Josh,
+>
+> your package got caught up in a chain-reaction: the pan package failed to
+> install *after* its binary package was built due to disk space issues, so
+> although the pan package binary is on CRAN, the package itself was not
+> available in the build machine?s R library. JWileymisc doesn?t depend
+> directly on pan, but one of its dependencies apparently does. I have
+> re-installed pan from the binary into the library so the next run should
+> pick it up. (We have added a new SSD to the build machine so disk space
+> issues should be history).
+>
+> Cheers,
+> Simon
+>
+>
+> > On 27 Mar 2025, at 14:02, Joshua Wiley <jwiley.psych at gmail.com> wrote:
+> >
+> > Hi All,
+> >
+> > I just submitted an update to one of my packages to CRAN. It went live,
+> but
+> > when I am looking at checks, I can see that the new version, 1.4.2 works
+> on
+> > most platforms but has an error on r-release-macos-arm64. Here is the
+> link
+> > to CRAN check results
+> >
+> > https://cran.r-project.org/web/checks/check_results_JWileymisc.html
+> >
+> > looking at the error and the logs, I am at a bit of a loss what is wrong.
+> >
+> > Local build tests and checks are all going fine.
+> > My GitHub actions from the most recent version look fine:
+> >
+> > https://github.com/JWiley/JWileymisc/actions/runs/14074277302
+> >
+> > Any ideas / input on what I can do?
+> >
+> > Thanks,
+> >
+> > Josh
+> >
+> > [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+> >
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From hugh@p@r@on@ge @end|ng |rom gm@||@com  Thu Mar 27 21:56:04 2025
+From: hugh@p@r@on@ge @end|ng |rom gm@||@com (Hugh Parsonage)
+Date: Fri, 28 Mar 2025 07:56:04 +1100
+Subject: [R-pkg-devel] How and where do I document sysdata.rda
+In-Reply-To: <7a0d17c3-f12f-4ab0-8322-d0f067b4fdac@dewey.myzen.co.uk>
+References: <6e48e8fa-2e36-4dbc-8fb9-8039e487ab55@dewey.myzen.co.uk>
+ <3D2EF8E5-CBB4-4E1B-8CF0-ED7156AA3E50@dcn.davis.ca.us>
+ <9990bd17-b270-4dc1-b32b-9085cc15d2ca@dewey.myzen.co.uk>
+ <726ae033-e80f-4af5-b96c-3783538bde76@gmail.com>
+ <Z9ypzgKy6shnjMr2@kumo.plessy.net>
+ <7a0d17c3-f12f-4ab0-8322-d0f067b4fdac@dewey.myzen.co.uk>
+Message-ID: <CAJmOi+MC0A_3O9mO2Vcn7ajXMThrsRZd38+3Mi37N_7ELF1GFQ@mail.gmail.com>
+
+One relatively simple mechanism would be to export a function that
+simply returns the internal lookup data, and to then document that
+function.
+
+On Sat, 22 Mar 2025 at 23:05, Michael Dewey <lists at dewey.myzen.co.uk> wrote:
+>
+> Dear Charles
+>
+> I agree and in fact that was in the back of my mind when I started this.
+> I felt I should document it even though the chances of anyone wanting to
+> access it still less edit it were almost indistinguishable from zero. I
+> am reluctant to use a suggestion like yours as then I will have
+> documentation created in diferent ways and that raises the possibility
+> that they may interact
+>
+> I have had a number of useful hints in the answers to my original
+> question and I think I see a way forward. I will report back when I have
+> digested them.
+>
+> Michael
+>
+> On 20/03/2025 23:50, Charles Plessy wrote:
+> > Le Thu, Mar 20, 2025 at 12:56:49PM -0400, Kevin R. Coombes a ?crit :
+> >> If it is *only *in sysdata.Rda, then it is accessible to your package
+> >> code but is not available to users. (They can't, for example, use the
+> >> "data" function to load it themselves.) So, there is no reason to
+> >> document it.
+> >
+> > Hello Kevin and Michael,
+> >
+> > Users who care about software provenance, security and software freedom would
+> > love to see it documented, because binary objects are hard to audit when there
+> > is no description of what they are expected to contain.
+> >
+> > Redistributors who give guarantees to their users about software freedom, like
+> > Debian, also want to see that these objects are easy to modify in case of need
+> > (that is: the developer does not keep some secret receipes about how the object
+> > is made to keep an advantage against forks and other forms of competition), and
+> > to be able to check by themselves that they were not built from data that is
+> > not placed under too restrictive terms.
+> >
+> > When I write R packages and when I reeistribute CRAN/Bioconductor pakcages in
+> > Debian, I find that the way documented in the R Packages book (./data-raw/,
+> > usethis::use_data(), etc.) fits my needs very well.
+> >
+> > Have a nice day,
+> >
+> > Charles
+> >
+> > --
+> > Charles Plessy                         Nagahama, Yomitan, Okinawa, Japan
+> > Debian Med packaging team         http://www.debian.org/devel/debian-med
+> > Tooting from home                  https://framapiaf.org/@charles_plessy
+> > - You  do not have  my permission  to use  this email  to train  an AI -
+> >
+> >
+> > ______________________________________________
+> > R-package-devel at r-project.org mailing list
+> > https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+> --
+> Michael Dewey
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
