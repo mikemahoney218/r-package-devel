@@ -15968,3 +15968,404 @@ On Sat, 22 Mar 2025 at 23:05, Michael Dewey <lists at dewey.myzen.co.uk> wrote:
 > https://stat.ethz.ch/mailman/listinfo/r-package-devel
 
 
+From jvbr@un@@t@t|@t|c@ @end|ng |rom gm@||@com  Mon Mar 31 05:43:57 2025
+From: jvbr@un@@t@t|@t|c@ @end|ng |rom gm@||@com (Jerome Braun)
+Date: Sun, 30 Mar 2025 23:43:57 -0400
+Subject: [R-pkg-devel] AlgDesign C Issue
+Message-ID: <CAMUU=-Km46C8gMdnBQQ2VoHXLxKoi-=B-7i5u90PvRx9psXndQ@mail.gmail.com>
+
+  Hi!
+
+I'm currently the maintainer of AlgDesign, though my C skill is clearly a
+little too low for the task.
+
+It has become necessary for me to fix some issues with the code that had
+defined true, false, and bool in the header file (wheeler.h).
+
+Lines 23 and 24 currently have:
+
+#define true 1
+#define false 0
+
+There used to be a line 25 that had:
+
+#define bool int
+
+I removed line 25 and changed all occurrences in the C code of "bool" to
+"int".   But this doesn't seem to have fully resolved the issue.
+
+The current checks on AlgDesign generate a warning based on header lines 23
+and 24:
+
+Debian: <
+https://win-builder.r-project.org/incoming_pretest/AlgDesign_1.2.1.2_20250331_023833/Debian/00check.log
+>
+Status: 1 WARNING, 1 NOTE
+
+I'm not sure what this means yet, nor how to resolve it properly.  I would
+love some help in working forward, if possible.
+
+Thank you very much!
+-- 
+Jerome
+
+	[[alternative HTML version deleted]]
+
+
+From m|ch@e|ch|r|co4 @end|ng |rom gm@||@com  Mon Mar 31 09:46:23 2025
+From: m|ch@e|ch|r|co4 @end|ng |rom gm@||@com (Michael Chirico)
+Date: Mon, 31 Mar 2025 00:46:23 -0700
+Subject: [R-pkg-devel] AlgDesign C Issue
+In-Reply-To: <CAMUU=-Km46C8gMdnBQQ2VoHXLxKoi-=B-7i5u90PvRx9psXndQ@mail.gmail.com>
+References: <CAMUU=-Km46C8gMdnBQQ2VoHXLxKoi-=B-7i5u90PvRx9psXndQ@mail.gmail.com>
+Message-ID: <CAPRVBcy+LpPHQ9DAAOMFicZ7m-P7+fgc7oqD0jT0bK_XFrjQew@mail.gmail.com>
+
+Do you want to use <stdbool.h> instead of your macros?
+
+https://pubs.opengroup.org/onlinepubs/009695399/basedefs/stdbool.h.html
+
+On Mon, Mar 31, 2025, 12:37?AM Jerome Braun <jvbraun.statistics at gmail.com>
+wrote:
+
+>   Hi!
+>
+> I'm currently the maintainer of AlgDesign, though my C skill is clearly a
+> little too low for the task.
+>
+> It has become necessary for me to fix some issues with the code that had
+> defined true, false, and bool in the header file (wheeler.h).
+>
+> Lines 23 and 24 currently have:
+>
+> #define true 1
+> #define false 0
+>
+> There used to be a line 25 that had:
+>
+> #define bool int
+>
+> I removed line 25 and changed all occurrences in the C code of "bool" to
+> "int".   But this doesn't seem to have fully resolved the issue.
+>
+> The current checks on AlgDesign generate a warning based on header lines 23
+> and 24:
+>
+> Debian: <
+>
+> https://win-builder.r-project.org/incoming_pretest/AlgDesign_1.2.1.2_20250331_023833/Debian/00check.log
+> >
+> Status: 1 WARNING, 1 NOTE
+>
+> I'm not sure what this means yet, nor how to resolve it properly.  I would
+> love some help in working forward, if possible.
+>
+> Thank you very much!
+> --
+> Jerome
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @e@nd@v| @end|ng |rom gm@||@com  Mon Mar 31 13:24:27 2025
+From: @e@nd@v| @end|ng |rom gm@||@com (Sean Davis)
+Date: Mon, 31 Mar 2025 11:24:27 +0000
+Subject: [R-pkg-devel] Retrieving versioned csv datasets for use in an R
+ package
+In-Reply-To: <26544.45744.991423.778990@rob.eddelbuettel.com>
+References: <CAF0e1n-ZzgkqT-zcVUJjaWXpART7QmPe-94b6xiqQMA2pjpv1w@mail.gmail.com>
+ <CAJuCY5wpJc=5Np0+igkJ=EBZr_QH1QUnnTN-4UdtTR7wz6FGJQ@mail.gmail.com>
+ <C45E0F9A-F6B4-4E24-9BA4-D9D5E6E0A343@R-project.org>
+ <26544.45744.991423.778990@rob.eddelbuettel.com>
+Message-ID: <MN2PR10MB32303DD295B68D848B58DF7AF9AD2@MN2PR10MB3230.namprd10.prod.outlook.com>
+
+Hi, all.
+
+Zenodo does offer storage (I believe limited to 50GB per submission) and is backed by CERN with a guarantee of storage for at least 20 years (the life of CERN, could be extended).
+
+I agree that Github is a viable alternative to Zenodo and one can use the two together easily. On github, one can use three different approaches: 1) check files into version control, 2) use git lfs, and 3) as release artifacts. Each has pros and cons.
+
+If data are of a biomedical nature, one can ofter deposit in a biomedical repository, including one of dozens at NIH and EBI. NIH even recommends some open ?generalist repositories? that include zenodo and OSF: https://www.nlm.nih.gov/NIHbmic/generalist_repositories.html
+
+If one is looking to cater to the machine learning/AI community, hosting on huggingface is another option. Doing so is quite similar to hosting on github from a purely practical perspective.
+
+Cloud storage systems such as AWS, GCP, and Azure are possibilities, but egress charges can be challenging to predict. Cloudflare R2 is s3-compatible and has no egress charges, making it a good choice for sharing particularly large files.
+
+On the client side, Bioconductor has BiocFileCache which is a client-side package for caching files that have been downloaded. Other file download/cache packages are available, though I?m less familiar with them.
+
+Just wanted to expand the list a bit.
+
+Sean
+
+
+From: R-package-devel <r-package-devel-bounces at r-project.org> on behalf of Dirk Eddelbuettel <edd at debian.org>
+Date: Saturday, February 15, 2025 at 10:29?AM
+To: Simon Urbanek <simon.urbanek at R-project.org>
+Cc: R-package-devel at r-project.org <R-package-devel at r-project.org>
+Subject: Re: [R-pkg-devel] Retrieving versioned csv datasets for use in an R package
+
+On 15 February 2025 at 19:50, Simon Urbanek wrote:
+| Github is not reliable enough for reproducible research (your files can
+| disappear at any point - or can change without notice),
+
+I'm curious: Do you have a concrete example of a no-longer-reproducible study
+whose data or other support files changed and thereby caused this breakage?
+
+| that's why Zenodo was created.
+
+But AFAIK Zenodo offers DOI issuance only, not storage (as, say, OSF would).
+So this does not address the problem faced by the OP.
+
+Dirk
+
+--
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+______________________________________________
+R-package-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+	[[alternative HTML version deleted]]
+
+
+From jvbr@un@@t@t|@t|c@ @end|ng |rom gm@||@com  Mon Mar 31 15:28:01 2025
+From: jvbr@un@@t@t|@t|c@ @end|ng |rom gm@||@com (Jerome Braun)
+Date: Mon, 31 Mar 2025 09:28:01 -0400
+Subject: [R-pkg-devel] AlgDesign C Issue
+In-Reply-To: <CAPRVBcy+LpPHQ9DAAOMFicZ7m-P7+fgc7oqD0jT0bK_XFrjQew@mail.gmail.com>
+References: <CAMUU=-Km46C8gMdnBQQ2VoHXLxKoi-=B-7i5u90PvRx9psXndQ@mail.gmail.com>
+ <CAPRVBcy+LpPHQ9DAAOMFicZ7m-P7+fgc7oqD0jT0bK_XFrjQew@mail.gmail.com>
+Message-ID: <CAMUU=-LsEvLGvTbub0nKz2R-sG4HFgms2cxP_6bO5E9PxJHOJg@mail.gmail.com>
+
+Hi Michael!
+
+I'd like to make the smallest change possible to Bob Wheeler's original
+code so I'm not sure if using <stdbool.h> is the best route forward.
+
+I do see that the definitions are the same there.  Is there a low-cost way
+to use that header file or just those definitions?
+
+Thank  you!
+-- 
+Jerome
+
+
+
+On Mon, Mar 31, 2025 at 3:46?AM Michael Chirico <michaelchirico4 at gmail.com>
+wrote:
+
+> Do you want to use <stdbool.h> instead of your macros?
+>
+> https://pubs.opengroup.org/onlinepubs/009695399/basedefs/stdbool.h.html
+>
+> On Mon, Mar 31, 2025, 12:37?AM Jerome Braun <jvbraun.statistics at gmail.com>
+> wrote:
+>
+>>   Hi!
+>>
+>> I'm currently the maintainer of AlgDesign, though my C skill is clearly a
+>> little too low for the task.
+>>
+>> It has become necessary for me to fix some issues with the code that had
+>> defined true, false, and bool in the header file (wheeler.h).
+>>
+>> Lines 23 and 24 currently have:
+>>
+>> #define true 1
+>> #define false 0
+>>
+>> There used to be a line 25 that had:
+>>
+>> #define bool int
+>>
+>> I removed line 25 and changed all occurrences in the C code of "bool" to
+>> "int".   But this doesn't seem to have fully resolved the issue.
+>>
+>> The current checks on AlgDesign generate a warning based on header lines
+>> 23
+>> and 24:
+>>
+>> Debian: <
+>>
+>> https://win-builder.r-project.org/incoming_pretest/AlgDesign_1.2.1.2_20250331_023833/Debian/00check.log
+>> >
+>> Status: 1 WARNING, 1 NOTE
+>>
+>> I'm not sure what this means yet, nor how to resolve it properly.  I would
+>> love some help in working forward, if possible.
+>>
+>> Thank you very much!
+>> --
+>> Jerome
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-package-devel at r-project.org mailing list
+>> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon Mar 31 17:28:49 2025
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 31 Mar 2025 11:28:49 -0400
+Subject: [R-pkg-devel] AlgDesign C Issue
+In-Reply-To: <CAMUU=-LsEvLGvTbub0nKz2R-sG4HFgms2cxP_6bO5E9PxJHOJg@mail.gmail.com>
+References: <CAMUU=-Km46C8gMdnBQQ2VoHXLxKoi-=B-7i5u90PvRx9psXndQ@mail.gmail.com>
+ <CAPRVBcy+LpPHQ9DAAOMFicZ7m-P7+fgc7oqD0jT0bK_XFrjQew@mail.gmail.com>
+ <CAMUU=-LsEvLGvTbub0nKz2R-sG4HFgms2cxP_6bO5E9PxJHOJg@mail.gmail.com>
+Message-ID: <dcd2bc2b-c486-4532-962f-c04793ecb091@gmail.com>
+
+On 2025-03-31 9:28 a.m., Jerome Braun wrote:
+> Hi Michael!
+> 
+> I'd like to make the smallest change possible to Bob Wheeler's original
+> code so I'm not sure if using <stdbool.h> is the best route forward.
+> 
+> I do see that the definitions are the same there.  Is there a low-cost way
+> to use that header file or just those definitions?
+
+The problem is that the definitions may vary from compiler to compiler, 
+and the error message you're getting only shows up some of them.  Since 
+the compiler will supply stdbool.h, it's safer to use that than to try 
+to emulate it.
+
+Duncan Murdoch
+
+
+From jvbr@un@@t@t|@t|c@ @end|ng |rom gm@||@com  Mon Mar 31 18:00:31 2025
+From: jvbr@un@@t@t|@t|c@ @end|ng |rom gm@||@com (Jerome Braun)
+Date: Mon, 31 Mar 2025 12:00:31 -0400
+Subject: [R-pkg-devel] AlgDesign C Issue
+In-Reply-To: <dcd2bc2b-c486-4532-962f-c04793ecb091@gmail.com>
+References: <CAMUU=-Km46C8gMdnBQQ2VoHXLxKoi-=B-7i5u90PvRx9psXndQ@mail.gmail.com>
+ <CAPRVBcy+LpPHQ9DAAOMFicZ7m-P7+fgc7oqD0jT0bK_XFrjQew@mail.gmail.com>
+ <CAMUU=-LsEvLGvTbub0nKz2R-sG4HFgms2cxP_6bO5E9PxJHOJg@mail.gmail.com>
+ <dcd2bc2b-c486-4532-962f-c04793ecb091@gmail.com>
+Message-ID: <CAMUU=-+C8bMCUFOOD_FEGJLvSnVk+Ubjd+JEwHL86Th+8Mn7pw@mail.gmail.com>
+
+Hi Duncan!
+
+>  Since the compiler will supply stdbool.h, it's safer to use that than to
+try to emulate it.
+
+Understood. It seems like the definitions are exactly the same between the
+two.
+
+Currently there is no use of "bool" in any of the code (after having
+changed bool to int everywhere in the code).
+
+So I think I can replace the two lines in the original code with a call to
+include the <stdbool.h> header --- does that seem reasonable?   Can I use
+an include statement there in place of those two lines?
+
+Thank you!
+-- 
+Jerome
+
+On Mon, Mar 31, 2025 at 11:28?AM Duncan Murdoch <murdoch.duncan at gmail.com>
+wrote:
+
+> On 2025-03-31 9:28 a.m., Jerome Braun wrote:
+> > Hi Michael!
+> >
+> > I'd like to make the smallest change possible to Bob Wheeler's original
+> > code so I'm not sure if using <stdbool.h> is the best route forward.
+> >
+> > I do see that the definitions are the same there.  Is there a low-cost
+> way
+> > to use that header file or just those definitions?
+>
+> The problem is that the definitions may vary from compiler to compiler,
+> and the error message you're getting only shows up some of them.  Since
+> the compiler will supply stdbool.h, it's safer to use that than to try
+> to emulate it.
+>
+> Duncan Murdoch
+>
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon Mar 31 18:38:01 2025
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 31 Mar 2025 12:38:01 -0400
+Subject: [R-pkg-devel] AlgDesign C Issue
+In-Reply-To: <CAMUU=-+C8bMCUFOOD_FEGJLvSnVk+Ubjd+JEwHL86Th+8Mn7pw@mail.gmail.com>
+References: <CAMUU=-Km46C8gMdnBQQ2VoHXLxKoi-=B-7i5u90PvRx9psXndQ@mail.gmail.com>
+ <CAPRVBcy+LpPHQ9DAAOMFicZ7m-P7+fgc7oqD0jT0bK_XFrjQew@mail.gmail.com>
+ <CAMUU=-LsEvLGvTbub0nKz2R-sG4HFgms2cxP_6bO5E9PxJHOJg@mail.gmail.com>
+ <dcd2bc2b-c486-4532-962f-c04793ecb091@gmail.com>
+ <CAMUU=-+C8bMCUFOOD_FEGJLvSnVk+Ubjd+JEwHL86Th+8Mn7pw@mail.gmail.com>
+Message-ID: <b2ebfce3-a436-48d1-a233-a6ed23dcf239@gmail.com>
+
+On 2025-03-31 12:00 p.m., Jerome Braun wrote:
+> Hi Duncan!
+> 
+>  >? Since the compiler will supply stdbool.h, it's safer to use that 
+> than to try to emulate it.
+> 
+> Understood.?It seems like the definitions are exactly the same between 
+> the two.
+> 
+> Currently there is no use of "bool" in any of the code (after having 
+> changed bool to int everywhere in the code).
+> 
+> So I think I can replace the two lines in the original code with a call 
+> to include the <stdbool.h> header --- does that seem reasonable?? ?Can I 
+> use an include statement there in place of those two lines?
+
+I think replacing those two defines with
+
+#include <stdbool.h>
+
+should be safe.  There's not much a huge difference between bool and 
+int, but they aren't the same, so you might still run into some issues. 
+For example, in a modern C compiler a bool value can never be 
+NA_LOGICAL, but an int value could be.  And if you do arithmetic on bool 
+values, you might be surprised by the answer.  For example
+
+   bool x = true + true;
+
+results in x storing true, which is equivalent to 1 when used as an integer.
+
+Duncan Murdoch
+
+
+> 
+> Thank you!
+> -- 
+> Jerome
+> 
+> On Mon, Mar 31, 2025 at 11:28?AM Duncan Murdoch 
+> <murdoch.duncan at gmail.com <mailto:murdoch.duncan at gmail.com>> wrote:
+> 
+>     On 2025-03-31 9:28 a.m., Jerome Braun wrote:
+>      > Hi Michael!
+>      >
+>      > I'd like to make the smallest change possible to Bob Wheeler's
+>     original
+>      > code so I'm not sure if using <stdbool.h> is the best route forward.
+>      >
+>      > I do see that the definitions are the same there.? Is there a
+>     low-cost way
+>      > to use that header file or just those definitions?
+> 
+>     The problem is that the definitions may vary from compiler to compiler,
+>     and the error message you're getting only shows up some of them.? Since
+>     the compiler will supply stdbool.h, it's safer to use that than to try
+>     to emulate it.
+> 
+>     Duncan Murdoch
+>
+
+
