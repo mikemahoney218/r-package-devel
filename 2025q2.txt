@@ -717,3 +717,51 @@ On 20/03/2025 14:39, Lists wrote:
 Michael Dewey
 
 
+From r@c@rtwr|ght @end|ng |rom gm@||@com  Sat Apr  5 02:58:25 2025
+From: r@c@rtwr|ght @end|ng |rom gm@||@com (Reed A. Cartwright)
+Date: Fri, 4 Apr 2025 17:58:25 -0700
+Subject: [R-pkg-devel] libc++ and abort function usage
+Message-ID: <CALOkxuxkANWVyYeC1JFzVSjRwWG9ae=5CYN1Ze9SBL8jMBTz2g@mail.gmail.com>
+
+I have updated my package, rbedrock [1-2], to remove a bundled
+library's calls to abort() and stderr when compiled with -DNDEBUG
+(which is the default). This has mostly worked; however, I have
+uncovered that libc++ contains inline functions that call abort() if
+exceptions are disabled.
+
+My bundled library is a C++ library and is compiled with exceptions
+turned off. I use its C-level interface in my package, so its C++ code
+is mostly hidden from my package. When compiled on a platform with
+libc++, libc++ introduces abort calls into the compiled package. This
+is causing `R CMD check` to warn about abort() usage on those
+platforms.
+
+I am wondering what people on this list think I should do?
+
+Should I enable exceptions in the bundled library and keep using the
+C-level interface? (It doesn't throw any exceptions itself, but std
+library calls might.)
+
+If there is any other strategy that I should try, please let me know.
+
+Thanks,
+Reed
+
+[1] https://github.com/reedacartwright/rbedrock
+[2] https://cran.r-project.org/package=rbedrock
+[3] https://github.com/llvm/llvm-project/blob/release/12.x/libcxx/include/any#L107-L116
+
+--
+Reed A. Cartwright, PhD
+Associate Professor of Life Sciences
+TEACh Representative - Evolution and Computational Courses
+School of Life Sciences and The Biodesign Institute
+Arizona State University
+==================
+Address: The Biodesign Institute, PO Box 876401, Tempe, AZ 85287-6401 USA
+Packages: The Biodesign Institute, 1001 S. McAllister Ave, Tempe, AZ
+85287-6401 USA
+Office: Biodesign B-220C, 1-480-965-9949
+Website: http://cartwrig.ht/
+
+
