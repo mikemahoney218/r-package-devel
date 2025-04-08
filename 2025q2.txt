@@ -1194,3 +1194,295 @@ Duncan Murdoch
 	[[alternative HTML version deleted]]
 
 
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Mon Apr  7 10:24:13 2025
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Mon, 7 Apr 2025 10:24:13 +0200
+Subject: [R-pkg-devel] 
+ Warnings and notes while building package with nimble
+In-Reply-To: <DM6PR01MB38971146EB7242086206CBDBA2A92@DM6PR01MB3897.prod.exchangelabs.com>
+References: <DM6PR01MB38971146EB7242086206CBDBA2A92@DM6PR01MB3897.prod.exchangelabs.com>
+Message-ID: <d0bf0977-d98b-4ba4-b161-8b6d7d730ff0@statistik.tu-dortmund.de>
+
+
+
+On 05.04.2025 00:29, Halder,Aritra wrote:
+> Hi,
+> 
+> I am trying to submit a package to CRAN built using nimble. It generates warnings like so:
+
+Which package?
+
+
+> : no visible global function definition for  'nimDim'
+
+and you have not forgot to import nlmDim()?
+
+Best,
+Uwe Ligges
+
+
+
+
+
+
+> and fails automatic checks by CRAN. Any help is appreciated.
+> 
+> Thanks and regards,
+> 
+> Aritra
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
+From kev|n@r@coombe@ @end|ng |rom gm@||@com  Mon Apr  7 17:10:21 2025
+From: kev|n@r@coombe@ @end|ng |rom gm@||@com (Kevin R. Coombes)
+Date: Mon, 7 Apr 2025 11:10:21 -0400
+Subject: [R-pkg-devel] URLs in DESCRIPTION file
+Message-ID: <412dd1c9-85e9-4786-b20d-109af5c96fc8@gmail.com>
+
+Hi,
+
+I am systematically going through the packages that I maintain on CRAN 
+to clean up some administrative details. Specifically, I am (1) changing 
+all DESCRIPTION files to use Authirs at R, (2) updating the links in man 
+files to include package anchors, and (3) making sure that the output of 
+calls to summary in test scripts don't break (i.e., mismatch the saved 
+test output) in the 4.5.0 release candidate.
+
+Not surprisingly, this process also finds other issues. Right now,I am 
+looking at the package BimodalIndex. The version currently on CRAN (v. 
+1.1.9) includes the following URL:
+ ??? https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2730180/
+On first checking the package, I get informed that this URL has 
+"permanently moved" to:
+ ??? https://pmc.ncbi.nlm.nih.gov/articles/PMC2730180/
+
+The fix seems simple, so I edited the DESCRIPTION file to use the new 
+URL instead of the old one. Then I submitted the newly built version 
+(1.1.11) to both the current release and the development release at 
+winbuilder before submitting the update to CRAN.? R version 4.4.3 comes 
+back with a 00check.log that is absolutely "OK". No errors, warnings, or 
+notes. But version R 4.5.0 RC comes back with;
+ ??? (possibly) invalid URL. Status: 403? Message: Forbidden
+I copied the URL as reported in the error message, pasted it into my 
+browser, and it worked just fine.
+
+Can I assume that this is just something weird about the corresponding 
+winbuilder server at the moment, and go ahead and submit the package? Or 
+is there some mysterious change in R 4.5 lurking somewhere that I need 
+to deal with?
+
+Thanks,
+ ?? Kevin
+
+
+From |kry|ov @end|ng |rom d|@root@org  Mon Apr  7 17:35:35 2025
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 7 Apr 2025 18:35:35 +0300
+Subject: [R-pkg-devel] URLs in DESCRIPTION file
+In-Reply-To: <412dd1c9-85e9-4786-b20d-109af5c96fc8@gmail.com>
+References: <412dd1c9-85e9-4786-b20d-109af5c96fc8@gmail.com>
+Message-ID: <20250407183535.2f11ab7f@arachnoid>
+
+? Mon, 7 Apr 2025 11:10:21 -0400
+"Kevin R. Coombes" <kevin.r.coombes at gmail.com> ?????:
+
+> But version R 4.5.0 RC comes back with;
+>  ??? (possibly) invalid URL. Status: 403? Message: Forbidden
+> I copied the URL as reported in the error message, pasted it into my 
+> browser, and it worked just fine.
+> 
+> Can I assume that this is just something weird about the
+> corresponding winbuilder server at the moment, and go ahead and
+> submit the package?
+
+This is a false positive. R CMD check sends automated requests to all
+URLs it finds in the package. PubMed "protects" itself from automated
+requests and returns an error code:
+
+$ curl -I https://pmc.ncbi.nlm.nih.gov/articles/PMC2730180/
+HTTP/2 403
+content-length: 134
+content-type: text/html; charset=UTF-8
+date: Mon, 07 Apr 2025 15:14:59 GMT
+alt-svc: clear
+
+Using a browser instead results in subtly different behaviour visible
+to the server, so the page loads successfully when clicking a link.
+
+I see you're already linking to the article's DOI, 10.4137/cin.s2846,
+and the article is not paywalled. Is it an option to remove the PubMed
+link? There is code that is intended to recommend to only use the DOI,
+but currently doesn't include a pattern for the new PubMed URLs:
+
+if(length(y) &&
+         any(ind <-
+           (grepl(re_or(c("^https://pubmed.ncbi.nlm.nih.gov/[0-9]+",
+              "^https://www.ncbi.nlm.nih.gov/pmc/articles/PMC[0-9]+/$",
+              "^https://academic.oup.com/.*(/[0-9]*){4}$",
+              "^https://www.sciencedirect.com/science/article")),
+            y$URL)))) {
+    ## <FIXME>
+    ## Ideally we would complain about such URLs in general
+    ## and not only when the URL checks were not OK.
+    paste(c("Please use DOIs for the following publisher URLs:",
+            paste0("  ", y$URL[ind])),
+          collapse = "\n")
+    ## </FIXME>
+}
+
+If you don't want to remove the PubMed link, you can explain the
+"possibly invalid URL" as a false positive in the submission comment.
+
+-- 
+Best regards,
+Ivan
+
+
+From kev|n@r@coombe@ @end|ng |rom gm@||@com  Mon Apr  7 17:52:30 2025
+From: kev|n@r@coombe@ @end|ng |rom gm@||@com (Kevin R. Coombes)
+Date: Mon, 7 Apr 2025 11:52:30 -0400
+Subject: [R-pkg-devel] URLs in DESCRIPTION file
+In-Reply-To: <20250407183535.2f11ab7f@arachnoid>
+References: <412dd1c9-85e9-4786-b20d-109af5c96fc8@gmail.com>
+ <20250407183535.2f11ab7f@arachnoid>
+Message-ID: <7a26a6a4-8501-44bf-baad-13885ed1a305@gmail.com>
+
+Thanks. That's what I thought (though I was somewhat confused by the 
+different behaviors of winbuilder on the current and development 
+versions). I think the original DESCRIPTION file (from 2017?) just had 
+the URL. Some time after that, CRAN asked for the inclusion of the DOI, 
+but they didn't say to get rid of the URL. The code itself hasn't been 
+touched since at least 2019 (since it still works exactly the way it is 
+supposed to.)
+
+And, becauseI have been both finding and losing things on the Internet 
+for several decades, I am not particularly confident that the DOI is 
+going to have a significantly longer stable lifetime than the NCBI URL. 
+So, for now at least, I think I will leave them both.
+
+Best,
+ ?? Kevin
+
+On 4/7/2025 11:35 AM, Ivan Krylov wrote:
+> ? Mon, 7 Apr 2025 11:10:21 -0400
+> "Kevin R. Coombes" <kevin.r.coombes at gmail.com> ?????:
+>
+>> But version R 4.5.0 RC comes back with;
+>>   ??? (possibly) invalid URL. Status: 403? Message: Forbidden
+>> I copied the URL as reported in the error message, pasted it into my
+>> browser, and it worked just fine.
+>>
+>> Can I assume that this is just something weird about the
+>> corresponding winbuilder server at the moment, and go ahead and
+>> submit the package?
+> This is a false positive. R CMD check sends automated requests to all
+> URLs it finds in the package. PubMed "protects" itself from automated
+> requests and returns an error code:
+>
+> $ curl -I https://pmc.ncbi.nlm.nih.gov/articles/PMC2730180/
+> HTTP/2 403
+> content-length: 134
+> content-type: text/html; charset=UTF-8
+> date: Mon, 07 Apr 2025 15:14:59 GMT
+> alt-svc: clear
+>
+> Using a browser instead results in subtly different behaviour visible
+> to the server, so the page loads successfully when clicking a link.
+>
+> I see you're already linking to the article's DOI, 10.4137/cin.s2846,
+> and the article is not paywalled. Is it an option to remove the PubMed
+> link? There is code that is intended to recommend to only use the DOI,
+> but currently doesn't include a pattern for the new PubMed URLs:
+>
+> if(length(y) &&
+>           any(ind <-
+>             (grepl(re_or(c("^https://pubmed.ncbi.nlm.nih.gov/[0-9]+",
+>                "^https://www.ncbi.nlm.nih.gov/pmc/articles/PMC[0-9]+/$",
+>                "^https://academic.oup.com/.*(/[0-9]*){4}$",
+>                "^https://www.sciencedirect.com/science/article")),
+>              y$URL)))) {
+>      ## <FIXME>
+>      ## Ideally we would complain about such URLs in general
+>      ## and not only when the URL checks were not OK.
+>      paste(c("Please use DOIs for the following publisher URLs:",
+>              paste0("  ", y$URL[ind])),
+>            collapse = "\n")
+>      ## </FIXME>
+> }
+>
+> If you don't want to remove the PubMed link, you can explain the
+> "possibly invalid URL" as a false positive in the submission comment.
+>
+
+
+From kev|nu@hey @end|ng |rom gm@||@com  Mon Apr  7 18:18:29 2025
+From: kev|nu@hey @end|ng |rom gm@||@com (Kevin Ushey)
+Date: Mon, 7 Apr 2025 09:18:29 -0700
+Subject: [R-pkg-devel] libc++ and abort function usage
+In-Reply-To: <CALOkxuxkANWVyYeC1JFzVSjRwWG9ae=5CYN1Ze9SBL8jMBTz2g@mail.gmail.com>
+References: <CALOkxuxkANWVyYeC1JFzVSjRwWG9ae=5CYN1Ze9SBL8jMBTz2g@mail.gmail.com>
+Message-ID: <CAJXgQP1N6qEKHBxRFnRZN593ycGq-WoZ=cu_eGkUiaRn2KMiCg@mail.gmail.com>
+
+Hi Reed,
+
+Unfortunately I don't think there is any other strategy here -- I
+would agree that your best bet is to just enable exceptions in the
+bundled library.
+
+Best,
+Kevin
+
+On Fri, Apr 4, 2025 at 5:59?PM Reed A. Cartwright
+<racartwright at gmail.com> wrote:
+>
+> I have updated my package, rbedrock [1-2], to remove a bundled
+> library's calls to abort() and stderr when compiled with -DNDEBUG
+> (which is the default). This has mostly worked; however, I have
+> uncovered that libc++ contains inline functions that call abort() if
+> exceptions are disabled.
+>
+> My bundled library is a C++ library and is compiled with exceptions
+> turned off. I use its C-level interface in my package, so its C++ code
+> is mostly hidden from my package. When compiled on a platform with
+> libc++, libc++ introduces abort calls into the compiled package. This
+> is causing `R CMD check` to warn about abort() usage on those
+> platforms.
+>
+> I am wondering what people on this list think I should do?
+>
+> Should I enable exceptions in the bundled library and keep using the
+> C-level interface? (It doesn't throw any exceptions itself, but std
+> library calls might.)
+>
+> If there is any other strategy that I should try, please let me know.
+>
+> Thanks,
+> Reed
+>
+> [1] https://github.com/reedacartwright/rbedrock
+> [2] https://cran.r-project.org/package=rbedrock
+> [3] https://github.com/llvm/llvm-project/blob/release/12.x/libcxx/include/any#L107-L116
+>
+> --
+> Reed A. Cartwright, PhD
+> Associate Professor of Life Sciences
+> TEACh Representative - Evolution and Computational Courses
+> School of Life Sciences and The Biodesign Institute
+> Arizona State University
+> ==================
+> Address: The Biodesign Institute, PO Box 876401, Tempe, AZ 85287-6401 USA
+> Packages: The Biodesign Institute, 1001 S. McAllister Ave, Tempe, AZ
+> 85287-6401 USA
+> Office: Biodesign B-220C, 1-480-965-9949
+> Website: http://cartwrig.ht/
+>
+> ______________________________________________
+> R-package-devel at r-project.org mailing list
+> https://stat.ethz.ch/mailman/listinfo/r-package-devel
+
+
