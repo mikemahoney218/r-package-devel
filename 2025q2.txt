@@ -1777,3 +1777,143 @@ is on its way to CRAN.
 John Nash
 
 
+From r@k||||ck @end|ng |rom |@nc@@ter@@c@uk  Fri Apr 11 18:00:16 2025
+From: r@k||||ck @end|ng |rom |@nc@@ter@@c@uk (Killick, Rebecca)
+Date: Fri, 11 Apr 2025 16:00:16 +0000
+Subject: [R-pkg-devel] \linkS4class anchoring
+In-Reply-To: <LNXP265MB1564D9993DE64BAFF2F4B957A8B72@LNXP265MB1564.GBRP265.PROD.OUTLOOK.COM>
+References: <LNXP265MB1564D9993DE64BAFF2F4B957A8B72@LNXP265MB1564.GBRP265.PROD.OUTLOOK.COM>
+Message-ID: <LNXP265MB15649B9DFEE0CB8839F6DFA9A8B62@LNXP265MB1564.GBRP265.PROD.OUTLOOK.COM>
+
+Hi Fellow Package Maintainers,
+
+I received the following helpful message from the CRAN maintainers about a new check that my EnvCpt package is failing:
+
+"CRAN would like to move its package web pages to providing (static) HTML refmans instead of PDF refmans, which needs Rd cross-references to Rd \link{} targets not in the package itself nor in the base packages to use package anchors, i.e., use \link[PKG]{FOO} (see section "Cross-references" in "Writing R Extensions")."
+
+The CRAN package checks here:
+https://cran.r-project.org/web/checks/check_results_EnvCpt.html
+note that:
+"Found the following Rd file(s) with Rd \link{} targets missing package anchors: envcpt.Rd: cpt-class"
+
+All of the \link uses within my package are anchored except for the \linkS4class{cpt} call so I think this is what it is referring to.? I've checked the writing R extensions "Cross-references" section and it just says to use \linkS4class{<class>} but does so in reference to a class within the current package - which is what has been working up until now.
+
+The class is within the changepoint package so, I tried the obvious inference, \linkS4class[changepoint]{cpt} but this creates the following warning on check:
+"prepare_Rd: ./man/envcpt.Rd:63: unexpected TEXT '[changepoint]', expecting '{'
+checkRd: (7) envcpt.Rd:63: Tag LIST is invalid in a \code block"
+
+Has anyone else come across this (needing to reference a class in another package) and knows how to anchor it?
+
+I could be lazy and just delete the reference to solve the problem but, as the class is given as outputs, I think it is helpful to users who haven't come across the class before to have a direct link to the structure of it.
+
+Thanks,
+Rebecca
+
+Pronouns: They/Them/Theirs
+Please note:? Whilst I may choose to correspond by email during evenings and weekends as it fits best with my preferred working pattern, I do not expect responses outside your usual working pattern.
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Apr 11 21:45:03 2025
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 11 Apr 2025 22:45:03 +0300
+Subject: [R-pkg-devel] \linkS4class anchoring
+In-Reply-To: <LNXP265MB15649B9DFEE0CB8839F6DFA9A8B62@LNXP265MB1564.GBRP265.PROD.OUTLOOK.COM>
+References: <LNXP265MB1564D9993DE64BAFF2F4B957A8B72@LNXP265MB1564.GBRP265.PROD.OUTLOOK.COM>
+ <LNXP265MB15649B9DFEE0CB8839F6DFA9A8B62@LNXP265MB1564.GBRP265.PROD.OUTLOOK.COM>
+Message-ID: <20250411224503.4c763fcb@Tarkus>
+
+? Fri, 11 Apr 2025 16:00:16 +0000
+"Killick, Rebecca" <r.killick at lancaster.ac.uk> ?????:
+
+> All of the \link uses within my package are anchored except for the
+> \linkS4class{cpt} call so I think this is what it is referring to.
+> I've checked the writing R extensions "Cross-references" section and
+> it just says to use \linkS4class{<class>} but does so in reference to
+> a class within the current package - which is what has been working
+> up until now.
+> 
+> The class is within the changepoint package so, I tried the obvious
+> inference, \linkS4class[changepoint]{cpt} but this creates the
+> following warning on check:
+> "prepare_Rd: ./man/envcpt.Rd:63: unexpected TEXT '[changepoint]',
+> expecting '{' checkRd: (7)
+> envcpt.Rd:63: Tag LIST is invalid in a \code block"
+
+\linkS4class is a "primitive" Rd markup operation, included in the
+grammar and implemented directly by the individual Rd converters.
+Currently, the grammar says that \linkS4class{} takes no optional
+arguments. The workaround used by ?stats::xtabs is:
+
+>> \code{\link[Matrix:sparseMatrix-class]{sparseMatrix}}
+
+(With \linkS4class{sparseMatrix} helpfully left commented out on the
+same line.)
+
+In your case, that would be \link[changepoint:cpt-class]{cpt}.
+
+For the future packages depending on future R versions, the grammar and
+one of the converters can be changed:
+
+-----------------------------------8<-----------------------------------
+Index: src/library/tools/R/Rd2HTML.R
+===================================================================
+--- src/library/tools/R/Rd2HTML.R	(revision 88138)
++++ src/library/tools/R/Rd2HTML.R	(working copy)
+@@ -35,6 +35,8 @@
+     option <- attr(arg, "Rd_option")
+ 
+     topic <- dest <- paste(unlist(arg), collapse = "")
++    if (tag == "\\linkS4class") dest <- paste0(dest, "-class")
++
+     targetfile <- NULL
+     pkg <- NULL
+     if (!is.null(option)) {
+@@ -55,7 +57,6 @@
+     } else if (!isTEXT)
+         stopRd(arg, Rdfile, "Bad \\link topic -- must be text")
+ 
+-    if (tag == "\\linkS4class") dest <- paste0(dest, "-class")
+     list(topic = topic, dest = dest, pkg = pkg, targetfile = targetfile)
+ }
+ 
+Index: src/library/tools/src/gramRd.y
+===================================================================
+--- src/library/tools/src/gramRd.y	(revision 88138)
++++ src/library/tools/src/gramRd.y	(working copy)
+@@ -1168,7 +1168,6 @@
+     
+     { "\\emph",    LATEXMACRO },    
+     { "\\file",    LATEXMACRO },
+-    { "\\linkS4class", LATEXMACRO },
+     { "\\pkg",	   LATEXMACRO },
+     { "\\sQuote",  LATEXMACRO },
+     
+@@ -1209,6 +1208,7 @@
+        one LaTeX-like argument */
+        
+     { "\\link",    OPTMACRO },
++    { "\\linkS4class", OPTMACRO },
+        
+     /* These markup macros require an R-like text argument */
+     
+-----------------------------------8<-----------------------------------
+
+With the patch applied, the output for \linkS4class[changepoint]{cpt}
+and \link[changepoint:cpt-class]{cpt} will be the same:
+
+library(tools)
+r"{ \linkS4class[changepoint]{cpt} \link[changepoint:cpt-class]{cpt} }" |>
+ textConnection() |> parse_Rd(fragment = TRUE) |>
+ Rd2HTML(no_links = FALSE, fragment = TRUE)'
+# <p><a href="../../changepoint/help/cpt-class.html">cpt</a>
+# <a href="../../changepoint/help/cpt-class.html">cpt</a>
+
+Rd2ex skips \linkS4class as before; Rd2txt prints the name on the link;
+Rd2latex doesn't support the cross-package anchor; and Rd2HTML needs to
+process the ...-class destination first, before the if (option) { ... }
+branch sets targetfile based on it.
+
+-- 
+Best regards,
+Ivan
+
+
